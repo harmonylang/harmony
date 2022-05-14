@@ -25,10 +25,12 @@ struct access_info {
 };
 
 struct edge {
-    struct edge *next;       // linked list maintenance
+    struct edge *fwdnext;    // forward linked list maintenance
+    struct edge *bwdnext;    // backward linked list maintenance
     hvalue_t ctx, choice;    // ctx that made the microstep, choice if any
     bool interrupt;          // set if state change is an interrupt
-    struct node *node;       // resulting node (state)
+    struct node *src;        // source node
+    struct node *dst;        // destination node
     hvalue_t after;          // resulting context
     int weight;              // 1 if context switch; 0 otherwise
     struct access_info *ai;  // to detect data races

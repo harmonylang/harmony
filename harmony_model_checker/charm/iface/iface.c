@@ -85,9 +85,9 @@ struct node_vec_t *find_one_step_children(struct node *n) {
         if (node != n && (ctx->atomic == 0 || ctx->terminated)) {
             node_vec_push(result, node);
         } else {
-            for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
-                if (!hashset_contains(visited, &edge->node, sizeof(struct node *))) {
-                    node_vec_push(work, edge->node);
+            for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
+                if (!hashset_contains(visited, &edge->dst, sizeof(struct node *))) {
+                    node_vec_push(work, edge->dst);
                 }
             }
         }
@@ -101,8 +101,8 @@ struct node_vec_t *find_one_step_children(struct node *n) {
 
 struct node_vec_t *find_all_children(struct node *n) {
     struct node_vec_t *result = node_vec_init(1);
-    for (struct edge *e = n->fwd; e != NULL; e = e->next) {
-        node_vec_push(result, e->node);
+    for (struct edge *e = n->fwd; e != NULL; e = e->fwdnext) {
+        node_vec_push(result, e->dst);
     }
     return result;
 }

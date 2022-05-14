@@ -368,30 +368,16 @@ static bool onestep(
     // Weight of this step
     int weight = ctx == node->after ? 0 : 1;
 
-    // Allocate edges now
-    struct edge *edges = malloc(sizeof(struct edge) * 2);
-
-    // Forward edge from parent
-    struct edge *fwd = &edges[0];
-    fwd->ctx = ctx;
-    fwd->choice = choice_copy;
-    fwd->interrupt = interrupt;
-    fwd->weight = weight;
-    fwd->after = after;
-    fwd->ai = step->ai;
-    fwd->log = step->log;
-    fwd->nlog = step->nlog;
-
-    // Backward edge from node to parent.
-    struct edge *bwd = &edges[1];
-    bwd->ctx = ctx;
-    bwd->choice = choice_copy;
-    bwd->interrupt = interrupt;
-    bwd->weight = weight;
-    bwd->after = after;
-    bwd->ai = step->ai;
-    bwd->log = step->log;
-    bwd->nlog = step->nlog;
+    // Allocate edge now
+    struct edge *edge = new_alloc(struct edge);
+    edge->ctx = ctx;
+    edge->choice = choice_copy;
+    edge->interrupt = interrupt;
+    edge->weight = weight;
+    edge->after = after;
+    edge->ai = step->ai;
+    edge->log = step->log;
+    edge->nlog = step->nlog;
 
     // See if this state has been computed before
     void **p = dict_insert_alloc(w->visited, sc, sizeof(struct state), node_alloc);
@@ -446,9 +432,9 @@ static bool onestep(
     }
 
     // Backward edge from node to parent.
-    bwd->node = node;
-    bwd->next = next->bwd;
-    next->bwd = bwd;
+    edge->src = node;
+    edge->bwdnext = next->bwd;
+    next->bwd = edge;
 
     mutex_release(&next->lock);
 
@@ -634,12 +620,12 @@ char *ctx_status(struct node *node, hvalue_t ctx) {
         node = node->parent;
     }
     struct edge *edge;
-    for (edge = node->fwd; edge != NULL; edge = edge->next) {
+    for (edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
         if (edge->ctx == ctx) {
             break;
         }
     }
-    if (edge != NULL && edge->node == node) {
+    if (edge != NULL && edge->dst == node) {
         return "blocked";
     }
     return "runnable";
@@ -1322,13 +1308,13 @@ static enum busywait is_stuck(
     change = change || (node->state->vars != start->state->vars);
 	node->visited = true;
 	enum busywait result = BW_ESCAPE;
-    for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
+    for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
         if (edge->ctx == ctx) {
-			if (edge->node == node) {
+			if (edge->dst == node) {
 				node->visited = false;
 				return BW_ESCAPE;
 			}
-			if (edge->node == start) {
+			if (edge->dst == start) {
 				if (!change) {
 					node->visited = false;
 					return BW_ESCAPE;
@@ -1336,7 +1322,7 @@ static enum busywait is_stuck(
 				result = BW_RETURN;
 			}
 			else {
-				enum busywait bw = is_stuck(start, edge->node, edge->after, change);
+				enum busywait bw = is_stuck(start, edge->dst, edge->after, change);
 				switch (bw) {
 				case BW_ESCAPE:
 					node->visited = false;
@@ -1511,8 +1497,8 @@ static void destutter1(struct graph_t *graph){
     for (unsigned int i = 0; i < graph->size; i++) {
         struct node *n = graph->nodes[i];
 
-        if (n->bwd != NULL && n->bwd->next == NULL && n->bwd->nlog == 0) {
-            struct node *parent = n->bwd->node;
+        if (n->bwd != NULL && n->bwd->bwdnext == NULL && n->bwd->nlog == 0) {
+            struct node *parent = n->bwd->src;
 
             if (n->final) {
                 parent->final = true;
@@ -1520,9 +1506,9 @@ static void destutter1(struct graph_t *graph){
 
             // Remove the edge from the parent
             struct edge **pe, *e;
-            for (pe = &parent->fwd; (e = *pe) != NULL; pe = &e->next) {
-                if (e->node == n && e->nlog == 0) {
-                    *pe = e->next;
+            for (pe = &parent->fwd; (e = *pe) != NULL; pe = &e->fwdnext) {
+                if (e->dst == n && e->nlog == 0) {
+                    *pe = e->fwdnext;
                     free(e);
                     break;
                 }
@@ -1531,15 +1517,15 @@ static void destutter1(struct graph_t *graph){
             struct edge *next;
             for (struct edge *e = n->fwd; e != NULL; e = next) {
                 // Move the outgoing edge to the parent.
-                next = e->next;
-                e->next = parent->fwd;
+                next = e->fwdnext;
+                e->fwdnext = parent->fwd;
                 parent->fwd = e;
 
                 // Fix the corresponding backwards edge
-                for (struct edge *f = e->node->bwd; f != NULL; f = f->next) {
-                    if (f->node == n && f->nlog == e->nlog &&
+                for (struct edge *f = e->dst->bwd; f != NULL; f = f->bwdnext) {
+                    if (f->src == n && f->nlog == e->nlog &&
                             memcmp(f->log, e->log, f->nlog * sizeof(*f->log)) == 0) {
-                        f->node = parent;
+                        f->src = parent;
                         break;
                     }
                 }
@@ -1561,7 +1547,7 @@ static struct dict *collect_symbols(struct graph_t *graph){
         if (!n->reachable) {
             continue;
         }
-        for (struct edge *e = n->fwd; e != NULL; e = e->next) {
+        for (struct edge *e = n->fwd; e != NULL; e = e->fwdnext) {
             for (unsigned int j = 0; j < e->nlog; j++) {
                 void **p = dict_insert(symbols, &e->log[j], sizeof(e->log[j]));
                 if (*p == NULL) {
@@ -1630,16 +1616,16 @@ static void print_transitions(FILE *out, struct dict *symbols, struct edge *edge
     struct dict *d = dict_new(0, NULL, NULL);
 
     fprintf(out, "      \"transitions\": [\n");
-    for (struct edge *e = edges; e != NULL; e = e->next) {
+    for (struct edge *e = edges; e != NULL; e = e->fwdnext) {
         void **p = dict_insert(d, e->log, e->nlog * sizeof(*e->log));
         struct strbuf *sb = *p;
         if (sb == NULL) {
             *p = sb = malloc(sizeof(struct strbuf));
             strbuf_init(sb);
-            strbuf_printf(sb, "%d", e->node->id);
+            strbuf_printf(sb, "%d", e->dst->id);
         }
         else {
-            strbuf_printf(sb, ",%d", e->node->id);
+            strbuf_printf(sb, ",%d", e->dst->id);
         }
     }
     struct print_trans_env pte = {
@@ -1861,12 +1847,11 @@ int main(int argc, char **argv){
         // Link the forward edges
         for (unsigned int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
-            for (struct edge *bwd = node->bwd; bwd != NULL; bwd = bwd->next) {
-                struct edge *fwd = bwd - 1;
-                struct node *other = bwd->node;
-                fwd->node = node;
-                fwd->next = other->fwd;
-                other->fwd = fwd;
+            for (struct edge *edge = node->bwd; edge != NULL; edge = edge->bwdnext) {
+                struct node *other = edge->src;
+                edge->dst = node;
+                edge->fwdnext = other->fwd;
+                other->fwd = edge;
             }
         }
 
@@ -1896,8 +1881,8 @@ int main(int argc, char **argv){
             }
             // if this component has a way out, it is good
             for (struct edge *edge = node->fwd;
-                            edge != NULL && !comp->good; edge = edge->next) {
-                if (edge->node->component != node->component) {
+                            edge != NULL && !comp->good; edge = edge->fwdnext) {
+                if (edge->dst->component != node->component) {
                     comp->good = true;
                     break;
                 }
@@ -1979,12 +1964,12 @@ int main(int argc, char **argv){
             fprintf(df, "    vars: %s\n", value_string(node->state->vars));
             fprintf(df, "    fwd:\n");
             int eno = 0;
-            for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next, eno++) {
+            for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext, eno++) {
                 fprintf(df, "        %d:\n", eno);
                 struct context *ctx = value_get(edge->ctx, NULL);
                 fprintf(df, "            context: %s %s %d\n", value_string(ctx->name), value_string(ctx->arg), ctx->pc);
                 fprintf(df, "            choice: %s\n", value_string(edge->choice));
-                fprintf(df, "            node: %d (%d)\n", edge->node->id, edge->node->component);
+                fprintf(df, "            node: %d (%d)\n", edge->dst->id, edge->dst->component);
                 fprintf(df, "            log:");
                 for (unsigned int j = 0; j < edge->nlog; j++) {
                     char *p = value_string(edge->log[j]);
@@ -1995,12 +1980,12 @@ int main(int argc, char **argv){
             }
             fprintf(df, "    bwd:\n");
             eno = 0;
-            for (struct edge *edge = node->bwd; edge != NULL; edge = edge->next, eno++) {
+            for (struct edge *edge = node->bwd; edge != NULL; edge = edge->bwdnext, eno++) {
                 fprintf(df, "        %d:\n", eno);
                 struct context *ctx = value_get(edge->ctx, NULL);
                 fprintf(df, "            context: %s %s %d\n", value_string(ctx->name), value_string(ctx->arg), ctx->pc);
                 fprintf(df, "            choice: %s\n", value_string(edge->choice));
-                fprintf(df, "            node: %d (%d)\n", edge->node->id, edge->node->component);
+                fprintf(df, "            node: %d (%d)\n", edge->src->id, edge->src->component);
                 fprintf(df, "            log:");
                 for (int j = 0; j < edge->nlog; j++) {
                     char *p = value_string(edge->log[j]);
@@ -2115,8 +2100,8 @@ int main(int argc, char **argv){
         for (unsigned int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
             if (node->reachable) {
-                for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
-                    assert(edge->node->reachable);
+                for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
+                    assert(edge->dst->reachable);
                     if (first) {
                         first = false;
                     }
@@ -2125,7 +2110,7 @@ int main(int argc, char **argv){
                     }
                     fprintf(out, "    {\n");
                     fprintf(out, "      \"src\": %d,\n", node->id);
-                    fprintf(out, "      \"dst\": %d,\n", edge->node->id);
+                    fprintf(out, "      \"dst\": %d,\n", edge->dst->id);
                     fprintf(out, "      \"print\": [");
                     first_log = true;
                     for (int j = 0; j < edge->nlog; j++) {

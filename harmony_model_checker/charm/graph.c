@@ -37,8 +37,8 @@ static void kosaraju_visit(struct node *node) {
     }
     node->visited = true;
 
-    for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
-        kosaraju_visit(edge->node);
+    for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
+        kosaraju_visit(edge->dst);
     }
 
     // Push node
@@ -54,8 +54,8 @@ static void kosaraju_assign(struct node *node, int component) {
     }
     node->visited = true;
     node->component = component;
-    for (struct edge *edge = node->bwd; edge != NULL; edge = edge->next) {
-        kosaraju_assign(edge->node, component);
+    for (struct edge *edge = node->bwd; edge != NULL; edge = edge->bwdnext) {
+        kosaraju_assign(edge->src, component);
     }
 }
 
@@ -108,7 +108,7 @@ void graph_check_for_data_race(
     struct values_t *values
 ) {
     // TODO.  We're checking both if x and y conflict and y and x conflict for any two x and y, which is redundant
-    for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
+    for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
         for (struct access_info *ai = edge->ai; ai != NULL; ai = ai->next) {
             if (ai->indices != NULL) {
                 assert(ai->n > 0);
@@ -121,7 +121,7 @@ void graph_check_for_data_race(
                     minheap_insert(warnings, f);
                 }
                 else {
-                    for (struct edge *edge2 = edge->next; edge2 != NULL; edge2 = edge2->next) {
+                    for (struct edge *edge2 = edge->fwdnext; edge2 != NULL; edge2 = edge2->fwdnext) {
                         for (struct access_info *ai2 = edge2->ai; ai2 != NULL; ai2 = ai2->next) {
                             if (ai2->indices != NULL && !(ai->load && ai2->load) &&
                                 (ai->atomic == 0 || ai2->atomic == 0)) {
