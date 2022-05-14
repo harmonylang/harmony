@@ -1,4 +1,4 @@
-import BBsema;
+from BBsema import produce, consume;
 
 const NPRODS = 3;     # number of producers
 const NCONSS = 3;     # number of consumers
