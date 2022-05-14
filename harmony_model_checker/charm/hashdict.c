@@ -30,11 +30,12 @@ uint32_t dict_hash(const void *key, int size){
 }
 
 static inline struct keynode *keynode_new(struct dict *dict,
-            char *key, unsigned int len, void *(*alloc)(void)) {
+        char *key, unsigned int len, uint32_t hash, void *(*alloc)(void)) {
 	struct keynode *node = (*dict->malloc)(sizeof(struct keynode) + len);
 	node->len = len;
 	node->key = (char *) &node[1];
 	memcpy(node->key, key, len);
+    node->hash = hash;
 	node->next = 0;
 	node->value = alloc == NULL ? NULL : (*alloc)();
 	return node;
@@ -55,8 +56,8 @@ struct dict *dict_new(int initial_size, void *(*m)(size_t size), void (*f)(void 
 	for (int i = 0; i < dict->length; i++) {
 		mutex_init(&dict->table[i].lock);
 	}
-	dict->growth_treshold = 2.0;
-	dict->growth_factor = 10;
+	dict->growth_treshold = 2;
+	dict->growth_factor = 5;
 	dict->concurrent = 0;
     dict->malloc = m == NULL ? malloc : m;
     dict->free = f == NULL ? free : f;
@@ -75,11 +76,11 @@ void dict_delete(struct dict *dict) {
 	free(dict);
 }
 
-static void dict_reinsert_when_resizing(struct dict *dict, struct keynode *k2) {
-	int n = hash_func(k2->key, k2->len) % dict->length;
-	struct keynode *k = dict->table[n].stable;
-	k2->next = k;
-	dict->table[n].stable = k2;
+static inline void dict_reinsert_when_resizing(struct dict *dict, struct keynode *k) {
+	int n = k->hash % dict->length;
+	struct dict_bucket *db = &dict->table[n];
+    k->next = db->stable;
+    db->stable = k;
 }
 
 static void dict_resize(struct dict *dict, int newsize) {
@@ -140,22 +141,30 @@ static inline void *dict_find_alloc(struct dict *dict, const void *key, unsigned
 	if (!dict->concurrent && db->stable == NULL) {
 		double f = (double)dict->count / (double)dict->length;
 		if (f > dict->growth_treshold) {
-			dict_resize(dict, dict->length * dict->growth_factor);
+            printf("GROW 2\n");
+			dict_resize(dict, dict->length * dict->growth_factor - 1);
 			return dict_find_alloc(dict, key, keyn, alloc);
 		}
 	}
 
-    k = keynode_new(dict, (char *) key, keyn, alloc);
+    k = keynode_new(dict, (char *) key, keyn, hash, alloc);
     if (dict->concurrent) {
-            struct keynode *k2;
-            for (k2 = db->unstable; k2 != NULL; k2 = k2->next) {
-                if (k2->len == k->len && memcmp(k2->key, k->key, k->len) == 0) {
-                    fprintf(stderr, "DUPLICATE 3\n");
-                    exit(1);
-                }
+#ifdef notdef
+        struct keynode *k2;
+        for (k2 = db->unstable; k2 != NULL; k2 = k2->next) {
+            if (k2->len == k->len && memcmp(k2->key, k->key, k->len) == 0) {
+                fprintf(stderr, "DUPLICATE\n");
+                exit(1);
             }
-        k->next = db->unstable;
-        db->unstable = k;
+        }
+#endif
+        if (db->last == NULL) {
+            db->unstable = k;
+        }
+        else {
+            db->last->next = k;
+        }
+        db->last = k;
 		db->count++;
         mutex_release(&db->lock);
     }
@@ -253,17 +262,26 @@ void dict_set_concurrent(struct dict *dict, int concurrent) {
 
     // When going from concurrent to sequential, need to move over
     // the unstable values and possibly grow the table
-	dict->count = 0;
 	for (int i = 0; i < dict->length; i++) {
         struct dict_bucket *db = &dict->table[i];
-        struct keynode *k;
-        while ((k = db->unstable) != NULL) {
-            db->unstable = k->next;
-            k->next = db->stable;
-            db->stable = k;
+        if (db->unstable != NULL) {
+            db->last->next = db->stable;
+            db->stable = db->unstable;
+            db->unstable = db->last = NULL;
         }
 		dict->count += db->count;
+        db->count = 0;
     }
+
+    struct keynode *k;
+    int count = 0;
+	for (int i = 0; i < dict->length; i++) {
+        struct dict_bucket *db = &dict->table[i];
+        for (k = db->stable; k != 0; k = k->next) {
+            count++;
+        }
+    }
+
 	double f = (double)dict->count / (double)dict->length;
 	if (f > dict->growth_treshold) {
         int min = dict->length * dict->growth_factor;

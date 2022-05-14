@@ -1429,42 +1429,60 @@ static void do_work(struct worker *w){
 
 static void worker(void *arg){
     struct worker *w = arg;
+    double work_time = 0, wait_time = 0, start, now;
 
     for (int epoch = 0;; epoch++) {
+        // start of sequential phase
         barrier_wait(w->start_barrier);
-		// printf("WORKER %d starting\n", w->index);
+        // parallel phase starts now
+        start = gettime();
+		// printf("WORKER %d starting epoch %d\n", w->index, epoch);
 		do_work(w);
-		// printf("WORKER %d finished\n", w->index);
+        now = gettime();
+        work_time += now - start;
+		// printf("WORKER %d finished epoch %d %f %f\n", w->index, epoch, work_time, wait_time);
+        // wait for others to finish
+        start = now;
         barrier_wait(w->end_barrier);
+        // start of sequential phase
+        now = gettime();
+        wait_time += now - start;
     }
 }
 
-void process_results(
+inline int process_results(
     struct global_t *global,
     struct worker *w,
-    struct dict *visited,
     struct worker *workers,
     int nworkers,
-    int *count
+    int count
 ) {
 	struct node *node;
-    while ((node = w->results) != NULL) {
-		w->results = node->next;
+    int next = count % nworkers;
+    struct node *results = w->results;
 
+    while ((node = results) != NULL) {
+		results = node->next;
         graph_add(&global->graph, node);   // sets node->id
         assert(node->id != 0);
-        struct node **todo = &workers[*count % nworkers].todo;
+        struct node **todo = &workers[next].todo;
         node->next = *todo;
         *todo = node;
-        (*count)++;
+        count++;
+        if (++next == nworkers) {
+            next = 0;
+        }
         global->enqueued++;
     }
+    w->results = NULL;
 
     struct failure *f;
     while ((f = w->failures) != NULL) {
         w->failures = f->next;
         minheap_insert(global->failures, f);
     }
+
+    return count;
 }
 
 char *state_string(struct state *state){
@@ -1692,7 +1710,7 @@ int main(int argc, char **argv){
     struct global_t *global = new_alloc(struct global_t);
     value_init(&global->values);
     ops_init(global);
-    graph_init(&global->graph, 1024);
+    graph_init(&global->graph, 1024*1024);
     global->failures = minheap_create(fail_cmp);
     global->processes = NULL;
     global->nprocesses = 0;
@@ -1830,7 +1848,7 @@ int main(int argc, char **argv){
         // Collect the results of all the workers
         for (int i = 0; i < nworkers; i++) {
             struct worker *w = &workers[i];
-			process_results(global, w, visited, workers, nworkers, &count);
+			count = process_results(global, w, workers, nworkers, count);
         }
 
         if (count == 0) {

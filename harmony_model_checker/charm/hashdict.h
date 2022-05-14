@@ -17,14 +17,16 @@ struct keynode {
 	struct keynode *next;
 	char *key;
 	unsigned int len;
+    uint32_t hash;
 	HASHDICT_VALUE_TYPE value;
 };
 
 struct dict_bucket {
     struct keynode *stable;
     struct keynode *unstable;
+    struct keynode *last;       // last stable keynode
     mutex_t lock;
-	int count;
+	int count;                  // # unstable values
 };
 		
 struct dict {
