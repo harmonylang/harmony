@@ -515,7 +515,12 @@ void print_vars(FILE *file, hvalue_t v){
 
 char *json_escape_value(hvalue_t v){
     char *s = value_string(v);
-    char *r = json_escape(s, strlen(s));
+    int len = strlen(s);
+    if (*s == '[') {
+        *s = '(';
+        s[len-1] = ')';
+    }
+    char *r = json_escape(s, len);
     free(s);
     return r;
 }
