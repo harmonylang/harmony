@@ -68,7 +68,7 @@ bool invariant_check(struct global_t *global, struct state *state, struct step *
     return VALUE_FROM_BOOL(b);
 }
 
-void check_invariants(struct worker *w, struct node *node, struct step *step){
+bool check_invariants(struct worker *w, struct node *node, struct step *step){
     struct global_t *global = w->global;
     struct state *state = node->state;
     extern int invariant_cnt(const void *env);
@@ -89,10 +89,10 @@ void check_invariants(struct worker *w, struct node *node, struct step *step){
             b = false;
         }
         if (!b) {
-            node->ftype = FAIL_INVARIANT;   // TODO.  Doesn't work I don't think
-            break;
+            return false;
         }
     }
+    return true;
 }
 
 static void *node_alloc(void){
@@ -422,7 +422,16 @@ static bool onestep(
         w->failures = f;
     }
     else if (sc->choosing == 0 && sc->invariants != VALUE_SET) {
-        check_invariants(w, next, &w->inv_step);
+        if (!check_invariants(w, next, &w->inv_step)) {
+            struct failure *f = new_alloc(struct failure);
+            f->type = FAIL_INVARIANT;
+            f->choice = choice_copy;
+            f->interrupt = interrupt;
+            f->parent = node;
+            f->node = next;
+            f->next = w->failures;
+            w->failures = f;
+        }
     }
 
     // Backward edge from node to parent.
