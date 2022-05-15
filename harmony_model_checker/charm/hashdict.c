@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+#include "global.h"
 #include "hashdict.h"
 #include "thread.h"
 
@@ -25,10 +26,6 @@ static inline uint32_t meiyan(const char *key, int count) {
 	return h ^ (h >> 16);
 }
 
-uint32_t dict_hash(const void *key, int size){
-	return hash_func(key, size);
-}
-
 static inline struct keynode *keynode_new(struct dict *dict,
         char *key, unsigned int len, uint32_t hash, void *(*alloc)(void)) {
 	struct keynode *node = (*dict->malloc)(sizeof(struct keynode) + len);
@@ -47,7 +44,7 @@ void keynode_delete(struct dict *dict, struct keynode *node) {
 }
 
 struct dict *dict_new(int initial_size, void *(*m)(size_t size), void (*f)(void *)) {
-	struct dict *dict = malloc(sizeof(struct dict));
+	struct dict *dict = new_alloc(struct dict);
 	if (initial_size == 0) initial_size = 1024;
 	dict->length = initial_size;
 	dict->count = 0;
@@ -105,11 +102,10 @@ static void dict_resize(struct dict *dict, int newsize) {
 	free(old);
 }
 
+// Perhaps the most performance critical function in the entire code base
 static inline void *dict_find_alloc(struct dict *dict, const void *key, unsigned int keyn, void *(*alloc)(void)) {
-	// assert(keyn > 0);
     uint32_t hash = hash_func(key, keyn);
-	int n = hash % dict->length;
-    struct dict_bucket *db = &dict->table[n];
+    struct dict_bucket *db = &dict->table[hash % dict->length];
 
     // First see if the item is in the stable list, which does not require
     // a lock
@@ -198,8 +194,8 @@ void *dict_retrieve(const void *p, unsigned int *psize){
 }
 
 void *dict_lookup(struct dict *dict, const void *key, unsigned int keyn) {
-	int n = hash_func((const char*)key, keyn) % dict->length;
-    struct dict_bucket *db = &dict->table[n];
+    uint32_t hash = hash_func(key, keyn);
+    struct dict_bucket *db = &dict->table[hash % dict->length];
 	// __builtin_prefetch(db);
 
     // First look in the stable list, which does not require a lock
