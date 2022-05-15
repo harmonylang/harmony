@@ -58,7 +58,6 @@ struct node {
     unsigned int id;        // nodes are numbered starting from 0
     struct edge *fwd;       // forward edges
     struct edge *bwd;       // backward edges
-    enum fail_type ftype;    // failure if any
 
     // How to get here from parent node
     struct node *parent;    // shortest path to initial state
