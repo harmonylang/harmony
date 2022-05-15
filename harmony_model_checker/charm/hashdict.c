@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+#include "global.h"
 #include "hashdict.h"
 #include "thread.h"
 
@@ -25,16 +26,12 @@ static inline uint32_t meiyan(const char *key, int count) {
 	return h ^ (h >> 16);
 }
 
-uint32_t dict_hash(const void *key, int size){
-	return hash_func(key, size);
-}
-
 static inline struct keynode *keynode_new(struct dict *dict,
-            char *key, unsigned int len, void *(*alloc)(void)) {
+        char *key, unsigned int len, uint32_t hash, void *(*alloc)(void)) {
 	struct keynode *node = (*dict->malloc)(sizeof(struct keynode) + len);
 	node->len = len;
-	node->key = (char *) &node[1];
-	memcpy(node->key, key, len);
+	memcpy(node + 1, key, len);
+    node->hash = hash;
 	node->next = 0;
 	node->value = alloc == NULL ? NULL : (*alloc)();
 	return node;
@@ -47,7 +44,7 @@ void keynode_delete(struct dict *dict, struct keynode *node) {
 }
 
 struct dict *dict_new(int initial_size, void *(*m)(size_t size), void (*f)(void *)) {
-	struct dict *dict = malloc(sizeof(struct dict));
+	struct dict *dict = new_alloc(struct dict);
 	if (initial_size == 0) initial_size = 1024;
 	dict->length = initial_size;
 	dict->count = 0;
@@ -55,8 +52,8 @@ struct dict *dict_new(int initial_size, void *(*m)(size_t size), void (*f)(void 
 	for (int i = 0; i < dict->length; i++) {
 		mutex_init(&dict->table[i].lock);
 	}
-	dict->growth_treshold = 2.0;
-	dict->growth_factor = 10;
+	dict->growth_threshold = 2;
+	dict->growth_factor = 5;
 	dict->concurrent = 0;
     dict->malloc = m == NULL ? malloc : m;
     dict->free = f == NULL ? free : f;
@@ -75,11 +72,11 @@ void dict_delete(struct dict *dict) {
 	free(dict);
 }
 
-static void dict_reinsert_when_resizing(struct dict *dict, struct keynode *k2) {
-	int n = hash_func(k2->key, k2->len) % dict->length;
-	struct keynode *k = dict->table[n].stable;
-	k2->next = k;
-	dict->table[n].stable = k2;
+static inline void dict_reinsert_when_resizing(struct dict *dict, struct keynode *k) {
+	int n = k->hash % dict->length;
+	struct dict_bucket *db = &dict->table[n];
+    k->next = db->stable;
+    db->stable = k;
 }
 
 static void dict_resize(struct dict *dict, int newsize) {
@@ -94,6 +91,7 @@ static void dict_resize(struct dict *dict, int newsize) {
 		struct dict_bucket *b = &old[i];
         assert(b->unstable == NULL);
         struct keynode *k = b->stable;
+		b->stable = NULL;
 		while (k != NULL) {
 			struct keynode *next = k->next;
 			dict_reinsert_when_resizing(dict, k);
@@ -104,17 +102,16 @@ static void dict_resize(struct dict *dict, int newsize) {
 	free(old);
 }
 
+// Perhaps the most performance critical function in the entire code base
 static inline void *dict_find_alloc(struct dict *dict, const void *key, unsigned int keyn, void *(*alloc)(void)) {
-	// assert(keyn > 0);
     uint32_t hash = hash_func(key, keyn);
-	int n = hash % dict->length;
-    struct dict_bucket *db = &dict->table[n];
+    struct dict_bucket *db = &dict->table[hash % dict->length];
 
     // First see if the item is in the stable list, which does not require
     // a lock
 	struct keynode *k = db->stable;
 	while (k != NULL) {
-		if (k->len == keyn && memcmp(k->key, key, keyn) == 0) {
+		if (k->len == keyn && memcmp(k+1, key, keyn) == 0) {
 			assert(alloc == NULL || k->value != NULL);
 			return k;
 		}
@@ -127,7 +124,7 @@ static inline void *dict_find_alloc(struct dict *dict, const void *key, unsigned
         // See if the item is in the unstable list
         k = db->unstable;
         while (k != NULL) {
-            if (k->len == keyn && memcmp(k->key, key, keyn) == 0) {
+            if (k->len == keyn && memcmp(k+1, key, keyn) == 0) {
 				assert(alloc == NULL || k->value != NULL);
                 mutex_release(&db->lock);
                 return k;
@@ -139,23 +136,30 @@ static inline void *dict_find_alloc(struct dict *dict, const void *key, unsigned
     // If not concurrent may have to grow the table now
 	if (!dict->concurrent && db->stable == NULL) {
 		double f = (double)dict->count / (double)dict->length;
-		if (f > dict->growth_treshold) {
-			dict_resize(dict, dict->length * dict->growth_factor);
+		if (f > dict->growth_threshold) {
+			dict_resize(dict, dict->length * dict->growth_factor - 1);
 			return dict_find_alloc(dict, key, keyn, alloc);
 		}
 	}
 
-    k = keynode_new(dict, (char *) key, keyn, alloc);
+    k = keynode_new(dict, (char *) key, keyn, hash, alloc);
     if (dict->concurrent) {
-            struct keynode *k2;
-            for (k2 = db->unstable; k2 != NULL; k2 = k2->next) {
-                if (k2->len == k->len && memcmp(k2->key, k->key, k->len) == 0) {
-                    fprintf(stderr, "DUPLICATE 3\n");
-                    exit(1);
-                }
+#ifdef notdef
+        struct keynode *k2;
+        for (k2 = db->unstable; k2 != NULL; k2 = k2->next) {
+            if (k2->len == k->len && memcmp(k2+1, k+1, k->len) == 0) {
+                fprintf(stderr, "DUPLICATE\n");
+                exit(1);
             }
-        k->next = db->unstable;
-        db->unstable = k;
+        }
+#endif
+        if (db->last == NULL) {
+            db->unstable = k;
+        }
+        else {
+            db->last->next = k;
+        }
+        db->last = k;
 		db->count++;
         mutex_release(&db->lock);
     }
@@ -186,18 +190,18 @@ void *dict_retrieve(const void *p, unsigned int *psize){
     if (psize != NULL) {
         *psize = k->len;
     }
-    return k->key;
+    return k+1;
 }
 
 void *dict_lookup(struct dict *dict, const void *key, unsigned int keyn) {
-	int n = hash_func((const char*)key, keyn) % dict->length;
-    struct dict_bucket *db = &dict->table[n];
+    uint32_t hash = hash_func(key, keyn);
+    struct dict_bucket *db = &dict->table[hash % dict->length];
 	// __builtin_prefetch(db);
 
     // First look in the stable list, which does not require a lock
 	struct keynode *k = db->stable;
 	while (k != NULL) {
-		if (k->len == keyn && !memcmp(k->key, key, keyn)) {
+		if (k->len == keyn && !memcmp(k+1, key, keyn)) {
 			return k->value;
 		}
 		k = k->next;
@@ -208,7 +212,7 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keyn) {
         mutex_acquire(&db->lock);
         k = db->unstable;
         while (k != NULL) {
-            if (k->len == keyn && !memcmp(k->key, key, keyn)) {
+            if (k->len == keyn && !memcmp(k+1, key, keyn)) {
                 mutex_release(&db->lock);
                 return k->value;
             }
@@ -225,14 +229,14 @@ void dict_iter(struct dict *dict, enumFunc f, void *env) {
         struct dict_bucket *db = &dict->table[i];
         struct keynode *k = db->stable;
         while (k != NULL) {
-            (*f)(env, k->key, k->len, k->value);
+            (*f)(env, k+1, k->len, k->value);
             k = k->next;
         }
         if (dict->concurrent) {
             mutex_acquire(&db->lock);
             k = db->unstable;
             while (k != NULL) {
-                (*f)(env, k->key, k->len, k->value);
+                (*f)(env, k+1, k->len, k->value);
                 k = k->next;
             }
             mutex_release(&db->lock);
@@ -240,36 +244,60 @@ void dict_iter(struct dict *dict, enumFunc f, void *env) {
 	}
 }
 
-// To switch between concurrent and sequential modes
-void dict_set_concurrent(struct dict *dict, int concurrent) {
-	if (dict->concurrent == concurrent) {
-        assert(false);      // Shouldn't normally happen
-		return;
-	}
-    dict->concurrent = concurrent;
-    if (concurrent) {
-        return;
-    }
+// Switch to concurrent mode
+void dict_set_concurrent(struct dict *dict) {
+    assert(!dict->concurrent);
+    dict->concurrent = 1;
+}
 
-    // When going from concurrent to sequential, need to move over
-    // the unstable values and possibly grow the table
-	dict->count = 0;
-	for (int i = 0; i < dict->length; i++) {
-        struct dict_bucket *db = &dict->table[i];
-        struct keynode *k;
-        while ((k = db->unstable) != NULL) {
-            db->unstable = k->next;
-            k->next = db->stable;
-            db->stable = k;
+// When going from concurrent to sequential, need to move over
+// the unstable values and possibly grow the table
+int dict_make_stable(struct dict *dict, int nworkers, int worker){
+    assert(dict->concurrent);
+    int first = dict->length * worker / nworkers;
+    int count = dict->length * (worker + 1) / nworkers - first;
+    struct dict_bucket *db = &dict->table[first];
+    int n = 0;
+	for (int i = 0; i < count; i++, db++) {
+        if (db->unstable != NULL) {
+            db->last->next = db->stable;
+            db->stable = db->unstable;
+            db->unstable = db->last = NULL;
+            n += db->count;
+            db->count = 0;
         }
-		dict->count += db->count;
     }
+    return n;
+}
+
+void dict_set_sequential(struct dict *dict, int n) {
+    assert(dict->concurrent);
+    dict->count += n;
+
+#ifdef notdef
+    // check integrity
+    struct dict_bucket *db = dict->table;
+    int total = 0;
+	for (int i = 0; i < dict->length; i++, db++) {
+        if (db->unstable != NULL || db->last != NULL || db->count != 0) {
+            printf("BAD DICT\n");
+        }
+        for (struct keynode *k = db->stable; k != NULL; k = k->next) {
+            total++;
+        }
+    }
+    if (total != dict->count) {
+        printf("DICT: bad total\n");
+    }
+#endif
+
 	double f = (double)dict->count / (double)dict->length;
-	if (f > dict->growth_treshold) {
+	if (f > dict->growth_threshold) {
         int min = dict->length * dict->growth_factor;
         if (min < dict->count) {
             min = dict->count * 2;
         }
 		dict_resize(dict, min);
 	}
+    dict->concurrent = 0;
 }

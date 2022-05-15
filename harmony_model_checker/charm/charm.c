@@ -31,14 +31,19 @@
 struct worker {
     struct global_t *global;     // global state
     double timeout;
-    barrier_t *start_barrier, *end_barrier;
+    barrier_t *start_barrier, *middle_barrier, *end_barrier;
 
     struct dict *visited;
 
     int index;                   // index of worker
+    int nworkers;                // total number of workers
     struct node *todo;           // set of states to evaluate
     int timecnt;                 // to reduce gettime() overhead
     struct step inv_step;        // for evaluating invariants
+
+    // for dict_make_stable and dict_set_sequential
+    int nstable;
+    struct value_stable vs;
 
     struct node *results;        // list of resulting states
     struct failure *failures;   // list of failures
@@ -67,7 +72,7 @@ bool invariant_check(struct global_t *global, struct state *state, struct step *
     return VALUE_FROM_BOOL(b);
 }
 
-void check_invariants(struct worker *w, struct node *node, struct step *step){
+bool check_invariants(struct worker *w, struct node *node, struct step *step){
     struct global_t *global = w->global;
     struct state *state = node->state;
     extern int invariant_cnt(const void *env);
@@ -88,10 +93,10 @@ void check_invariants(struct worker *w, struct node *node, struct step *step){
             b = false;
         }
         if (!b) {
-            node->ftype = FAIL_INVARIANT;
-            break;
+            return false;
         }
     }
+    return true;
 }
 
 static void *node_alloc(void){
@@ -389,7 +394,6 @@ static bool onestep(
         if (len < next->len || (len == next->len && steps < next->steps)) {
             next->len = len;
             next->parent = node;
-            next->weight = weight;
             next->steps = steps;
             next->before = ctx;
             next->after = after;
@@ -406,12 +410,6 @@ static bool onestep(
         next->after = after;
         next->len = node->len + weight;
         next->steps = node->steps + instrcnt;
-        next->weight = weight;
-
-        next->ai = step->ai;
-        next->log = step->log;
-        next->nlog = step->nlog;
-
         next->initialized = true;
         next->next = w->results;
         w->results = next;
@@ -428,7 +426,16 @@ static bool onestep(
         w->failures = f;
     }
     else if (sc->choosing == 0 && sc->invariants != VALUE_SET) {
-        check_invariants(w, next, &w->inv_step);
+        if (!check_invariants(w, next, &w->inv_step)) {
+            struct failure *f = new_alloc(struct failure);
+            f->type = FAIL_INVARIANT;
+            f->choice = choice_copy;
+            f->interrupt = interrupt;
+            f->parent = node;
+            f->node = next;
+            f->next = w->failures;
+            w->failures = f;
+        }
     }
 
     // Backward edge from node to parent.
@@ -508,7 +515,12 @@ void print_vars(FILE *file, hvalue_t v){
 
 char *json_escape_value(hvalue_t v){
     char *s = value_string(v);
-    char *r = json_escape(s, strlen(s));
+    int len = strlen(s);
+    if (*s == '[') {
+        *s = '(';
+        s[len-1] = ')';
+    }
+    char *r = json_escape(s, len);
     free(s);
     return r;
 }
@@ -1429,42 +1441,64 @@ static void do_work(struct worker *w){
 
 static void worker(void *arg){
     struct worker *w = arg;
+    double work_time = 0, wait_time = 0, start, now;
 
     for (int epoch = 0;; epoch++) {
+        // start of sequential phase
         barrier_wait(w->start_barrier);
-		// printf("WORKER %d starting\n", w->index);
+        // parallel phase starts now
+        start = gettime();
+		// printf("WORKER %d starting epoch %d\n", w->index, epoch);
 		do_work(w);
-		// printf("WORKER %d finished\n", w->index);
+        now = gettime();
+        work_time += now - start;
+        // wait for others to finish
+        start = now;
+		// printf("WORKER %d finished epoch %d %f %f\n", w->index, epoch, work_time, wait_time);
+        barrier_wait(w->middle_barrier);
+		// printf("WORKER %d make stable %d %f %f\n", w->index, epoch, work_time, wait_time);
+        value_make_stable(&w->global->values, w->nworkers, w->index, &w->vs);
+        w->nstable = dict_make_stable(w->visited, w->nworkers, w->index);
         barrier_wait(w->end_barrier);
+        // start of sequential phase
+        now = gettime();
+        wait_time += now - start;
     }
 }
 
-void process_results(
+int process_results(
     struct global_t *global,
     struct worker *w,
-    struct dict *visited,
     struct worker *workers,
     int nworkers,
-    int *count
+    int count
 ) {
 	struct node *node;
-    while ((node = w->results) != NULL) {
-		w->results = node->next;
+    int next = count % nworkers;
+    struct node *results = w->results;
 
+    while ((node = results) != NULL) {
+		results = node->next;
         graph_add(&global->graph, node);   // sets node->id
         assert(node->id != 0);
-        struct node **todo = &workers[*count % nworkers].todo;
+        struct node **todo = &workers[next].todo;
         node->next = *todo;
         *todo = node;
-        (*count)++;
+        count++;
+        if (++next == nworkers) {
+            next = 0;
+        }
         global->enqueued++;
     }
+    w->results = NULL;
 
     struct failure *f;
     while ((f = w->failures) != NULL) {
         w->failures = f->next;
         minheap_insert(global->failures, f);
     }
+
+    return count;
 }
 
 char *state_string(struct state *state){
@@ -1692,7 +1726,7 @@ int main(int argc, char **argv){
     struct global_t *global = new_alloc(struct global_t);
     value_init(&global->values);
     ops_init(global);
-    graph_init(&global->graph, 1024);
+    graph_init(&global->graph, 1024*1024);
     global->failures = minheap_create(fail_cmp);
     global->processes = NULL;
     global->nprocesses = 0;
@@ -1772,8 +1806,9 @@ int main(int argc, char **argv){
     // Determine how many worker threads to use
     int nworkers = getNumCores();
 	printf("nworkers = %d\n", nworkers);
-    barrier_t start_barrier, end_barrier;
+    barrier_t start_barrier, middle_barrier, end_barrier;
     barrier_init(&start_barrier, nworkers + 1);
+    barrier_init(&middle_barrier, nworkers + 1);
     barrier_init(&end_barrier, nworkers + 1);
 
     // Allocate space for worker info
@@ -1783,8 +1818,10 @@ int main(int argc, char **argv){
         w->global = global;
         w->timeout = timeout;
         w->start_barrier = &start_barrier;
+        w->middle_barrier = &middle_barrier;
         w->end_barrier = &end_barrier;
         w->index = i;
+        w->nworkers = nworkers;
         w->visited = visited;
 
         // Create a context for evaluating invariants
@@ -1809,28 +1846,35 @@ int main(int argc, char **argv){
     double before = gettime(), postproc = 0;
     while (minheap_empty(global->failures)) {
         // Put the value dictionaries in concurrent mode
-        value_set_concurrent(&global->values, 1);
-        dict_set_concurrent(visited, 1);
+        value_set_concurrent(&global->values);
+        dict_set_concurrent(visited);
 
         // make the threads work
         barrier_wait(&start_barrier);
-        // printf("Diameter %d, Phase 1\n", global->diameter);
+        barrier_wait(&middle_barrier);
         barrier_wait(&end_barrier);
-        // printf("Diameter %d, Phase 2\n", global->diameter);
+        // printf("Diameter %d\n", global->diameter);
         global->diameter++;
 
         double before_postproc = gettime();
 
-        // Deal with the unstable values
-        value_set_concurrent(&global->values, 0);
-        dict_set_concurrent(visited, 0);
+        int nstable = 0;
+        struct value_stable vs;
+        memset(&vs, 0, sizeof(vs));
+        for (int i = 0; i < nworkers; i++) {
+            struct worker *w = &workers[i];
+            nstable += w->nstable;
+            value_stable_add(&vs, &w->vs);
+        }
+        dict_set_sequential(visited, nstable);
+        value_set_sequential(&global->values, &vs);
 
         int count = 0;
 
         // Collect the results of all the workers
         for (int i = 0; i < nworkers; i++) {
             struct worker *w = &workers[i];
-			process_results(global, w, visited, workers, nworkers, &count);
+			count = process_results(global, w, workers, nworkers, count);
         }
 
         if (count == 0) {

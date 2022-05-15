@@ -96,6 +96,7 @@ unary_op
     | 'min'
     | 'max'
     | 'len'
+    | 'type'
     | 'str'
     | 'any'
     | 'all'

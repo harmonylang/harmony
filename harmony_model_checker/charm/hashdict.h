@@ -13,24 +13,26 @@
 typedef void (*enumFunc)(void *env, const void *key, unsigned int key_size,
                                 HASHDICT_VALUE_TYPE value);
 
+// key directly follows this header
 struct keynode {
 	struct keynode *next;
-	char *key;
 	unsigned int len;
+    uint32_t hash;
 	HASHDICT_VALUE_TYPE value;
 };
 
 struct dict_bucket {
     struct keynode *stable;
     struct keynode *unstable;
+    struct keynode *last;       // last stable keynode
     mutex_t lock;
-	int count;
+	int count;                  // # unstable values
 };
 		
 struct dict {
 	struct dict_bucket *table;
 	int length, count;
-	double growth_treshold;
+	double growth_threshold;
 	double growth_factor;
     int concurrent;         // 0 = not concurrent
     void *(*malloc)(size_t size);
@@ -45,6 +47,7 @@ void **dict_insert_alloc(struct dict *dict, const void *key, unsigned int keyn, 
 void *dict_find(struct dict *dict, const void *key, unsigned int keylen);
 void *dict_retrieve(const void *p, unsigned int *psize);
 void dict_iter(struct dict *dict, enumFunc f, void *user);
-void dict_set_concurrent(struct dict *dict, int concurrent);
-uint32_t dict_hash(const void *key, int size);
+void dict_set_concurrent(struct dict *dict);
+int dict_make_stable(struct dict *dict, int nworkers, int worker);
+void dict_set_sequential(struct dict *dict, int n);
 #endif

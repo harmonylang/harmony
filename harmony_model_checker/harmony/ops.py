@@ -1193,6 +1193,8 @@ class NaryOp(Op):
             return "OpUna(self, FunStr)"
         if lexeme == "len" and self.n == 1:
             return "OpUna(self, FunLen)"
+        if lexeme == "len" and self.n == 1:
+            return "OpUna(self, FunType)"
         if lexeme == "min" and self.n == 1:
             return "OpUna(self, FunMin)"
         if lexeme == "max" and self.n == 1:
@@ -1485,6 +1487,26 @@ class NaryOp(Op):
                     if not self.checktype(state, context, sa, isinstance(e, DictValue)):
                         return
                     context.push(len(e.d))
+            elif op == "type":
+                if isinstance(e, bool):
+                    context.push("bool")
+                elif isinstance(e, int):
+                    context.push("int")
+                elif isinstance(e, str):
+                    context.push("str")
+                elif isinstance(e, PcValue):
+                    context.push("pc")
+                elif isinstance(e, ListValue):
+                    context.push("list")
+                elif isinstance(e, DictValue):
+                    context.push("dict")
+                elif isinstance(e, SetValue):
+                    context.push("set")
+                elif isinstance(e, AddressValue):
+                    context.push("address")
+                else:
+                    assert isinstance(e, ContextValue)
+                    context.push(strValue("context"))
             elif op == "str":
                 context.push(strValue(e))
             elif op == "any":

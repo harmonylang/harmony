@@ -58,7 +58,6 @@ struct node {
     unsigned int id;        // nodes are numbered starting from 0
     struct edge *fwd;       // forward edges
     struct edge *bwd;       // backward edges
-    enum fail_type ftype;    // failure if any
 
     // How to get here from parent node
     struct node *parent;    // shortest path to initial state
@@ -68,11 +67,7 @@ struct node {
     hvalue_t after;         // context after state change (current context)
     hvalue_t choice;        // choice made if any
     bool interrupt;         // set if gotten here by interrupt
-    int weight;             // 1 if context switch; 0 otherwise
-    struct access_info *ai; // to detect data races
     bool final;             // only eternal threads left
-    hvalue_t *log;          // history
-    unsigned int nlog;      // size of history
 
     // SCC
     bool visited;           // for Kosaraju algorithm

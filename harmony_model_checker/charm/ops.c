@@ -42,6 +42,8 @@ struct var_tree {
 // These are initialized in ops_init and are immutable.
 static struct dict *ops_map, *f_map;
 static hvalue_t underscore, this_atom;
+static hvalue_t type_bool, type_int, type_str, type_pc, type_list;
+static hvalue_t type_dict, type_set, type_address, type_context;
 
 static bool is_sequential(hvalue_t seqvars, hvalue_t *indices, unsigned int n){
     assert(VALUE_TYPE(seqvars) == VALUE_SET);
@@ -2150,6 +2152,34 @@ hvalue_t f_len(struct state *state, struct context *ctx, hvalue_t *args, int n, 
     return value_ctx_failure(ctx, values, "len() can only be applied to sets, dictionaries, lists, or strings");
 }
 
+hvalue_t f_type(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+    assert(n == 1);
+    hvalue_t e = args[0];
+    switch (VALUE_TYPE(e)) {
+    case VALUE_BOOL:
+        return type_bool;
+    case VALUE_INT:
+        return type_int;
+    case VALUE_ATOM:
+        return type_str;
+    case VALUE_PC:
+        return type_pc;
+    case VALUE_LIST:
+        return type_list;
+    case VALUE_DICT:
+        return type_dict;
+    case VALUE_SET:
+        return type_set;
+    case VALUE_ADDRESS:
+        return type_address;
+    case VALUE_CONTEXT:
+        return type_context;
+    default:
+        assert(false);
+    }
+    return value_ctx_failure(ctx, values, "unknown type???");
+}
+
 hvalue_t f_le(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 2);
     int cmp = value_cmp(args[1], args[0]);
@@ -2976,6 +3006,7 @@ struct f_info f_table[] = {
     { "not", f_not },
     { "str", f_str },
     { "SetAdd", f_set_add },
+    { "type", f_type },
     { NULL, NULL }
 };
 
@@ -2988,6 +3019,15 @@ void ops_init(struct global_t *global) {
     f_map = dict_new(0, NULL, NULL);
 	underscore = value_put_atom(&global->values, "_", 1);
 	this_atom = value_put_atom(&global->values, "this", 4);
+    type_bool = value_put_atom(&global->values, "bool", 4);
+    type_int = value_put_atom(&global->values, "int", 3);
+    type_str = value_put_atom(&global->values, "str", 3);
+    type_pc = value_put_atom(&global->values, "pc", 2);
+    type_list = value_put_atom(&global->values, "list", 4);
+    type_dict = value_put_atom(&global->values, "dict", 4);
+    type_set = value_put_atom(&global->values, "set", 3);
+    type_address = value_put_atom(&global->values, "address", 7);
+    type_context = value_put_atom(&global->values, "context", 7);
 
     for (struct op_info *oi = op_table; oi->name != NULL; oi++) {
         void **p = dict_insert(ops_map, oi->name, strlen(oi->name));
