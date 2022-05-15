@@ -89,7 +89,7 @@ void check_invariants(struct worker *w, struct node *node, struct step *step){
             b = false;
         }
         if (!b) {
-            node->ftype = FAIL_INVARIANT;
+            node->ftype = FAIL_INVARIANT;   // TODO.  Doesn't work I don't think
             break;
         }
     }
@@ -390,7 +390,6 @@ static bool onestep(
         if (len < next->len || (len == next->len && steps < next->steps)) {
             next->len = len;
             next->parent = node;
-            next->weight = weight;
             next->steps = steps;
             next->before = ctx;
             next->after = after;
@@ -407,12 +406,6 @@ static bool onestep(
         next->after = after;
         next->len = node->len + weight;
         next->steps = node->steps + instrcnt;
-        next->weight = weight;
-
-        next->ai = step->ai;
-        next->log = step->log;
-        next->nlog = step->nlog;
-
         next->initialized = true;
         next->next = w->results;
         w->results = next;

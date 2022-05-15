@@ -68,11 +68,7 @@ struct node {
     hvalue_t after;         // context after state change (current context)
     hvalue_t choice;        // choice made if any
     bool interrupt;         // set if gotten here by interrupt
-    int weight;             // 1 if context switch; 0 otherwise
-    struct access_info *ai; // to detect data races
     bool final;             // only eternal threads left
-    hvalue_t *log;          // history
-    unsigned int nlog;      // size of history
 
     // SCC
     bool visited;           // for Kosaraju algorithm
