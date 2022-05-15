@@ -33,8 +33,7 @@ static inline struct keynode *keynode_new(struct dict *dict,
         char *key, unsigned int len, uint32_t hash, void *(*alloc)(void)) {
 	struct keynode *node = (*dict->malloc)(sizeof(struct keynode) + len);
 	node->len = len;
-	node->key = (char *) &node[1];
-	memcpy(node->key, key, len);
+	memcpy(node + 1, key, len);
     node->hash = hash;
 	node->next = 0;
 	node->value = alloc == NULL ? NULL : (*alloc)();
@@ -56,7 +55,7 @@ struct dict *dict_new(int initial_size, void *(*m)(size_t size), void (*f)(void 
 	for (int i = 0; i < dict->length; i++) {
 		mutex_init(&dict->table[i].lock);
 	}
-	dict->growth_threshold = 0.8;
+	dict->growth_threshold = 2;
 	dict->growth_factor = 5;
 	dict->concurrent = 0;
     dict->malloc = m == NULL ? malloc : m;
@@ -81,12 +80,6 @@ static inline void dict_reinsert_when_resizing(struct dict *dict, struct keynode
 	struct dict_bucket *db = &dict->table[n];
     k->next = db->stable;
     db->stable = k;
-
-	int depth = 0;
-	for (k = db->stable; k != 0; k = k->next) depth++;
-	if (depth > 5) {
-		printf("DEEP %d\n", depth);
-	}
 }
 
 static void dict_resize(struct dict *dict, int newsize) {
@@ -121,37 +114,26 @@ static inline void *dict_find_alloc(struct dict *dict, const void *key, unsigned
     // First see if the item is in the stable list, which does not require
     // a lock
 	struct keynode *k = db->stable;
-	int depth = 0;
 	while (k != NULL) {
-		if (k->len == keyn && memcmp(k->key, key, keyn) == 0) {
+		if (k->len == keyn && memcmp(k+1, key, keyn) == 0) {
 			assert(alloc == NULL || k->value != NULL);
-			if (depth >= 9) {
-				printf("FOUND 1 %d\n", depth);
-			}
 			return k;
 		}
-		depth++;
 		k = k->next;
 	}
 
-	int depth2 = 0;
     if (dict->concurrent) {
         mutex_acquire(&db->lock);
 
         // See if the item is in the unstable list
         k = db->unstable;
         while (k != NULL) {
-            if (k->len == keyn && memcmp(k->key, key, keyn) == 0) {
+            if (k->len == keyn && memcmp(k+1, key, keyn) == 0) {
 				assert(alloc == NULL || k->value != NULL);
-				if (depth >= 9) {
-					printf("FOUND 2 %d %d\n", depth, depth2);
-				}
                 mutex_release(&db->lock);
                 return k;
             }
             k = k->next;
-			depth++;
-			depth2++;
         }
     }
 
@@ -169,7 +151,7 @@ static inline void *dict_find_alloc(struct dict *dict, const void *key, unsigned
 #ifdef notdef
         struct keynode *k2;
         for (k2 = db->unstable; k2 != NULL; k2 = k2->next) {
-            if (k2->len == k->len && memcmp(k2->key, k->key, k->len) == 0) {
+            if (k2->len == k->len && memcmp(k2+1, k+1, k->len) == 0) {
                 fprintf(stderr, "DUPLICATE\n");
                 exit(1);
             }
@@ -212,7 +194,7 @@ void *dict_retrieve(const void *p, unsigned int *psize){
     if (psize != NULL) {
         *psize = k->len;
     }
-    return k->key;
+    return k+1;
 }
 
 void *dict_lookup(struct dict *dict, const void *key, unsigned int keyn) {
@@ -223,7 +205,7 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keyn) {
     // First look in the stable list, which does not require a lock
 	struct keynode *k = db->stable;
 	while (k != NULL) {
-		if (k->len == keyn && !memcmp(k->key, key, keyn)) {
+		if (k->len == keyn && !memcmp(k+1, key, keyn)) {
 			return k->value;
 		}
 		k = k->next;
@@ -234,7 +216,7 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keyn) {
         mutex_acquire(&db->lock);
         k = db->unstable;
         while (k != NULL) {
-            if (k->len == keyn && !memcmp(k->key, key, keyn)) {
+            if (k->len == keyn && !memcmp(k+1, key, keyn)) {
                 mutex_release(&db->lock);
                 return k->value;
             }
@@ -251,14 +233,14 @@ void dict_iter(struct dict *dict, enumFunc f, void *env) {
         struct dict_bucket *db = &dict->table[i];
         struct keynode *k = db->stable;
         while (k != NULL) {
-            (*f)(env, k->key, k->len, k->value);
+            (*f)(env, k+1, k->len, k->value);
             k = k->next;
         }
         if (dict->concurrent) {
             mutex_acquire(&db->lock);
             k = db->unstable;
             while (k != NULL) {
-                (*f)(env, k->key, k->len, k->value);
+                (*f)(env, k+1, k->len, k->value);
                 k = k->next;
             }
             mutex_release(&db->lock);
@@ -288,10 +270,6 @@ void dict_set_concurrent(struct dict *dict, int concurrent) {
         }
 		dict->count += db->count;
         db->count = 0;
-		
-		int depth = 0;
-		for (struct keynode *k = db->stable; k != 0; k = k->next) depth++;
-		if (depth > 7) printf("DDD %d %d %d %d\n", i, depth, dict->count, dict->length);
     }
 
 	double f = (double)dict->count / (double)dict->length;

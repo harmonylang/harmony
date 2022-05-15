@@ -13,9 +13,9 @@
 typedef void (*enumFunc)(void *env, const void *key, unsigned int key_size,
                                 HASHDICT_VALUE_TYPE value);
 
+// key directly follows this header
 struct keynode {
 	struct keynode *next;
-	char *key;
 	unsigned int len;
     uint32_t hash;
 	HASHDICT_VALUE_TYPE value;
