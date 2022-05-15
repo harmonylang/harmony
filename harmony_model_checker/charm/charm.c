@@ -31,11 +31,12 @@
 struct worker {
     struct global_t *global;     // global state
     double timeout;
-    barrier_t *start_barrier, *end_barrier;
+    barrier_t *start_barrier, *middle_barrier, *end_barrier;
 
     struct dict *visited;
 
     int index;                   // index of worker
+    int nworkers;                // total number of workers
     struct node *todo;           // set of states to evaluate
     int timecnt;                 // to reduce gettime() overhead
     struct step inv_step;        // for evaluating invariants
@@ -1440,9 +1441,13 @@ static void worker(void *arg){
 		do_work(w);
         now = gettime();
         work_time += now - start;
-		// printf("WORKER %d finished epoch %d %f %f\n", w->index, epoch, work_time, wait_time);
         // wait for others to finish
         start = now;
+		// printf("WORKER %d finished epoch %d %f %f\n", w->index, epoch, work_time, wait_time);
+        barrier_wait(w->middle_barrier);
+		// printf("WORKER %d make stable %d %f %f\n", w->index, epoch, work_time, wait_time);
+        value_make_stable(&w->global->values, w->nworkers, w->index);
+        dict_make_stable(w->visited, w->nworkers, w->index);
         barrier_wait(w->end_barrier);
         // start of sequential phase
         now = gettime();
@@ -1790,8 +1795,9 @@ int main(int argc, char **argv){
     // Determine how many worker threads to use
     int nworkers = getNumCores();
 	printf("nworkers = %d\n", nworkers);
-    barrier_t start_barrier, end_barrier;
+    barrier_t start_barrier, middle_barrier, end_barrier;
     barrier_init(&start_barrier, nworkers + 1);
+    barrier_init(&middle_barrier, nworkers + 1);
     barrier_init(&end_barrier, nworkers + 1);
 
     // Allocate space for worker info
@@ -1801,8 +1807,10 @@ int main(int argc, char **argv){
         w->global = global;
         w->timeout = timeout;
         w->start_barrier = &start_barrier;
+        w->middle_barrier = &middle_barrier;
         w->end_barrier = &end_barrier;
         w->index = i;
+        w->nworkers = nworkers;
         w->visited = visited;
 
         // Create a context for evaluating invariants
@@ -1827,21 +1835,21 @@ int main(int argc, char **argv){
     double before = gettime(), postproc = 0;
     while (minheap_empty(global->failures)) {
         // Put the value dictionaries in concurrent mode
-        value_set_concurrent(&global->values, 1);
-        dict_set_concurrent(visited, 1);
+        value_set_concurrent(&global->values);
+        dict_set_concurrent(visited);
 
         // make the threads work
         barrier_wait(&start_barrier);
-        // printf("Diameter %d, Phase 1\n", global->diameter);
+        barrier_wait(&middle_barrier);
         barrier_wait(&end_barrier);
-        // printf("Diameter %d, Phase 2\n", global->diameter);
+        // printf("Diameter %d\n", global->diameter);
         global->diameter++;
 
         double before_postproc = gettime();
 
         // Deal with the unstable values
-        value_set_concurrent(&global->values, 0);
-        dict_set_concurrent(visited, 0);
+        value_set_sequential(&global->values);
+        dict_set_sequential(visited);
 
         int count = 0;
 

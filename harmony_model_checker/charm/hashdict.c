@@ -248,30 +248,32 @@ void dict_iter(struct dict *dict, enumFunc f, void *env) {
 	}
 }
 
-// To switch between concurrent and sequential modes
-void dict_set_concurrent(struct dict *dict, int concurrent) {
-	if (dict->concurrent == concurrent) {
-        assert(false);      // Shouldn't normally happen
-		return;
-	}
-    dict->concurrent = concurrent;
-    if (concurrent) {
-        return;
-    }
+// Switch to concurrent mode
+void dict_set_concurrent(struct dict *dict) {
+    assert(!dict->concurrent);
+    dict->concurrent = 1;
+}
 
-    // When going from concurrent to sequential, need to move over
-    // the unstable values and possibly grow the table
-	struct dict_bucket *db = dict->table;
-	for (int i = 0; i < dict->length; i++, db++) {
+// When going from concurrent to sequential, need to move over
+// the unstable values and possibly grow the table
+void dict_make_stable(struct dict *dict, int nworkers, int worker){
+    assert(dict->concurrent);
+    int first = dict->length * worker / nworkers;
+    int count = dict->length * (worker + 1) / nworkers - first;
+    struct dict_bucket *db = &dict->table[first];
+	for (int i = 0; i < count; i++, db++) {
         if (db->unstable != NULL) {
             db->last->next = db->stable;
             db->stable = db->unstable;
             db->unstable = db->last = NULL;
+            dict->count += db->count;
+            db->count = 0;
         }
-		dict->count += db->count;
-        db->count = 0;
     }
+}
 
+void dict_set_sequential(struct dict *dict) {
+    assert(dict->concurrent);
 	double f = (double)dict->count / (double)dict->length;
 	if (f > dict->growth_threshold) {
         int min = dict->length * dict->growth_factor;
@@ -280,4 +282,5 @@ void dict_set_concurrent(struct dict *dict, int concurrent) {
         }
 		dict_resize(dict, min);
 	}
+    dict->concurrent = 0;
 }

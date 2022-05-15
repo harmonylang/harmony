@@ -53,7 +53,9 @@ typedef struct values_t {
 } values_t;
 
 void value_init(struct values_t *values);
-void value_set_concurrent(struct values_t *values, int concurrent);
+void value_set_concurrent(struct values_t *values);
+void value_set_sequential(struct values_t *values);
+void value_make_stable(struct values_t *values, int nworkers, int worker);
 hvalue_t value_from_json(struct values_t *values, struct dict *map);
 int value_cmp(hvalue_t v1, hvalue_t v2);
 void *value_get(hvalue_t v, unsigned int *size);

@@ -888,13 +888,31 @@ void value_init(struct values_t *values){
     }
 }
 
-void value_set_concurrent(struct values_t *values, int concurrent){
-    dict_set_concurrent(values->atoms, concurrent);
-    dict_set_concurrent(values->dicts, concurrent);
-    dict_set_concurrent(values->sets, concurrent);
-    dict_set_concurrent(values->lists, concurrent);
-    dict_set_concurrent(values->addresses, concurrent);
-    dict_set_concurrent(values->contexts, concurrent);
+void value_set_concurrent(struct values_t *values){
+    dict_set_concurrent(values->atoms);
+    dict_set_concurrent(values->dicts);
+    dict_set_concurrent(values->sets);
+    dict_set_concurrent(values->lists);
+    dict_set_concurrent(values->addresses);
+    dict_set_concurrent(values->contexts);
+}
+
+void value_make_stable(struct values_t *values, int nworkers, int worker){
+    dict_make_stable(values->atoms, nworkers, worker);
+    dict_make_stable(values->dicts, nworkers, worker);
+    dict_make_stable(values->sets, nworkers, worker);
+    dict_make_stable(values->lists, nworkers, worker);
+    dict_make_stable(values->addresses, nworkers, worker);
+    dict_make_stable(values->contexts, nworkers, worker);
+}
+
+void value_set_sequential(struct values_t *values){
+    dict_set_sequential(values->atoms);
+    dict_set_sequential(values->dicts);
+    dict_set_sequential(values->sets);
+    dict_set_sequential(values->lists);
+    dict_set_sequential(values->addresses);
+    dict_set_sequential(values->contexts);
 }
 
 // Store key:value in the given dictionary and returns its value code

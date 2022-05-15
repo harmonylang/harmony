@@ -47,6 +47,7 @@ void **dict_insert_alloc(struct dict *dict, const void *key, unsigned int keyn, 
 void *dict_find(struct dict *dict, const void *key, unsigned int keylen);
 void *dict_retrieve(const void *p, unsigned int *psize);
 void dict_iter(struct dict *dict, enumFunc f, void *user);
-void dict_set_concurrent(struct dict *dict, int concurrent);
-uint32_t dict_hash(const void *key, int size);
+void dict_set_concurrent(struct dict *dict);
+void dict_make_stable(struct dict *dict, int nworkers, int worker);
+void dict_set_sequential(struct dict *dict);
 #endif
