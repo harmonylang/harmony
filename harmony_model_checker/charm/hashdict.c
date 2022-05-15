@@ -256,24 +256,45 @@ void dict_set_concurrent(struct dict *dict) {
 
 // When going from concurrent to sequential, need to move over
 // the unstable values and possibly grow the table
-void dict_make_stable(struct dict *dict, int nworkers, int worker){
+int dict_make_stable(struct dict *dict, int nworkers, int worker){
     assert(dict->concurrent);
     int first = dict->length * worker / nworkers;
     int count = dict->length * (worker + 1) / nworkers - first;
     struct dict_bucket *db = &dict->table[first];
+    int n = 0;
 	for (int i = 0; i < count; i++, db++) {
         if (db->unstable != NULL) {
             db->last->next = db->stable;
             db->stable = db->unstable;
             db->unstable = db->last = NULL;
-            dict->count += db->count;
+            n += db->count;
             db->count = 0;
         }
     }
+    return n;
 }
 
-void dict_set_sequential(struct dict *dict) {
+void dict_set_sequential(struct dict *dict, int n) {
     assert(dict->concurrent);
+    dict->count += n;
+
+#ifdef notdef
+    // check integrity
+    struct dict_bucket *db = dict->table;
+    int total = 0;
+	for (int i = 0; i < dict->length; i++, db++) {
+        if (db->unstable != NULL || db->last != NULL || db->count != 0) {
+            printf("BAD DICT\n");
+        }
+        for (struct keynode *k = db->stable; k != NULL; k = k->next) {
+            total++;
+        }
+    }
+    if (total != dict->count) {
+        printf("DICT: bad total\n");
+    }
+#endif
+
 	double f = (double)dict->count / (double)dict->length;
 	if (f > dict->growth_threshold) {
         int min = dict->length * dict->growth_factor;

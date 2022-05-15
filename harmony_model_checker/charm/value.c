@@ -897,22 +897,32 @@ void value_set_concurrent(struct values_t *values){
     dict_set_concurrent(values->contexts);
 }
 
-void value_make_stable(struct values_t *values, int nworkers, int worker){
-    dict_make_stable(values->atoms, nworkers, worker);
-    dict_make_stable(values->dicts, nworkers, worker);
-    dict_make_stable(values->sets, nworkers, worker);
-    dict_make_stable(values->lists, nworkers, worker);
-    dict_make_stable(values->addresses, nworkers, worker);
-    dict_make_stable(values->contexts, nworkers, worker);
+void value_make_stable(struct values_t *values,
+            int nworkers, int worker, struct value_stable *vs){
+    vs->atom = dict_make_stable(values->atoms, nworkers, worker);
+    vs->dict = dict_make_stable(values->dicts, nworkers, worker);
+    vs->set = dict_make_stable(values->sets, nworkers, worker);
+    vs->list = dict_make_stable(values->lists, nworkers, worker);
+    vs->address = dict_make_stable(values->addresses, nworkers, worker);
+    vs->context = dict_make_stable(values->contexts, nworkers, worker);
 }
 
-void value_set_sequential(struct values_t *values){
-    dict_set_sequential(values->atoms);
-    dict_set_sequential(values->dicts);
-    dict_set_sequential(values->sets);
-    dict_set_sequential(values->lists);
-    dict_set_sequential(values->addresses);
-    dict_set_sequential(values->contexts);
+void value_stable_add(struct value_stable *vs, struct value_stable *vs2){
+    vs->atom += vs2->atom;
+    vs->dict += vs2->dict;
+    vs->set += vs2->set;
+    vs->list += vs2->list;
+    vs->address += vs2->address;
+    vs->context += vs2->context;
+}
+
+void value_set_sequential(struct values_t *values, struct value_stable *vs){
+    dict_set_sequential(values->atoms, vs->atom);
+    dict_set_sequential(values->dicts, vs->dict);
+    dict_set_sequential(values->sets, vs->set);
+    dict_set_sequential(values->lists, vs->list);
+    dict_set_sequential(values->addresses, vs->address);
+    dict_set_sequential(values->contexts, vs->context);
 }
 
 // Store key:value in the given dictionary and returns its value code

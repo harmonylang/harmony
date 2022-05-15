@@ -41,6 +41,10 @@ struct worker {
     int timecnt;                 // to reduce gettime() overhead
     struct step inv_step;        // for evaluating invariants
 
+    // for dict_make_stable and dict_set_sequential
+    int nstable;
+    struct value_stable vs;
+
     struct node *results;        // list of resulting states
     struct failure *failures;   // list of failures
 };
@@ -1448,8 +1452,8 @@ static void worker(void *arg){
 		// printf("WORKER %d finished epoch %d %f %f\n", w->index, epoch, work_time, wait_time);
         barrier_wait(w->middle_barrier);
 		// printf("WORKER %d make stable %d %f %f\n", w->index, epoch, work_time, wait_time);
-        value_make_stable(&w->global->values, w->nworkers, w->index);
-        dict_make_stable(w->visited, w->nworkers, w->index);
+        value_make_stable(&w->global->values, w->nworkers, w->index, &w->vs);
+        w->nstable = dict_make_stable(w->visited, w->nworkers, w->index);
         barrier_wait(w->end_barrier);
         // start of sequential phase
         now = gettime();
@@ -1849,9 +1853,16 @@ int main(int argc, char **argv){
 
         double before_postproc = gettime();
 
-        // Deal with the unstable values
-        value_set_sequential(&global->values);
-        dict_set_sequential(visited);
+        int nstable = 0;
+        struct value_stable vs;
+        memset(&vs, 0, sizeof(vs));
+        for (int i = 0; i < nworkers; i++) {
+            struct worker *w = &workers[i];
+            nstable += w->nstable;
+            value_stable_add(&vs, &w->vs);
+        }
+        dict_set_sequential(visited, nstable);
+        value_set_sequential(&global->values, &vs);
 
         int count = 0;
 

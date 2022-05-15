@@ -48,6 +48,6 @@ void *dict_find(struct dict *dict, const void *key, unsigned int keylen);
 void *dict_retrieve(const void *p, unsigned int *psize);
 void dict_iter(struct dict *dict, enumFunc f, void *user);
 void dict_set_concurrent(struct dict *dict);
-void dict_make_stable(struct dict *dict, int nworkers, int worker);
-void dict_set_sequential(struct dict *dict);
+int dict_make_stable(struct dict *dict, int nworkers, int worker);
+void dict_set_sequential(struct dict *dict, int n);
 #endif

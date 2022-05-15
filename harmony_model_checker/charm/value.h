@@ -52,10 +52,22 @@ typedef struct values_t {
     struct dict *contexts;
 } values_t;
 
+// For value_make_stable and value_set_sequential
+struct value_stable {
+    int atom;
+    int dict;
+    int set;
+    int list;
+    int address;
+    int context;
+};
+
 void value_init(struct values_t *values);
 void value_set_concurrent(struct values_t *values);
-void value_set_sequential(struct values_t *values);
-void value_make_stable(struct values_t *values, int nworkers, int worker);
+void value_make_stable(struct values_t *values,
+            int nworkers, int worker, struct value_stable *vs);
+void value_stable_add(struct value_stable *vs, struct value_stable *vs2);
+void value_set_sequential(struct values_t *values, struct value_stable *vs);
 hvalue_t value_from_json(struct values_t *values, struct dict *map);
 int value_cmp(hvalue_t v1, hvalue_t v2);
 void *value_get(hvalue_t v, unsigned int *size);
