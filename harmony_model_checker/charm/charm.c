@@ -1777,7 +1777,7 @@ int main(int argc, char **argv){
             usage(argv[0]);
         }
     }
-    if (argc - i != 1 || outfile == NULL) {
+    if (argc - i != 1) {
         usage(argv[0]);
     }
     char *fname = argv[i];
@@ -1853,6 +1853,28 @@ int main(int argc, char **argv){
     global->processes = new_alloc(hvalue_t);
     *global->processes = ictx;
     global->nprocesses = 1;
+
+    // Run direct
+    if (outfile == NULL) {
+        global->run_direct = true;
+        mutex_init(&run_mutex);
+        mutex_init(&run_waiting);
+        mutex_acquire(&run_waiting);
+        run_count = 1;
+
+        // Run the initializing thread to completion
+        // TODO.  spawned threads should wait...
+        run_thread(global, state, init_ctx);
+
+        // Wait for other threads
+        mutex_acquire(&run_mutex);
+        if (run_count > 0) {
+            mutex_release(&run_mutex);
+            mutex_acquire(&run_waiting);
+        }
+        mutex_release(&run_mutex);
+        exit(0);
+    }
 
     // Put the initial state in the visited map
     struct dict *visited = dict_new(0, NULL, NULL);

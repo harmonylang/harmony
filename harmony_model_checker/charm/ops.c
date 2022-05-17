@@ -473,13 +473,13 @@ void op_Assert2(const void *env, struct state *state, struct step *step, struct 
 
 void op_Print(const void *env, struct state *state, struct step *step, struct global_t *global){
     hvalue_t symbol = value_ctx_pop(&step->ctx);
-    step->log = realloc(step->log, (step->nlog + 1) * sizeof(symbol));
-    step->log[step->nlog++] = symbol;
     if (global->run_direct) {
         char *s = value_string(symbol);
         printf("%s\n", s);
         free(s);
     }
+    step->log = realloc(step->log, (step->nlog + 1) * sizeof(symbol));
+    step->log[step->nlog++] = symbol;
     if (global->dfa != NULL) {
         int nstate = dfa_step(global->dfa, state->dfa_state, symbol);
         if (nstate < 0) {
@@ -1167,11 +1167,13 @@ void op_Spawn(
     ctx->eternal = se->eternal;
     value_ctx_push(&ctx, VALUE_TO_INT(CALLTYPE_PROCESS));
     value_ctx_push(&ctx, arg);
-    hvalue_t v = value_put_context(&global->values, ctx);
-    free(ctx);
-    state->ctxbag = value_bag_add(&global->values, state->ctxbag, v, 1);
     if (global->run_direct) {
         spawn_thread(global, state, ctx);
+    }
+    else {
+        hvalue_t v = value_put_context(&global->values, ctx);
+        free(ctx);
+        state->ctxbag = value_bag_add(&global->values, state->ctxbag, v, 1);
     }
     step->ctx->pc++;
 }
