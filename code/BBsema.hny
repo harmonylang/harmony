@@ -1,6 +1,14 @@
-import synch;
+from synch import Semaphore, P, V;
 
 const NSLOTS = 2;     # size of bounded buffer
+
+buf = { x:() for x in {1..NSLOTS} };
+b_in = 1;
+b_out = 1;
+l_in = Semaphore(1);
+l_out = Semaphore(1);
+n_full = Semaphore(0);
+n_empty = Semaphore(NSLOTS);
 
 def produce(item):
     P(?n_empty);
@@ -18,10 +26,3 @@ def consume():
     V(?l_out);
     V(?n_empty);
 ;
-buf = { x:() for x in {1..NSLOTS} };
-b_in = 1;
-b_out = 1;
-l_in = Semaphore(1);
-l_out = Semaphore(1);
-n_full = Semaphore(0);
-n_empty = Semaphore(NSLOTS);

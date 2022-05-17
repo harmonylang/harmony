@@ -42,8 +42,22 @@ upload-test: dist
 upload: dist
 	twine upload dist/*
 
+test-e2e:
+	coverage run -m unittest discover tests/e2e
+
+test: test-e2e
+
 clean:
+	# Harmony outputs in `code` directory
 	rm -f code/*.htm code/*.hvm code/*.hco code/*.png code/*.hfa code/*.tla code/*.gv *.html
+
+	# Harmony outputs in `modules` directory
 	(cd harmony_model_checker/modules; rm -f *.htm *.hvm *.hco *.png *.hfa *.tla *.gv *.html)
+
 	rm -rf compiler_integration_results.md compiler_integration_results/
+
+	# Package publication related outputs
 	rm -rf build/ dist/ harmony_model_checker.egg-info/
+	
+	# Test coverage related outputs
+	rm -rf .coverage htmlcov

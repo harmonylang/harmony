@@ -1,0 +1,3 @@
+
+def sin(x):
+    result = "0.12423"
