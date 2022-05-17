@@ -15,6 +15,7 @@
 #include "strbuf.h"
 #include "dfa.h"
 #include "hashdict.h"
+#include "spawn.h"
 
 #define MAX_ARITY   16
 
@@ -472,6 +473,11 @@ void op_Assert2(const void *env, struct state *state, struct step *step, struct 
 
 void op_Print(const void *env, struct state *state, struct step *step, struct global_t *global){
     hvalue_t symbol = value_ctx_pop(&step->ctx);
+    if (global->run_direct) {
+        char *s = value_string(symbol);
+        printf("%s\n", s);
+        free(s);
+    }
     step->log = realloc(step->log, (step->nlog + 1) * sizeof(symbol));
     step->log[step->nlog++] = symbol;
     if (global->dfa != NULL) {
@@ -506,7 +512,33 @@ void op_AtomicInc(const void *env, struct state *state, struct step *step, struc
 }
 
 void op_Choose(const void *env, struct state *state, struct step *step, struct global_t *global){
-    panic("op_Choose: should not be called");
+    if (global->run_direct) {
+        hvalue_t choices = value_ctx_pop(&step->ctx);
+        unsigned int size;
+        hvalue_t *vals = value_get(choices, &size);
+        size /= sizeof(hvalue_t);
+        printf("Choose one from the following options:\n");
+        for (unsigned int i = 0; i < size; i++) {
+            char *s = value_string(vals[i]);
+            printf("   %u: %s\n", i + 1, s);
+            free(s);
+        }
+        for (;;) {
+            printf("--> "); fflush(stdout);
+            unsigned int selection;
+            scanf("%u", &selection);
+            selection -= 1;
+            if (selection < size) {
+                step->ctx->pc++;
+                value_ctx_push(&step->ctx, vals[selection]);
+                return;
+            }
+            printf("Bad selection. Try again\n");
+        }
+    }
+    else {
+        panic("op_Choose: should not be called");
+    }
 }
 
 void op_Continue(const void *env, struct state *state, struct step *step, struct global_t *global){
@@ -1135,8 +1167,14 @@ void op_Spawn(
     ctx->eternal = se->eternal;
     value_ctx_push(&ctx, VALUE_TO_INT(CALLTYPE_PROCESS));
     value_ctx_push(&ctx, arg);
-    hvalue_t v = value_put_context(&global->values, ctx);
-    state->ctxbag = value_bag_add(&global->values, state->ctxbag, v, 1);
+    if (global->run_direct) {
+        spawn_thread(global, state, ctx);
+    }
+    else {
+        hvalue_t v = value_put_context(&global->values, ctx);
+        free(ctx);
+        state->ctxbag = value_bag_add(&global->values, state->ctxbag, v, 1);
+    }
     step->ctx->pc++;
 }
 

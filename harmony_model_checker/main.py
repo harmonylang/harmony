@@ -25,6 +25,8 @@ args.add_argument("-a", action="store_true",
 args.add_argument("-A", action="store_true",
                   help="list machine code (without labels)")
 args.add_argument("-B", type=str, help="check against the given behavior")
+args.add_argument("-d", "--direct", action="store_true",
+                  help="run directly without model checking")
 args.add_argument("-p", "--parse", action="store_true",
                   help="parse code without running")
 args.add_argument("-c", "--const", action='append', type=str,
@@ -103,15 +105,25 @@ def handle_hvm(ns, output_files, parse_code_only, code, scope):
     if parse_code_only:
         exit()
 
-    print("Phase 2: run the model checker", flush=True)
-    r = charm.run_model_checker(
-        *charm_options,
-        "-o" + output_files["hco"],
-        output_files["hvm"]
-    )
-    if r != 0:
-        print("charm model checker failed")
-        exit(r)
+    if ns.direct:
+        print("Phase 2: run", flush=True)
+        r = charm.run_model_checker(
+            *charm_options,
+            output_files["hvm"]
+        )
+        if r != 0:
+            print("charm failed")
+            exit(r)
+    else:
+        print("Phase 2: run the model checker", flush=True)
+        r = charm.run_model_checker(
+            *charm_options,
+            "-o" + output_files["hco"],
+            output_files["hvm"]
+        )
+        if r != 0:
+            print("charm model checker failed")
+            exit(r)
 
 def handle_hco(ns, output_files):
     suppress_output = ns.suppress
