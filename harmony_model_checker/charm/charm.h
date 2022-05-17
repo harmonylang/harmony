@@ -20,6 +20,7 @@ struct global_t {
     struct dfa *dfa;             // for tracking correct behaviors
     hvalue_t init_name;          // "__init__" atom
     unsigned int diameter;       // graph diameter
+    bool run_direct;             // non-model-checked mode
 };
 
 #endif //SRC_CHARM_H

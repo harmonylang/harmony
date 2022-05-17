@@ -26,6 +26,11 @@
 #include "hashdict.h"
 #include "dfa.h"
 #include "thread.h"
+#include "spawn.h"
+
+unsigned int run_count;  // counter of #threads
+mutex_t run_mutex;       // to protect count
+mutex_t run_waiting;     // for main thread to wait on
 
 // One of these per worker thread
 struct worker {
@@ -48,6 +53,62 @@ struct worker {
     struct node *results;        // list of resulting states
     struct failure *failures;   // list of failures
 };
+
+static void run_thread(struct global_t *global, struct state *state, struct context *ctx){
+    struct step step;
+    memset(&step, 0, sizeof(step));
+    step.ctx = ctx;
+
+    for (;;) {
+        int pc = step.ctx->pc;
+        struct instr_t *instrs = global->code.instrs;
+        struct op_info *oi = instrs[pc].oi;
+        (*oi->op)(instrs[pc].env, state, &step, global);
+        if (step.ctx->terminated) {
+            break;
+        }
+        if (step.ctx->failure != 0) {
+            char *s = value_string(step.ctx->failure);
+            printf("Failure: %s\n", s);
+            free(s);
+            break;
+        }
+        if (step.ctx->stopped) {
+            printf("Context has stopped\n");
+            break;
+        }
+
+        if (step.ctx->pc == pc) {
+            fprintf(stderr, ">>> %s\n", oi->name);
+        }
+        assert(step.ctx->pc != pc);
+		assert(step.ctx->pc >= 0);
+		assert(step.ctx->pc < global->code.len);
+    }
+
+    mutex_acquire(&run_mutex);
+    if (--run_count == 0) {
+        mutex_release(&run_waiting);
+    }
+    mutex_release(&run_mutex);
+}
+
+static void wrap_thread(void *arg){
+    struct spawn_info *si = arg;
+    run_thread(si->global, si->state, si->ctx);
+}
+
+void spawn_thread(struct global_t *global, struct state *state, struct context *ctx){
+    mutex_acquire(&run_mutex);
+    run_count++;
+    mutex_release(&run_mutex);
+
+    struct spawn_info *si = new_alloc(struct spawn_info);
+    si->global = global;
+    si->state = state;
+    si->ctx = ctx;
+    thread_create(wrap_thread, si);
+}
 
 bool invariant_check(struct global_t *global, struct state *state, struct step *step, int end){
     assert(step->ctx->sp == 0);

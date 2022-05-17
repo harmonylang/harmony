@@ -475,11 +475,11 @@ void op_Print(const void *env, struct state *state, struct step *step, struct gl
     hvalue_t symbol = value_ctx_pop(&step->ctx);
     step->log = realloc(step->log, (step->nlog + 1) * sizeof(symbol));
     step->log[step->nlog++] = symbol;
-#ifdef RUN_DIRECT
-    char *s = value_string(symbol);
-    printf("%s\n", s);
-    free(s);
-#endif
+    if (global->run_direct) {
+        char *s = value_string(symbol);
+        printf("%s\n", s);
+        free(s);
+    }
     if (global->dfa != NULL) {
         int nstate = dfa_step(global->dfa, state->dfa_state, symbol);
         if (nstate < 0) {
@@ -512,32 +512,33 @@ void op_AtomicInc(const void *env, struct state *state, struct step *step, struc
 }
 
 void op_Choose(const void *env, struct state *state, struct step *step, struct global_t *global){
-#ifdef RUN_DIRECT
-    hvalue_t choices = value_ctx_pop(&step->ctx);
-    unsigned int size;
-    hvalue_t *vals = value_get(choices, &size);
-    size /= sizeof(hvalue_t);
-    printf("Choose one from the following options:\n");
-    for (unsigned int i = 0; i < size; i++) {
-        char *s = value_string(vals[i]);
-        printf("   %d: %s\n", i + 1, s);
-        free(s);
-    }
-    for (;;) {
-        printf("--> "); fflush(stdout);
-        int selection;
-        scanf("%u", &selection);
-        selection -= 1;
-        if (selection < size) {
-            step->ctx->pc++;
-            value_ctx_push(&step->ctx, vals[selection]);
-            return;
+    if (global->run_direct) {
+        hvalue_t choices = value_ctx_pop(&step->ctx);
+        unsigned int size;
+        hvalue_t *vals = value_get(choices, &size);
+        size /= sizeof(hvalue_t);
+        printf("Choose one from the following options:\n");
+        for (unsigned int i = 0; i < size; i++) {
+            char *s = value_string(vals[i]);
+            printf("   %u: %s\n", i + 1, s);
+            free(s);
         }
-        printf("Bad selection. Try again\n");
+        for (;;) {
+            printf("--> "); fflush(stdout);
+            unsigned int selection;
+            scanf("%u", &selection);
+            selection -= 1;
+            if (selection < size) {
+                step->ctx->pc++;
+                value_ctx_push(&step->ctx, vals[selection]);
+                return;
+            }
+            printf("Bad selection. Try again\n");
+        }
     }
-#else
-    panic("op_Choose: should not be called");
-#endif
+    else {
+        panic("op_Choose: should not be called");
+    }
 }
 
 void op_Continue(const void *env, struct state *state, struct step *step, struct global_t *global){
@@ -1169,9 +1170,9 @@ void op_Spawn(
     hvalue_t v = value_put_context(&global->values, ctx);
     free(ctx);
     state->ctxbag = value_bag_add(&global->values, state->ctxbag, v, 1);
-#ifdef RUN_DIRECT
-    spawn_thread(global, state, ctx);
-#endif
+    if (global->run_direct) {
+        spawn_thread(global, state, ctx);
+    }
     step->ctx->pc++;
 }
 
