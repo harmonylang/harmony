@@ -1136,6 +1136,7 @@ void op_Spawn(
     value_ctx_push(&ctx, VALUE_TO_INT(CALLTYPE_PROCESS));
     value_ctx_push(&ctx, arg);
     hvalue_t v = value_put_context(&global->values, ctx);
+    free(ctx);
     state->ctxbag = value_bag_add(&global->values, state->ctxbag, v, 1);
     step->ctx->pc++;
 }
