@@ -43,7 +43,7 @@ struct dict *dict_new(int initial_size, void *(*malloc)(size_t size), void (*fre
 void dict_delete(struct dict *dict);
 void *dict_lookup(struct dict *dict, const void *key, unsigned int keylen);
 void **dict_insert(struct dict *dict, const void *key, unsigned int keylen);
-void **dict_insert_alloc(struct dict *dict, const void *key, unsigned int keyn, void *(*alloc)(void));
+void **dict_insert_alloc(struct dict *dict, const void *key, unsigned int keyn, void *(*alloc)(void *), void *ctx);
 void *dict_find(struct dict *dict, const void *key, unsigned int keylen);
 void *dict_retrieve(const void *p, unsigned int *psize);
 void dict_iter(struct dict *dict, enumFunc f, void *user);

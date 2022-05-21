@@ -190,7 +190,7 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
         (*iface_node)->initial = true;
         (*iface_node)->terminated = false;
         (*iface_node)->choosing = false;
-        (*iface_node)->state = initial_node->state;
+        (*iface_node)->state = &initial_node->state;
 
         struct node_vec_t *children = find_all_children(initial_node);
         node_vec_append_all(worklist, children);
@@ -223,11 +223,11 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
         assert(iface_node != NULL);
 
         iface_step.ctx->pc = iface_pc;
-        iface_node->value = iface_evaluate(global, node->state, &iface_step);
+        iface_node->value = iface_evaluate(global, &node->state, &iface_step);
         iface_node->initial = false;
-        iface_node->terminated = value_ctx_all_eternal(node->state->ctxbag);
-        iface_node->choosing = node->state->choosing != 0;
-        iface_node->state = node->state;
+        iface_node->terminated = value_ctx_all_eternal(node->state.ctxbag);
+        iface_node->choosing = node->state.choosing != 0;
+        iface_node->state = &node->state;
         if (iface_step.ctx->failure != 0) {
             iface_node->value = VALUE_ADDRESS;
 #ifndef NDEBUG
