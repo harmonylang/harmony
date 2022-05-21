@@ -27,13 +27,14 @@ static inline uint32_t meiyan(const char *key, int count) {
 }
 
 static inline struct keynode *keynode_new(struct dict *dict,
-        char *key, unsigned int len, uint32_t hash, void *(*alloc)(void)) {
+        char *key, unsigned int len, uint32_t hash,
+        void *(*alloc)(void *), void *ctx) {
 	struct keynode *node = (*dict->malloc)(sizeof(struct keynode) + len);
 	node->len = len;
 	memcpy(node + 1, key, len);
     node->hash = hash;
 	node->next = 0;
-	node->value = alloc == NULL ? NULL : (*alloc)();
+	node->value = alloc == NULL ? NULL : (*alloc)(ctx);
 	return node;
 }
 
@@ -103,7 +104,7 @@ static void dict_resize(struct dict *dict, int newsize) {
 }
 
 // Perhaps the most performance critical function in the entire code base
-static inline void *dict_find_alloc(struct dict *dict, const void *key, unsigned int keyn, void *(*alloc)(void)) {
+static inline void *dict_find_alloc(struct dict *dict, const void *key, unsigned int keyn, void *(*alloc)(void *), void *ctx) {
     uint32_t hash = hash_func(key, keyn);
     struct dict_bucket *db = &dict->table[hash % dict->length];
 
@@ -138,11 +139,11 @@ static inline void *dict_find_alloc(struct dict *dict, const void *key, unsigned
 		double f = (double)dict->count / (double)dict->length;
 		if (f > dict->growth_threshold) {
 			dict_resize(dict, dict->length * dict->growth_factor - 1);
-			return dict_find_alloc(dict, key, keyn, alloc);
+			return dict_find_alloc(dict, key, keyn, alloc, ctx);
 		}
 	}
 
-    k = keynode_new(dict, (char *) key, keyn, hash, alloc);
+    k = keynode_new(dict, (char *) key, keyn, hash, alloc, ctx);
     if (dict->concurrent) {
 #ifdef notdef
         struct keynode *k2;
@@ -172,11 +173,11 @@ static inline void *dict_find_alloc(struct dict *dict, const void *key, unsigned
 }
 
 void *dict_find(struct dict *dict, const void *key, unsigned int keyn) {
-	return dict_find_alloc(dict, key, keyn, NULL);
+	return dict_find_alloc(dict, key, keyn, NULL, NULL);
 }
 
-void **dict_insert_alloc(struct dict *dict, const void *key, unsigned int keyn, void *(*alloc)(void)){
-    struct keynode *k = dict_find_alloc(dict, key, keyn, alloc);
+void **dict_insert_alloc(struct dict *dict, const void *key, unsigned int keyn, void *(*alloc)(void *), void *ctx){
+    struct keynode *k = dict_find_alloc(dict, key, keyn, alloc, ctx);
     return &k->value;
 }
 
@@ -190,7 +191,7 @@ void *dict_retrieve(const void *p, unsigned int *psize){
     if (psize != NULL) {
         *psize = k->len;
     }
-    return k+1;
+    return (void *) (k+1);
 }
 
 void *dict_lookup(struct dict *dict, const void *key, unsigned int keyn) {

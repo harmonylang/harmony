@@ -28,6 +28,8 @@
 #include "thread.h"
 #include "spawn.h"
 
+#define WALLOC_CHUNK    (1024 * 1024)
+
 unsigned int run_count;  // counter of #threads
 mutex_t run_mutex;       // to protect count
 mutex_t run_waiting;     // for main thread to wait on
@@ -50,9 +52,30 @@ struct worker {
     int nstable;
     struct value_stable vs;
 
-    struct node *results;        // list of resulting states
+    struct node *results;       // list of resulting states
     struct failure *failures;   // list of failures
+
+    char *alloc_buf;            // allocated buffer
+    char *alloc_ptr;            // pointer into allocated buffer
+
+    // These need to be next to one another
+    struct context ctx;
+    hvalue_t stack[MAX_CONTEXT_STACK];
 };
+
+static void *walloc(struct worker *w, unsigned int size){
+    if (size > WALLOC_CHUNK) {
+        return malloc(size);
+    }
+    size = (size + 0xF) & ~0xF;     // align to 16 bytes
+    if (w->alloc_ptr + size > w->alloc_buf + WALLOC_CHUNK) {
+        w->alloc_buf = malloc(WALLOC_CHUNK);
+        w->alloc_ptr = w->alloc_buf;
+    }
+    void *result = w->alloc_ptr;
+    w->alloc_ptr += size;
+    return result;
+}
 
 static void run_thread(struct global_t *global, struct state *state, struct context *ctx){
     struct step step;
@@ -135,7 +158,7 @@ bool invariant_check(struct global_t *global, struct state *state, struct step *
 
 bool check_invariants(struct worker *w, struct node *node, struct step *step){
     struct global_t *global = w->global;
-    struct state *state = node->state;
+    struct state *state = &node->state;
     extern int invariant_cnt(const void *env);
 
     assert(VALUE_TYPE(state->invariants) == VALUE_SET);
@@ -160,8 +183,10 @@ bool check_invariants(struct worker *w, struct node *node, struct step *step){
     return true;
 }
 
-static void *node_alloc(void){
-    struct node *node = new_alloc(struct node);
+static void *node_alloc(void *ctx){
+    struct node *node = ctx == NULL ? malloc(sizeof(struct node)) :
+                    walloc(ctx, sizeof(struct node));
+    memset(node, 0, sizeof(*node));
     mutex_init(&node->lock);
     return node;
 }
@@ -194,7 +219,7 @@ static bool onestep(
     bool choosing = false, infinite_loop = false;
     struct dict *infloop = NULL;        // infinite loop detector
     int instrcnt = 0;
-    struct state *as_state = NULL;
+    struct state as_state;
     hvalue_t as_context = 0;
     int as_instrcnt = 0;
     bool rollback = false, failure = false, stopped = false;
@@ -234,8 +259,7 @@ static bool onestep(
             }
             else if (step->ctx->atomic == 0) {
                 // Save the current state in case it needs restoring
-                as_state = new_alloc(struct state);
-                memcpy(as_state, sc, sizeof(*sc));
+                as_state = *sc;
                 as_context = value_put_context(&global->values, step->ctx);
                 as_instrcnt = instrcnt;
             }
@@ -244,8 +268,6 @@ static bool onestep(
         else if (instrs[pc].atomicdec) {
             (*oi->op)(instrs[pc].env, sc, step, global);
             if (step->ctx->atomic == 0) {
-                free(as_state);
-                as_state = NULL;
                 as_context = 0;
                 as_instrcnt = 0;
             }
@@ -382,7 +404,6 @@ static bool onestep(
                 // we should have broken at the beginning of the atomic
                 // section.  Restore that state.
                 if (step->ctx->atomic > 0 && !step->ctx->atomicFlag) {
-                    assert(as_state != NULL);
                     rollback = true;
                 }
                 break;
@@ -396,8 +417,7 @@ static bool onestep(
 
     hvalue_t after;
     if (rollback) {
-        assert(as_state != NULL);
-        memcpy(sc, as_state, sizeof(*sc));
+        *sc = as_state;
         after = as_context;
         instrcnt = as_instrcnt;
     }
@@ -405,7 +425,6 @@ static bool onestep(
         // Store new context in value directory.  Must be immutable now.
         after = value_put_context(&global->values, step->ctx);
     }
-    free(as_state);
 
     // Remove old context from the bag
     hvalue_t count = value_dict_load(sc->ctxbag, ctx);
@@ -435,7 +454,7 @@ static bool onestep(
     int weight = ctx == node->after ? 0 : 1;
 
     // Allocate edge now
-    struct edge *edge = new_alloc(struct edge);
+    struct edge *edge = walloc(w, sizeof(struct edge));
     edge->ctx = ctx;
     edge->choice = choice_copy;
     edge->interrupt = interrupt;
@@ -446,7 +465,8 @@ static bool onestep(
     edge->nlog = step->nlog;
 
     // See if this state has been computed before
-    void **p = dict_insert_alloc(w->visited, sc, sizeof(struct state), node_alloc);
+    bool must_free;
+    void **p = dict_insert_alloc(w->visited, sc, sizeof(struct state), node_alloc, w);
     struct node *next = *p;
     mutex_acquire(&next->lock);
     if (next->initialized) {
@@ -464,7 +484,7 @@ static bool onestep(
     }
     else {
         next->parent = node;
-        next->state = sc;
+        next->state = *sc;
         next->before = ctx;
         next->choice = choice_copy;
         next->interrupt = interrupt;
@@ -525,33 +545,30 @@ static void make_step(
     memset(&step, 0, sizeof(step));
 
     // Make a copy of the state
-    struct state *sc = new_alloc(struct state);
-    memcpy(sc, node->state, sizeof(*sc));
+    struct state sc = node->state;
 
     // Make a copy of the context
-    step.ctx = value_copy(ctx, NULL);
+    int size;
+    struct context *cc = value_get(ctx, &size);
+    memcpy(&w->ctx, cc, size);
+    step.ctx = &w->ctx;
 
     // See if we need to interrupt
-    if (sc->choosing == 0 && step.ctx->trap_pc != 0 && !step.ctx->interruptlevel) {
-        bool succ = onestep(w, node, sc, ctx, &step, choice, true, false, multiplicity);
+    if (sc.choosing == 0 && cc->trap_pc != 0 && !cc->interruptlevel) {
+        bool succ = onestep(w, node, &sc, ctx, &step, choice, true, false, multiplicity);
         if (!succ) {        // ran into an infinite loop
-            (void) onestep(w, node, sc, ctx, &step, choice, true, true, multiplicity);
+            (void) onestep(w, node, &sc, ctx, &step, choice, true, true, multiplicity);
         }
 
-        // Allocate another state
-        sc = new_alloc(struct state);
-        memcpy(sc, node->state, sizeof(*sc));
-        free(step.ctx);
-        step.ctx = value_copy(ctx, NULL);
+        sc = node->state;
+        memcpy(&w->ctx, cc, size);
     }
 
-    sc->choosing = 0;
-    bool succ = onestep(w, node, sc, ctx, &step, choice, false, false, multiplicity);
+    sc.choosing = 0;
+    bool succ = onestep(w, node, &sc, ctx, &step, choice, false, false, multiplicity);
     if (!succ) {        // ran into an infinite loop
-        (void) onestep(w, node, sc, ctx, &step, choice, false, true, multiplicity);
+        (void) onestep(w, node, &sc, ctx, &step, choice, false, true, multiplicity);
     }
-
-    free(step.ctx);
 }
 
 void print_vars(FILE *file, hvalue_t v){
@@ -686,10 +703,10 @@ bool print_trace(
 }
 
 char *ctx_status(struct node *node, hvalue_t ctx) {
-    if (node->state->choosing == ctx) {
+    if (node->state.choosing == ctx) {
         return "choosing";
     }
-    while (node->state->choosing != 0) {
+    while (node->state.choosing != 0) {
         node = node->parent;
     }
     struct edge *edge;
@@ -823,15 +840,16 @@ void print_state(
 
 #ifdef notdef
     fprintf(file, "      \"shared\": ");
-    print_vars(file, node->state->vars);
+    print_vars(file, node->state.vars);
     fprintf(file, ",\n");
 #endif
 
-    struct state *state = node->state;
+    struct state *state = &node->state;
     extern int invariant_cnt(const void *env);
     struct step inv_step;
     memset(&inv_step, 0, sizeof(inv_step));
-    inv_step.ctx = new_alloc(struct context);
+    inv_step.ctx = calloc(1, sizeof(struct context) +
+                        MAX_CONTEXT_STACK * sizeof(hvalue_t));
 
     // hvalue_t inv_nv = value_put_atom("name", 4);
     // hvalue_t inv_tv = value_put_atom("tag", 3);
@@ -1030,12 +1048,17 @@ hvalue_t twostep(
 ){
     // Make a copy of the state
     struct state *sc = new_alloc(struct state);
-    memcpy(sc, node->state, sizeof(*sc));
+    *sc = node->state;
     sc->choosing = 0;
 
     struct step step;
     memset(&step, 0, sizeof(step));
-    step.ctx = value_copy(ctx, NULL);
+
+    int size;
+    struct context *cc = value_get(ctx, &size);
+    step.ctx = calloc(1, sizeof(struct context) +
+                            MAX_CONTEXT_STACK * sizeof(hvalue_t));
+    memcpy(step.ctx, cc, size);
     if (step.ctx->terminated || step.ctx->failure != 0) {
         free(step.ctx);
         return ctx;
@@ -1238,7 +1261,7 @@ void path_dump(
         interrupt,
         oldstate,
         oldctx,
-        node->state->vars,
+        node->state.vars,
         nsteps
     );
     fprintf(file, "\n      ],\n");
@@ -1247,7 +1270,7 @@ void path_dump(
      */
     bool *matched = calloc(global->nprocesses, sizeof(bool));
     unsigned int nctxs;
-    hvalue_t *ctxs = value_get(node->state->ctxbag, &nctxs);
+    hvalue_t *ctxs = value_get(node->state.ctxbag, &nctxs);
     nctxs /= sizeof(hvalue_t);
     for (unsigned int i = 0; i < nctxs; i += 2) {
         assert(VALUE_TYPE(ctxs[i]) == VALUE_CONTEXT);
@@ -1378,7 +1401,7 @@ static enum busywait is_stuck(
 	if (node->visited) {
 		return BW_VISITED;
 	}
-    change = change || (node->state->vars != start->state->vars);
+    change = change || (node->state.vars != start->state.vars);
 	node->visited = true;
 	enum busywait result = BW_ESCAPE;
     for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
@@ -1418,7 +1441,7 @@ static enum busywait is_stuck(
 static void detect_busywait(struct minheap *failures, struct node *node){
 	// Get the contexts
 	unsigned int size;
-	hvalue_t *ctxs = value_get(node->state->ctxbag, &size);
+	hvalue_t *ctxs = value_get(node->state.ctxbag, &size);
 	size /= sizeof(hvalue_t);
 
 	for (unsigned int i = 0; i < size; i += 2) {
@@ -1455,7 +1478,7 @@ static void do_work(struct worker *w){
 	struct node *node;
 	while ((node = w->todo) != NULL) {
 		w->todo = node->next;
-		struct state *state = node->state;
+		struct state *state = &node->state;
 		w->global->dequeued++; // TODO race condition
 
 		if (state->choosing != 0) {
@@ -1833,7 +1856,7 @@ int main(int argc, char **argv){
     global->code = code_init_parse(&global->values, jc);
 
     // Create an initial state
-    struct context *init_ctx = new_alloc(struct context);
+    struct context *init_ctx = calloc(1, sizeof(struct context) + MAX_CONTEXT_STACK * sizeof(hvalue_t));
     init_ctx->name = global->init_name;
     init_ctx->arg = VALUE_LIST;
     init_ctx->this = VALUE_DICT;
@@ -1878,8 +1901,8 @@ int main(int argc, char **argv){
 
     // Put the initial state in the visited map
     struct dict *visited = dict_new(0, NULL, NULL);
-    struct node *node = node_alloc();
-    node->state = state;
+    struct node *node = node_alloc(NULL);
+    node->state = *state;
     node->after = ictx;
     graph_add(&global->graph, node);
     void **p = dict_insert(visited, state, sizeof(*state));
@@ -1908,13 +1931,17 @@ int main(int argc, char **argv){
         w->visited = visited;
 
         // Create a context for evaluating invariants
-        w->inv_step.ctx = new_alloc(struct context);
+        w->inv_step.ctx = calloc(1, sizeof(struct context) +
+                                MAX_CONTEXT_STACK * sizeof(hvalue_t));
         w->inv_step.ctx->name = value_put_atom(&global->values, "__invariant__", 13);
         w->inv_step.ctx->arg = VALUE_LIST;
         w->inv_step.ctx->this = VALUE_DICT;
         w->inv_step.ctx->vars = VALUE_DICT;
         w->inv_step.ctx->atomic = w->inv_step.ctx->readonly = 1;
         w->inv_step.ctx->interruptlevel = false;
+
+        w->alloc_buf = malloc(WALLOC_CHUNK);
+        w->alloc_ptr = w->alloc_buf;
     }
 
     // Start the workers, who'll wait on the start barrier
@@ -1994,12 +2021,12 @@ int main(int argc, char **argv){
             struct component *comp = &components[node->component];
             if (comp->size == 0) {
                 comp->rep = node;
-                comp->all_same = value_ctx_all_eternal(node->state->ctxbag)
-                    && value_ctx_all_eternal(node->state->stopbag);
+                comp->all_same = value_ctx_all_eternal(node->state.ctxbag)
+                    && value_ctx_all_eternal(node->state.stopbag);
             }
-            else if (node->state->vars != comp->rep->state->vars ||
-                        !value_ctx_all_eternal(node->state->ctxbag) ||
-                        !value_ctx_all_eternal(node->state->stopbag)) {
+            else if (node->state.vars != comp->rep->state.vars ||
+                        !value_ctx_all_eternal(node->state.ctxbag) ||
+                        !value_ctx_all_eternal(node->state.stopbag)) {
                 comp->all_same = false;
             }
             comp->size++;
@@ -2035,7 +2062,7 @@ int main(int argc, char **argv){
             if (comp->final) {
                 node->final = true;
                 if (global->dfa != NULL &&
-						!dfa_is_final(global->dfa, node->state->dfa_state)) {
+						!dfa_is_final(global->dfa, node->state.dfa_state)) {
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_BEHAVIOR;
                     f->choice = node->choice;
@@ -2088,7 +2115,7 @@ int main(int argc, char **argv){
             if (node->parent != NULL) {
                 fprintf(df, "    parent: %d\n", node->parent->id);
             }
-            fprintf(df, "    vars: %s\n", value_string(node->state->vars));
+            fprintf(df, "    vars: %s\n", value_string(node->state.vars));
             fprintf(df, "    fwd:\n");
             int eno = 0;
             for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext, eno++) {
@@ -2201,8 +2228,8 @@ int main(int argc, char **argv){
                 if (node->parent != NULL) {
                     fprintf(out, "      \"parent\": %d,\n", node->parent->id);
                 }
-                char *val = json_escape_value(node->state->vars);
-                fprintf(out, "      \"value\": \"%s:%d\",\n", val, node->state->choosing != 0);
+                char *val = json_escape_value(node->state.vars);
+                fprintf(out, "      \"value\": \"%s:%d\",\n", val, node->state.choosing != 0);
                 free(val);
 #endif
                 print_transitions(out, symbols, node->fwd);

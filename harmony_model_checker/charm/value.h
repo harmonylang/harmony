@@ -5,6 +5,8 @@
 #include "strbuf.h"
 #include <stdbool.h>
 
+#define MAX_CONTEXT_STACK   1000
+
 typedef struct state {
     hvalue_t vars;        // shared variables
     hvalue_t seqs;        // sequential variables

@@ -54,7 +54,7 @@ struct node {
     bool initialized;
 
     // Information about state
-    struct state *state;    // state corresponding to this node
+    struct state state;     // state corresponding to this node
     unsigned int id;        // nodes are numbered starting from 0
     struct edge *fwd;       // forward edges
     struct edge *bwd;       // backward edges

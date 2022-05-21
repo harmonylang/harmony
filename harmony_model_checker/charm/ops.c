@@ -1154,7 +1154,8 @@ void op_Spawn(
     assert(pc < (hvalue_t) global->code.len);
     assert(strcmp(global->code.instrs[pc].oi->name, "Frame") == 0);
 
-    struct context *ctx = new_alloc(struct context);
+    struct context *ctx = calloc(1, sizeof(struct context) +
+                        2 * sizeof(hvalue_t));
 
     const struct env_Frame *ef = global->code.instrs[pc].env;
     ctx->name = ef->name;
