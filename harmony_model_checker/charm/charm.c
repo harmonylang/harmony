@@ -1863,8 +1863,8 @@ int main(int argc, char **argv){
     init_ctx->vars = VALUE_DICT;
     init_ctx->atomic = 1;
     init_ctx->atomicFlag = true;
-    value_ctx_push(&init_ctx, VALUE_TO_INT(CALLTYPE_PROCESS));
-    value_ctx_push(&init_ctx, VALUE_LIST);
+    value_ctx_push(init_ctx, VALUE_TO_INT(CALLTYPE_PROCESS));
+    value_ctx_push(init_ctx, VALUE_LIST);
     struct state *state = new_alloc(struct state);
     state->vars = VALUE_DICT;
     state->seqs = VALUE_SET;

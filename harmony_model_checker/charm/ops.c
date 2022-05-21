@@ -46,6 +46,16 @@ static hvalue_t underscore, this_atom;
 static hvalue_t type_bool, type_int, type_str, type_pc, type_list;
 static hvalue_t type_dict, type_set, type_address, type_context;
 
+static inline void ctx_push(struct context *ctx, hvalue_t v){
+    // TODO.  Check for stack overflow
+    ctx->stack[ctx->sp++] = v;
+}
+
+static inline hvalue_t ctx_pop(struct context *ctx){
+    assert(ctx->sp > 0);
+    return ctx->stack[--ctx->sp];
+}
+
 static bool is_sequential(hvalue_t seqvars, hvalue_t *indices, unsigned int n){
     assert(VALUE_TYPE(seqvars) == VALUE_SET);
     unsigned int size;
@@ -169,9 +179,9 @@ struct var_tree *var_parse(struct values_t *values, char *s, int len, int *index
 void interrupt_invoke(struct step *step){
     assert(!step->ctx->interruptlevel);
 	assert(VALUE_TYPE(step->ctx->trap_pc) == VALUE_PC);
-    value_ctx_push(&step->ctx, VALUE_TO_PC(step->ctx->pc));
-    value_ctx_push(&step->ctx, VALUE_TO_INT(CALLTYPE_INTERRUPT));
-    value_ctx_push(&step->ctx, step->ctx->trap_arg);
+    ctx_push(step->ctx, VALUE_TO_PC(step->ctx->pc));
+    ctx_push(step->ctx, VALUE_TO_INT(CALLTYPE_INTERRUPT));
+    ctx_push(step->ctx, step->ctx->trap_arg);
     step->ctx->pc = VALUE_FROM_PC(step->ctx->trap_pc);
     step->ctx->trap_pc = 0;
     step->ctx->interruptlevel = true;
@@ -348,8 +358,8 @@ bool ind_remove(hvalue_t root, hvalue_t *indices, int n, struct values_t *values
 }
 
 void op_Address(const void *env, struct state *state, struct step *step, struct global_t *global){
-    hvalue_t index = value_ctx_pop(&step->ctx);
-    hvalue_t av = value_ctx_pop(&step->ctx);
+    hvalue_t index = ctx_pop(step->ctx);
+    hvalue_t av = ctx_pop(step->ctx);
     if (VALUE_TYPE(av) != VALUE_ADDRESS) {
         char *p = value_string(av);
         value_ctx_failure(step->ctx, &global->values, "%s: not an address", p);
@@ -365,14 +375,14 @@ void op_Address(const void *env, struct state *state, struct step *step, struct 
     hvalue_t *indices = value_copy(av, &size);
     indices = realloc(indices, size + sizeof(index));
     indices[size / sizeof(hvalue_t)] = index;
-    value_ctx_push(&step->ctx, value_put_address(&global->values, indices, size + sizeof(index)));
+    ctx_push(step->ctx, value_put_address(&global->values, indices, size + sizeof(index)));
     free(indices);
     step->ctx->pc++;
 }
 
 void op_Apply(const void *env, struct state *state, struct step *step, struct global_t *global){
-    hvalue_t e = value_ctx_pop(&step->ctx);
-    hvalue_t method = value_ctx_pop(&step->ctx);
+    hvalue_t e = ctx_pop(step->ctx);
+    hvalue_t method = ctx_pop(step->ctx);
 
     hvalue_t type = VALUE_TYPE(method);
     switch (type) {
@@ -387,7 +397,7 @@ void op_Apply(const void *env, struct state *state, struct step *step, struct gl
                 free(x);
                 return;
             }
-            value_ctx_push(&step->ctx, v);
+            ctx_push(step->ctx, v);
             step->ctx->pc++;
         }
         return;
@@ -404,7 +414,7 @@ void op_Apply(const void *env, struct state *state, struct step *step, struct gl
                 value_ctx_failure(step->ctx, &global->values, "Index out of range");
                 return;
             }
-            value_ctx_push(&step->ctx, vals[e]);
+            ctx_push(step->ctx, vals[e]);
             step->ctx->pc++;
         }
         return;
@@ -422,14 +432,14 @@ void op_Apply(const void *env, struct state *state, struct step *step, struct gl
                 return;
             }
             hvalue_t v = value_put_atom(&global->values, &chars[e], 1);
-            value_ctx_push(&step->ctx, v);
+            ctx_push(step->ctx, v);
             step->ctx->pc++;
         }
         return;
     case VALUE_PC:
-        value_ctx_push(&step->ctx, VALUE_TO_PC(step->ctx->pc + 1));
-        value_ctx_push(&step->ctx, VALUE_TO_INT(CALLTYPE_NORMAL));
-        value_ctx_push(&step->ctx, e);
+        ctx_push(step->ctx, VALUE_TO_PC(step->ctx->pc + 1));
+        ctx_push(step->ctx, VALUE_TO_INT(CALLTYPE_NORMAL));
+        ctx_push(step->ctx, e);
         assert(VALUE_FROM_PC(method) != step->ctx->pc);
         step->ctx->pc = VALUE_FROM_PC(method);
         return;
@@ -443,7 +453,7 @@ void op_Apply(const void *env, struct state *state, struct step *step, struct gl
 }
 
 void op_Assert(const void *env, struct state *state, struct step *step, struct global_t *global){
-    hvalue_t v = value_ctx_pop(&step->ctx);
+    hvalue_t v = ctx_pop(step->ctx);
     if (VALUE_TYPE(v) != VALUE_BOOL) {
         value_ctx_failure(step->ctx, &global->values, "assert can only be applied to bool values");
     }
@@ -456,8 +466,8 @@ void op_Assert(const void *env, struct state *state, struct step *step, struct g
 }
 
 void op_Assert2(const void *env, struct state *state, struct step *step, struct global_t *global){
-    hvalue_t e = value_ctx_pop(&step->ctx);
-    hvalue_t v = value_ctx_pop(&step->ctx);
+    hvalue_t e = ctx_pop(step->ctx);
+    hvalue_t v = ctx_pop(step->ctx);
     if (VALUE_TYPE(v) != VALUE_BOOL) {
         value_ctx_failure(step->ctx, &global->values, "assert2 can only be applied to bool values");
     }
@@ -472,7 +482,7 @@ void op_Assert2(const void *env, struct state *state, struct step *step, struct 
 }
 
 void op_Print(const void *env, struct state *state, struct step *step, struct global_t *global){
-    hvalue_t symbol = value_ctx_pop(&step->ctx);
+    hvalue_t symbol = ctx_pop(step->ctx);
     if (global->run_direct) {
         char *s = value_string(symbol);
         printf("%s\n", s);
@@ -513,7 +523,7 @@ void op_AtomicInc(const void *env, struct state *state, struct step *step, struc
 
 void op_Choose(const void *env, struct state *state, struct step *step, struct global_t *global){
     if (global->run_direct) {
-        hvalue_t choices = value_ctx_pop(&step->ctx);
+        hvalue_t choices = ctx_pop(step->ctx);
         unsigned int size;
         hvalue_t *vals = value_get(choices, &size);
         size /= sizeof(hvalue_t);
@@ -530,7 +540,7 @@ void op_Choose(const void *env, struct state *state, struct step *step, struct g
             selection -= 1;
             if (selection < size) {
                 step->ctx->pc++;
-                value_ctx_push(&step->ctx, vals[selection]);
+                ctx_push(step->ctx, vals[selection]);
                 return;
             }
             printf("Bad selection. Try again\n");
@@ -555,7 +565,7 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
     struct context *ctx = step->ctx;
 
     // Get the index
-    hvalue_t index = value_ctx_pop(&step->ctx);
+    hvalue_t index = ctx_pop(step->ctx);
     assert(VALUE_TYPE(index) == VALUE_INT);
     unsigned int idx = (unsigned int) VALUE_FROM_INT(index);
 
@@ -576,8 +586,8 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
             if (ec->key != NULL) {
                 var_match(step->ctx, ec->key, &global->values, index);
             }
-            value_ctx_push(&step->ctx, VALUE_TO_INT(idx + 1));
-            value_ctx_push(&step->ctx, VALUE_TRUE);
+            ctx_push(step->ctx, VALUE_TO_INT(idx + 1));
+            ctx_push(step->ctx, VALUE_TRUE);
         }
         step->ctx->pc++;
         return;
@@ -597,8 +607,8 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
                 var_match(step->ctx, ec->key, &global->values, vals[2*idx]);
                 var_match(step->ctx, ec->value, &global->values, vals[2*idx + 1]);
             }
-            value_ctx_push(&step->ctx, VALUE_TO_INT(idx + 1));
-            value_ctx_push(&step->ctx, VALUE_TRUE);
+            ctx_push(step->ctx, VALUE_TO_INT(idx + 1));
+            ctx_push(step->ctx, VALUE_TRUE);
         }
         step->ctx->pc++;
         return;
@@ -615,8 +625,8 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
             if (ec->key != NULL) {
                 var_match(step->ctx, ec->key, &global->values, index);
             }
-            value_ctx_push(&step->ctx, VALUE_TO_INT(idx + 1));
-            value_ctx_push(&step->ctx, VALUE_TRUE);
+            ctx_push(step->ctx, VALUE_TO_INT(idx + 1));
+            ctx_push(step->ctx, VALUE_TRUE);
         }
         step->ctx->pc++;
         return;
@@ -635,7 +645,7 @@ void op_Del(const void *env, struct state *state, struct step *step, struct glob
     }
 
     if (ed == 0) {
-        hvalue_t av = value_ctx_pop(&step->ctx);
+        hvalue_t av = ctx_pop(step->ctx);
         if (VALUE_TYPE(av) != VALUE_ADDRESS) {
             char *p = value_string(av);
             value_ctx_failure(step->ctx, &global->values, "Del %s: not an address", p);
@@ -686,7 +696,7 @@ void op_DelVar(const void *env, struct state *state, struct step *step, struct g
 
     assert(VALUE_TYPE(step->ctx->vars) == VALUE_DICT);
     if (ed == NULL) {
-        hvalue_t av = value_ctx_pop(&step->ctx);
+        hvalue_t av = ctx_pop(step->ctx);
         assert(VALUE_TYPE(av) == VALUE_ADDRESS);
         assert(av != VALUE_ADDRESS);
 
@@ -725,9 +735,9 @@ void op_DelVar(const void *env, struct state *state, struct step *step, struct g
 }
 
 void op_Dup(const void *env, struct state *state, struct step *step, struct global_t *global){
-    hvalue_t v = value_ctx_pop(&step->ctx);
-    value_ctx_push(&step->ctx, v);
-    value_ctx_push(&step->ctx, v);
+    hvalue_t v = ctx_pop(step->ctx);
+    ctx_push(step->ctx, v);
+    ctx_push(step->ctx, v);
     step->ctx->pc++;
 }
 
@@ -741,8 +751,8 @@ void op_Frame(const void *env, struct state *state, struct step *step, struct gl
     const struct env_Frame *ef = env;
 
     // peek at argument
-    hvalue_t arg = value_ctx_pop(&step->ctx);
-    value_ctx_push(&step->ctx, arg);
+    hvalue_t arg = ctx_pop(step->ctx);
+    ctx_push(step->ctx, arg);
 
     hvalue_t oldvars = step->ctx->vars;
 
@@ -755,8 +765,8 @@ void op_Frame(const void *env, struct state *state, struct step *step, struct gl
         return;
     }
  
-    value_ctx_push(&step->ctx, oldvars);
-    value_ctx_push(&step->ctx, VALUE_TO_INT(step->ctx->fp));
+    ctx_push(step->ctx, oldvars);
+    ctx_push(step->ctx, VALUE_TO_INT(step->ctx->fp));
 
     struct context *ctx = step->ctx;
     ctx->fp = ctx->sp;
@@ -769,7 +779,7 @@ void op_Go(
     struct step *step,
     struct global_t *global
 ){
-    hvalue_t ctx = value_ctx_pop(&step->ctx);
+    hvalue_t ctx = ctx_pop(step->ctx);
     if (VALUE_TYPE(ctx) != VALUE_CONTEXT) {
         value_ctx_failure(step->ctx, &global->values, "Go: not a context");
         return;
@@ -789,9 +799,9 @@ void op_Go(
         }
     }
 
-    hvalue_t result = value_ctx_pop(&step->ctx);
+    hvalue_t result = ctx_pop(step->ctx);
     struct context *copy = value_copy(ctx, NULL);
-    value_ctx_push(&copy, result);
+    ctx_push(copy, result);
     copy->stopped = false;
     hvalue_t v = value_put_context(&global->values, copy);
     free(copy);
@@ -832,7 +842,7 @@ void op_Jump(const void *env, struct state *state, struct step *step, struct glo
 void op_JumpCond(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_JumpCond *ej = env;
 
-    hvalue_t v = value_ctx_pop(&step->ctx);
+    hvalue_t v = ctx_pop(step->ctx);
     if ((ej->cond == VALUE_FALSE || ej->cond == VALUE_TRUE) &&
                             !(v == VALUE_FALSE || v == VALUE_TRUE)) {
         value_ctx_failure(step->ctx, &global->values, "JumpCond: not an boolean");
@@ -853,7 +863,7 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
 
     hvalue_t v;
     if (el == 0) {
-        hvalue_t av = value_ctx_pop(&step->ctx);
+        hvalue_t av = ctx_pop(step->ctx);
         if (VALUE_TYPE(av) != VALUE_ADDRESS) {
             char *p = value_string(av);
             value_ctx_failure(step->ctx, &global->values, "Load %s: not an address", p);
@@ -880,7 +890,7 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
             free(x);
             return;
         }
-        value_ctx_push(&step->ctx, v);
+        ctx_push(step->ctx, v);
     }
     else {
         if (step->ai != NULL) {
@@ -894,7 +904,7 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
             free(x);
             return;
         }
-        value_ctx_push(&step->ctx, v);
+        ctx_push(step->ctx, v);
     }
     step->ctx->pc++;
 }
@@ -905,7 +915,7 @@ void op_LoadVar(const void *env, struct state *state, struct step *step, struct 
 
     hvalue_t v;
     if (el == NULL) {
-        hvalue_t av = value_ctx_pop(&step->ctx);
+        hvalue_t av = ctx_pop(step->ctx);
         assert(VALUE_TYPE(av) == VALUE_ADDRESS);
         assert(av != VALUE_ADDRESS);
 
@@ -930,14 +940,14 @@ void op_LoadVar(const void *env, struct state *state, struct step *step, struct 
             free(x);
             return;
         }
-        value_ctx_push(&step->ctx, v);
+        ctx_push(step->ctx, v);
     }
     else {
         if (el->name == this_atom) {
-            value_ctx_push(&step->ctx, step->ctx->this);
+            ctx_push(step->ctx, step->ctx->this);
         }
         else if (value_tryload(&global->values, step->ctx->vars, el->name, &v)) {
-            value_ctx_push(&step->ctx, v);
+            ctx_push(step->ctx, v);
         }
         else {
             char *p = value_string(el->name);
@@ -966,11 +976,11 @@ void op_Nary(const void *env, struct state *state, struct step *step, struct glo
     hvalue_t args[MAX_ARITY];
 
     for (unsigned int i = 0; i < en->arity; i++) {
-        args[i] = value_ctx_pop(&step->ctx);
+        args[i] = ctx_pop(step->ctx);
     }
     hvalue_t result = (*en->fi->f)(state, step->ctx, args, en->arity, &global->values);
     if (step->ctx->failure == 0) {
-        value_ctx_push(&step->ctx, result);
+        ctx_push(step->ctx, result);
         step->ctx->pc++;
     }
 }
@@ -984,7 +994,7 @@ void op_Pop(const void *env, struct state *state, struct step *step, struct glob
 void op_Push(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_Push *ep = env;
 
-    value_ctx_push(&step->ctx, ep->value);
+    ctx_push(step->ctx, ep->value);
     step->ctx->pc++;
 }
 
@@ -1011,7 +1021,7 @@ void op_ReadonlyInc(const void *env, struct state *state, struct step *step, str
 //  - return address if normal or interrupt
 void op_Return(const void *env, struct state *state, struct step *step, struct global_t *global){
     hvalue_t result = value_dict_load(step->ctx->vars, value_put_atom(&global->values, "result", 6));
-    hvalue_t fp = value_ctx_pop(&step->ctx);
+    hvalue_t fp = ctx_pop(step->ctx);
     if (VALUE_TYPE(fp) != VALUE_INT) {
         printf("XXX %d %d %s\n", step->ctx->pc, step->ctx->sp, value_string(fp));
         value_ctx_failure(step->ctx, &global->values, "XXX");
@@ -1020,15 +1030,15 @@ void op_Return(const void *env, struct state *state, struct step *step, struct g
     }
     assert(VALUE_TYPE(fp) == VALUE_INT);
     step->ctx->fp = VALUE_FROM_INT(fp);
-    hvalue_t oldvars = value_ctx_pop(&step->ctx);
+    hvalue_t oldvars = ctx_pop(step->ctx);
     assert(VALUE_TYPE(oldvars) == VALUE_DICT);
     step->ctx->vars = oldvars;
-    (void) value_ctx_pop(&step->ctx);   // argument saved for stack trace
+    (void) ctx_pop(step->ctx);   // argument saved for stack trace
     if (step->ctx->sp == 0) {     // __init__
         step->ctx->terminated = true;
         return;
     }
-    hvalue_t calltype = value_ctx_pop(&step->ctx);
+    hvalue_t calltype = ctx_pop(step->ctx);
     assert(VALUE_TYPE(calltype) == VALUE_INT);
     switch (VALUE_FROM_INT(calltype)) {
     case CALLTYPE_PROCESS:
@@ -1036,17 +1046,17 @@ void op_Return(const void *env, struct state *state, struct step *step, struct g
         break;
     case CALLTYPE_NORMAL:
         {
-            hvalue_t pc = value_ctx_pop(&step->ctx);
+            hvalue_t pc = ctx_pop(step->ctx);
             assert(VALUE_TYPE(pc) == VALUE_PC);
             pc = VALUE_FROM_PC(pc);
             assert(pc != (hvalue_t) step->ctx->pc);
-            value_ctx_push(&step->ctx, result);
+            ctx_push(step->ctx, result);
             step->ctx->pc = pc;
         }
         break;
     case CALLTYPE_INTERRUPT:
         step->ctx->interruptlevel = false;
-        hvalue_t pc = value_ctx_pop(&step->ctx);
+        hvalue_t pc = ctx_pop(step->ctx);
         assert(VALUE_TYPE(pc) == VALUE_PC);
         pc = VALUE_FROM_PC(pc);
         assert(pc != (hvalue_t) step->ctx->pc);
@@ -1058,7 +1068,7 @@ void op_Return(const void *env, struct state *state, struct step *step, struct g
 }
 
 void op_Sequential(const void *env, struct state *state, struct step *step, struct global_t *global){
-    hvalue_t addr = value_ctx_pop(&step->ctx);
+    hvalue_t addr = ctx_pop(step->ctx);
     if (VALUE_TYPE(addr) != VALUE_ADDRESS) {
         char *p = value_string(addr);
         value_ctx_failure(step->ctx, &global->values, "Sequential %s: not an address", p);
@@ -1123,13 +1133,13 @@ static int sort(hvalue_t *vals, int n){
 
 void op_SetIntLevel(const void *env, struct state *state, struct step *step, struct global_t *global){
 	bool oldlevel = step->ctx->interruptlevel;
-	hvalue_t newlevel =  value_ctx_pop(&step->ctx);
+	hvalue_t newlevel =  ctx_pop(step->ctx);
     if (VALUE_TYPE(newlevel) != VALUE_BOOL) {
         value_ctx_failure(step->ctx, &global->values, "setintlevel can only be set to a boolean");
         return;
     }
     step->ctx->interruptlevel = VALUE_FROM_BOOL(newlevel);
-	value_ctx_push(&step->ctx, VALUE_TO_BOOL(oldlevel));
+	ctx_push(step->ctx, VALUE_TO_BOOL(oldlevel));
     step->ctx->pc++;
 }
 
@@ -1141,10 +1151,10 @@ void op_Spawn(
 ) {
     const struct env_Spawn *se = env;
 
-    hvalue_t thisval = value_ctx_pop(&step->ctx);
-    hvalue_t arg = value_ctx_pop(&step->ctx);
+    hvalue_t thisval = ctx_pop(step->ctx);
+    hvalue_t arg = ctx_pop(step->ctx);
 
-    hvalue_t pc = value_ctx_pop(&step->ctx);
+    hvalue_t pc = ctx_pop(step->ctx);
     if (VALUE_TYPE(pc) != VALUE_PC) {
         value_ctx_failure(step->ctx, &global->values, "spawn: not a method");
         return;
@@ -1166,8 +1176,8 @@ void op_Spawn(
     ctx->vars = VALUE_DICT;
     ctx->interruptlevel = false;
     ctx->eternal = se->eternal;
-    value_ctx_push(&ctx, VALUE_TO_INT(CALLTYPE_PROCESS));
-    value_ctx_push(&ctx, arg);
+    ctx_push(ctx, VALUE_TO_INT(CALLTYPE_PROCESS));
+    ctx_push(ctx, arg);
     if (global->run_direct) {
         spawn_thread(global, state, ctx);
     }
@@ -1182,7 +1192,7 @@ void op_Spawn(
 void op_Split(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_Split *es = env;
 
-    hvalue_t v = value_ctx_pop(&step->ctx);
+    hvalue_t v = ctx_pop(step->ctx);
     hvalue_t type = VALUE_TYPE(v);
     if (type != VALUE_SET && type != VALUE_LIST) {
         value_ctx_failure(step->ctx, &global->values, "Can only split tuples or sets");
@@ -1206,14 +1216,14 @@ void op_Split(const void *env, struct state *state, struct step *step, struct gl
         return;
     }
     for (unsigned int i = 0; i < size; i++) {
-        value_ctx_push(&step->ctx, vals[i]);
+        ctx_push(step->ctx, vals[i]);
     }
     step->ctx->pc++;
 }
 
 void op_Save(const void *env, struct state *state, struct step *step, struct global_t *global){
     assert(VALUE_TYPE(state->vars) == VALUE_DICT);
-    hvalue_t e = value_ctx_pop(&step->ctx);
+    hvalue_t e = ctx_pop(step->ctx);
 
     // Save the context
     step->ctx->stopped = true;
@@ -1228,7 +1238,7 @@ void op_Save(const void *env, struct state *state, struct step *step, struct glo
     d[0] = e;
     d[1] = v;
     hvalue_t result = value_put_list(&global->values, d, sizeof(d));
-    value_ctx_push(&step->ctx, result);
+    ctx_push(step->ctx, result);
 }
 
 void op_Stop(const void *env, struct state *state, struct step *step, struct global_t *global){
@@ -1242,7 +1252,7 @@ void op_Stop(const void *env, struct state *state, struct step *step, struct glo
     }
 
     if (es == 0) {
-        hvalue_t av = value_ctx_pop(&step->ctx);
+        hvalue_t av = ctx_pop(step->ctx);
         if (av == VALUE_ADDRESS || av == VALUE_LIST) {
             step->ctx->pc++;
             step->ctx->terminated = true;
@@ -1288,10 +1298,10 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
         return;
     }
 
-    hvalue_t v = value_ctx_pop(&step->ctx);
+    hvalue_t v = ctx_pop(step->ctx);
 
     if (es == 0) {
-        hvalue_t av = value_ctx_pop(&step->ctx);
+        hvalue_t av = ctx_pop(step->ctx);
         if (VALUE_TYPE(av) != VALUE_ADDRESS) {
             char *p = value_string(av);
             value_ctx_failure(step->ctx, &global->values, "Store %s: not an address", p);
@@ -1357,11 +1367,11 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
 
 void op_StoreVar(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_StoreVar *es = env;
-    hvalue_t v = value_ctx_pop(&step->ctx);
+    hvalue_t v = ctx_pop(step->ctx);
 
     assert(VALUE_TYPE(step->ctx->vars) == VALUE_DICT);
     if (es == NULL) {
-        hvalue_t av = value_ctx_pop(&step->ctx);
+        hvalue_t av = ctx_pop(step->ctx);
         assert(VALUE_TYPE(av) == VALUE_ADDRESS);
         assert(av != VALUE_ADDRESS);
 
@@ -1404,14 +1414,14 @@ void op_StoreVar(const void *env, struct state *state, struct step *step, struct
 }
 
 void op_Trap(const void *env, struct state *state, struct step *step, struct global_t *global){
-    step->ctx->trap_pc = value_ctx_pop(&step->ctx);
+    step->ctx->trap_pc = ctx_pop(step->ctx);
     if (VALUE_TYPE(step->ctx->trap_pc) != VALUE_PC) {
         value_ctx_failure(step->ctx, &global->values, "trap: not a method");
         return;
     }
     assert(VALUE_FROM_PC(step->ctx->trap_pc) < (hvalue_t) global->code.len);
     assert(strcmp(global->code.instrs[VALUE_FROM_PC(step->ctx->trap_pc)].oi->name, "Frame") == 0);
-    step->ctx->trap_arg = value_ctx_pop(&step->ctx);
+    step->ctx->trap_arg = ctx_pop(step->ctx);
     step->ctx->pc++;
 }
 

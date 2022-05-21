@@ -124,8 +124,8 @@ bool value_tryload(struct values_t *values, hvalue_t dict, hvalue_t key, hvalue_
 hvalue_t value_remove(struct values_t *values, hvalue_t root, hvalue_t key);
 hvalue_t value_dict_remove(struct values_t *values, hvalue_t dict, hvalue_t key);
 hvalue_t value_bag_add(struct values_t *values, hvalue_t bag, hvalue_t v, int multiplicity);
-void value_ctx_push(struct context **pctx, hvalue_t v);
-hvalue_t value_ctx_pop(struct context **pctx);
+void value_ctx_push(struct context *ctx, hvalue_t v);
+hvalue_t value_ctx_pop(struct context *ctx);
 hvalue_t value_ctx_failure(struct context *ctx, struct values_t *values, char *fmt, ...);
 bool value_ctx_all_eternal(hvalue_t ctxbag);
 

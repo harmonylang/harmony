@@ -1276,19 +1276,12 @@ hvalue_t value_bag_add(struct values_t *values, hvalue_t bag, hvalue_t v, int mu
     }
 }
 
-void value_ctx_push(struct context **pctx, hvalue_t v){
-    // assert(*pctx != NULL);
-    // struct context *ctx = realloc(*pctx, sizeof(struct context) +
-    //                               ((*pctx)->sp + 1) * sizeof(hvalue_t));
+void value_ctx_push(struct context *ctx, hvalue_t v){
     // TODO.  Check for stack overflow
-
-    struct context *ctx = *pctx;
     ctx->stack[ctx->sp++] = v;
 }
 
-hvalue_t value_ctx_pop(struct context **pctx){
-    struct context *ctx = *pctx;
-
+hvalue_t value_ctx_pop(struct context *ctx){
     assert(ctx->sp > 0);
     return ctx->stack[--ctx->sp];
 }
