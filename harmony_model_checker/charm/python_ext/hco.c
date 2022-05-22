@@ -564,9 +564,7 @@ PyObject* insert_state(
 ) {
 
 #ifdef notdef
-    fprintf(file, "      \"shared\": ");
-    print_vars(file, node->state->vars);
-    fprintf(file, ",\n");
+    PyDict_SetItemString(step, "shared", create_vars(node->state->vars));
 #endif
 
     struct state *state = node->state;
