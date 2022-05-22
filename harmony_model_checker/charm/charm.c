@@ -1101,6 +1101,7 @@ hvalue_t twostep(
         // Infinite loop detection
         if (!step.ctx->terminated && step.ctx->failure == 0) {
             if (infloop == NULL) {
+                // TODO.  infloop should be deallocated
                 infloop = dict_new(0, NULL, NULL);
             }
 
