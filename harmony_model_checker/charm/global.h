@@ -23,4 +23,9 @@ double gettime();
 
 #define CHUNKSIZE   (1 << 12)
 
+struct allocator {
+    void *(*alloc)(void *ctx, unsigned int size, bool zero);
+    void *ctx;
+};
+
 #endif // SRC_GLOBAL_H

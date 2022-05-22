@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <stdbool.h>
 
+#include "global.h"
 #include "hashdict.h"
 #include "json.h"
 #include "strbuf.h"
@@ -78,7 +79,7 @@ static void json_parse_atom(json_buf_t *buf, json_buf_t *atom){
 
 void json_map_append(struct json_value *map, json_buf_t key, struct json_value *jv){
 	assert(map->type == JV_MAP);
-	void **p = dict_insert(map->u.map, key.base, key.len);
+	void **p = dict_insert(map->u.map, NULL, key.base, key.len);
 	if (*p != 0) {
 		fprintf(stderr, "json_map_append: duplicate key: '%.*s'\n",
 							(int) key.len, key.base);
