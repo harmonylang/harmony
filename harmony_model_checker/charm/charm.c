@@ -70,6 +70,7 @@ static void *walloc(void *ctx, unsigned int size, bool zero){
     struct worker *w = ctx;
 
     if (size > WALLOC_CHUNK) {
+        printf("BIG\n");
         return zero ? calloc(1, size) : malloc(size);
     }
     size = (size + 0xF) & ~0xF;     // align to 16 bytes
@@ -89,6 +90,7 @@ static void run_thread(struct global_t *global, struct state *state, struct cont
     struct step step;
     memset(&step, 0, sizeof(step));
     step.ctx = ctx;
+    step.engine.values = &global->values;
 
     for (;;) {
         int pc = step.ctx->pc;
@@ -268,7 +270,7 @@ static bool onestep(
             else if (step->ctx->atomic == 0) {
                 // Save the current state in case it needs restoring
                 as_state = *sc;
-                as_context = value_put_context(&global->values, step->ctx);
+                as_context = value_put_context(&step->engine, step->ctx);
                 as_instrcnt = instrcnt;
             }
             (*oi->op)(instrs[pc].env, sc, step, global);
@@ -323,7 +325,7 @@ static bool onestep(
                 *p = (void *) 1;
             }
             else if (infloop_detect) {
-                step->ctx->failure = value_put_atom(&global->values, "infinite loop", 13);
+                step->ctx->failure = value_put_atom(&step->engine, "infinite loop", 13);
                 failure = infinite_loop = true;
                 break;
             }
@@ -347,14 +349,14 @@ static bool onestep(
             assert(step->ctx->sp > 0);
 #ifdef TODO
             if (0 && step->ctx->readonly > 0) {    // TODO
-                value_ctx_failure(step->ctx, &global->values, "can't choose in assertion or invariant");
+                value_ctx_failure(step->ctx, &step->engine, "can't choose in assertion or invariant");
                 failure = true;
                 break;
             }
 #endif
             hvalue_t s = step->ctx->stack[step->ctx->sp - 1];
             if (VALUE_TYPE(s) != VALUE_SET) {
-                value_ctx_failure(step->ctx, &global->values, "choose operation requires a set");
+                value_ctx_failure(step->ctx, &step->engine, "choose operation requires a set");
                 failure = true;
                 break;
             }
@@ -362,7 +364,7 @@ static bool onestep(
             hvalue_t *vals = value_get(s, &size);
             size /= sizeof(hvalue_t);
             if (size == 0) {
-                value_ctx_failure(step->ctx, &global->values, "choose operation requires a non-empty set");
+                value_ctx_failure(step->ctx, &step->engine, "choose operation requires a non-empty set");
                 failure = true;
                 break;
             }
@@ -431,7 +433,7 @@ static bool onestep(
     }
     else {
         // Store new context in value directory.  Must be immutable now.
-        after = value_put_context(&global->values, step->ctx);
+        after = value_put_context(&step->engine, step->ctx);
     }
 
     // Remove old context from the bag
@@ -439,10 +441,10 @@ static bool onestep(
     assert(VALUE_TYPE(count) == VALUE_INT);
     count -= 1 << VALUE_BITS;
     if (count == VALUE_INT) {
-        sc->ctxbag = value_dict_remove(&global->values, sc->ctxbag, ctx);
+        sc->ctxbag = value_dict_remove(&step->engine, sc->ctxbag, ctx);
     }
     else {
-        sc->ctxbag = value_dict_store(&global->values, sc->ctxbag, ctx, count);
+        sc->ctxbag = value_dict_store(&step->engine, sc->ctxbag, ctx, count);
     }
 
     // If choosing, save in state
@@ -452,10 +454,10 @@ static bool onestep(
 
     // Add new context to state unless it's terminated or stopped
     if (stopped) {
-        sc->stopbag = value_bag_add(&global->values, sc->stopbag, after, 1);
+        sc->stopbag = value_bag_add(&step->engine, sc->stopbag, after, 1);
     }
     else if (!terminated) {
-        sc->ctxbag = value_bag_add(&global->values, sc->ctxbag, after, 1);
+        sc->ctxbag = value_bag_add(&step->engine, sc->ctxbag, after, 1);
     }
 
     // Weight of this step
@@ -551,6 +553,8 @@ static void make_step(
 ) {
     struct step step;
     memset(&step, 0, sizeof(step));
+    step.engine.allocator = &w->allocator;
+    step.engine.values = &w->global->values;
 
     // Make a copy of the state
     struct state sc = node->state;
@@ -856,12 +860,13 @@ void print_state(
     extern int invariant_cnt(const void *env);
     struct step inv_step;
     memset(&inv_step, 0, sizeof(inv_step));
+    inv_step.engine.values = &global->values;
     inv_step.ctx = calloc(1, sizeof(struct context) +
                         MAX_CONTEXT_STACK * sizeof(hvalue_t));
 
     // hvalue_t inv_nv = value_put_atom("name", 4);
     // hvalue_t inv_tv = value_put_atom("tag", 3);
-    inv_step.ctx->name = value_put_atom(&global->values, "__invariant__", 13);
+    inv_step.ctx->name = value_put_atom(&inv_step.engine, "__invariant__", 13);
     inv_step.ctx->arg = VALUE_LIST;
     inv_step.ctx->this = VALUE_DICT;
     inv_step.ctx->vars = VALUE_DICT;
@@ -1061,6 +1066,7 @@ hvalue_t twostep(
 
     struct step step;
     memset(&step, 0, sizeof(step));
+    step.engine.values = &global->values;
 
     unsigned int size;
     struct context *cc = value_get(ctx, &size);
@@ -1116,7 +1122,7 @@ hvalue_t twostep(
                 *p = (void *) 1;
             }
             else {
-                step.ctx->failure = value_put_atom(&global->values, "infinite loop", 13);
+                step.ctx->failure = value_put_atom(&step.engine, "infinite loop", 13);
             }
         }
 
@@ -1141,14 +1147,14 @@ hvalue_t twostep(
             assert(step.ctx->sp > 0);
 #ifdef TODO
             if (0 && step.ctx->readonly > 0) {    // TODO
-                value_ctx_failure(step.ctx, &global->values, "can't choose in assertion or invariant");
+                value_ctx_failure(step.ctx, &step.engine, "can't choose in assertion or invariant");
                 diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice, NULL);
                 break;
             }
 #endif
             hvalue_t s = step.ctx->stack[step.ctx->sp - 1];
             if (VALUE_TYPE(s) != VALUE_SET) {
-                value_ctx_failure(step.ctx, &global->values, "choose operation requires a set");
+                value_ctx_failure(step.ctx, &step.engine, "choose operation requires a set");
                 diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice, NULL);
                 break;
             }
@@ -1156,7 +1162,7 @@ hvalue_t twostep(
             hvalue_t *vals = value_get(s, &size);
             size /= sizeof(hvalue_t);
             if (size == 0) {
-                value_ctx_failure(step.ctx, &global->values, "choose operation requires a non-empty set");
+                value_ctx_failure(step.ctx, &step.engine, "choose operation requires a non-empty set");
                 diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice, NULL);
                 break;
             }
@@ -1174,24 +1180,24 @@ hvalue_t twostep(
     assert(VALUE_TYPE(count) == VALUE_INT);
     count -= 1 << VALUE_BITS;
     if (count == VALUE_INT) {
-        sc->ctxbag = value_dict_remove(&global->values, sc->ctxbag, ctx);
+        sc->ctxbag = value_dict_remove(&step.engine, sc->ctxbag, ctx);
     }
     else {
-        sc->ctxbag = value_dict_store(&global->values, sc->ctxbag, ctx, count);
+        sc->ctxbag = value_dict_store(&step.engine, sc->ctxbag, ctx, count);
     }
 
-    hvalue_t after = value_put_context(&global->values, step.ctx);
+    hvalue_t after = value_put_context(&step.engine, step.ctx);
 
     // Add new context to state unless it's terminated or stopped
     if (step.ctx->stopped) {
-        sc->stopbag = value_bag_add(&global->values, sc->stopbag, after, 1);
+        sc->stopbag = value_bag_add(&step.engine, sc->stopbag, after, 1);
     }
     else if (!step.ctx->terminated) {
-        sc->ctxbag = value_bag_add(&global->values, sc->ctxbag, after, 1);
+        sc->ctxbag = value_bag_add(&step.engine, sc->ctxbag, after, 1);
     }
 
     // assert(sc->vars == nextvars);
-    ctx = value_put_context(&global->values, step.ctx);
+    ctx = value_put_context(&step.engine, step.ctx);
 
     free(sc);
     free(step.ctx);
@@ -1534,19 +1540,14 @@ static void do_work(struct worker *w){
 
 static void worker(void *arg){
     struct worker *w = arg;
-    double work_time = 0, wait_time = 0, start, now;
 
     for (int epoch = 0;; epoch++) {
         // start of sequential phase
         barrier_wait(w->start_barrier);
         // parallel phase starts now
-        start = gettime();
 		// printf("WORKER %d starting epoch %d\n", w->index, epoch);
 		do_work(w);
-        now = gettime();
-        work_time += now - start;
         // wait for others to finish
-        start = now;
 		// printf("WORKER %d finished epoch %d %f %f\n", w->index, epoch, work_time, wait_time);
         barrier_wait(w->middle_barrier);
 		// printf("WORKER %d make stable %d %f %f\n", w->index, epoch, work_time, wait_time);
@@ -1554,8 +1555,6 @@ static void worker(void *arg){
         w->nstable = dict_make_stable(w->visited, w->nworkers, w->index);
         barrier_wait(w->end_barrier);
         // start of sequential phase
-        now = gettime();
-        wait_time += now - start;
     }
 }
 
@@ -1818,7 +1817,12 @@ int main(int argc, char **argv){
     // initialize modules
     struct global_t *global = new_alloc(struct global_t);
     value_init(&global->values);
-    ops_init(global);
+
+    struct engine engine;
+    engine.allocator = NULL;
+    engine.values = &global->values;
+    ops_init(&engine);
+
     graph_init(&global->graph, 1024*1024);
     global->failures = minheap_create(fail_cmp);
     global->processes = NULL;
@@ -1827,11 +1831,11 @@ int main(int argc, char **argv){
     global->enqueued = 0;
     global->dequeued = 0;
     global->dumpfirst = false;
-    global->init_name = value_put_atom(&global->values, "__init__", 8);
+    global->init_name = value_put_atom(&engine, "__init__", 8);
 
     // First read and parse the DFA if any
     if (dfafile != NULL) {
-        global->dfa = dfa_read(&global->values, dfafile);
+        global->dfa = dfa_read(&engine, dfafile);
         if (global->dfa == NULL) {
             exit(1);
         }
@@ -1862,7 +1866,7 @@ int main(int argc, char **argv){
     // travel through the json code contents to create the code array
     struct json_value *jc = dict_lookup(jv->u.map, "code", 4);
     assert(jc->type == JV_LIST);
-    global->code = code_init_parse(&global->values, jc);
+    global->code = code_init_parse(&engine, jc);
 
     // Create an initial state
     struct context *init_ctx = calloc(1, sizeof(struct context) + MAX_CONTEXT_STACK * sizeof(hvalue_t));
@@ -1877,8 +1881,8 @@ int main(int argc, char **argv){
     struct state *state = new_alloc(struct state);
     state->vars = VALUE_DICT;
     state->seqs = VALUE_SET;
-    hvalue_t ictx = value_put_context(&global->values, init_ctx);
-    state->ctxbag = value_dict_store(&global->values, VALUE_DICT, ictx, VALUE_TO_INT(1));
+    hvalue_t ictx = value_put_context(&engine, init_ctx);
+    state->ctxbag = value_dict_store(&engine, VALUE_DICT, ictx, VALUE_TO_INT(1));
     state->stopbag = VALUE_DICT;
     state->invariants = VALUE_SET;
     state->dfa_state = global->dfa == NULL ? 0 : dfa_initial(global->dfa);
@@ -1942,12 +1946,14 @@ int main(int argc, char **argv){
         // Create a context for evaluating invariants
         w->inv_step.ctx = calloc(1, sizeof(struct context) +
                                 MAX_CONTEXT_STACK * sizeof(hvalue_t));
-        w->inv_step.ctx->name = value_put_atom(&global->values, "__invariant__", 13);
+        w->inv_step.ctx->name = value_put_atom(&engine, "__invariant__", 13);
         w->inv_step.ctx->arg = VALUE_LIST;
         w->inv_step.ctx->this = VALUE_DICT;
         w->inv_step.ctx->vars = VALUE_DICT;
         w->inv_step.ctx->atomic = w->inv_step.ctx->readonly = 1;
         w->inv_step.ctx->interruptlevel = false;
+        w->inv_step.engine.allocator = &w->allocator;
+        w->inv_step.engine.values = &global->values;
 
         w->alloc_buf = malloc(WALLOC_CHUNK);
         w->alloc_ptr = w->alloc_buf;
@@ -2185,7 +2191,7 @@ int main(int argc, char **argv){
         printf("Check for data races\n");
         for (unsigned int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
-            graph_check_for_data_race(node, warnings, &global->values);
+            graph_check_for_data_race(node, warnings, &engine);
             if (!minheap_empty(warnings)) {
                 break;
             }

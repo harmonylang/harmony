@@ -100,7 +100,7 @@ struct access_info *graph_ai_alloc(int multiplicity, int atomic, int pc);
 void graph_check_for_data_race(
     struct node *node,
     struct minheap *warnings,
-    struct values_t *values
+    struct engine *engine
 );
 void graph_add(struct graph_t *graph, struct node *node);
 int graph_find_scc(struct graph_t *graph);

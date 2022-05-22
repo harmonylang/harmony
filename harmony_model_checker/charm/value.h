@@ -64,22 +64,27 @@ struct value_stable {
     int context;
 };
 
+struct engine {
+    struct allocator *allocator;
+    struct values_t *values;
+};
+
 void value_init(struct values_t *values);
 void value_set_concurrent(struct values_t *values);
 void value_make_stable(struct values_t *values,
             int nworkers, int worker, struct value_stable *vs);
 void value_stable_add(struct value_stable *vs, struct value_stable *vs2);
 void value_set_sequential(struct values_t *values, struct value_stable *vs);
-hvalue_t value_from_json(struct values_t *values, struct dict *map);
+hvalue_t value_from_json(struct engine *engine, struct dict *map);
 int value_cmp(hvalue_t v1, hvalue_t v2);
 void *value_get(hvalue_t v, unsigned int *size);
 void *value_copy(hvalue_t v, unsigned int *size);
-hvalue_t value_put_atom(struct values_t *values, const void *p, int size);
-hvalue_t value_put_set(struct values_t *values, void *p, int size);
-hvalue_t value_put_dict(struct values_t *values, void *p, int size);
-hvalue_t value_put_list(struct values_t *values, void *p, int size);
-hvalue_t value_put_address(struct values_t *values, void *p, int size);
-hvalue_t value_put_context(struct values_t *values, struct context *ctx);
+hvalue_t value_put_atom(struct engine *engine, const void *p, int size);
+hvalue_t value_put_set(struct engine *engine, void *p, int size);
+hvalue_t value_put_dict(struct engine *engine, void *p, int size);
+hvalue_t value_put_list(struct engine *engine, void *p, int size);
+hvalue_t value_put_address(struct engine *engine, void *p, int size);
+hvalue_t value_put_context(struct engine *engine, struct context *ctx);
 char *value_string(hvalue_t v);
 char *indices_string(const hvalue_t *vec, int size);
 char *value_json(hvalue_t v);
@@ -115,18 +120,18 @@ void strbuf_value_json(strbuf *sb, hvalue_t v);
 #define VALUE_FROM_BOOL(i) ((i) >> VALUE_BITS)
 #define VALUE_FROM_PC(i)   ((i) >> VALUE_BITS)
 
-bool value_trystore(struct values_t *values, hvalue_t dict, hvalue_t key, hvalue_t value, bool allow_inserts, hvalue_t *result);
-hvalue_t value_store(struct values_t *values, hvalue_t root, hvalue_t key, hvalue_t value);
-hvalue_t value_dict_store(struct values_t *values, hvalue_t dict, hvalue_t key, hvalue_t value);
-bool value_dict_trystore(struct values_t *values, hvalue_t dict, hvalue_t key, hvalue_t value, bool allow_inserts, hvalue_t *result);
+bool value_trystore(struct engine *engine, hvalue_t dict, hvalue_t key, hvalue_t value, bool allow_inserts, hvalue_t *result);
+hvalue_t value_store(struct engine *engine, hvalue_t root, hvalue_t key, hvalue_t value);
+hvalue_t value_dict_store(struct engine *engine, hvalue_t dict, hvalue_t key, hvalue_t value);
+bool value_dict_trystore(struct engine *engine, hvalue_t dict, hvalue_t key, hvalue_t value, bool allow_inserts, hvalue_t *result);
 hvalue_t value_dict_load(hvalue_t dict, hvalue_t key);
-bool value_tryload(struct values_t *values, hvalue_t dict, hvalue_t key, hvalue_t *result);
-hvalue_t value_remove(struct values_t *values, hvalue_t root, hvalue_t key);
-hvalue_t value_dict_remove(struct values_t *values, hvalue_t dict, hvalue_t key);
-hvalue_t value_bag_add(struct values_t *values, hvalue_t bag, hvalue_t v, int multiplicity);
+bool value_tryload(struct engine *engine, hvalue_t dict, hvalue_t key, hvalue_t *result);
+hvalue_t value_remove(struct engine *engine, hvalue_t root, hvalue_t key);
+hvalue_t value_dict_remove(struct engine *engine, hvalue_t dict, hvalue_t key);
+hvalue_t value_bag_add(struct engine *engine, hvalue_t bag, hvalue_t v, int multiplicity);
 void value_ctx_push(struct context *ctx, hvalue_t v);
 hvalue_t value_ctx_pop(struct context *ctx);
-hvalue_t value_ctx_failure(struct context *ctx, struct values_t *values, char *fmt, ...);
+hvalue_t value_ctx_failure(struct context *ctx, struct engine *engine, char *fmt, ...);
 bool value_ctx_all_eternal(hvalue_t ctxbag);
 
 
