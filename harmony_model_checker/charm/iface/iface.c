@@ -182,7 +182,7 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
         struct node *initial_node = global->graph.nodes[0];
         node_vec_push(worklist, initial_node);
         struct iface_node_t **iface_node = (struct iface_node_t **)
-                dict_insert(node_to_iface_node, &initial_node, sizeof(struct node *));
+                dict_insert(node_to_iface_node, NULL, &initial_node, sizeof(struct node *));
         *iface_node = iface_graph_add_node(iface_graph);
 
         // Give initial node the None value, though it's displayed as "__init__"
@@ -198,7 +198,7 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
             struct node *child = children->arr[i];
 
             struct iface_node_t **child_iface_node = (struct iface_node_t **)
-                    dict_insert(node_to_iface_node, &child, sizeof(struct node *));
+                    dict_insert(node_to_iface_node, NULL, &child, sizeof(struct node *));
 
             if (*child_iface_node == NULL) {
                 *child_iface_node = iface_graph_add_node(iface_graph);
@@ -241,7 +241,7 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
             struct node *child = children->arr[i];
 
             struct iface_node_t **child_iface_node = (struct iface_node_t **)
-                    dict_insert(node_to_iface_node, &child, sizeof(struct node *));
+                    dict_insert(node_to_iface_node, NULL, &child, sizeof(struct node *));
 
             if (*child_iface_node == NULL) {
                 *child_iface_node = iface_graph_add_node(iface_graph);

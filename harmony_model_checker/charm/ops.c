@@ -3079,11 +3079,11 @@ void ops_init(struct global_t *global) {
     type_context = value_put_atom(&global->values, "context", 7);
 
     for (struct op_info *oi = op_table; oi->name != NULL; oi++) {
-        void **p = dict_insert(ops_map, oi->name, strlen(oi->name));
+        void **p = dict_insert(ops_map, NULL, oi->name, strlen(oi->name));
         *p = oi;
     }
     for (struct f_info *fi = f_table; fi->name != NULL; fi++) {
-        void **p = dict_insert(f_map, fi->name, strlen(fi->name));
+        void **p = dict_insert(f_map, NULL, fi->name, strlen(fi->name));
         *p = fi;
     }
 }

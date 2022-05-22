@@ -1,5 +1,6 @@
 #include "head.h"
 
+#include "global.h"
 #include "hashset.h"
 
 struct hashset_t hashset_new(int initial_size) {
@@ -12,7 +13,7 @@ static int DUMMY;
 
 // returns true iff key was in the set before
 bool hashset_insert(struct hashset_t set, const void *key, unsigned int keylen) {
-    void **value = dict_insert(set.dict, key, keylen);
+    void **value = dict_insert(set.dict, NULL, key, keylen);
     bool result = *value != NULL;
     *value = &DUMMY;
     return result;
@@ -20,7 +21,7 @@ bool hashset_insert(struct hashset_t set, const void *key, unsigned int keylen) 
 
 // returns true iff key was in the set before
 bool hashset_remove(struct hashset_t set, const void *key, unsigned int keylen) {
-    void **value = dict_insert(set.dict, key, keylen);
+    void **value = dict_insert(set.dict, NULL, key, keylen);
     bool result = *value != NULL;
     *value = NULL;
     return result;

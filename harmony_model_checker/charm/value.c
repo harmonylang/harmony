@@ -11,8 +11,8 @@
 #include <ctype.h>
 #include <assert.h>
 
-#include "hashdict.h"
 #include "global.h"
+#include "hashdict.h"
 #include "value.h"
 #include "strbuf.h"
 #include "json.h"
@@ -46,7 +46,7 @@ hvalue_t value_put_atom(struct values_t *values, const void *p, int size){
     if (size == 0) {
         return VALUE_ATOM;
     }
-    void *q = dict_find(values->atoms, p, size);
+    void *q = dict_find(values->atoms, NULL, p, size);
     return (hvalue_t) q | VALUE_ATOM;
 }
 
@@ -54,7 +54,7 @@ hvalue_t value_put_set(struct values_t *values, void *p, int size){
     if (size == 0) {
         return VALUE_SET;
     }
-    void *q = dict_find(values->sets, p, size);
+    void *q = dict_find(values->sets, NULL, p, size);
     return (hvalue_t) q | VALUE_SET;
 }
 
@@ -62,7 +62,7 @@ hvalue_t value_put_dict(struct values_t *values, void *p, int size){
     if (size == 0) {
         return VALUE_DICT;
     }
-    void *q = dict_find(values->dicts, p, size);
+    void *q = dict_find(values->dicts, NULL, p, size);
     return (hvalue_t) q | VALUE_DICT;
 }
 
@@ -70,7 +70,7 @@ hvalue_t value_put_list(struct values_t *values, void *p, int size){
     if (size == 0) {
         return VALUE_LIST;
     }
-    void *q = dict_find(values->lists, p, size);
+    void *q = dict_find(values->lists, NULL, p, size);
     return (hvalue_t) q | VALUE_LIST;
 }
 
@@ -78,14 +78,14 @@ hvalue_t value_put_address(struct values_t *values, void *p, int size){
     if (size == 0) {
         return VALUE_ADDRESS;
     }
-    void *q = dict_find(values->addresses, p, size);
+    void *q = dict_find(values->addresses, NULL, p, size);
     return (hvalue_t) q | VALUE_ADDRESS;
 }
 
 hvalue_t value_put_context(struct values_t *values, struct context *ctx){
 	assert(ctx->pc >= 0);
     unsigned int size = sizeof(*ctx) + (ctx->sp * sizeof(hvalue_t));
-    void *q = dict_find(values->contexts, ctx, size);
+    void *q = dict_find(values->contexts, NULL, ctx, size);
     return (hvalue_t) q | VALUE_CONTEXT;
 }
 
@@ -724,7 +724,7 @@ hvalue_t value_atom(struct values_t *values, struct dict *map){
     if (value->u.atom.len == 0) {
         return VALUE_ATOM;
     }
-    void *p = dict_find(values->atoms, value->u.atom.base, value->u.atom.len);
+    void *p = dict_find(values->atoms, NULL, value->u.atom.base, value->u.atom.len);
     return (hvalue_t) p | VALUE_ATOM;
 }
 
@@ -747,7 +747,7 @@ hvalue_t value_dict(struct values_t *values, struct dict *map){
     }
 
     // vals is sorted already by harmony compiler
-    void *p = dict_find(values->dicts, vals,
+    void *p = dict_find(values->dicts, NULL, vals,
                     value->u.list.nvals * sizeof(hvalue_t) * 2);
     free(vals);
     return (hvalue_t) p | VALUE_DICT;
@@ -767,7 +767,7 @@ hvalue_t value_set(struct values_t *values, struct dict *map){
     }
 
     // vals is sorted already by harmony compiler
-    void *p = dict_find(values->sets, vals, value->u.list.nvals * sizeof(hvalue_t));
+    void *p = dict_find(values->sets, NULL, vals, value->u.list.nvals * sizeof(hvalue_t));
     free(vals);
     return (hvalue_t) p | VALUE_SET;
 }
@@ -784,7 +784,7 @@ hvalue_t value_list(struct values_t *values, struct dict *map){
         assert(jv->type == JV_MAP);
         vals[i] = value_from_json(values, jv->u.map);
     }
-    void *p = dict_find(values->lists, vals, value->u.list.nvals * sizeof(hvalue_t));
+    void *p = dict_find(values->lists, NULL, vals, value->u.list.nvals * sizeof(hvalue_t));
     free(vals);
     return (hvalue_t) p | VALUE_LIST;
 }
@@ -801,7 +801,7 @@ hvalue_t value_address(struct values_t *values, struct dict *map){
         assert(jv->type == JV_MAP);
         vals[i] = value_from_json(values, jv->u.map);
     }
-    void *p = dict_find(values->addresses, vals,
+    void *p = dict_find(values->addresses, NULL, vals,
                             value->u.list.nvals * sizeof(hvalue_t));
     free(vals);
     return (hvalue_t) p | VALUE_ADDRESS;

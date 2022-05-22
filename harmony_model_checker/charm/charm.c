@@ -58,14 +58,19 @@ struct worker {
     char *alloc_buf;            // allocated buffer
     char *alloc_ptr;            // pointer into allocated buffer
 
+    struct allocator allocator;
+
     // These need to be next to one another
     struct context ctx;
     hvalue_t stack[MAX_CONTEXT_STACK];
 };
 
-static void *walloc(struct worker *w, unsigned int size){
+// Per thread one-time memory allocator (no free)
+static void *walloc(void *ctx, unsigned int size, bool zero){
+    struct worker *w = ctx;
+
     if (size > WALLOC_CHUNK) {
-        return malloc(size);
+        return zero ? calloc(1, size) : malloc(size);
     }
     size = (size + 0xF) & ~0xF;     // align to 16 bytes
     if (w->alloc_ptr + size > w->alloc_buf + WALLOC_CHUNK) {
@@ -74,6 +79,9 @@ static void *walloc(struct worker *w, unsigned int size){
     }
     void *result = w->alloc_ptr;
     w->alloc_ptr += size;
+    if (zero) {
+        memset(result, 0, size);
+    }
     return result;
 }
 
@@ -185,7 +193,7 @@ bool check_invariants(struct worker *w, struct node *node, struct step *step){
 
 static void *node_alloc(void *ctx){
     struct node *node = ctx == NULL ? malloc(sizeof(struct node)) :
-                    walloc(ctx, sizeof(struct node));
+                    walloc(ctx, sizeof(struct node), false);
     memset(node, 0, sizeof(*node));
     mutex_init(&node->lock);
     return node;
@@ -309,7 +317,7 @@ static bool onestep(
             struct combined *combo = calloc(1, combosize);
             combo->state = *sc;
             memcpy(&combo->context, step->ctx, sizeof(*step->ctx) + stacksize);
-            void **p = dict_insert(infloop, combo, combosize);
+            void **p = dict_insert(infloop, NULL, combo, combosize);
             free(combo);
             if (*p == (void *) 0) {
                 *p = (void *) 1;
@@ -454,7 +462,7 @@ static bool onestep(
     int weight = ctx == node->after ? 0 : 1;
 
     // Allocate edge now
-    struct edge *edge = walloc(w, sizeof(struct edge));
+    struct edge *edge = walloc(w, sizeof(struct edge), false);
     edge->ctx = ctx;
     edge->choice = choice_copy;
     edge->interrupt = interrupt;
@@ -465,8 +473,8 @@ static bool onestep(
     edge->nlog = step->nlog;
 
     // See if this state has been computed before
-    bool must_free;
-    void **p = dict_insert_alloc(w->visited, sc, sizeof(struct state), node_alloc, w);
+    void **p = dict_insert_alloc(w->visited, &w->allocator,
+                sc, sizeof(struct state), node_alloc, w);
     struct node *next = *p;
     mutex_acquire(&next->lock);
     if (next->initialized) {
@@ -548,7 +556,7 @@ static void make_step(
     struct state sc = node->state;
 
     // Make a copy of the context
-    int size;
+    unsigned int size;
     struct context *cc = value_get(ctx, &size);
     memcpy(&w->ctx, cc, size);
     step.ctx = &w->ctx;
@@ -1054,7 +1062,7 @@ hvalue_t twostep(
     struct step step;
     memset(&step, 0, sizeof(step));
 
-    int size;
+    unsigned int size;
     struct context *cc = value_get(ctx, &size);
     step.ctx = calloc(1, sizeof(struct context) +
                             MAX_CONTEXT_STACK * sizeof(hvalue_t));
@@ -1101,7 +1109,7 @@ hvalue_t twostep(
             struct combined *combo = calloc(1, combosize);
             combo->state = *sc;
             memcpy(&combo->context, step.ctx, sizeof(*step.ctx) + stacksize);
-            void **p = dict_insert(infloop, combo, combosize);
+            void **p = dict_insert(infloop, NULL, combo, combosize);
             free(combo);
             if (*p == (void *) 0) {
                 *p = (void *) 1;
@@ -1376,7 +1384,7 @@ static void enum_loc(
     assert(line->type == JV_ATOM);
     fprintf(out, "\"line\": \"%.*s\", ", line->u.atom.len, line->u.atom.base);
 
-    void **p = dict_insert(code_map, &pc, sizeof(pc));
+    void **p = dict_insert(code_map, NULL, &pc, sizeof(pc));
     struct strbuf sb;
     strbuf_init(&sb);
     strbuf_printf(&sb, "%.*s:%.*s", file->u.atom.len, file->u.atom.base, line->u.atom.len, line->u.atom.base);
@@ -1667,7 +1675,7 @@ static struct dict *collect_symbols(struct graph_t *graph){
         }
         for (struct edge *e = n->fwd; e != NULL; e = e->fwdnext) {
             for (unsigned int j = 0; j < e->nlog; j++) {
-                void **p = dict_insert(symbols, &e->log[j], sizeof(e->log[j]));
+                void **p = dict_insert(symbols, NULL, &e->log[j], sizeof(e->log[j]));
                 if (*p == NULL) {
                     *p = (void *) ++symbol_id;
                 }
@@ -1735,7 +1743,7 @@ static void print_transitions(FILE *out, struct dict *symbols, struct edge *edge
 
     fprintf(out, "      \"transitions\": [\n");
     for (struct edge *e = edges; e != NULL; e = e->fwdnext) {
-        void **p = dict_insert(d, e->log, e->nlog * sizeof(*e->log));
+        void **p = dict_insert(d, NULL, e->log, e->nlog * sizeof(*e->log));
         struct strbuf *sb = *p;
         if (sb == NULL) {
             *p = sb = malloc(sizeof(struct strbuf));
@@ -1905,7 +1913,7 @@ int main(int argc, char **argv){
     node->state = *state;
     node->after = ictx;
     graph_add(&global->graph, node);
-    void **p = dict_insert(visited, state, sizeof(*state));
+    void **p = dict_insert(visited, NULL, state, sizeof(*state));
     assert(*p == NULL);
     *p = node;
 
@@ -1942,6 +1950,9 @@ int main(int argc, char **argv){
 
         w->alloc_buf = malloc(WALLOC_CHUNK);
         w->alloc_ptr = w->alloc_buf;
+
+        w->allocator.alloc = walloc;
+        w->allocator.ctx = w;
     }
 
     // Start the workers, who'll wait on the start barrier

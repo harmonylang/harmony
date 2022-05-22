@@ -27,9 +27,12 @@ static inline uint32_t meiyan(const char *key, int count) {
 }
 
 static inline struct keynode *keynode_new(struct dict *dict,
+        struct allocator *al,
         char *key, unsigned int len, uint32_t hash,
         void *(*alloc)(void *), void *ctx) {
-	struct keynode *node = (*dict->malloc)(sizeof(struct keynode) + len);
+	struct keynode *node = al == NULL ?
+            malloc(sizeof(struct keynode) + len) :
+            (*al->alloc)(al->ctx, sizeof(struct keynode) + len, false);
 	node->len = len;
 	memcpy(node + 1, key, len);
     node->hash = hash;
@@ -104,7 +107,8 @@ static void dict_resize(struct dict *dict, int newsize) {
 }
 
 // Perhaps the most performance critical function in the entire code base
-static inline void *dict_find_alloc(struct dict *dict, const void *key, unsigned int keyn, void *(*alloc)(void *), void *ctx) {
+static inline void *dict_find_alloc(struct dict *dict, struct allocator *al,
+        const void *key, unsigned int keyn, void *(*alloc)(void *), void *ctx) {
     uint32_t hash = hash_func(key, keyn);
     struct dict_bucket *db = &dict->table[hash % dict->length];
 
@@ -139,11 +143,11 @@ static inline void *dict_find_alloc(struct dict *dict, const void *key, unsigned
 		double f = (double)dict->count / (double)dict->length;
 		if (f > dict->growth_threshold) {
 			dict_resize(dict, dict->length * dict->growth_factor - 1);
-			return dict_find_alloc(dict, key, keyn, alloc, ctx);
+			return dict_find_alloc(dict, al, key, keyn, alloc, ctx);
 		}
 	}
 
-    k = keynode_new(dict, (char *) key, keyn, hash, alloc, ctx);
+    k = keynode_new(dict, al, (char *) key, keyn, hash, alloc, ctx);
     if (dict->concurrent) {
 #ifdef notdef
         struct keynode *k2;
@@ -172,17 +176,20 @@ static inline void *dict_find_alloc(struct dict *dict, const void *key, unsigned
 	return k;
 }
 
-void *dict_find(struct dict *dict, const void *key, unsigned int keyn) {
-	return dict_find_alloc(dict, key, keyn, NULL, NULL);
+void *dict_find(struct dict *dict, struct allocator *al,
+                        const void *key, unsigned int keyn) {
+	return dict_find_alloc(dict, al, key, keyn, NULL, NULL);
 }
 
-void **dict_insert_alloc(struct dict *dict, const void *key, unsigned int keyn, void *(*alloc)(void *), void *ctx){
-    struct keynode *k = dict_find_alloc(dict, key, keyn, alloc, ctx);
+void **dict_insert_alloc(struct dict *dict, struct allocator *al,
+        const void *key, unsigned int keyn, void *(*alloc)(void *), void *ctx){
+    struct keynode *k = dict_find_alloc(dict, al, key, keyn, alloc, ctx);
     return &k->value;
 }
 
-void **dict_insert(struct dict *dict, const void *key, unsigned int keyn){
-    struct keynode *k = dict_find(dict, key, keyn);
+void **dict_insert(struct dict *dict, struct allocator *al,
+        const void *key, unsigned int keyn){
+    struct keynode *k = dict_find(dict, al, key, keyn);
     return &k->value;
 }
 
