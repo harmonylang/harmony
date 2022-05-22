@@ -1635,7 +1635,7 @@ static void destutter1(struct graph_t *graph){
             for (pe = &parent->fwd; (e = *pe) != NULL; pe = &e->fwdnext) {
                 if (e->dst == n && e->nlog == 0) {
                     *pe = e->fwdnext;
-                    free(e);
+                    // free(e);
                     break;
                 }
             }
