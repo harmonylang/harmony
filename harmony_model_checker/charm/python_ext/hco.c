@@ -1,31 +1,157 @@
+#include <stdlib.h>
+
 #include "hco.h"
 #include "charm.h"
 #include "ops.h"
+#include "json.h"
+#include "hashdict.h"
+
+/**
+ * C++ version 0.4 char* style "itoa":
+ * Written by Lukás Chmela
+ * Released under GPLv3.
+*/
+static char* itoa(int value, char* result, int base) {
+    // check that the base if valid
+    if (base < 2 || base > 36) { *result = '\0'; return result; }
+
+    char* ptr = result, *ptr1 = result, tmp_char;
+    int tmp_value;
+
+    do {
+        tmp_value = value;
+        value /= base;
+        *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz" [35 + (tmp_value - value * base)];
+    } while ( value );
+
+    // Apply negative sign
+    if (tmp_value < 0) *ptr++ = '-';
+    *ptr-- = '\0';
+    while(ptr1 < ptr) {
+        tmp_char = *ptr;
+        *ptr--= *ptr1;
+        *ptr1++ = tmp_char;
+    }
+    return result;
+}
+
+#define PYSTR(s) Py_BuildValue("s", s)
+
+char *json_escape_value(hvalue_t v){
+    char *s = value_string(v);
+    int len = strlen(s);
+    if (*s == '[') {
+        *s = '(';
+        s[len-1] = ')';
+    }
+    char *r = json_escape(s, len);
+    free(s);
+    return r;
+}
+
+bool invariant_check(struct global_t *global, struct state *state, struct step *step, int end){
+    assert(step->ctx->sp == 0);
+    assert(step->ctx->failure == 0);
+    step->ctx->pc++;
+    while (step->ctx->pc != end) {
+        struct op_info *oi = global->code.instrs[step->ctx->pc].oi;
+        int oldpc = step->ctx->pc;
+        (*oi->op)(global->code.instrs[oldpc].env, state, step, global);
+        if (step->ctx->failure != 0) {
+            step->ctx->sp = 0;
+            return false;
+        }
+        assert(step->ctx->pc != oldpc);
+        assert(!step->ctx->terminated);
+    }
+    assert(step->ctx->sp == 1);
+    step->ctx->sp = 0;
+    assert(step->ctx->fp == 0);
+    hvalue_t b = step->ctx->stack[0];
+    assert(VALUE_TYPE(b) == VALUE_BOOL);
+    return VALUE_FROM_BOOL(b);
+}
+
+static struct dict *collect_symbols(struct graph_t *graph){
+    struct dict *symbols = dict_new(0, NULL, NULL);
+    hvalue_t symbol_id = 0;
+
+    for (unsigned int i = 0; i < graph->size; i++) {
+        struct node *n = graph->nodes[i];
+        if (!n->reachable) {
+            continue;
+        }
+        for (struct edge *e = n->fwd; e != NULL; e = e->fwdnext) {
+            for (unsigned int j = 0; j < e->nlog; j++) {
+                void **p = dict_insert(symbols, &e->log[j], sizeof(e->log[j]));
+                if (*p == NULL) {
+                    *p = (void *) ++symbol_id;
+                }
+            }
+        }
+    }
+    return symbols;
+}
 
 struct symbol_env_t {
     PyObject* symbol_obj;
 };
 
-void* insert_symbols(void *env, const void *key, unsigned int key_size, void *value) {
+static char *json_string_encode(char *s, int len){
+    char *result = malloc(4 * len), *p = result;
+
+    while (len > 0) {
+        switch (*s) {
+        case '\r':
+            *p++ = '\\'; *p++ = 'r';
+            break;
+        case '\n':
+            *p++ = '\\'; *p++ = 'n';
+            break;
+        case '\f':
+            *p++ = '\\'; *p++ = 'f';
+            break;
+        case '\t':
+            *p++ = '\\'; *p++ = 't';
+            break;
+        case '"':
+            *p++ = '\\'; *p++ = '"';
+            break;
+        case '\\':
+            *p++ = '\\'; *p++ = '\\';
+            break;
+        default:
+            *p++ = *s;
+        }
+        s++;
+        len--;
+    }
+    *p++ = 0;
+    return result;
+}
+
+void insert_symbols(void *env, const void *key, unsigned int key_size, void *value) {
     struct symbol_env_t *se = env;
     const hvalue_t *symbol = key;
 
     assert(key_size == sizeof(*symbol));
     char *p = value_json(*symbol);
-    const PyObject* obj = se->symbol_obj;
+    PyObject* obj = se->symbol_obj;
 
-    PyDict_SetItemString(obj, itoa((uint64_t) value), p);
+    char buffer[sizeof(uint64_t)*8+1];
+    PyDict_SetItemString(obj, itoa((uint64_t) value, buffer, 10), PYSTR(p));
 }
 
 PyObject* create_symbols(struct dict *symbols) {
-    PyObject* symbols = PyDict_New();
+    PyObject* symbols_obj = PyDict_New();
 
-    struct symbol_env_t se = {.symbol_obj = symbols};
+    struct symbol_env_t se = {.symbol_obj = symbols_obj};
     dict_iter(symbols, insert_symbols, &se);
-    return symbols;
+    return symbols_obj;
 }
 
 PyObject* create_transitions(struct dict *symbols, struct edge *edges){
+    //! TODO
     PyObject* transitions = PyList_New(10);
     for (struct edge *e = edges; e != NULL; e = e->fwdnext) {
         hvalue_t *log = e->log;
@@ -47,7 +173,10 @@ PyObject* create_vars(hvalue_t v){
         char *k = value_string(vars[i]);
 		int len = strlen(k);
         char *v = value_json(vars[i+1]);
-        PyDict_SetItemString(vars_obj, sprintf("%.*s", len - 2, k + 1), v);
+
+        char buffer[len-2];
+        sprintf(buffer, "%.*s", len - 2, k + 1);
+        PyDict_SetItemString(vars_obj, buffer, PYSTR(v));
         free(k);
         free(v);
     }
@@ -95,7 +224,7 @@ PyObject* create_trace(
 		}
         else if (strcmp(name, "Frame") == 0) {
 			if (level == 0) {
-                PyObject *trace_list = PyList_New(10);
+                PyListObject *trace_list = (PyListObject *)PyList_New(10);
 				if (fp >= 5) {
                     assert(VALUE_TYPE(ctx->stack[fp - 5]) == VALUE_PC);
 					int npc = VALUE_FROM_PC(ctx->stack[fp - 5]);
@@ -103,36 +232,43 @@ PyObject* create_trace(
 					int nfp = ctx->stack[fp - 1] >> VALUE_BITS;
 
 					PyObject *prev;
-                    if (prev = print_trace(global, ctx, npc, nfp, nvars)) {
+                    if ((prev = create_trace(global, ctx, npc, nfp, nvars))) {
                         _PyList_Extend(trace_list, prev);
                     }
 				}
                 PyObject *trace_entry = PyDict_New();
-                PyDict_SetItemString(trace_entry, "pc", iota(orig_pc));
-                PyDict_SetItemString(trace_entry, "xpc", iota(pc));
+                char buffer[(sizeof(int)*8+1)];
+                PyDict_SetItemString(trace_entry, "pc", PYSTR(itoa(orig_pc, buffer, 10)));
+
+                memset(buffer, 0, sizeof buffer);
+                PyDict_SetItemString(trace_entry, "xpc", PYSTR(itoa(pc, buffer, 10)));
 
 				const struct env_Frame *ef = global->code.instrs[pc].env;
 				char *s = value_string(ef->name), *a = NULL;
 				int len = strlen(s);
                 a = json_escape_value(ctx->stack[fp - 3]);
+                char *str_buffer = malloc(len+strlen(a));
 				if (*a == '(') {
-                    PyDict_SetItemString(trace_entry, "method", sprintf("%.*s%s", len - 2, s + 1, a));
+                    sprintf(str_buffer, "%.*s%s", len - 2, s + 1, a);
+                    PyDict_SetItemString(trace_entry, "method", PYSTR(str_buffer));
 				}
 				else {
-                    PyDict_SetItemString(trace_entry, "method", sprintf("%.*s(%s)", len - 2, s + 1, a));
+                    sprintf(str_buffer, "%.*s(%s)", len - 2, s + 1, a);
+                    PyDict_SetItemString(trace_entry, "method", PYSTR(str_buffer));
 				}
+                free(str_buffer);
 
                 hvalue_t ct = ctx->stack[fp - 4];
                 assert(VALUE_TYPE(ct) == VALUE_INT);
                 switch (VALUE_FROM_INT(ct)) {
                 case CALLTYPE_PROCESS:
-                    PyDict_SetItemString(trace_entry, "calltype", "process");
+                    PyDict_SetItemString(trace_entry, "calltype", PYSTR("process"));
                     break;
                 case CALLTYPE_NORMAL:
-                    PyDict_SetItemString(trace_entry, "calltype", "normal");
+                    PyDict_SetItemString(trace_entry, "calltype", PYSTR("normal"));
                     break;
                 case CALLTYPE_INTERRUPT:
-                    PyDict_SetItemString(trace_entry, "calltype", "interrupt");
+                    PyDict_SetItemString(trace_entry, "calltype", PYSTR("interrupt"));
                     break;
                 default:
                     panic("print_trace: bad call type 2");
@@ -141,8 +277,8 @@ PyObject* create_trace(
 				free(s);
 				free(a);
                 PyDict_SetItemString(trace_entry, "vars", create_vars(vars));
-                PyList_Append(trace_list, trace_entry);
-                return trace_list;
+                PyList_Append((PyObject *)trace_list, trace_entry);
+                return (PyObject *)trace_list;
 			}
             else {
                 assert(level > 0);
@@ -172,48 +308,51 @@ PyObject* diff_state(
         PyDict_SetItemString(diff, "shared", create_vars(newstate->vars));
     }
     if (interrupt) {
-        PyDict_SetItemString(diff, "interrupt", "True");
+        PyDict_SetItemString(diff, "interrupt", PYSTR("True"));
     }
     if (choose) {
         char *val = value_json(choice);
-        PyDict_SetItemString(diff, "choose", val);
+        PyDict_SetItemString(diff, "choose", PYSTR(val));
         free(val);
     }
     if (print != NULL) {
-        PyDict_SetItemString(diff, "print", print);
+        PyDict_SetItemString(diff, "print", PYSTR(print));
     }
-    PyDict_SetItemString(diff, "npc", iota(newctx->pc));
+    char buffer[sizeof(int)*8+1];
+    PyDict_SetItemString(diff, "npc", PYSTR(itoa(newctx->pc, buffer, 10)));
     if (newctx->fp != oldctx->fp) {
-        PyDict_SetItemString(diff, "fp", iota(newctx->fp));
+        PyDict_SetItemString(diff, "fp", PYSTR(itoa(newctx->fp, buffer, 10)));
         PyObject *trace = create_trace(global, newctx, newctx->pc, newctx->fp, newctx->vars);
         trace = trace ? trace : PyList_New(0);
         PyDict_SetItemString(diff, "trace", trace);
     }
     if (newctx->this != oldctx->this) {
         char *val = value_json(newctx->this);
-        PyDict_SetItemString(diff, "this", val);
+        PyDict_SetItemString(diff, "this", PYSTR(val));
         free(val);
     }
     if (newctx->vars != oldctx->vars) {
         PyDict_SetItemString(diff, "local", create_vars(newctx->vars));
     }
     if (newctx->atomic != oldctx->atomic) {
-        PyDict_SetItemString(diff, "atomic", iota(newctx->atomic));
+        itoa(newctx->atomic, buffer, 10);
+        PyDict_SetItemString(diff, "atomic", PYSTR(buffer));
     }
     if (newctx->readonly != oldctx->readonly) {
-        PyDict_SetItemString(diff, "readonly", iota(newctx->readonly));
+        itoa(newctx->readonly, buffer, 10);
+        PyDict_SetItemString(diff, "readonly", PYSTR(buffer));
     }
     if (newctx->interruptlevel != oldctx->interruptlevel) {
-        PyDict_SetItemString(diff, "interruptlevel", iota(newctx->interruptlevel ? 1 : 0));
+        PyDict_SetItemString(diff, "interruptlevel", PYSTR(newctx->interruptlevel ? "1" : "0"));
     }
     if (newctx->failure != 0) {
         char *val = value_string(newctx->failure);
-        PyDict_SetItemString(diff, "failure", val);
-        PyDict_SetItemString(diff, "mode", "failed");
+        PyDict_SetItemString(diff, "failure", PYSTR(val));
+        PyDict_SetItemString(diff, "mode", PYSTR("failed"));
         free(val);
     }
     else if (newctx->terminated) {
-        PyDict_SetItemString(diff, "mode", "terminated");
+        PyDict_SetItemString(diff, "mode", PYSTR("terminated"));
     }
 
     int common;
@@ -223,16 +362,19 @@ PyObject* diff_state(
         }
     }
     if (common < oldctx->sp) {
-        PyDict_SetItemString(diff, "pop", iota(oldctx->sp - common));
+        memset(buffer, 0, sizeof buffer);
+        PyDict_SetItemString(diff, "pop", PYSTR(itoa(oldctx->sp - common, buffer, 10)));
     }
     PyObject *push_list = PyList_New(newctx->sp);
     for (int i = common; i < newctx->sp; i++) {
         char *val = value_json(newctx->stack[i]);
-        PyList_Append(push_list, val);
+        PyList_Append(push_list, PYSTR(val));
         free(val);
     }
     PyDict_SetItemString(diff, "push", push_list);
-    PyDict_SetItemString(diff, "pc", iota(oldctx->pc));
+    
+    memset(buffer, 0, sizeof buffer);
+    PyDict_SetItemString(diff, "pc", PYSTR(itoa(oldctx->pc, buffer, 10)));
 
     return diff;
 }
@@ -253,7 +395,7 @@ PyObject* diff_dump(
     if (memcmp(oldstate, newstate, sizeof(struct state)) == 0 &&
             (*oldctx)->sp == newctx->sp &&
             memcmp(*oldctx, newctx, newsize) == 0) {
-        return;
+        return NULL;
     }
 
     // Keep track of old state and context for taking diffs
@@ -456,30 +598,40 @@ PyObject* create_context(
     int tid,
     struct node *node
 ) {
-    PyObject *ctx = PyDict_New();
+    PyObject *ctx_obj = PyDict_New();
     char *s, *a;
 
-    PyDict_SetItemString(ctx, "tid", iota(tid));
-    PyDict_SetItemString(ctx, "yhash", sprintf("%"PRI_HVAL, ctx));
+    char int_buffer[sizeof(uint64_t)*8+1];
+    PyDict_SetItemString(ctx_obj, "tid", PYSTR(itoa(tid, int_buffer, 10)));
+    memset(int_buffer, 0, sizeof int_buffer);
+    sprintf(int_buffer, "%"PRI_HVAL, ctx);
+    PyDict_SetItemString(ctx_obj, "yhash", PYSTR(int_buffer));
 
     struct context *c = value_get(ctx, NULL);
 
     s = value_string(c->name);
 	int len = strlen(s);
     a = json_escape_value(c->arg);
+    char *str_buffer = malloc(len-2+strlen(a));
     if (*a == '(') {
-        PyDict_SetItemString(ctx, "name", sprintf("%.*s%s", len - 2, s + 1, a));
+        sprintf(str_buffer, "%.*s%s", len - 2, s + 1, a);
+        PyDict_SetItemString(ctx_obj, "name", PYSTR(str_buffer));
     }
     else {
-        PyDict_SetItemString(ctx, "name", sprintf("%.*s(%s)", len - 2, s + 1, a));
+        sprintf(str_buffer, "%.*s(%s)", len - 2, s + 1, a);
+        PyDict_SetItemString(ctx_obj, "name", PYSTR(str_buffer));
     }
+    free(str_buffer);
     free(s);
     free(a);
 
     // assert(VALUE_TYPE(c->entry) == VALUE_PC);   TODO
-    PyDict_SetItemString(ctx, "entry", sprintf("%d", (int) (c->entry >> VALUE_BITS)));
-    PyDict_SetItemString(ctx, "pc", sprintf("%d", c->pc));
-    PyDict_SetItemString(ctx, "fp", sprintf("%d", c->fp));
+    memset(int_buffer, 0, sizeof int_buffer);
+    PyDict_SetItemString(ctx_obj, "entry", PYSTR(itoa((int) (c->entry >> VALUE_BITS), int_buffer, 10)));
+    memset(int_buffer, 0, sizeof int_buffer);
+    PyDict_SetItemString(ctx_obj, "pc", PYSTR(itoa(c->pc, int_buffer, 10)));
+    memset(int_buffer, 0, sizeof int_buffer);
+    PyDict_SetItemString(ctx_obj, "fp", PYSTR(itoa(c->fp, int_buffer, 10)));
 
 #ifdef notdef
     {
@@ -490,48 +642,53 @@ PyObject* create_context(
     }
 #endif
 
-    PyDict_SetItemString(ctx, "trace", create_trace(global, c, c->pc, c->fp, c->vars));
+    PyDict_SetItemString(ctx_obj, "trace", create_trace(global, c, c->pc, c->fp, c->vars));
 
     if (c->failure != 0) {
         s = value_string(c->failure);
-        PyDict_SetItemString(ctx, "failure", s);
+        PyDict_SetItemString(ctx_obj, "failure", PYSTR(s));
         free(s);
     }
 
     if (c->trap_pc != 0) {
         s = value_string(c->trap_pc);
         a = value_string(c->trap_arg);
+        char *buffer = malloc(strlen(s) + strlen(a) + 2);
         if (*a == '(') {
-            PyDict_SetItemString(ctx, "trap", sprintf("%s%s", s, a));
+            sprintf(buffer, "%s%s", s, a);
+            PyDict_SetItemString(ctx_obj, "trap", PYSTR(buffer));
         }
         else {
-            PyDict_SetItemString(ctx, "trap", sprintf("%s(%s)", s, a));
+            sprintf(buffer, "%s(%s)", s, a);
+            PyDict_SetItemString(ctx_obj, "trap", PYSTR(buffer));
         }
         free(s);
+        free(buffer);
     }
 
     if (c->interruptlevel) {
-        PyDict_SetItemString(ctx, "interruptlevel", "1");
+        PyDict_SetItemString(ctx_obj, "interruptlevel", PYSTR("1"));
     }
 
+    char buffer[sizeof(int)*8+1];
     if (c->atomic != 0) {
-        PyDict_SetItemString(ctx, "interruptlevel", sprintf("%d", c->atomic));
+        PyDict_SetItemString(ctx_obj, "interruptlevel", PYSTR(itoa(c->atomic, buffer, 10)));
     }
     if (c->readonly != 0) {
-        PyDict_SetItemString(ctx, "readonly", sprintf("%d", c->readonly));
+        PyDict_SetItemString(ctx_obj, "readonly", PYSTR(itoa(c->readonly, buffer, 10)));
     }
 
     if (c->terminated) {
-        PyDict_SetItemString(ctx, "mode", "terminated");
+        PyDict_SetItemString(ctx_obj, "mode", PYSTR("terminated"));
     }
     else if (c->failure != 0) {
-        PyDict_SetItemString(ctx, "mode", "failed");
+        PyDict_SetItemString(ctx_obj, "mode", PYSTR("failed"));
     }
     else if (c->stopped) {
-        PyDict_SetItemString(ctx, "mode", "stopped");
+        PyDict_SetItemString(ctx_obj, "mode", PYSTR("stopped"));
     }
     else {
-        PyDict_SetItemString(ctx, "mode", ctx_status(node, ctx));
+        PyDict_SetItemString(ctx_obj, "mode", PYSTR(ctx_status(node, ctx)));
     }
 
 #ifdef notdef
@@ -551,13 +708,13 @@ PyObject* create_context(
 
     s = value_json(c->this);
 
-    PyDict_SetItemString(ctx, "this", s);
+    PyDict_SetItemString(ctx_obj, "this", PYSTR(s));
     free(s);
 
-    return ctx;
+    return ctx_obj;
 }
 
-PyObject* insert_state(
+void insert_state(
     PyObject *step,
     struct global_t *global,
     struct node *node
@@ -600,14 +757,18 @@ PyObject* insert_state(
         }
         if (!b) {
             PyObject *invfail = PyDict_New();
-            PyDict_SetItemString(invfail, "pc", sprintf("%u", (unsigned int) VALUE_FROM_PC(vals[i])));
+            char buffer[sizeof(unsigned int)*8+1];
+            sprintf(buffer, "%u", (unsigned int) VALUE_FROM_PC(vals[i]));
+            PyDict_SetItemString(invfail, "pc", PYSTR(buffer));
             if (inv_step.ctx->failure == 0) {
-                PyDict_SetItemString(invfail, "reason", "invariant violated");
+                PyDict_SetItemString(invfail, "reason", PYSTR("invariant violated"));
             }
             else {
                 char *val = value_string(inv_step.ctx->failure);
 				int len = strlen(val);
-                PyDict_SetItemString(invfail, "reason", sprintf("%.*s", len - 2, val + 1));
+                char buffer[len-2];
+                sprintf(buffer, "%.*s", len-2, val+1);
+                PyDict_SetItemString(invfail, "reason", PYSTR(buffer));
                 free(val);
             }
             nfailures++;
@@ -634,7 +795,7 @@ PyObject* create_macrosteps(
     bool interrupt,
     int nsteps
 ) {
-    PyObject* macrosteps = PyList_New(10);
+    PyListObject* macrosteps = (PyListObject*)PyList_New(10);
     struct node *node = last;
 
     last = parent == NULL ? last->parent : parent;
@@ -647,8 +808,13 @@ PyObject* create_macrosteps(
     }
 
     PyObject* step = PyDict_New();
-    PyDict_SetItemString(step, "id", node->id);
-    PyDict_SetItemString(step, "len", node->len);
+    char buffer[sizeof(uint64_t)*8+1];
+    itoa(node->id, buffer, 10);
+    PyDict_SetItemString(step, "id", PYSTR(buffer));
+
+    memset(buffer, 0, sizeof(buffer));
+    itoa(node->len, buffer, 10);
+    PyDict_SetItemString(step, "len", PYSTR(buffer));
 
     /* Find the starting context in the list of processes.
      */
@@ -666,13 +832,22 @@ PyObject* create_macrosteps(
 	int len = strlen(name);
     char *arg = json_escape_value(context->arg);
     // char *c = value_string(choice);
-    PyDict_SetItemString(step, "tid", pid);
-    PyDict_SetItemString(step, "xhash", ctx);
+
+    itoa(pid, buffer, 10);
+    PyDict_SetItemString(step, "tid", PYSTR(buffer));
+
+    memset(buffer, 0, sizeof buffer);
+    sprintf(buffer, "%"PRI_HVAL, ctx);
+    PyDict_SetItemString(step, "xhash", PYSTR(buffer));
     if (*arg == '(') {
-        PyDict_SetItemString(step, "name", sprintf("%.*s%s", len - 2, name + 1, arg));
+        char buffer[len-2+strlen(arg)];
+        sprintf(buffer, "%.*s%s", len - 2, name + 1, arg);
+        PyDict_SetItemString(step, "name", PYSTR(buffer));
     }
     else {
-        PyDict_SetItemString(step, "name", sprintf("%.*s(%s)", len - 2, name + 1, arg));
+        char buffer[len+strlen(arg)];
+        sprintf(buffer, "%.*s(%s)", len - 2, name + 1, arg);
+        PyDict_SetItemString(step, "name", PYSTR(buffer));
     }
     global->dumpfirst = true;
 
@@ -696,7 +871,7 @@ PyObject* create_macrosteps(
         nsteps
     );
     global->processes[pid] = create_microsteps_result.ctx;
-    PyDict_SetItemString("microsteps", step, create_microsteps_result.microsteps);
+    PyDict_SetItemString(step, "microsteps", create_microsteps_result.microsteps);
 
     /* Match each context to a process.
      */
@@ -728,7 +903,19 @@ PyObject* create_macrosteps(
     free(matched);
   
     insert_state(step, global, node);
-    return macrosteps;
+    return (PyObject *)macrosteps;
+}
+
+static int node_cmp(void *n1, void *n2){
+    struct node *node1 = n1, *node2 = n2;
+
+    if (node1->len != node2->len) {
+        return node1->len - node2->len;
+    }
+    if (node1->steps != node2->steps) {
+        return node1->steps - node2->steps;
+    }
+    return node1->id - node2->id;
 }
 
 static int fail_cmp(void *f1, void *f2){
@@ -800,9 +987,9 @@ PyObject* create_hco(struct global_t *global) {
 
     bool no_issues = minheap_empty(global->failures) && minheap_empty(warnings);
 
-    const PyObject* hco = PyDict_New();
+    PyObject* hco = PyDict_New();
     if (no_issues) {
-        PyDict_SetItemString(hco, "issue", "No issues");
+        PyDict_SetItemString(hco, "issue", PYSTR("No issues"));
 
         destutter1(&global->graph);
 
@@ -816,19 +1003,24 @@ PyObject* create_hco(struct global_t *global) {
             assert(node->id == i);
             if (node->reachable) {
                 PyObject *node_obj = PyDict_New();
-                PyDict_SetItemString(node_obj, "idx", node->id);
-                PyDict_SetItemString(node_obj, "component", node->component);
+                char buffer[sizeof(unsigned int)*8+1];
+                sprintf(buffer, "%u", node->id);
+                PyDict_SetItemString(node_obj, "idx", PYSTR(buffer));
+                
+                memset(buffer, 0, sizeof(buffer));
+                sprintf(buffer, "%u", node->component);
+                PyDict_SetItemString(node_obj, "component", PYSTR(buffer));
 
                 PyDict_SetItemString(node_obj,
                     "transitions", create_transitions(symbols, node->fwd));
                 if (i == 0) {
-                    PyDict_SetItemString(node_obj, "type", "initial");
+                    PyDict_SetItemString(node_obj, "type", PYSTR("initial"));
                 }
                 else if (node->final) {
-                    PyDict_SetItemString(node_obj, "type", "terminal");
+                    PyDict_SetItemString(node_obj, "type", PYSTR("terminal"));
                 }
                 else {
-                    PyDict_SetItemString(node_obj, "type", "normal");
+                    PyDict_SetItemString(node_obj, "type", PYSTR("normal"));
                 }
             }
         }
@@ -845,31 +1037,35 @@ PyObject* create_hco(struct global_t *global) {
         switch (bad->type) {
         case FAIL_SAFETY:
             printf("Safety Violation\n");
-            PyDict_SetItemString(hco, "issue", "Safety violation");
+            PyDict_SetItemString(hco, "issue", PYSTR("Safety violation"));
             break;
         case FAIL_INVARIANT:
             printf("Invariant Violation\n");
-            PyDict_SetItemString(hco, "issue", "Invariant violation");
+            PyDict_SetItemString(hco, "issue", PYSTR("Invariant violation"));
             break;
         case FAIL_BEHAVIOR:
             printf("Behavior Violation: terminal state not final\n");
-            PyDict_SetItemString(hco, "issue", "Behavior violation: terminal state not final");
+            PyDict_SetItemString(hco, "issue", PYSTR("Behavior violation: terminal state not final"));
             break;
         case FAIL_TERMINATION:
             printf("Non-terminating state\n");
-            PyDict_SetItemString(hco, "issue", "Non-terminating state");
+            PyDict_SetItemString(hco, "issue", PYSTR("Non-terminating state"));
             break;
         case FAIL_BUSYWAIT:
             printf("Active busy waiting\n");
-            PyDict_SetItemString(hco, "issue", "Active busy waiting");
+            PyDict_SetItemString(hco, "issue", PYSTR("Active busy waiting"));
             break;
         case FAIL_RACE:
             assert(bad->address != VALUE_ADDRESS);
             char *addr = value_string(bad->address);
             char *json = json_string_encode(addr, strlen(addr));
             printf("Data race (%s)\n", json);
-            PyDict_SetItemString(hco, "issue", sprintf("Data race (%s)", json));
+
+            char *buffer = malloc(strlen(json) + 12);
+            sprintf(buffer, "Data race (%s)", json);
+            PyDict_SetItemString(hco, "issue", PYSTR(buffer));
             free(addr);
+            free(buffer);
             break;
         default:
             printf("main: bad fail type\n");
