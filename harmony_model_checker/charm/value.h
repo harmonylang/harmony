@@ -69,11 +69,11 @@ struct engine {
     struct values_t *values;
 };
 
-void value_init(struct values_t *values);
+void value_init(struct values_t *values, unsigned int nworkers);
 void value_set_concurrent(struct values_t *values);
-void value_make_stable(struct values_t *values,
-            int nworkers, int worker, struct value_stable *vs);
 void value_stable_add(struct value_stable *vs, struct value_stable *vs2);
+void value_make_stable(struct values_t *values,
+            unsigned int worker, struct value_stable *vs);
 void value_set_sequential(struct values_t *values, struct value_stable *vs);
 hvalue_t value_from_json(struct engine *engine, struct dict *map);
 int value_cmp(hvalue_t v1, hvalue_t v2);

@@ -3064,8 +3064,8 @@ struct op_info *ops_get(char *opname, int size){
 }
 
 void ops_init(struct engine *engine) {
-    ops_map = dict_new(0, NULL, NULL);
-    f_map = dict_new(0, NULL, NULL);
+    ops_map = dict_new(0, 0, NULL, NULL);
+    f_map = dict_new(0, 0, NULL, NULL);
 	underscore = value_put_atom(engine, "_", 1);
 	this_atom = value_put_atom(engine, "this", 4);
     type_bool = value_put_atom(engine, "bool", 4);

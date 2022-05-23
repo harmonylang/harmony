@@ -52,7 +52,7 @@ struct code_t code_init_parse(struct engine *engine, struct json_value *json_cod
         code.instrs[i] = code_instr_parse(engine, json_code->u.list.vals[i]);
     }
 
-    code.code_map = dict_new(0, NULL, NULL);
+    code.code_map = dict_new(0, 0, NULL, NULL);
 
     return code;
 }

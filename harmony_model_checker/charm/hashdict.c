@@ -47,25 +47,31 @@ void keynode_delete(struct dict *dict, struct keynode *node) {
 	(*dict->free)(node);
 }
 
-struct dict *dict_new(int initial_size, void *(*m)(size_t size), void (*f)(void *)) {
+struct dict *dict_new(unsigned int initial_size, unsigned int nworkers,
+                void *(*m)(size_t size), void (*f)(void *)) {
 	struct dict *dict = new_alloc(struct dict);
-	if (initial_size == 0) initial_size = 1024;
+	if (initial_size == 0) initial_size = 256;
 	dict->length = initial_size;
 	dict->count = 0;
 	dict->table = calloc(sizeof(struct dict_bucket), initial_size);
-	for (int i = 0; i < dict->length; i++) {
+	for (unsigned int i = 0; i < dict->length; i++) {
 		mutex_init(&dict->table[i].lock);
 	}
 	dict->growth_threshold = 2;
-	dict->growth_factor = 5;
+	dict->growth_factor = 10;
 	dict->concurrent = 0;
+    dict->workers = calloc(sizeof(struct dict_worker), nworkers);
+    dict->nworkers = nworkers;
+    for (unsigned int i = 0; i < nworkers; i++) {
+        dict->workers[i].unstable = calloc(sizeof(struct keynode *), nworkers);
+    }
     dict->malloc = m == NULL ? malloc : m;
     dict->free = f == NULL ? free : f;
 	return dict;
 }
 
 void dict_delete(struct dict *dict) {
-	for (int i = 0; i < dict->length; i++) {
+	for (unsigned int i = 0; i < dict->length; i++) {
 		if (dict->table[i].stable != NULL)
 			keynode_delete(dict, dict->table[i].stable);
 		if (dict->table[i].unstable != NULL)
@@ -77,21 +83,21 @@ void dict_delete(struct dict *dict) {
 }
 
 static inline void dict_reinsert_when_resizing(struct dict *dict, struct keynode *k) {
-	int n = k->hash % dict->length;
+	unsigned int n = k->hash % dict->length;
 	struct dict_bucket *db = &dict->table[n];
     k->next = db->stable;
     db->stable = k;
 }
 
-static void dict_resize(struct dict *dict, int newsize) {
-	int o = dict->length;
+static void dict_resize(struct dict *dict, unsigned int newsize) {
+	unsigned int o = dict->length;
 	struct dict_bucket *old = dict->table;
 	dict->table = calloc(sizeof(struct dict_bucket), newsize);
 	dict->length = newsize;
-	for (int i = 0; i < newsize; i++) {
+	for (unsigned int i = 0; i < newsize; i++) {
 		mutex_init(&dict->table[i].lock);
 	}
-	for (int i = 0; i < o; i++) {
+	for (unsigned int i = 0; i < o; i++) {
 		struct dict_bucket *b = &old[i];
         assert(b->unstable == NULL);
         struct keynode *k = b->stable;
@@ -158,15 +164,16 @@ static inline void *dict_find_alloc(struct dict *dict, struct allocator *al,
             }
         }
 #endif
-        if (db->last == NULL) {
-            db->unstable = k;
-        }
-        else {
-            db->last->next = k;
-        }
-        db->last = k;
-		db->count++;
+        k->next = db->unstable;
+        db->unstable = k;
         mutex_release(&db->lock);
+
+        // Keep track of this unstable node in the list for the
+        // worker who's going to look at this bucket
+        k->bucket = db;
+        int worker = (hash % dict->length) * dict->nworkers / dict->length;
+        k->unstable_next = dict->workers[al->worker].unstable[worker];
+        dict->workers[al->worker].unstable[worker] = k;
     }
     else {
         k->next = db->stable;
@@ -233,7 +240,7 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keyn) {
 }
 
 void dict_iter(struct dict *dict, enumFunc f, void *env) {
-	for (int i = 0; i < dict->length; i++) {
+	for (unsigned int i = 0; i < dict->length; i++) {
         struct dict_bucket *db = &dict->table[i];
         struct keynode *k = db->stable;
         while (k != NULL) {
@@ -259,20 +266,19 @@ void dict_set_concurrent(struct dict *dict) {
 }
 
 // When going from concurrent to sequential, need to move over
-// the unstable values and possibly grow the table
-int dict_make_stable(struct dict *dict, int nworkers, int worker){
+// the unstable values.
+int dict_make_stable(struct dict *dict, unsigned int worker){
     assert(dict->concurrent);
-    int first = dict->length * worker / nworkers;
-    int count = dict->length * (worker + 1) / nworkers - first;
-    struct dict_bucket *db = &dict->table[first];
     int n = 0;
-	for (int i = 0; i < count; i++, db++) {
-        if (db->unstable != NULL) {
-            db->last->next = db->stable;
-            db->stable = db->unstable;
-            db->unstable = db->last = NULL;
-            n += db->count;
-            db->count = 0;
+	for (unsigned int i = 0; i < dict->nworkers; i++) {
+        struct dict_worker *w = &dict->workers[i];
+        struct keynode *k;
+        while ((k = w->unstable[worker]) != NULL) {
+            w->unstable[worker] = k->unstable_next;
+            k->next = k->bucket->stable;
+            k->bucket->stable = k;
+            k->bucket->unstable = NULL;
+            n++;
         }
     }
     return n;
@@ -285,9 +291,9 @@ void dict_set_sequential(struct dict *dict, int n) {
 #ifdef notdef
     // check integrity
     struct dict_bucket *db = dict->table;
-    int total = 0;
-	for (int i = 0; i < dict->length; i++, db++) {
-        if (db->unstable != NULL || db->last != NULL || db->count != 0) {
+    unsigned int total = 0;
+	for (unsigned int i = 0; i < dict->length; i++, db++) {
+        if (db->unstable != NULL) {
             printf("BAD DICT\n");
         }
         for (struct keynode *k = db->stable; k != NULL; k = k->next) {
@@ -301,7 +307,7 @@ void dict_set_sequential(struct dict *dict, int n) {
 
 	double f = (double)dict->count / (double)dict->length;
 	if (f > dict->growth_threshold) {
-        int min = dict->length * dict->growth_factor;
+        unsigned int min = dict->length * dict->growth_factor;
         if (min < dict->count) {
             min = dict->count * 2;
         }

@@ -868,23 +868,23 @@ static bool align_test(){
     return true;
 }
 
-void value_init(struct values_t *values){
+void value_init(struct values_t *values, unsigned int nworkers){
     if (align_test()) {
         // printf("malloc appears aligned to %d bytes\n", 1 << VALUE_BITS);
-        values->atoms = dict_new(0, NULL, NULL);
-        values->dicts = dict_new(0, NULL, NULL);
-        values->sets = dict_new(0, NULL, NULL);
-        values->lists = dict_new(0, NULL, NULL);
-        values->addresses = dict_new(0, NULL, NULL);
-        values->contexts = dict_new(0, NULL, NULL);
+        values->atoms = dict_new(1024*1024, nworkers, NULL, NULL);
+        values->dicts = dict_new(1024*1024, nworkers, NULL, NULL);
+        values->sets = dict_new(1024*1024, nworkers, NULL, NULL);
+        values->lists = dict_new(1024*1024, nworkers, NULL, NULL);
+        values->addresses = dict_new(1024*1024, nworkers, NULL, NULL);
+        values->contexts = dict_new(1024*1024, nworkers, NULL, NULL);
     }
     else {
-        values->atoms = dict_new(0, align_alloc, align_free);
-        values->dicts = dict_new(0, align_alloc, align_free);
-        values->sets = dict_new(0, align_alloc, align_free);
-        values->lists = dict_new(0, align_alloc, align_free);
-        values->addresses = dict_new(0, align_alloc, align_free);
-        values->contexts = dict_new(0, align_alloc, align_free);
+        values->atoms = dict_new(1024*1024, nworkers, align_alloc, align_free);
+        values->dicts = dict_new(1024*1024, nworkers, align_alloc, align_free);
+        values->sets = dict_new(1024*1024, nworkers, align_alloc, align_free);
+        values->lists = dict_new(1024*1024, nworkers, align_alloc, align_free);
+        values->addresses = dict_new(1024*1024, nworkers, align_alloc, align_free);
+        values->contexts = dict_new(1024*1024, nworkers, align_alloc, align_free);
     }
 }
 
@@ -898,13 +898,13 @@ void value_set_concurrent(struct values_t *values){
 }
 
 void value_make_stable(struct values_t *values,
-            int nworkers, int worker, struct value_stable *vs){
-    vs->atom = dict_make_stable(values->atoms, nworkers, worker);
-    vs->dict = dict_make_stable(values->dicts, nworkers, worker);
-    vs->set = dict_make_stable(values->sets, nworkers, worker);
-    vs->list = dict_make_stable(values->lists, nworkers, worker);
-    vs->address = dict_make_stable(values->addresses, nworkers, worker);
-    vs->context = dict_make_stable(values->contexts, nworkers, worker);
+            unsigned int worker, struct value_stable *vs){
+    vs->atom = dict_make_stable(values->atoms, worker);
+    vs->dict = dict_make_stable(values->dicts, worker);
+    vs->set = dict_make_stable(values->sets, worker);
+    vs->list = dict_make_stable(values->lists, worker);
+    vs->address = dict_make_stable(values->addresses, worker);
+    vs->context = dict_make_stable(values->contexts, worker);
 }
 
 void value_stable_add(struct value_stable *vs, struct value_stable *vs2){

@@ -42,14 +42,14 @@ struct worker {
 
     struct dict *visited;
 
-    int index;                   // index of worker
-    int nworkers;                // total number of workers
+    unsigned int index;          // index of worker
+    unsigned int nworkers;       // total number of workers
     struct node *todo;           // set of states to evaluate
     int timecnt;                 // to reduce gettime() overhead
     struct step inv_step;        // for evaluating invariants
 
     // for dict_make_stable and dict_set_sequential
-    int nstable;
+    unsigned int nstable;
     struct value_stable vs;
 
     struct node *results;       // list of resulting states
@@ -311,7 +311,7 @@ static bool onestep(
 
         if (infloop_detect || instrcnt > 1000) {
             if (infloop == NULL) {
-                infloop = dict_new(0, NULL, NULL);
+                infloop = dict_new(0, 0, NULL, NULL);
             }
 
             int stacksize = step->ctx->sp * sizeof(hvalue_t);
@@ -1108,7 +1108,7 @@ hvalue_t twostep(
         if (!step.ctx->terminated && step.ctx->failure == 0) {
             if (infloop == NULL) {
                 // TODO.  infloop should be deallocated
-                infloop = dict_new(0, NULL, NULL);
+                infloop = dict_new(0, 0, NULL, NULL);
             }
 
             int stacksize = step.ctx->sp * sizeof(hvalue_t);
@@ -1551,8 +1551,8 @@ static void worker(void *arg){
 		// printf("WORKER %d finished epoch %d %f %f\n", w->index, epoch, work_time, wait_time);
         barrier_wait(w->middle_barrier);
 		// printf("WORKER %d make stable %d %f %f\n", w->index, epoch, work_time, wait_time);
-        value_make_stable(&w->global->values, w->nworkers, w->index, &w->vs);
-        w->nstable = dict_make_stable(w->visited, w->nworkers, w->index);
+        value_make_stable(&w->global->values, w->index, &w->vs);
+        w->nstable = dict_make_stable(w->visited, w->index);
         barrier_wait(w->end_barrier);
         // start of sequential phase
     }
@@ -1665,7 +1665,7 @@ static void destutter1(struct graph_t *graph){
 }
 
 static struct dict *collect_symbols(struct graph_t *graph){
-    struct dict *symbols = dict_new(0, NULL, NULL);
+    struct dict *symbols = dict_new(0, 0, NULL, NULL);
     hvalue_t symbol_id = 0;
 
     for (unsigned int i = 0; i < graph->size; i++) {
@@ -1739,7 +1739,7 @@ static void print_trans_upcall(void *env, const void *key, unsigned int key_size
 }
 
 static void print_transitions(FILE *out, struct dict *symbols, struct edge *edges){
-    struct dict *d = dict_new(0, NULL, NULL);
+    struct dict *d = dict_new(0, 0, NULL, NULL);
 
     fprintf(out, "      \"transitions\": [\n");
     for (struct edge *e = edges; e != NULL; e = e->fwdnext) {
@@ -1814,9 +1814,17 @@ int main(int argc, char **argv){
     char *fname = argv[i];
     double timeout = gettime() + maxtime;
 
+    // Determine how many worker threads to use
+    unsigned int nworkers = getNumCores();
+	printf("nworkers = %d\n", nworkers);
+    barrier_t start_barrier, middle_barrier, end_barrier;
+    barrier_init(&start_barrier, nworkers + 1);
+    barrier_init(&middle_barrier, nworkers + 1);
+    barrier_init(&end_barrier, nworkers + 1);
+
     // initialize modules
     struct global_t *global = new_alloc(struct global_t);
-    value_init(&global->values);
+    value_init(&global->values, nworkers);
 
     struct engine engine;
     engine.allocator = NULL;
@@ -1913,7 +1921,7 @@ int main(int argc, char **argv){
     }
 
     // Put the initial state in the visited map
-    struct dict *visited = dict_new(0, NULL, NULL);
+    struct dict *visited = dict_new(1024*1024, nworkers, NULL, NULL);
     struct node *node = node_alloc(NULL);
     node->state = *state;
     node->after = ictx;
@@ -1922,17 +1930,9 @@ int main(int argc, char **argv){
     assert(*p == NULL);
     *p = node;
 
-    // Determine how many worker threads to use
-    int nworkers = getNumCores();
-	printf("nworkers = %d\n", nworkers);
-    barrier_t start_barrier, middle_barrier, end_barrier;
-    barrier_init(&start_barrier, nworkers + 1);
-    barrier_init(&middle_barrier, nworkers + 1);
-    barrier_init(&end_barrier, nworkers + 1);
-
     // Allocate space for worker info
     struct worker *workers = calloc(nworkers, sizeof(*workers));
-    for (int i = 0; i < nworkers; i++) {
+    for (unsigned int i = 0; i < nworkers; i++) {
         struct worker *w = &workers[i];
         w->global = global;
         w->timeout = timeout;
@@ -1960,10 +1960,11 @@ int main(int argc, char **argv){
 
         w->allocator.alloc = walloc;
         w->allocator.ctx = w;
+        w->allocator.worker = i;
     }
 
     // Start the workers, who'll wait on the start barrier
-    for (int i = 0; i < nworkers; i++) {
+    for (unsigned int i = 0; i < nworkers; i++) {
         thread_create(worker, &workers[i]);
     }
 
@@ -1989,27 +1990,28 @@ int main(int argc, char **argv){
         int nstable = 0;
         struct value_stable vs;
         memset(&vs, 0, sizeof(vs));
-        for (int i = 0; i < nworkers; i++) {
+        for (unsigned int i = 0; i < nworkers; i++) {
             struct worker *w = &workers[i];
             nstable += w->nstable;
             value_stable_add(&vs, &w->vs);
         }
+
         dict_set_sequential(visited, nstable);
         value_set_sequential(&global->values, &vs);
 
         int count = 0;
 
         // Collect the results of all the workers
-        for (int i = 0; i < nworkers; i++) {
+        for (unsigned int i = 0; i < nworkers; i++) {
             struct worker *w = &workers[i];
 			count = process_results(global, w, workers, nworkers, count);
         }
 
+        postproc += gettime() - before_postproc;
+
         if (count == 0) {
             break;
         }
-
-        postproc += gettime() - before_postproc;
     }
 
     printf("#states %d (time %.3lf+%.3lf=%.3lf)\n", global->graph.size, gettime() - before - postproc, postproc, gettime() - before);

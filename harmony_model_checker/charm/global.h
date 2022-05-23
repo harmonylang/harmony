@@ -26,6 +26,7 @@ double gettime();
 struct allocator {
     void *(*alloc)(void *ctx, unsigned int size, bool zero);
     void *ctx;
+    unsigned int worker;        // identifies worker thread
 };
 
 #endif // SRC_GLOBAL_H
