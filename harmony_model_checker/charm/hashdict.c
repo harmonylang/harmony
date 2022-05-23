@@ -132,16 +132,14 @@ static inline void *dict_find_alloc(struct dict *dict, struct allocator *al,
 	}
 
     if (dict->concurrent) {
-        // mutex_acquire(&dict->locks[index % dict->nlocks]);
-        mutex_acquire(&dict->locks[index & 0xFFF]);
+        mutex_acquire(&dict->locks[index % dict->nlocks]);
 
         // See if the item is in the unstable list
         k = db->unstable;
         while (k != NULL) {
             if (k->len == keyn && memcmp(k+1, key, keyn) == 0) {
 				assert(alloc == NULL || k->value != NULL);
-                // mutex_release(&dict->locks[index % dict->nlocks]);
-                mutex_release(&dict->locks[index & 0xFFF]);
+                mutex_release(&dict->locks[index % dict->nlocks]);
                 return k;
             }
             k = k->next;
@@ -170,8 +168,7 @@ static inline void *dict_find_alloc(struct dict *dict, struct allocator *al,
 #endif
         k->next = db->unstable;
         db->unstable = k;
-        // mutex_release(&dict->locks[index % dict->nlocks]);
-        mutex_release(&dict->locks[index & 0xFFF]);
+        mutex_release(&dict->locks[index % dict->nlocks]);
 
         // Keep track of this unstable node in the list for the
         // worker who's going to look at this bucket
@@ -230,8 +227,7 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keyn) {
 
     // Look in the unstable list
     if (dict->concurrent) {
-        mutex_acquire(&dict->locks[index & 0xFFF]);
-        // mutex_acquire(&dict->locks[index % dict->nlocks]);
+        mutex_acquire(&dict->locks[index % dict->nlocks]);
         k = db->unstable;
         while (k != NULL) {
             if (k->len == keyn && !memcmp(k+1, key, keyn)) {
@@ -240,8 +236,7 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keyn) {
             }
             k = k->next;
         }
-        // mutex_release(&dict->locks[index % dict->nlocks]);
-        mutex_release(&dict->locks[index & 0xFFF]);
+        mutex_release(&dict->locks[index % dict->nlocks]);
     }
 
 	return NULL;
