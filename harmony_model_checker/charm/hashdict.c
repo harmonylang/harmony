@@ -51,11 +51,11 @@ struct dict *dict_new(unsigned int initial_size, unsigned int nworkers,
                 void *(*m)(size_t size), void (*f)(void *)) {
 	struct dict *dict = new_alloc(struct dict);
 	if (initial_size == 0) initial_size = 256;
-    else initial_size = 100 * 1024 * 1024;
+    else initial_size = 1024;
 	dict->length = initial_size;
 	dict->count = 0;
 	dict->table = calloc(sizeof(struct dict_bucket), initial_size);
-    dict->nlocks = 1024;        // TODO
+    dict->nlocks = 0x1000;        // TODO
     dict->locks = malloc(dict->nlocks * sizeof(mutex_t));
 	for (unsigned int i = 0; i < dict->nlocks; i++) {
 		mutex_init(&dict->locks[i]);
@@ -117,7 +117,7 @@ static void dict_resize(struct dict *dict, unsigned int newsize) {
 static inline void *dict_find_alloc(struct dict *dict, struct allocator *al,
         const void *key, unsigned int keyn, void *(*alloc)(void *), void *ctx) {
     uint32_t hash = hash_func(key, keyn);
-    unsigned int index = hash % dict->nlocks;
+    unsigned int index = hash % dict->length;
     struct dict_bucket *db = &dict->table[index];
 
     // First see if the item is in the stable list, which does not require
@@ -132,14 +132,16 @@ static inline void *dict_find_alloc(struct dict *dict, struct allocator *al,
 	}
 
     if (dict->concurrent) {
-        mutex_acquire(&dict->locks[index % dict->nlocks]);
+        // mutex_acquire(&dict->locks[index % dict->nlocks]);
+        mutex_acquire(&dict->locks[index & 0xFFF]);
 
         // See if the item is in the unstable list
         k = db->unstable;
         while (k != NULL) {
             if (k->len == keyn && memcmp(k+1, key, keyn) == 0) {
 				assert(alloc == NULL || k->value != NULL);
-                mutex_release(&dict->locks[index % dict->nlocks]);
+                // mutex_release(&dict->locks[index % dict->nlocks]);
+                mutex_release(&dict->locks[index & 0xFFF]);
                 return k;
             }
             k = k->next;
@@ -168,7 +170,8 @@ static inline void *dict_find_alloc(struct dict *dict, struct allocator *al,
 #endif
         k->next = db->unstable;
         db->unstable = k;
-        mutex_release(&dict->locks[index % dict->nlocks]);
+        // mutex_release(&dict->locks[index % dict->nlocks]);
+        mutex_release(&dict->locks[index & 0xFFF]);
 
         // Keep track of this unstable node in the list for the
         // worker who's going to look at this bucket
@@ -212,7 +215,7 @@ void *dict_retrieve(const void *p, unsigned int *psize){
 
 void *dict_lookup(struct dict *dict, const void *key, unsigned int keyn) {
     uint32_t hash = hash_func(key, keyn);
-    unsigned int index = hash % dict->nlocks;
+    unsigned int index = hash % dict->length;
     struct dict_bucket *db = &dict->table[index];
 	// __builtin_prefetch(db);
 
@@ -227,7 +230,8 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keyn) {
 
     // Look in the unstable list
     if (dict->concurrent) {
-        mutex_acquire(&dict->locks[index % dict->nlocks]);
+        mutex_acquire(&dict->locks[index & 0xFFF]);
+        // mutex_acquire(&dict->locks[index % dict->nlocks]);
         k = db->unstable;
         while (k != NULL) {
             if (k->len == keyn && !memcmp(k+1, key, keyn)) {
@@ -236,7 +240,8 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keyn) {
             }
             k = k->next;
         }
-        mutex_release(&dict->locks[index % dict->nlocks]);
+        // mutex_release(&dict->locks[index % dict->nlocks]);
+        mutex_release(&dict->locks[index & 0xFFF]);
     }
 
 	return NULL;
@@ -251,14 +256,13 @@ void dict_iter(struct dict *dict, enumFunc f, void *env) {
             k = k->next;
         }
         if (dict->concurrent) {
-            unsigned int index = i % dict->nlocks;   // TODO.  Inefficient
-            mutex_acquire(&dict->locks[index % dict->nlocks]);
+            mutex_acquire(&dict->locks[i % dict->nlocks]);
             k = db->unstable;
             while (k != NULL) {
                 (*f)(env, k+1, k->len, k->value);
                 k = k->next;
             }
-            mutex_release(&dict->locks[index % dict->nlocks]);
+            mutex_release(&dict->locks[i % dict->nlocks]);
         }
 	}
 }
