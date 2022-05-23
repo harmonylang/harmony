@@ -1823,8 +1823,10 @@ int main(int argc, char **argv){
     barrier_init(&end_barrier, nworkers + 1);
 
     // initialize modules
+    printf("Initialize values\n");
     struct global_t *global = new_alloc(struct global_t);
     value_init(&global->values, nworkers);
+    printf("Initialize values done\n");
 
     struct engine engine;
     engine.allocator = NULL;
@@ -1921,7 +1923,9 @@ int main(int argc, char **argv){
     }
 
     // Put the initial state in the visited map
+    printf("Initialize visited\n");
     struct dict *visited = dict_new(1024*1024, nworkers, NULL, NULL);
+    printf("Initialize visited done\n");
     struct node *node = node_alloc(NULL);
     node->state = *state;
     node->after = ictx;

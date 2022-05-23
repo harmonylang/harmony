@@ -24,9 +24,7 @@ struct keynode {
 };
 
 struct dict_bucket {
-    struct keynode *stable;
-    struct keynode *unstable;
-    mutex_t lock;
+    struct keynode *stable, *unstable;
 };
 
 struct dict_worker {
@@ -35,9 +33,11 @@ struct dict_worker {
 		
 struct dict {
 	struct dict_bucket *table;
+	unsigned int length, count;
     struct dict_worker *workers;
     unsigned int nworkers;
-	unsigned int length, count;
+    mutex_t *locks;
+    unsigned int nlocks;
 	double growth_threshold;
 	double growth_factor;
     int concurrent;         // 0 = not concurrent
