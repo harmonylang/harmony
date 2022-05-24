@@ -800,7 +800,9 @@ void op_Go(
     }
 
     hvalue_t result = ctx_pop(step->ctx);
-    struct context *copy = value_copy(ctx, NULL);
+    unsigned int size;
+    struct context *copy = value_copy(ctx, &size);
+    copy = realloc(copy, size + sizeof(hvalue_t));
     ctx_push(copy, result);
     copy->stopped = false;
     hvalue_t v = value_put_context(&step->engine, copy);
