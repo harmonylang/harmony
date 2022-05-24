@@ -822,11 +822,12 @@ void op_Invariant(const void *env, struct state *state, struct step *step, struc
         vals = NULL;
     }
     else {
-        vals = value_get(state->invariants, &size);
+        vals = value_copy(state->invariants, &size);
     }
     vals = realloc(vals, size + sizeof(hvalue_t));
     * (hvalue_t *) ((char *) vals + size) = VALUE_TO_PC(step->ctx->pc);
     state->invariants = value_put_set(&step->engine, vals, size + sizeof(hvalue_t));
+    free(vals);
     step->ctx->pc = ei->end + 1;
 }
 
@@ -1968,6 +1969,7 @@ hvalue_t f_intersection(
         hvalue_t max_val = vi[0].vals[0];       // maximum value over the minima of all sets
         for (int i = 1; i < n; i++) {
             if (VALUE_TYPE(args[i]) != VALUE_SET) {
+                free(vi);
                 return value_ctx_failure(ctx, engine, "'&' applied to mix of sets and other types");
             }
             if (args[i] == VALUE_SET) {
@@ -1987,6 +1989,7 @@ hvalue_t f_intersection(
 
         // If any are empty lists, we're done.
         if (min_size == 0) {
+            free(vi);
             return VALUE_SET;
         }
 
@@ -2054,6 +2057,7 @@ hvalue_t f_intersection(
     int total = 0;
     for (int i = 0; i < n; i++) {
         if (VALUE_TYPE(args[i]) != VALUE_DICT) {
+            free(vi);
             return value_ctx_failure(ctx, engine, "'&' applied to mix of dictionaries and other types");
         }
         if (args[i] == VALUE_DICT) {
@@ -2068,6 +2072,7 @@ hvalue_t f_intersection(
 
     // If all are empty dictionaries, we're done.
     if (total == 0) {
+        free(vi);
         return VALUE_DICT;
     }
 
@@ -2477,6 +2482,7 @@ hvalue_t f_plus(struct state *state, struct context *ctx, hvalue_t *args, int n,
 
         // If all are empty lists, we're done.
         if (total == 0) {
+            free(vi);
             return VALUE_LIST;
         }
 
@@ -2826,6 +2832,7 @@ hvalue_t f_union(struct state *state, struct context *ctx, hvalue_t *args, int n
         int total = 0;
         for (int i = 0; i < n; i++) {
             if (VALUE_TYPE(args[i]) != VALUE_SET) {
+                free(vi);
                 return value_ctx_failure(ctx, engine, "'|' applied to mix of sets and other types");
             }
             if (args[i] == VALUE_SET) {
@@ -2840,6 +2847,7 @@ hvalue_t f_union(struct state *state, struct context *ctx, hvalue_t *args, int n
 
         // If all are empty lists, we're done.
         if (total == 0) {
+            free(vi);
             return VALUE_SET;
         }
 
@@ -2866,6 +2874,7 @@ hvalue_t f_union(struct state *state, struct context *ctx, hvalue_t *args, int n
     int total = 0;
     for (int i = 0; i < n; i++) {
         if (VALUE_TYPE(args[i]) != VALUE_DICT) {
+            free(vi);
             return value_ctx_failure(ctx, engine, "'|' applied to mix of dictionaries and other types");
         }
         if (args[i] == VALUE_DICT) {
@@ -2880,6 +2889,7 @@ hvalue_t f_union(struct state *state, struct context *ctx, hvalue_t *args, int n
 
     // If all are empty dictionaries, we're done.
     if (total == 0) {
+        free(vi);
         return VALUE_DICT;
     }
 
@@ -2931,6 +2941,7 @@ hvalue_t f_xor(struct state *state, struct context *ctx, hvalue_t *args, int n, 
     int total = 0;
     for (int i = 0; i < n; i++) {
         if (VALUE_TYPE(args[i]) != VALUE_SET) {
+            free(vi);
             return value_ctx_failure(ctx, engine, "'^' applied to mix of value types");
         }
         if (args[i] == VALUE_SET) {
@@ -2945,6 +2956,7 @@ hvalue_t f_xor(struct state *state, struct context *ctx, hvalue_t *args, int n, 
 
     // If all are empty lists, we're done.
     if (total == 0) {
+        free(vi);
         return VALUE_SET;
     }
 
