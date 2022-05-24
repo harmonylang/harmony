@@ -32,7 +32,6 @@ struct edge {
     struct node *src;        // source node
     struct node *dst;        // destination node
     hvalue_t after;          // resulting context
-    int weight;              // 1 if context switch; 0 otherwise
     struct access_info *ai;  // to detect data races
     hvalue_t *log;           // print history
     unsigned int nlog;       // size of print history
@@ -50,8 +49,6 @@ enum fail_type {
 
 struct node {
 	struct node *next;		// for linked list
-    mutex_t lock;
-    bool initialized;
 
     // Information about state
     struct state state;     // state corresponding to this node
@@ -100,7 +97,7 @@ struct access_info *graph_ai_alloc(int multiplicity, int atomic, int pc);
 void graph_check_for_data_race(
     struct node *node,
     struct minheap *warnings,
-    struct values_t *values
+    struct engine *engine
 );
 void graph_add(struct graph_t *graph, struct node *node);
 int graph_find_scc(struct graph_t *graph);

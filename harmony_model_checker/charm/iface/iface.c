@@ -128,7 +128,7 @@ uint64_t iface_evaluate(struct global_t *global, struct state *state, struct ste
         assert(step->ctx->pc != oldpc);
     }
 
-    return value_dict_load(step->ctx->vars, value_put_atom(&global->values, "result", 6));
+    return value_dict_load(step->ctx->vars, value_put_atom(&step->engine, "result", 6));
 }
 
 int iface_find_pc(struct code_t *code) {
@@ -158,8 +158,9 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
     // Create a context for evaluating iface
     struct step iface_step;
     memset(&iface_step, 0, sizeof(iface_step));
+    iface_step.engine.values = &global->values;
     iface_step.ctx = new_alloc(struct context);
-    iface_step.ctx->name = value_put_atom(&global->values, "__iface__", 8);
+    iface_step.ctx->name = value_put_atom(&iface_step.engine, "__iface__", 8);
     iface_step.ctx->arg = VALUE_DICT;
     iface_step.ctx->this = VALUE_DICT;
     iface_step.ctx->vars = VALUE_DICT;
@@ -171,7 +172,7 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
     struct iface_graph_t *iface_graph = iface_graph_init(global->graph.size / 2);
 
     // dict from (struct node *) to (struct iface_node_t *)
-    struct dict *node_to_iface_node = dict_new(global->graph.size / 2, NULL, NULL);
+    struct dict *node_to_iface_node = dict_new(global->graph.size / 2, 0, NULL, NULL);
 
     struct hashset_t visited = hashset_new(0);
 

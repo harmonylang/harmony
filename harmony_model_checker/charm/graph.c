@@ -105,7 +105,7 @@ struct access_info *graph_ai_alloc(int multiplicity, int atomic, int pc) {
 void graph_check_for_data_race(
     struct node *node,
     struct minheap *warnings,
-    struct values_t *values
+    struct engine *engine
 ) {
     // TODO.  We're checking both if x and y conflict and y and x conflict for any two x and y, which is redundant
     for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
@@ -117,7 +117,7 @@ void graph_check_for_data_race(
                     f->type = FAIL_RACE;
                     f->choice = node->choice;
                     f->node = node;
-                    f->address = value_put_address(values, ai->indices, ai->n * sizeof(hvalue_t));
+                    f->address = value_put_address(engine, ai->indices, ai->n * sizeof(hvalue_t));
                     minheap_insert(warnings, f);
                 }
                 else {
@@ -133,7 +133,7 @@ void graph_check_for_data_race(
                                     f->type = FAIL_RACE;
                                     f->choice = node->choice;
                                     f->node = node;
-                                    f->address = value_put_address(values, ai->indices, min * sizeof(hvalue_t));
+                                    f->address = value_put_address(engine, ai->indices, min * sizeof(hvalue_t));
                                     minheap_insert(warnings, f);
                                 }
                             }

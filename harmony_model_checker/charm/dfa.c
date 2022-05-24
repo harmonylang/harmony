@@ -39,7 +39,7 @@ static int int_parse(char *p, int len){
 }
 
 // read a DFA from a json file
-struct dfa *dfa_read(struct values_t *values, char *fname){
+struct dfa *dfa_read(struct engine *engine, char *fname){
     // open the HFA file
     FILE *fp = fopen(fname, "r");
     if (fp == NULL) {
@@ -130,7 +130,7 @@ struct dfa *dfa_read(struct values_t *values, char *fname){
 
         struct json_value *symbol = dict_lookup(edge->u.map, "symbol", 6);
         assert(symbol->type == JV_MAP);
-        dt->symbol = value_from_json(values, symbol->u.map);
+        dt->symbol = value_from_json(engine, symbol->u.map);
 
         dt->next = dfa->states[src_state].transitions;
         dfa->states[src_state].transitions = dt;

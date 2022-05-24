@@ -7,10 +7,11 @@
 #include "value.h"
 #include "global.h"
 
-void ops_init(struct global_t* global);
+void ops_init(struct engine *engine);
 struct op_info *ops_get(char *opname, int size);
 
 struct step {
+    struct engine engine;
     struct context *ctx;
     struct access_info *ai;
     hvalue_t *log;
@@ -20,7 +21,7 @@ struct step {
 
 struct op_info {
     const char *name;
-    void *(*init)(struct dict *, struct values_t *values);
+    void *(*init)(struct dict *, struct engine *engine);
     void (*op)(const void *env, struct state *state, struct step *step, struct global_t *global);
 };
 
