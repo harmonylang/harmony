@@ -123,7 +123,6 @@ void *dict_find(struct dict *dict, struct allocator *al,
 	struct keynode *k = db->stable;
 	while (k != NULL) {
 		if (k->len == keyn && memcmp(k+1, key, keyn) == 0) {
-			assert(k->value != NULL);
 			return k;
 		}
 		k = k->next;
@@ -136,7 +135,6 @@ void *dict_find(struct dict *dict, struct allocator *al,
         k = db->unstable;
         while (k != NULL) {
             if (k->len == keyn && memcmp(k+1, key, keyn) == 0) {
-				assert(k->value != NULL);
                 mutex_release(&dict->locks[index % dict->nlocks]);
                 return k;
             }
@@ -186,7 +184,6 @@ struct keynode *dict_find_lock(struct dict *dict, struct allocator *al,
 	struct keynode *k = db->stable;
 	while (k != NULL) {
 		if (k->len == keyn && memcmp(k+1, key, keyn) == 0) {
-			assert(k->value != NULL);
 			return k;
 		}
 		k = k->next;
@@ -197,7 +194,6 @@ struct keynode *dict_find_lock(struct dict *dict, struct allocator *al,
         k = db->unstable;
         while (k != NULL) {
             if (k->len == keyn && memcmp(k+1, key, keyn) == 0) {
-				assert(k->value != NULL);
                 return k;
             }
             k = k->next;
