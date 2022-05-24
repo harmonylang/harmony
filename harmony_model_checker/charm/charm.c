@@ -203,7 +203,6 @@ static void *node_alloc(void *ctx){
     struct node *node = ctx == NULL ? malloc(sizeof(struct node)) :
                     walloc(ctx, sizeof(struct node), false);
     memset(node, 0, sizeof(*node));
-    mutex_init(&node->lock);
     return node;
 }
 
@@ -481,11 +480,10 @@ static bool onestep(
     edge->nlog = step->nlog;
 
     // See if this state has been computed before
-    void **p = dict_insert_alloc(w->visited, &w->allocator,
-                sc, sizeof(struct state), node_alloc, w);
-    struct node *next = *p;
-    mutex_acquire(&next->lock);
-    if (next->initialized) {
+    struct keynode *k = dict_find_lock(w->visited, &w->allocator,
+                sc, sizeof(struct state));
+    struct node *next = k->value;
+    if (next != NULL) {
         int len = node->len + weight;
         int steps = node->steps + instrcnt;
         if (len < next->len || (len == next->len && steps < next->steps)) {
@@ -499,6 +497,7 @@ static bool onestep(
         }
     }
     else {
+        next = node_alloc(w);
         next->parent = node;
         next->state = *sc;
         next->before = ctx;
@@ -507,9 +506,9 @@ static bool onestep(
         next->after = after;
         next->len = node->len + weight;
         next->steps = node->steps + instrcnt;
-        next->initialized = true;
         *w->last = next;
         w->last = &next->next;
+        k->value = next;
     }
 
     if (failure) {
@@ -540,7 +539,7 @@ static bool onestep(
     edge->bwdnext = next->bwd;
     next->bwd = edge;
 
-    mutex_release(&next->lock);
+    dict_find_release(w->visited, k);
 
     // We stole the access info and log
     step->ai = NULL;

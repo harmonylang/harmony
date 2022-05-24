@@ -50,8 +50,6 @@ enum fail_type {
 
 struct node {
 	struct node *next;		// for linked list
-    mutex_t lock;
-    bool initialized;
 
     // Information about state
     struct state state;     // state corresponding to this node

@@ -49,7 +49,9 @@ struct dict *dict_new(unsigned int initial_size, unsigned int nworkers, void *(*
 void dict_delete(struct dict *dict);
 void *dict_lookup(struct dict *dict, const void *key, unsigned int keylen);
 void **dict_insert(struct dict *dict, struct allocator *al, const void *key, unsigned int keylen);
-void **dict_insert_alloc(struct dict *dict, struct allocator *al, const void *key, unsigned int keyn, void *(*alloc)(void *), void *ctx);
+struct keynode *dict_find_lock(struct dict *dict, struct allocator *al,
+                            const void *key, unsigned int keyn);
+void dict_find_release(struct dict *dict, struct keynode *k);
 void *dict_find(struct dict *dict, struct allocator *al, const void *key, unsigned int keylen);
 void *dict_retrieve(const void *p, unsigned int *psize);
 void dict_iter(struct dict *dict, enumFunc f, void *user);

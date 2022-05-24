@@ -27,9 +27,7 @@ static inline uint32_t meiyan(const char *key, int count) {
 }
 
 static inline struct keynode *keynode_new(struct dict *dict,
-        struct allocator *al,
-        char *key, unsigned int len, uint32_t hash,
-        void *(*alloc)(void *), void *ctx) {
+        struct allocator *al, char *key, unsigned int len, uint32_t hash){
 	struct keynode *node = al == NULL ?
             malloc(sizeof(struct keynode) + len) :
             (*al->alloc)(al->ctx, sizeof(struct keynode) + len, false);
@@ -37,7 +35,7 @@ static inline struct keynode *keynode_new(struct dict *dict,
 	memcpy(node + 1, key, len);
     node->hash = hash;
 	node->next = 0;
-	node->value = alloc == NULL ? NULL : (*alloc)(ctx);
+	node->value = NULL;
 	return node;
 }
 
@@ -51,7 +49,7 @@ struct dict *dict_new(unsigned int initial_size, unsigned int nworkers,
                 void *(*m)(size_t size), void (*f)(void *)) {
 	struct dict *dict = new_alloc(struct dict);
 	if (initial_size == 0) initial_size = 256;
-    else initial_size = 1024;
+    else initial_size = 1024;       // TODO
 	dict->length = initial_size;
 	dict->count = 0;
 	dict->table = calloc(sizeof(struct dict_bucket), initial_size);
@@ -114,8 +112,8 @@ static void dict_resize(struct dict *dict, unsigned int newsize) {
 }
 
 // Perhaps the most performance critical function in the entire code base
-static inline void *dict_find_alloc(struct dict *dict, struct allocator *al,
-        const void *key, unsigned int keyn, void *(*alloc)(void *), void *ctx) {
+void *dict_find(struct dict *dict, struct allocator *al,
+                            const void *key, unsigned int keyn){
     uint32_t hash = hash_func(key, keyn);
     unsigned int index = hash % dict->length;
     struct dict_bucket *db = &dict->table[index];
@@ -125,7 +123,7 @@ static inline void *dict_find_alloc(struct dict *dict, struct allocator *al,
 	struct keynode *k = db->stable;
 	while (k != NULL) {
 		if (k->len == keyn && memcmp(k+1, key, keyn) == 0) {
-			assert(alloc == NULL || k->value != NULL);
+			assert(k->value != NULL);
 			return k;
 		}
 		k = k->next;
@@ -138,7 +136,7 @@ static inline void *dict_find_alloc(struct dict *dict, struct allocator *al,
         k = db->unstable;
         while (k != NULL) {
             if (k->len == keyn && memcmp(k+1, key, keyn) == 0) {
-				assert(alloc == NULL || k->value != NULL);
+				assert(k->value != NULL);
                 mutex_release(&dict->locks[index % dict->nlocks]);
                 return k;
             }
@@ -151,21 +149,12 @@ static inline void *dict_find_alloc(struct dict *dict, struct allocator *al,
 		double f = (double)dict->count / (double)dict->length;
 		if (f > dict->growth_threshold) {
 			dict_resize(dict, dict->length * dict->growth_factor - 1);
-			return dict_find_alloc(dict, al, key, keyn, alloc, ctx);
+			return dict_find(dict, al, key, keyn);
 		}
 	}
 
-    k = keynode_new(dict, al, (char *) key, keyn, hash, alloc, ctx);
+    k = keynode_new(dict, al, (char *) key, keyn, hash);
     if (dict->concurrent) {
-#ifdef notdef
-        struct keynode *k2;
-        for (k2 = db->unstable; k2 != NULL; k2 = k2->next) {
-            if (k2->len == k->len && memcmp(k2+1, k+1, k->len) == 0) {
-                fprintf(stderr, "DUPLICATE\n");
-                exit(1);
-            }
-        }
-#endif
         k->next = db->unstable;
         db->unstable = k;
         mutex_release(&dict->locks[index % dict->nlocks]);
@@ -185,15 +174,59 @@ static inline void *dict_find_alloc(struct dict *dict, struct allocator *al,
 	return k;
 }
 
-void *dict_find(struct dict *dict, struct allocator *al,
-                        const void *key, unsigned int keyn) {
-	return dict_find_alloc(dict, al, key, keyn, NULL, NULL);
+// Similar to dict_find(), but gets a lock on the bucket
+struct keynode *dict_find_lock(struct dict *dict, struct allocator *al,
+                            const void *key, unsigned int keyn){
+    uint32_t hash = hash_func(key, keyn);
+    unsigned int index = hash % dict->length;
+    struct dict_bucket *db = &dict->table[index];
+
+    mutex_acquire(&dict->locks[index % dict->nlocks]);
+
+	struct keynode *k = db->stable;
+	while (k != NULL) {
+		if (k->len == keyn && memcmp(k+1, key, keyn) == 0) {
+			assert(k->value != NULL);
+			return k;
+		}
+		k = k->next;
+	}
+
+    if (dict->concurrent) {
+        // See if the item is in the unstable list
+        k = db->unstable;
+        while (k != NULL) {
+            if (k->len == keyn && memcmp(k+1, key, keyn) == 0) {
+				assert(k->value != NULL);
+                return k;
+            }
+            k = k->next;
+        }
+    }
+
+    k = keynode_new(dict, al, (char *) key, keyn, hash);
+    if (dict->concurrent) {
+        k->next = db->unstable;
+        db->unstable = k;
+
+        // Keep track of this unstable node in the list for the
+        // worker who's going to look at this bucket
+        k->bucket = db;
+        int worker = (hash % dict->length) * dict->nworkers / dict->length;
+        k->unstable_next = dict->workers[al->worker].unstable[worker];
+        dict->workers[al->worker].unstable[worker] = k;
+    }
+    else {
+        k->next = db->stable;
+        db->stable = k;
+		dict->count++;
+    }
+	return k;
 }
 
-void **dict_insert_alloc(struct dict *dict, struct allocator *al,
-        const void *key, unsigned int keyn, void *(*alloc)(void *), void *ctx){
-    struct keynode *k = dict_find_alloc(dict, al, key, keyn, alloc, ctx);
-    return &k->value;
+void dict_find_release(struct dict *dict, struct keynode *k){
+    unsigned int index = k->hash % dict->length;
+    mutex_release(&dict->locks[index % dict->nlocks]);
 }
 
 void **dict_insert(struct dict *dict, struct allocator *al,
