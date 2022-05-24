@@ -30,9 +30,13 @@
 
 #define WALLOC_CHUNK    (1024 * 1024)
 
+// For -d option
 unsigned int run_count;  // counter of #threads
 mutex_t run_mutex;       // to protect count
 mutex_t run_waiting;     // for main thread to wait on
+
+mutex_t todo_lock;
+struct node *todo_list;
 
 // One of these per worker thread
 struct worker {
@@ -44,21 +48,23 @@ struct worker {
 
     unsigned int index;          // index of worker
     unsigned int nworkers;       // total number of workers
-    struct node *todo;           // set of states to evaluate
     int timecnt;                 // to reduce gettime() overhead
     struct step inv_step;        // for evaluating invariants
 
     // for dict_make_stable and dict_set_sequential
     unsigned int nstable;
-    struct value_stable vs;
+    struct value_stable vs;     // TODO: dict stable counters
 
     struct node *results;       // list of resulting states
+    struct node **last;         // to keep track of end
     struct failure *failures;   // list of failures
 
     char *alloc_buf;            // allocated buffer
     char *alloc_ptr;            // pointer into allocated buffer
 
-    struct allocator allocator;
+    struct allocator allocator; // mostly for hashdict
+
+    double times[5];            // for profiling
 
     // These need to be next to one another
     struct context ctx;
@@ -502,8 +508,8 @@ static bool onestep(
         next->len = node->len + weight;
         next->steps = node->steps + instrcnt;
         next->initialized = true;
-        next->next = w->results;
-        w->results = next;
+        *w->last = next;
+        w->last = &next->next;
     }
 
     if (failure) {
@@ -1491,8 +1497,17 @@ static int fail_cmp(void *f1, void *f2){
 
 static void do_work(struct worker *w){
 	struct node *node;
-	while ((node = w->todo) != NULL) {
-		w->todo = node->next;
+
+    for (;;) {
+        mutex_acquire(&todo_lock);
+        node = todo_list;
+        if (node == NULL) {
+            mutex_release(&todo_lock);
+            break;
+        }
+        todo_list = node->next;
+        mutex_release(&todo_lock);
+
 		struct state *state = &node->state;
 		w->global->dequeued++; // TODO race condition
 
@@ -1540,57 +1555,60 @@ static void do_work(struct worker *w){
 
 static void worker(void *arg){
     struct worker *w = arg;
+    double before, after = gettime();
 
+    barrier_wait(w->start_barrier);
     for (int epoch = 0;; epoch++) {
-        // start of sequential phase
-        barrier_wait(w->start_barrier);
         // parallel phase starts now
 		// printf("WORKER %d starting epoch %d\n", w->index, epoch);
+        before = after;
 		do_work(w);
+        after = gettime();
+        w->times[0] += after - before;
         // wait for others to finish
 		// printf("WORKER %d finished epoch %d %f %f\n", w->index, epoch, work_time, wait_time);
+        before = after;
         barrier_wait(w->middle_barrier);
+        after = gettime();
+        w->times[1] += after - before;
 		// printf("WORKER %d make stable %d %f %f\n", w->index, epoch, work_time, wait_time);
+        before = after;
         value_make_stable(&w->global->values, w->index, &w->vs);
         w->nstable = dict_make_stable(w->visited, w->index);
+        after = gettime();
+        w->times[2] += after - before;
+        before = after;
         barrier_wait(w->end_barrier);
         // start of sequential phase
+        after = gettime();
+        w->times[3] += after - before;
+        before = after;
+        barrier_wait(w->start_barrier);
+        after = gettime();
+        w->times[4] += after - before;
     }
 }
 
-int process_results(
-    struct global_t *global,
-    struct worker *w,
-    struct worker *workers,
-    int nworkers,
-    int count
-) {
+void process_results(struct global_t *global, struct worker *w){
 	struct node *node;
-    int next = count % nworkers;
     struct node *results = w->results;
 
     while ((node = results) != NULL) {
 		results = node->next;
         graph_add(&global->graph, node);   // sets node->id
         assert(node->id != 0);
-        struct node **todo = &workers[next].todo;
-        node->next = *todo;
-        *todo = node;
-        count++;
-        if (++next == nworkers) {
-            next = 0;
-        }
         global->enqueued++;
     }
+    *w->last = todo_list;
+    todo_list = w->results;
     w->results = NULL;
+    w->last = &w->results;
 
     struct failure *f;
     while ((f = w->failures) != NULL) {
         w->failures = f->next;
         minheap_insert(global->failures, f);
     }
-
-    return count;
 }
 
 char *state_string(struct state *state){
@@ -1814,6 +1832,8 @@ int main(int argc, char **argv){
     char *fname = argv[i];
     double timeout = gettime() + maxtime;
 
+    mutex_init(&todo_lock);
+
     // Determine how many worker threads to use
     unsigned int nworkers = getNumCores();
 	printf("nworkers = %d\n", nworkers);
@@ -1942,6 +1962,7 @@ int main(int argc, char **argv){
         w->index = i;
         w->nworkers = nworkers;
         w->visited = visited;
+        w->last = &w->results;
 
         // Create a context for evaluating invariants
         w->inv_step.ctx = calloc(1, sizeof(struct context) +
@@ -1968,8 +1989,7 @@ int main(int argc, char **argv){
         thread_create(worker, &workers[i]);
     }
 
-    // Give the initial state to worker 0
-	workers[0].todo = node;
+    todo_list = node;
     global->enqueued++;
 
     double before = gettime(), postproc = 0;
@@ -1999,22 +2019,28 @@ int main(int argc, char **argv){
         dict_set_sequential(visited, nstable);
         value_set_sequential(&global->values, &vs);
 
-        int count = 0;
-
         // Collect the results of all the workers
         for (unsigned int i = 0; i < nworkers; i++) {
-            struct worker *w = &workers[i];
-			count = process_results(global, w, workers, nworkers, count);
+			process_results(global, &workers[i]);
         }
 
         postproc += gettime() - before_postproc;
 
-        if (count == 0) {
+        if (todo_list == NULL) {
             break;
         }
     }
 
     printf("#states %d (time %.3lf+%.3lf=%.3lf)\n", global->graph.size, gettime() - before - postproc, postproc, gettime() - before);
+ 
+    for (unsigned int i = 0; i < nworkers; i++) {
+        struct worker *w = &workers[i];
+        printf("W%d:", i);
+        for (unsigned int j = 0; j < 5; j++) {
+            printf(" %0.3f", w->times[j]);
+        }
+        printf("\n");
+    }
 
     printf("Phase 3: analysis\n");
     if (minheap_empty(global->failures)) {
