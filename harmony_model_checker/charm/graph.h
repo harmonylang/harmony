@@ -32,7 +32,6 @@ struct edge {
     struct node *src;        // source node
     struct node *dst;        // destination node
     hvalue_t after;          // resulting context
-    int weight;              // 1 if context switch; 0 otherwise
     struct access_info *ai;  // to detect data races
     hvalue_t *log;           // print history
     unsigned int nlog;       // size of print history

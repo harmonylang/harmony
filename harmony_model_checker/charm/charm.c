@@ -64,8 +64,6 @@ struct worker {
 
     struct allocator allocator; // mostly for hashdict
 
-    double times[5];            // for profiling
-
     // These need to be next to one another
     struct context ctx;
     hvalue_t stack[MAX_CONTEXT_STACK];
@@ -473,7 +471,6 @@ static bool onestep(
     edge->ctx = ctx;
     edge->choice = choice_copy;
     edge->interrupt = interrupt;
-    edge->weight = weight;
     edge->after = after;
     edge->ai = step->ai;
     edge->log = step->log;
@@ -1554,37 +1551,21 @@ static void do_work(struct worker *w){
 
 static void worker(void *arg){
     struct worker *w = arg;
-    double before, after = gettime();
 
     barrier_wait(w->start_barrier);
     for (int epoch = 0;; epoch++) {
         // parallel phase starts now
 		// printf("WORKER %d starting epoch %d\n", w->index, epoch);
-        before = after;
 		do_work(w);
-        after = gettime();
-        w->times[0] += after - before;
         // wait for others to finish
 		// printf("WORKER %d finished epoch %d %f %f\n", w->index, epoch, work_time, wait_time);
-        before = after;
         barrier_wait(w->middle_barrier);
-        after = gettime();
-        w->times[1] += after - before;
 		// printf("WORKER %d make stable %d %f %f\n", w->index, epoch, work_time, wait_time);
-        before = after;
         value_make_stable(&w->global->values, w->index, &w->vs);
         w->nstable = dict_make_stable(w->visited, w->index);
-        after = gettime();
-        w->times[2] += after - before;
-        before = after;
         barrier_wait(w->end_barrier);
         // start of sequential phase
-        after = gettime();
-        w->times[3] += after - before;
-        before = after;
         barrier_wait(w->start_barrier);
-        after = gettime();
-        w->times[4] += after - before;
     }
 }
 
@@ -2032,15 +2013,6 @@ int main(int argc, char **argv){
 
     printf("#states %d (time %.3lf+%.3lf=%.3lf)\n", global->graph.size, gettime() - before - postproc, postproc, gettime() - before);
  
-    for (unsigned int i = 0; i < nworkers; i++) {
-        struct worker *w = &workers[i];
-        printf("W%d:", i);
-        for (unsigned int j = 0; j < 5; j++) {
-            printf(" %0.3f", w->times[j]);
-        }
-        printf("\n");
-    }
-
     printf("Phase 3: analysis\n");
     if (minheap_empty(global->failures)) {
         // Link the forward edges
