@@ -1868,8 +1868,10 @@ int main(int argc, char **argv){
     fclose(fp);
 
     // parse the contents
+	char *buf_orig = buf.base;
     struct json_value *jv = json_parse_value(&buf);
     assert(jv->type == JV_MAP);
+	free(buf_orig);
 
     // travel through the json code contents to create the code array
     struct json_value *jc = dict_lookup(jv->u.map, "code", 4);
@@ -2013,6 +2015,8 @@ int main(int argc, char **argv){
 
     printf("#states %d (time %.3lf+%.3lf=%.3lf)\n", global->graph.size, gettime() - before - postproc, postproc, gettime() - before);
  
+if (1) exit(0);
+
     printf("Phase 3: analysis\n");
     if (minheap_empty(global->failures)) {
         // Link the forward edges
