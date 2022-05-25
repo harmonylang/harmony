@@ -294,6 +294,16 @@ class HarmonyVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by HarmonyParser#hyper_condition.
+    def visitHyper_condition(self, ctx:HarmonyParser.Hyper_conditionContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by HarmonyParser#hyperassert_stmt.
+    def visitHyperassert_stmt(self, ctx:HarmonyParser.Hyperassert_stmtContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by HarmonyParser#block_stmts.
     def visitBlock_stmts(self, ctx:HarmonyParser.Block_stmtsContext):
         return self.visitChildren(ctx)

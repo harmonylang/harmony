@@ -5,6 +5,8 @@
 #include "value.h"
 #include "minheap.h"
 #include "thread.h"
+#include "hashset.h"
+#include "vector.h"
 
 struct component {
     bool good;              // terminating or out-going edge
@@ -35,6 +37,8 @@ struct edge {
     struct access_info *ai;  // to detect data races
     hvalue_t *log;           // print history
     unsigned int nlog;       // size of print history
+    int probability_numerator;  // Probability to node as rational number
+    int probability_denominator;
 };
 
 enum fail_type {
@@ -63,6 +67,7 @@ struct node {
     hvalue_t before;        // context before state change
     hvalue_t after;         // context after state change (current context)
     hvalue_t choice;        // choice made if any
+    int choice_size;        // Helper to get size of choice
     bool interrupt;         // set if gotten here by interrupt
     bool final;             // only eternal threads left
 
@@ -72,6 +77,10 @@ struct node {
 
     // NFA compression
     bool reachable;
+
+    // Whether this is a state that we are interested in (for probabiliy
+    // checking)
+    struct int_vector filter_states;
 };
 
 struct failure {

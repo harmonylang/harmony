@@ -24,9 +24,12 @@
 #include "strbuf.h"
 #include "iface/iface.h"
 #include "hashdict.h"
+#include "hashset.h"
 #include "dfa.h"
 #include "thread.h"
 #include "spawn.h"
+#include "filter.h"
+#include "vector.h"
 
 #define WALLOC_CHUNK    (1024 * 1024)
 
@@ -67,6 +70,8 @@ struct worker {
     // These need to be next to one another
     struct context ctx;
     hvalue_t stack[MAX_CONTEXT_STACK];
+
+    struct filter_t filters;     // filters states for probability checking
 };
 
 // Per thread one-time memory allocator (no free)
@@ -213,7 +218,8 @@ static bool onestep(
     hvalue_t choice,        // if about to make a choice, which choice?
     bool interrupt,         // start with invoking interrupt handler
     bool infloop_detect,    // try to detect infloop from the start
-    int multiplicity        // #contexts that are in the current state
+    int multiplicity,       // #contexts that are in the current state
+    struct filter_t filter
 ) {
     assert(!step->ctx->terminated);
     assert(step->ctx->failure == 0);
@@ -237,10 +243,18 @@ static bool onestep(
     int as_instrcnt = 0;
     bool rollback = false, failure = false, stopped = false;
     bool terminated = false;
+    int choice_size = 1;                // Number of choices to make. It is 1
+    struct int_vector filterstates = int_vector_init(5);
     for (;;) {
         int pc = step->ctx->pc;
 
-        // If I'm pthread 0 and it's time, print some stats
+        for (int i = 0; i < filter.len; ++i) {
+            if (filter.conditions[i].pc == pc) {
+                int_vector_push(&filterstates, i);
+            }
+        }
+
+        // If I'm phread 0 and it's time, print some stats
         if (w->index == 0 && w->timecnt-- == 0) {
             double now = gettime();
             if (now - global->lasttime > 1) {
@@ -376,6 +390,7 @@ static bool onestep(
             }
             else {
                 choosing = true;
+                choice_size = size;
                 break;
             }
         }
@@ -490,7 +505,9 @@ static bool onestep(
             next->before = ctx;
             next->after = after;
             next->choice = choice_copy;
+            next->choice_size = choice_size;
             next->interrupt = interrupt;
+            next->filter_states = filterstates;
         }
     }
     else {
@@ -503,6 +520,8 @@ static bool onestep(
         next->after = after;
         next->len = node->len + weight;
         next->steps = node->steps + instrcnt;
+        next->choice_size = choice_size;
+        next->filter_states = filterstates;
         *w->last = next;
         w->last = &next->next;
         k->value = next;
@@ -536,6 +555,12 @@ static bool onestep(
     edge->bwdnext = next->bwd;
     next->bwd = edge;
 
+    // Fill in probabilities of edges
+    // Assume uniform distribution for now
+    edge->probability_numerator = 1;
+    // TODO: Is this right?
+    edge->probability_denominator = node->choice_size;
+
     dict_find_release(w->visited, k);
 
     // We stole the access info and log
@@ -551,7 +576,8 @@ static void make_step(
     struct node *node,
     hvalue_t ctx,
     hvalue_t choice,       // if about to make a choice, which choice?
-    int multiplicity       // #contexts that are in the current state
+    int multiplicity,       // #contexts that are in the current state
+    struct filter_t filter
 ) {
     struct step step;
     memset(&step, 0, sizeof(step));
@@ -569,9 +595,9 @@ static void make_step(
 
     // See if we need to interrupt
     if (sc.choosing == 0 && cc->trap_pc != 0 && !cc->interruptlevel) {
-        bool succ = onestep(w, node, &sc, ctx, &step, choice, true, false, multiplicity);
+        bool succ = onestep(w, node, &sc, ctx, &step, choice, true, false, multiplicity, filter);
         if (!succ) {        // ran into an infinite loop
-            (void) onestep(w, node, &sc, ctx, &step, choice, true, true, multiplicity);
+            (void) onestep(w, node, &sc, ctx, &step, choice, true, true, multiplicity, filter);
         }
 
         sc = node->state;
@@ -579,9 +605,9 @@ static void make_step(
     }
 
     sc.choosing = 0;
-    bool succ = onestep(w, node, &sc, ctx, &step, choice, false, false, multiplicity);
+    bool succ = onestep(w, node, &sc, ctx, &step, choice, false, false, multiplicity, filter);
     if (!succ) {        // ran into an infinite loop
-        (void) onestep(w, node, &sc, ctx, &step, choice, false, true, multiplicity);
+        (void) onestep(w, node, &sc, ctx, &step, choice, false, true, multiplicity, filter);
     }
 }
 
@@ -1525,7 +1551,8 @@ static void do_work(struct worker *w){
 					node,
 					state->choosing,
 					vals[i],
-					1
+					1,
+                    w->filters
 				);
 			}
 		}
@@ -1542,7 +1569,8 @@ static void do_work(struct worker *w){
 					node,
 					ctxs[i],
 					0,
-					VALUE_FROM_INT(ctxs[i+1])
+					VALUE_FROM_INT(ctxs[i+1]),
+                    w->filters
 				);
 			}
 		}
@@ -1776,6 +1804,7 @@ static void usage(char *prog){
 
 int main(int argc, char **argv){
     bool cflag = false;
+    bool probabilistic = false;
     int i, maxtime = 300000000 /* about 10 years */;
     char *outfile = NULL, *dfafile = NULL;
     for (i = 1; i < argc; i++) {
@@ -1802,6 +1831,9 @@ int main(int argc, char **argv){
         case 'x':
             printf("Charm model checker working\n");
             return 0;
+        case 'p':
+            probabilistic = true;
+            break;
         default:
             usage(argv[0]);
         }
@@ -1876,6 +1908,11 @@ int main(int argc, char **argv){
     assert(jc->type == JV_LIST);
     global->code = code_init_parse(&engine, jc);
 
+    struct json_value *filt = dict_lookup(jv->u.map, "filter", 6);
+
+    // Create filters
+    struct filter_t filters = create_filter(filt);
+
     // Create an initial state
     struct context *init_ctx = calloc(1, sizeof(struct context) + MAX_CONTEXT_STACK * sizeof(hvalue_t));
     init_ctx->name = global->init_name;
@@ -1925,6 +1962,7 @@ int main(int argc, char **argv){
     struct node *node = node_alloc(NULL);
     node->state = *state;
     node->after = ictx;
+    node->choice_size = 1;
     graph_add(&global->graph, node);
     void **p = dict_insert(visited, NULL, state, sizeof(*state));
     assert(*p == NULL);
@@ -1943,6 +1981,7 @@ int main(int argc, char **argv){
         w->nworkers = nworkers;
         w->visited = visited;
         w->last = &w->results;
+        w->filters = filters;
 
         // Create a context for evaluating invariants
         w->inv_step.ctx = calloc(1, sizeof(struct context) +
@@ -2216,6 +2255,68 @@ int main(int argc, char **argv){
     if (no_issues) {
         fprintf(out, "  \"issue\": \"No issues\",\n");
 
+        if (probabilistic) {
+            {
+                fprintf(out, "  \"probabilities\": [\n");
+                bool first = true;
+                for (int i = 0; i < global->graph.size; i++) {
+                    struct node *node = global->graph.nodes[i];
+                    assert(node->id == i);
+
+                    for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
+                        if (first) {
+                            first = false;
+                        } else {
+                            fprintf(out, ",\n");
+                        }
+
+                        fprintf(
+                            out, 
+                            "    {\"from\": %d, \"to\": %d, \"probability\": {\"numerator\": %d, \"denominator\": %d}}",
+                            i,
+                            edge->dst->id,
+                            edge->probability_numerator,
+                            edge->probability_denominator
+                        );
+                    }
+                }
+
+                fprintf(out, "\n");
+                fprintf(out, "  ],\n");
+            }
+            fprintf(out, "  \"total_states\": %d,\n", global->graph.size);
+
+            {
+                fprintf(out, "  \"filter_states\": [\n");
+                bool first = true;
+                for (int i = 0; i < global->graph.size; i++) {
+                    struct node *node = global->graph.nodes[i];
+                    assert(node->id == i);
+
+                    for (int j = 0; j < node->filter_states.len; j++) {
+                        if (first) {
+                            first = false;
+                        } else {
+                            fprintf(out, ",\n");
+                        }
+
+                        fprintf(
+                            out, 
+                            "    {\"query\": %d, \"state\": %d}",
+                            int_vector_get(&node->filter_states, j),
+                            i
+                        );
+                    }
+
+                    int_vector_free(&node->filter_states);
+                }
+                fprintf(out, "\n");
+                fprintf(out, "  ],\n");
+            }
+        }
+
+
+        // We delay destutter since we need the full graph for probabilities
         destutter1(&global->graph);
 
         // Output the symbols;
@@ -2225,6 +2326,7 @@ int main(int argc, char **argv){
         dict_iter(symbols, print_symbol, &se);
         fprintf(out, "\n");
         fprintf(out, "  },\n");
+
 
         fprintf(out, "  \"nodes\": [\n");
         bool first = true;

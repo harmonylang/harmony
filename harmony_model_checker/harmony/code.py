@@ -16,6 +16,7 @@ class Code:
         self.endlabels = set()
         self.curFile = None
         self.curLine = 0
+        self.hypers = []
 
     def location(self, file, line):
         self.curFile = file
@@ -89,6 +90,7 @@ class Code:
                 lop.live_out = live_out
         # Create new code with DelVars inserted
         newcode = Code()
+        newcode.hypers = self.hypers
         for lop in self.labeled_ops:
             # print(lop.op, lop.live_in, lop.live_out)
             file, line = lop.file, lop.line
@@ -126,4 +128,6 @@ class Code:
                 map[label] = PcValue(pc)
         for lop in self.labeled_ops:
             lop.op.substitute(map)
-
+        for h in self.hypers:
+            if "pc" in h[1]:
+                h[1]["pc"] = h[1]["pc"].substitute(map).pc

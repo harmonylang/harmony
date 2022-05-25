@@ -1,6 +1,8 @@
 import json
+import numpy
 
 from harmony_model_checker.harmony.behavior import behavior_parse
+from harmony_model_checker.harmony.probabilities import find_probabilities
 
 
 def brief_kv(js):
@@ -129,7 +131,7 @@ class Brief:
                 self.failure = self.lastmis["failure"]
             self.interrupted = "interrupt" in self.lastmis and self.lastmis["interrupt"] == "True"
 
-    def run(self, outputfiles, behavior):
+    def run(self, outputfiles, behavior, code, scope):
         with open(outputfiles["hco"], encoding='utf-8') as f:
             print("Phase 5: loading", outputfiles["hco"])
             top = json.load(f)

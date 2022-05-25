@@ -15,6 +15,7 @@ from harmony_model_checker.exception import HarmonyCompilerError, HarmonyCompile
 import harmony_model_checker.harmony.harmony as legacy_harmony
 from harmony_model_checker.harmony.genhtml import GenHTML
 from harmony_model_checker.harmony.brief import Brief
+from harmony_model_checker.harmony.probabilities import find_probabilities
 from harmony_model_checker.compile import do_compile
 
 
@@ -40,7 +41,7 @@ args.add_argument("-s", action="store_true",
 args.add_argument("-v", "--version", action="store_true",
                   help="print version number")
 args.add_argument("-o", action='append', type=pathlib.Path,
-                  help="specify output file (.hvm, .hco, .hfa, .htm. .tla, .png, .gv)")
+                  help="specify output file (.hvm, .hco, .hfa, .htm. .tla, .png, .gv, .hpo)")
 args.add_argument("-j", action="store_true",
                   help="list machine code in JSON format")
 args.add_argument("--noweb", action="store_true", default=False,
@@ -51,6 +52,8 @@ args.add_argument("--config", action="store_true",
                   help="get or set configuration value. "
                        "Use --config <key> to get the value of a setting. "
                        "Use --config <key> <value> to set the value of a setting")
+args.add_argument("--probabilistic", action="store_true",
+                  help="use probabilistic model checking")
 
 # Internal flags
 args.add_argument("--cf", action="append", type=str, help=argparse.SUPPRESS)
@@ -96,6 +99,8 @@ def handle_hvm(ns, output_files, parse_code_only, code, scope):
     charm_options = ns.cf or []
     if ns.B:
         charm_options.append("-B" + ns.B)
+    if ns.probabilistic:
+        charm_options.append("-p")
 
     # see if there is a configuration file
     if code is not None:
@@ -125,26 +130,37 @@ def handle_hvm(ns, output_files, parse_code_only, code, scope):
             print("charm model checker failed")
             exit(r)
 
-def handle_hco(ns, output_files):
+def handle_hco(ns, output_files, code=None, scope=None):
     suppress_output = ns.suppress
 
     behavior = None
+    # TODO: These probably should be refactored somewhere else
+    probability_states = None
     if ns.B:
         behavior = ns.B
+    if ns.probabilistic:
+        probability_states = ns.probabilistic
 
     disable_browser = settings.values.disable_web or ns.noweb
     
     b = Brief()
-    b.run(output_files, behavior)
+    b.run(output_files, behavior, code, scope)
     gh = GenHTML()
     gh.run(output_files)
+
+    with open(output_files["hco"], encoding='utf-8') as f:
+        top = json.load(f)
+        if top["issue"] == "No issues":
+            find_probabilities(top, output_files, code, scope)
+
     if not suppress_output:
         p = pathlib.Path(output_files["htm"]).resolve()
         url = "file://" + str(p)
         print("open " + url + " for more information", file=sys.stderr)
         if not disable_browser:
             webbrowser.open(url)
-    
+
+
 def handle_version(_: argparse.Namespace):
     print("Version:", harmony_model_checker.__package__,
           harmony_model_checker.__version__)
@@ -198,7 +214,8 @@ def main():
         "hvm": None,
         "png": None,
         "tla": None,
-        "gv":  None
+        "gv":  None,
+        "hpo": None,
     }
     for p in (ns.o or []):
         # The suffix includes the dot if it exists.
@@ -233,6 +250,8 @@ def main():
         output_files["htm"] = stem + ".htm"
     if output_files["png"] is not None and output_files["gv"] is None:
         output_files["gv"] = stem + ".gv"
+    if output_files["hpo"] is None and ns.probabilistic:
+        output_files["hpo"] = stem + ".hpo"
 
     charm_flag = True
     print_code: Optional[str] = None
@@ -251,7 +270,7 @@ def main():
         code, scope = handle_hny(ns, output_files, parse_code_only, str(filename))
         if charm_flag:
             handle_hvm(ns, output_files, parse_code_only, code, scope)
-            handle_hco(ns, output_files)
+            handle_hco(ns, output_files, code, scope)
         else:
             print("Skipping Phases 2-5...")
             legacy_harmony.dumpCode(print_code, code, scope)

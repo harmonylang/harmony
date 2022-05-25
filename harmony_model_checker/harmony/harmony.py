@@ -1175,6 +1175,10 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
     lastloc = None
     if printCode == "json":
         print("{", file=f)
+        print("  \"filter\": [", file=f)
+        for d in code.hypers:
+            print(f"    {json.dumps(d[1])},", file=f)
+        print("  ],", file=f)
         print('  "labels": {', file=f)
         if True:
             for (k, v) in scope.labels.items():
