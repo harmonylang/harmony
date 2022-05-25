@@ -204,6 +204,16 @@ static void *node_alloc(void *ctx){
     return node;
 }
 
+// For tracking data races
+static struct access_info *ai_alloc(struct worker *w, int multiplicity,
+                        int atomic, int pc) {
+    struct access_info *ai = walloc(w, sizeof(*ai), true);
+    ai->multiplicity = multiplicity;
+    ai->atomic = atomic;
+    ai->pc = pc;
+    return ai;
+}
+
 static bool onestep(
     struct worker *w,       // thread info
     struct node *node,      // starting node
@@ -288,7 +298,7 @@ static bool onestep(
         else {
             // Keep track of access for data race detection
             if (instrs[pc].load || instrs[pc].store || instrs[pc].del) {
-                struct access_info *ai = graph_ai_alloc(multiplicity, step->ctx->atomic, pc);
+                struct access_info *ai = ai_alloc(w, multiplicity, step->ctx->atomic, pc);
                 ai->next = step->ai;
                 step->ai = ai;
             }
@@ -2015,8 +2025,6 @@ int main(int argc, char **argv){
 
     printf("#states %d (time %.3lf+%.3lf=%.3lf)\n", global->graph.size, gettime() - before - postproc, postproc, gettime() - before);
  
-if (1) exit(0);
-
     printf("Phase 3: analysis\n");
     if (minheap_empty(global->failures)) {
         // Link the forward edges
