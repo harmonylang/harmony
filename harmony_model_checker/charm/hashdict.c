@@ -125,7 +125,9 @@ void *dict_find(struct dict *dict, struct allocator *al,
     struct dict_bucket *db = &dict->table[index];
 
 #ifndef ORIG
-    mutex_acquire(&dict->locks[index % dict->nlocks]);
+	if (dict->concurrent) {
+		mutex_acquire(&dict->locks[index % dict->nlocks]);
+	}
 #endif
 
     // First see if the item is in the stable list, which does not require
@@ -134,7 +136,9 @@ void *dict_find(struct dict *dict, struct allocator *al,
 	while (k != NULL) {
 		if (k->len == keyn && memcmp(k+1, key, keyn) == 0) {
 #ifndef ORIG
-            mutex_release(&dict->locks[index % dict->nlocks]);
+			if (dict->concurrent) {
+				mutex_release(&dict->locks[index % dict->nlocks]);
+			}
 #endif
 			return k;
 		}
@@ -162,7 +166,9 @@ void *dict_find(struct dict *dict, struct allocator *al,
 		double f = (double)dict->count / (double)dict->length;
 		if (f > dict->growth_threshold) {
 #ifndef ORIG
-            mutex_release(&dict->locks[index % dict->nlocks]);
+			if (dict->concurrent) {
+				mutex_release(&dict->locks[index % dict->nlocks]);
+			}
 #endif
 			dict_resize(dict, dict->length * dict->growth_factor - 1);
 			return dict_find(dict, al, key, keyn);
@@ -191,8 +197,8 @@ void *dict_find(struct dict *dict, struct allocator *al,
 		dict->count++;
     }
 #else
-        mutex_release(&dict->locks[index % dict->nlocks]);
         if (dict->concurrent) {
+			mutex_release(&dict->locks[index % dict->nlocks]);
             dict->workers[al->worker].count++;
         }
         else {
@@ -209,7 +215,9 @@ struct keynode *dict_find_lock(struct dict *dict, struct allocator *al,
     unsigned int index = hash % dict->length;
     struct dict_bucket *db = &dict->table[index];
 
-    mutex_acquire(&dict->locks[index % dict->nlocks]);
+	if (dict->concurrent) {
+		mutex_acquire(&dict->locks[index % dict->nlocks]);
+	}
 
 	struct keynode *k = db->stable;
 	while (k != NULL) {
@@ -289,7 +297,9 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keyn) {
 	// __builtin_prefetch(db);
 
 #ifndef ORIG
-    mutex_acquire(&dict->locks[index % dict->nlocks]);
+	if (dict->concurrent) {
+		mutex_acquire(&dict->locks[index % dict->nlocks]);
+	}
 #endif
 
     // First look in the stable list, which does not require a lock
@@ -297,16 +307,18 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keyn) {
 	while (k != NULL) {
 		if (k->len == keyn && !memcmp(k+1, key, keyn)) {
 #ifndef ORIG
-            mutex_release(&dict->locks[index % dict->nlocks]);
+			if (dict->concurrent) {
+				mutex_release(&dict->locks[index % dict->nlocks]);
+			}
 #endif
 			return k->value;
 		}
 		k = k->next;
 	}
 
-#ifdef ORIG
     // Look in the unstable list
     if (dict->concurrent) {
+#ifdef ORIG
         mutex_acquire(&dict->locks[index % dict->nlocks]);
         k = db->unstable;
         while (k != NULL) {
@@ -316,11 +328,9 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keyn) {
             }
             k = k->next;
         }
+#endif
         mutex_release(&dict->locks[index % dict->nlocks]);
     }
-#else
-    mutex_release(&dict->locks[index % dict->nlocks]);
-#endif
 
 	return NULL;
 }
