@@ -63,9 +63,11 @@ struct dict *dict_new(unsigned int initial_size, unsigned int nworkers,
 	dict->concurrent = 0;
     dict->workers = calloc(sizeof(struct dict_worker), nworkers);
     dict->nworkers = nworkers;
+#ifdef ORIG
     for (unsigned int i = 0; i < nworkers; i++) {
         dict->workers[i].unstable = calloc(sizeof(struct keynode *), nworkers);
     }
+#endif
     dict->malloc = m == NULL ? malloc : m;
     dict->free = f == NULL ? free : f;
 	return dict;
@@ -75,8 +77,10 @@ void dict_delete(struct dict *dict) {
 	for (unsigned int i = 0; i < dict->length; i++) {
 		if (dict->table[i].stable != NULL)
 			keynode_delete(dict, dict->table[i].stable);
+#ifdef ORIG
 		if (dict->table[i].unstable != NULL)
 			keynode_delete(dict, dict->table[i].unstable);
+#endif
 	}
 	for (unsigned int i = 0; i < dict->nlocks; i++) {
 		mutex_destroy(&dict->locks[i]);
@@ -99,7 +103,9 @@ static void dict_resize(struct dict *dict, unsigned int newsize) {
 	dict->length = newsize;
 	for (unsigned int i = 0; i < o; i++) {
 		struct dict_bucket *b = &old[i];
+#ifdef ORIG
         assert(b->unstable == NULL);
+#endif
         struct keynode *k = b->stable;
 		b->stable = NULL;
 		while (k != NULL) {
@@ -118,16 +124,24 @@ void *dict_find(struct dict *dict, struct allocator *al,
     unsigned int index = hash % dict->length;
     struct dict_bucket *db = &dict->table[index];
 
+#ifndef ORIG
+    mutex_acquire(&dict->locks[index % dict->nlocks]);
+#endif
+
     // First see if the item is in the stable list, which does not require
     // a lock
 	struct keynode *k = db->stable;
 	while (k != NULL) {
 		if (k->len == keyn && memcmp(k+1, key, keyn) == 0) {
+#ifndef ORIG
+            mutex_release(&dict->locks[index % dict->nlocks]);
+#endif
 			return k;
 		}
 		k = k->next;
 	}
 
+#ifdef ORIG
     if (dict->concurrent) {
         mutex_acquire(&dict->locks[index % dict->nlocks]);
 
@@ -141,17 +155,22 @@ void *dict_find(struct dict *dict, struct allocator *al,
             k = k->next;
         }
     }
+#endif
 
     // If not concurrent may have to grow the table now
 	if (!dict->concurrent && db->stable == NULL) {
 		double f = (double)dict->count / (double)dict->length;
 		if (f > dict->growth_threshold) {
+#ifndef ORIG
+            mutex_release(&dict->locks[index % dict->nlocks]);
+#endif
 			dict_resize(dict, dict->length * dict->growth_factor - 1);
 			return dict_find(dict, al, key, keyn);
 		}
 	}
 
     k = keynode_new(dict, al, (char *) key, keyn, hash);
+#ifdef ORIG
     if (dict->concurrent) {
         k->next = db->unstable;
         db->unstable = k;
@@ -165,10 +184,21 @@ void *dict_find(struct dict *dict, struct allocator *al,
         dict->workers[al->worker].unstable[worker] = k;
     }
     else {
+#endif
         k->next = db->stable;
         db->stable = k;
+#ifdef ORIG
 		dict->count++;
     }
+#else
+        mutex_release(&dict->locks[index % dict->nlocks]);
+        if (dict->concurrent) {
+            dict->workers[al->worker].count++;
+        }
+        else {
+            dict->count++;
+        }
+#endif
 	return k;
 }
 
@@ -189,6 +219,7 @@ struct keynode *dict_find_lock(struct dict *dict, struct allocator *al,
 		k = k->next;
 	}
 
+#ifdef ORIG
     if (dict->concurrent) {
         // See if the item is in the unstable list
         k = db->unstable;
@@ -199,8 +230,10 @@ struct keynode *dict_find_lock(struct dict *dict, struct allocator *al,
             k = k->next;
         }
     }
+#endif
 
     k = keynode_new(dict, al, (char *) key, keyn, hash);
+#ifdef ORIG
     if (dict->concurrent) {
         k->next = db->unstable;
         db->unstable = k;
@@ -213,10 +246,20 @@ struct keynode *dict_find_lock(struct dict *dict, struct allocator *al,
         dict->workers[al->worker].unstable[worker] = k;
     }
     else {
+#endif
         k->next = db->stable;
         db->stable = k;
+#ifdef ORIG
 		dict->count++;
     }
+#else
+        if (dict->concurrent) {
+            dict->workers[al->worker].count++;
+        }
+        else {
+            dict->count++;
+        }
+#endif
 	return k;
 }
 
@@ -245,15 +288,23 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keyn) {
     struct dict_bucket *db = &dict->table[index];
 	// __builtin_prefetch(db);
 
+#ifndef ORIG
+    mutex_acquire(&dict->locks[index % dict->nlocks]);
+#endif
+
     // First look in the stable list, which does not require a lock
 	struct keynode *k = db->stable;
 	while (k != NULL) {
 		if (k->len == keyn && !memcmp(k+1, key, keyn)) {
+#ifndef ORIG
+            mutex_release(&dict->locks[index % dict->nlocks]);
+#endif
 			return k->value;
 		}
 		k = k->next;
 	}
 
+#ifdef ORIG
     // Look in the unstable list
     if (dict->concurrent) {
         mutex_acquire(&dict->locks[index % dict->nlocks]);
@@ -267,6 +318,9 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keyn) {
         }
         mutex_release(&dict->locks[index % dict->nlocks]);
     }
+#else
+    mutex_release(&dict->locks[index % dict->nlocks]);
+#endif
 
 	return NULL;
 }
@@ -279,6 +333,7 @@ void dict_iter(struct dict *dict, enumFunc f, void *env) {
             (*f)(env, k+1, k->len, k->value);
             k = k->next;
         }
+#ifdef ORIG
         if (dict->concurrent) {
             mutex_acquire(&dict->locks[i % dict->nlocks]);
             k = db->unstable;
@@ -288,6 +343,7 @@ void dict_iter(struct dict *dict, enumFunc f, void *env) {
             }
             mutex_release(&dict->locks[i % dict->nlocks]);
         }
+#endif
 	}
 }
 
@@ -301,6 +357,7 @@ void dict_set_concurrent(struct dict *dict) {
 // the unstable values.
 int dict_make_stable(struct dict *dict, unsigned int worker){
     assert(dict->concurrent);
+#ifdef ORIG
     int n = 0;
 	for (unsigned int i = 0; i < dict->nworkers; i++) {
         struct dict_worker *w = &dict->workers[i];
@@ -313,6 +370,10 @@ int dict_make_stable(struct dict *dict, unsigned int worker){
             n++;
         }
     }
+#else
+    int n = dict->workers[worker].count;
+    dict->workers[worker].count = 0;
+#endif
     return n;
 }
 
