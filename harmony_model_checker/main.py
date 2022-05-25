@@ -15,6 +15,7 @@ from harmony_model_checker.exception import HarmonyCompilerError, HarmonyCompile
 import harmony_model_checker.harmony.harmony as legacy_harmony
 from harmony_model_checker.harmony.genhtml import GenHTML
 from harmony_model_checker.harmony.brief import Brief
+from harmony_model_checker.harmony.probabilities import find_probabilities
 from harmony_model_checker.compile import do_compile
 
 
@@ -146,13 +147,20 @@ def handle_hco(ns, output_files, code=None, scope=None):
     b.run(output_files, behavior, code, scope)
     gh = GenHTML()
     gh.run(output_files)
+
+    with open(output_files["hco"], encoding='utf-8') as f:
+        top = json.load(f)
+        if top["issue"] == "No issues":
+            find_probabilities(top, output_files, code, scope)
+
     if not suppress_output:
         p = pathlib.Path(output_files["htm"]).resolve()
         url = "file://" + str(p)
         print("open " + url + " for more information", file=sys.stderr)
         if not disable_browser:
             webbrowser.open(url)
-    
+
+
 def handle_version(_: argparse.Namespace):
     print("Version:", harmony_model_checker.__package__,
           harmony_model_checker.__version__)

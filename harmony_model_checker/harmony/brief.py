@@ -138,7 +138,6 @@ class Brief:
             assert isinstance(top, dict)
             if top["issue"] == "No issues":
                 behavior_parse(top, True, outputfiles, behavior)
-                find_probabilities(top, outputfiles, code, scope)
                 return True
 
             # print("Issue:", top["issue"])

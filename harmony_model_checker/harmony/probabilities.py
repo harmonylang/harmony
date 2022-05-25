@@ -5,8 +5,6 @@ from scipy.sparse import csr_array
 from scipy.sparse.linalg import spsolve as solve
 import json
 
-# TODO: This is just a simple port of charmpp. We probably want extended
-# functionality here.
 def find_probabilities(top, outputfiles, code, scope):
     if outputfiles['hpo'] is None:
         return
@@ -27,7 +25,6 @@ def find_probabilities(top, outputfiles, code, scope):
 
     ret = []
 
-    # TODO: Make this more clear instead of using an arbitary id
     for i in range(len(code.hypers)):
         s = set(states[i])
 
@@ -38,7 +35,7 @@ def find_probabilities(top, outputfiles, code, scope):
 
         if code is not None:
             try:
-                # This might throw an error, because it is an arbitary harmony
+                # TODO: This might throw an error, because it is an arbitary harmony
                 # expression. Might want to change this in the future.
                 expected_prob = eval(code.hypers[i][2][1])
             except SyntaxError:
@@ -95,6 +92,7 @@ def find_probabilities(top, outputfiles, code, scope):
                 "probability": got_prob,
             })
         else:
+            print("Ignoring probability assertions as no hny file is provided")
             ret.append(got_prob)
 
     with open(outputfiles['hpo'], 'w') as f:
@@ -119,7 +117,6 @@ def gen_prob(states, total_states, transitions, matrix):
     matrix_a = np.identity(len(reachable_states)) - matrix[np.ix_(reachable_states, reachable_states)]
     probabilities = solve(csr_array(matrix_a), list_b)
 
-    # print(reachable_states, probabilities)
     return dict(zip(reachable_states, probabilities))
 
 
