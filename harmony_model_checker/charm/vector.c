@@ -27,5 +27,5 @@ int int_vector_get(struct int_vector* vec, int i) {
 
 
 void int_vector_free(struct int_vector* vec) {
-    free(vec);
+    free(vec->v);
 }

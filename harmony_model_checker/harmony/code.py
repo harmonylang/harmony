@@ -128,7 +128,6 @@ class Code:
                 map[label] = PcValue(pc)
         for lop in self.labeled_ops:
             lop.op.substitute(map)
-        print(self.hypers)
         for h in self.hypers:
             if "pc" in h[1]:
                 h[1]["pc"] = h[1]["pc"].substitute(map).pc

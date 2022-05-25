@@ -1,6 +1,8 @@
 from collections import defaultdict
 import math
 import numpy as np
+from scipy.sparse import csr_array
+from scipy.sparse.linalg import spsolve as solve
 import json
 
 # TODO: This is just a simple port of charmpp. We probably want extended
@@ -20,9 +22,8 @@ def find_probabilities(top, outputfiles, code, scope):
     for p in top['probabilities']:
         assert p['probability']['denominator'] != 0
         assert p['probability']['numerator'] != 0
-        matrix[p['from']][p['to']] = p['probability']['numerator'] / p['probability']['denominator']
+        matrix[p['from'], p['to']] = p['probability']['numerator'] / p['probability']['denominator']
         transitions[p['from']].append(p['to'])
-    # print(transitions)
 
     ret = []
 
@@ -115,10 +116,8 @@ def gen_prob(states, total_states, transitions, matrix):
         return {}
 
     reachable_states = np.array(reachable_states)
-    print(reachable_states)
     matrix_a = np.identity(len(reachable_states)) - matrix[np.ix_(reachable_states, reachable_states)]
-    print(matrix_a, list_b)
-    probabilities = np.linalg.solve(matrix_a, list_b)
+    probabilities = solve(csr_array(matrix_a), list_b)
 
     # print(reachable_states, probabilities)
     return dict(zip(reachable_states, probabilities))
