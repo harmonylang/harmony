@@ -490,10 +490,6 @@ static bool onestep(
     edge->ai = step->ai;
     edge->log = step->log;
     edge->nlog = step->nlog;
-    // Assume uniform distribution for now
-    edge->probability_numerator = 1;
-    // TODO: Is this right?
-    edge->probability_denominator = choice_size;
 
     // See if this state has been computed before
     struct keynode *k = dict_find_lock(w->visited, &w->allocator,
@@ -525,6 +521,7 @@ static bool onestep(
         next->len = node->len + weight;
         next->steps = node->steps + instrcnt;
         next->choice_size = choice_size;
+        next->filter_states = filterstates;
         *w->last = next;
         w->last = &next->next;
         k->value = next;
@@ -557,6 +554,12 @@ static bool onestep(
     edge->src = node;
     edge->bwdnext = next->bwd;
     next->bwd = edge;
+
+    // Fill in probabilities of edges
+    // Assume uniform distribution for now
+    edge->probability_numerator = 1;
+    // TODO: Is this right?
+    edge->probability_denominator = node->choice_size;
 
     dict_find_release(w->visited, k);
 

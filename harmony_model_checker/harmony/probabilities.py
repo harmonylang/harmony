@@ -23,6 +23,8 @@ def find_probabilities(top, outputfiles, code, scope):
         matrix[p['from'], p['to']] = p['probability']['numerator'] / p['probability']['denominator']
         transitions[p['from']].append(p['to'])
 
+    print(matrix)
+
     ret = []
 
     for i in range(len(code.hypers)):
