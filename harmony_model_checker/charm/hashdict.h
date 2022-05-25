@@ -16,29 +16,17 @@ typedef void (*enumFunc)(void *env, const void *key, unsigned int key_size,
 // key directly follows this header
 struct keynode {
 	struct keynode *next;
-#ifdef ORIG
     struct keynode *unstable_next;
-    struct dict_bucket *bucket;
-#endif
 	unsigned int len;
-    uint32_t hash;
 	HASHDICT_VALUE_TYPE value;
 };
 
 struct dict_bucket {
-#ifdef ORIG
     struct keynode *stable, *unstable;
-#else
-    struct keynode *stable;
-#endif
 };
 
 struct dict_worker {
-#ifdef ORIG
     struct keynode **unstable;   // one for each of the workers
-#else
-    unsigned int count;
-#endif
 };
 		
 struct dict {
