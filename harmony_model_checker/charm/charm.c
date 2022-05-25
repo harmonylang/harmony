@@ -74,7 +74,6 @@ static void *walloc(void *ctx, unsigned int size, bool zero){
     struct worker *w = ctx;
 
     if (size > WALLOC_CHUNK) {
-        printf("BIG\n");
         return zero ? calloc(1, size) : malloc(size);
     }
     size = (size + 0xF) & ~0xF;     // align to 16 bytes

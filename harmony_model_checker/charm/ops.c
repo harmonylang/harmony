@@ -372,8 +372,7 @@ void op_Address(const void *env, struct state *state, struct step *step, struct 
     }
 
     unsigned int size;
-    hvalue_t *indices = value_copy(av, &size);
-    indices = realloc(indices, size + sizeof(index));
+    hvalue_t *indices = value_copy_extend(av, sizeof(hvalue_t), &size);
     indices[size / sizeof(hvalue_t)] = index;
     ctx_push(step->ctx, value_put_address(&step->engine, indices, size + sizeof(index)));
     free(indices);
@@ -801,8 +800,7 @@ void op_Go(
 
     hvalue_t result = ctx_pop(step->ctx);
     unsigned int size;
-    struct context *copy = value_copy(ctx, &size);
-    copy = realloc(copy, size + sizeof(hvalue_t));
+    struct context *copy = value_copy_extend(ctx, sizeof(hvalue_t), &size);
     ctx_push(copy, result);
     copy->stopped = false;
     hvalue_t v = value_put_context(&step->engine, copy);
@@ -816,15 +814,7 @@ void op_Invariant(const void *env, struct state *state, struct step *step, struc
 
     assert(VALUE_TYPE(state->invariants) == VALUE_SET);
     unsigned int size;
-    hvalue_t *vals;
-    if (state->invariants == VALUE_SET) {
-        size = 0;
-        vals = NULL;
-    }
-    else {
-        vals = value_copy(state->invariants, &size);
-    }
-    vals = realloc(vals, size + sizeof(hvalue_t));
+    hvalue_t *vals = value_copy_extend(state->invariants, sizeof(hvalue_t), &size);
     * (hvalue_t *) ((char *) vals + size) = VALUE_TO_PC(step->ctx->pc);
     state->invariants = value_put_set(&step->engine, vals, size + sizeof(hvalue_t));
     free(vals);
@@ -1082,7 +1072,7 @@ void op_Sequential(const void *env, struct state *state, struct step *step, stru
     /* Insert in state's set of sequential variables.
      */
     unsigned int size;
-    hvalue_t *seqs = value_copy(state->seqs, &size);
+    hvalue_t *seqs = value_copy_extend(state->seqs, sizeof(hvalue_t), &size);
     size /= sizeof(hvalue_t);
     unsigned int i;
     for (i = 0; i < size; i++) {
@@ -1096,7 +1086,6 @@ void op_Sequential(const void *env, struct state *state, struct step *step, stru
             break;
         }
     }
-    seqs = realloc(seqs, (size + 1) * sizeof(hvalue_t));
     memmove(&seqs[i + 1], &seqs[i], (size - i) * sizeof(hvalue_t));
     seqs[i] = addr;
     state->seqs = value_put_set(&step->engine, seqs, (size + 1) * sizeof(hvalue_t));

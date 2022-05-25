@@ -26,6 +26,7 @@ void *value_get(hvalue_t v, unsigned int *psize){
     return dict_retrieve((void *) v, psize);
 }
 
+// Like value_get, but allocate dynamic memory for it
 void *value_copy(hvalue_t v, unsigned int *psize){
     v &= ~VALUE_MASK;
     if (v == 0) {
@@ -35,6 +36,23 @@ void *value_copy(hvalue_t v, unsigned int *psize){
     unsigned int size;
     void *p = dict_retrieve((void *) v, &size);
     void *r = malloc(size);
+    memcpy(r, p, size);
+    if (psize != NULL) {
+        *psize = size;
+    }
+    return r;
+}
+
+// Like value_copy, but extend with given size and return old size
+void *value_copy_extend(hvalue_t v, unsigned int inc, unsigned int *psize){
+    v &= ~VALUE_MASK;
+    if (v == 0) {
+        *psize = 0;
+        return inc == 0 ? NULL : malloc(inc);
+    }
+    unsigned int size;
+    void *p = dict_retrieve((void *) v, &size);
+    void *r = malloc(size + inc);
     memcpy(r, p, size);
     if (psize != NULL) {
         *psize = size;
