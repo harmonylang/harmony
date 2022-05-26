@@ -196,13 +196,6 @@ bool check_invariants(struct worker *w, struct node *node, struct step *step){
     return true;
 }
 
-static void *node_alloc(void *ctx){
-    struct node *node = ctx == NULL ? malloc(sizeof(struct node)) :
-                    walloc(ctx, sizeof(struct node), false);
-    memset(node, 0, sizeof(*node));
-    return node;
-}
-
 // For tracking data races
 static struct access_info *ai_alloc(struct worker *w, int multiplicity,
                         int atomic, int pc) {
@@ -323,7 +316,7 @@ static bool onestep(
 
         if (infloop_detect || instrcnt > 1000) {
             if (infloop == NULL) {
-                infloop = dict_new(0, 0, NULL, NULL);
+                infloop = dict_new(0, 0, 0, NULL, NULL);
             }
 
             int stacksize = step->ctx->sp * sizeof(hvalue_t);
@@ -331,12 +324,10 @@ static bool onestep(
             struct combined *combo = calloc(1, combosize);
             combo->state = *sc;
             memcpy(&combo->context, step->ctx, sizeof(*step->ctx) + stacksize);
-            void **p = dict_insert(infloop, NULL, combo, combosize);
+            bool new;
+            dict_insert(infloop, NULL, combo, combosize, &new);
             free(combo);
-            if (*p == (void *) 0) {
-                *p = (void *) 1;
-            }
-            else if (infloop_detect) {
+            if (!new) {
                 step->ctx->failure = value_put_atom(&step->engine, "infinite loop", 13);
                 failure = infinite_loop = true;
                 break;
@@ -487,10 +478,18 @@ static bool onestep(
     edge->nlog = step->nlog;
 
     // See if this state has been computed before
-    struct keynode *k = dict_find_lock(w->visited, &w->allocator,
-                sc, sizeof(struct state));
-    struct node *next = k->value;
-    if (next != NULL) {
+    bool new;
+    struct node *next = dict_insert_lock(w->visited, &w->allocator,
+                sc, sizeof(struct state), &new);
+    if (new) {
+        next->len = node->len + weight;
+        next->steps = node->steps + instrcnt;
+        next->to_parent = edge;
+        next->state = *sc;
+        *w->last = next;
+        w->last = &next->next;
+    }
+    else {
         int len = node->len + weight;
         int steps = node->steps + instrcnt;
         if (len < next->len || (len == next->len && steps < next->steps)) {
@@ -498,16 +497,6 @@ static bool onestep(
             next->steps = steps;
             next->to_parent = edge;
         }
-    }
-    else {
-        next = node_alloc(w);
-        next->len = node->len + weight;
-        next->steps = node->steps + instrcnt;
-        next->to_parent = edge;
-        next->state = *sc;
-        *w->last = next;
-        w->last = &next->next;
-        k->value = next;
     }
 
     if (failure) {
@@ -537,7 +526,7 @@ static bool onestep(
     edge->bwdnext = next->bwd;
     next->bwd = edge;
 
-    dict_find_release(w->visited, k);
+    dict_insert_release(w->visited, sc, sizeof(struct state));
 
     // We stole the access info and log
     step->ai = NULL;
@@ -1111,7 +1100,7 @@ hvalue_t twostep(
         if (!step.ctx->terminated && step.ctx->failure == 0) {
             if (infloop == NULL) {
                 // TODO.  infloop should be deallocated
-                infloop = dict_new(0, 0, NULL, NULL);
+                infloop = dict_new(0, 0, 0, NULL, NULL);
             }
 
             int stacksize = step.ctx->sp * sizeof(hvalue_t);
@@ -1119,12 +1108,10 @@ hvalue_t twostep(
             struct combined *combo = calloc(1, combosize);
             combo->state = *sc;
             memcpy(&combo->context, step.ctx, sizeof(*step.ctx) + stacksize);
-            void **p = dict_insert(infloop, NULL, combo, combosize);
+            bool new;
+            dict_insert(infloop, NULL, combo, combosize, &new);
             free(combo);
-            if (*p == (void *) 0) {
-                *p = (void *) 1;
-            }
-            else {
+            if (!new) {
                 step.ctx->failure = value_put_atom(&step.engine, "infinite loop", 13);
             }
         }
@@ -1360,7 +1347,7 @@ static void enum_loc(
     void *env,
     const void *key,
     unsigned int key_size,
-    HASHDICT_VALUE_TYPE value
+    void *value
 ) {
     static bool notfirst = false;
     struct enum_loc_env_t *enum_loc_env = env;
@@ -1395,7 +1382,7 @@ static void enum_loc(
     assert(line->type == JV_ATOM);
     fprintf(out, "\"line\": \"%.*s\", ", line->u.atom.len, line->u.atom.base);
 
-    void **p = dict_insert(code_map, NULL, &pc, sizeof(pc));
+    char **p = dict_insert(code_map, NULL, &pc, sizeof(pc), NULL);
     struct strbuf sb;
     strbuf_init(&sb);
     strbuf_printf(&sb, "%.*s:%.*s", file->u.atom.len, file->u.atom.base, line->u.atom.len, line->u.atom.base);
@@ -1665,8 +1652,8 @@ static void destutter1(struct graph_t *graph){
 }
 
 static struct dict *collect_symbols(struct graph_t *graph){
-    struct dict *symbols = dict_new(0, 0, NULL, NULL);
-    hvalue_t symbol_id = 0;
+    struct dict *symbols = dict_new(sizeof(unsigned int), 0, 0, NULL, NULL);
+    unsigned int symbol_id = 0;
 
     for (unsigned int i = 0; i < graph->size; i++) {
         struct node *n = graph->nodes[i];
@@ -1675,9 +1662,10 @@ static struct dict *collect_symbols(struct graph_t *graph){
         }
         for (struct edge *e = n->fwd; e != NULL; e = e->fwdnext) {
             for (unsigned int j = 0; j < e->nlog; j++) {
-                void **p = dict_insert(symbols, NULL, &e->log[j], sizeof(e->log[j]));
-                if (*p == NULL) {
-                    *p = (void *) ++symbol_id;
+                bool new;
+                unsigned int *p = dict_insert(symbols, NULL, &e->log[j], sizeof(e->log[j]), &new);
+                if (new) {
+                    *p = ++symbol_id;
                 }
             }
         }
@@ -1702,7 +1690,7 @@ static void print_symbol(void *env, const void *key, unsigned int key_size, void
     else {
         fprintf(se->out, ",\n");
     }
-    fprintf(se->out, "     \"%"PRIu64"\": %s", (uint64_t) value, p);
+    fprintf(se->out, "     \"%u\": %s", * (unsigned int *) value, p);
     free(p);
 }
 
@@ -1726,12 +1714,12 @@ static void print_trans_upcall(void *env, const void *key, unsigned int key_size
     }
     fprintf(pte->out, "        [[");
     for (unsigned int i = 0; i < nkeys; i++) {
-        void *p = dict_lookup(pte->symbols, &log[i], sizeof(log[i]));
+        unsigned int *p = dict_lookup(pte->symbols, &log[i], sizeof(log[i]));
         assert(p != NULL);
         if (i != 0) {
             fprintf(pte->out, ",");
         }
-        fprintf(pte->out, "%"PRIu64, (uint64_t) p);
+        fprintf(pte->out, "%u", *p);
     }
     fprintf(pte->out, "],[%s]]", strbuf_getstr(sb));
     strbuf_deinit(sb);
@@ -1739,14 +1727,13 @@ static void print_trans_upcall(void *env, const void *key, unsigned int key_size
 }
 
 static void print_transitions(FILE *out, struct dict *symbols, struct edge *edges){
-    struct dict *d = dict_new(0, 0, NULL, NULL);
+    struct dict *d = dict_new(sizeof(struct strbuf), 0, 0, NULL, NULL);
 
     fprintf(out, "      \"transitions\": [\n");
     for (struct edge *e = edges; e != NULL; e = e->fwdnext) {
-        void **p = dict_insert(d, NULL, e->log, e->nlog * sizeof(*e->log));
-        struct strbuf *sb = *p;
-        if (sb == NULL) {
-            *p = sb = malloc(sizeof(struct strbuf));
+        bool new;
+        struct strbuf *sb = dict_insert(d, NULL, e->log, e->nlog * sizeof(*e->log), &new);
+        if (new) {
             strbuf_init(sb);
             strbuf_printf(sb, "%d", e->dst->id);
         }
@@ -1925,13 +1912,10 @@ int main(int argc, char **argv){
     }
 
     // Put the initial state in the visited map
-    struct dict *visited = dict_new(1024*1024, nworkers, NULL, NULL);
-    struct node *node = node_alloc(NULL);
+    struct dict *visited = dict_new(sizeof(struct node), 0, nworkers, NULL, NULL);
+    struct node *node = dict_insert(visited, NULL, state, sizeof(*state), NULL);
     node->state = *state;
     graph_add(&global->graph, node);
-    void **p = dict_insert(visited, NULL, state, sizeof(*state));
-    assert(*p == NULL);
-    *p = node;
 
     // Allocate space for worker info
     struct worker *workers = calloc(nworkers, sizeof(*workers));

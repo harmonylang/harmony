@@ -28,17 +28,14 @@ static inline uint32_t meiyan(const char *key, int count) {
 
 static inline struct keynode *keynode_new(struct dict *dict,
         struct allocator *al, char *key, unsigned int len, uint32_t hash){
-	struct keynode *node = al == NULL ?
-            malloc(sizeof(struct keynode) + len) :
-            (*al->alloc)(al->ctx, sizeof(struct keynode) + len, false);
-	node->len = len;
-	memcpy(node + 1, key, len);
-#ifdef ORIG
-    node->hash = hash;
-#endif
-	node->next = 0;
-	node->value = NULL;
-	return node;
+    unsigned int alen = (len + DICT_ALIGN - 1) & ~(DICT_ALIGN - 1);
+    unsigned int total = sizeof(struct keynode) + alen + dict->value_len;
+	struct keynode *k = al == NULL ?  malloc(total) :
+                            (*al->alloc)(al->ctx, total, false);
+	k->len = len;
+	memcpy(k+1, key, len);
+	k->next = k->unstable_next = NULL;
+	return k;
 }
 
 // TODO.  Make iterative rather than recursive
@@ -47,11 +44,11 @@ void keynode_delete(struct dict *dict, struct keynode *node) {
 	(*dict->free)(node);
 }
 
-struct dict *dict_new(unsigned int initial_size, unsigned int nworkers,
-                void *(*m)(size_t size), void (*f)(void *)) {
+struct dict *dict_new(unsigned int value_len, unsigned int initial_size,
+        unsigned int nworkers, void *(*m)(size_t size), void (*f)(void *)) {
 	struct dict *dict = new_alloc(struct dict);
-	if (initial_size == 0) initial_size = 256;
-    else initial_size = 1024;       // TODO
+    dict->value_len = value_len;
+	if (initial_size == 0) initial_size = 1024;
 	dict->length = initial_size;
 	dict->count = 0;
 	dict->table = calloc(sizeof(struct dict_bucket), initial_size);
@@ -71,6 +68,11 @@ struct dict *dict_new(unsigned int initial_size, unsigned int nworkers,
     dict->malloc = m == NULL ? malloc : m;
     dict->free = f == NULL ? free : f;
 	return dict;
+}
+
+bool dict_remove(struct dict *dict, const void *key, unsigned int keylen){
+    assert(false);
+    return false;
 }
 
 void dict_delete(struct dict *dict) {
@@ -114,8 +116,8 @@ static void dict_resize(struct dict *dict, unsigned int newsize) {
 }
 
 // Perhaps the most performance critical function in the entire code base
-void *dict_find(struct dict *dict, struct allocator *al,
-                            const void *key, unsigned int keyn){
+struct keynode *dict_find(struct dict *dict, struct allocator *al,
+                            const void *key, unsigned int keyn, bool *new){
     uint32_t hash = hash_func(key, keyn);
     unsigned int index = hash % dict->length;
     struct dict_bucket *db = &dict->table[index];
@@ -124,7 +126,10 @@ void *dict_find(struct dict *dict, struct allocator *al,
     // a lock
 	struct keynode *k = db->stable;
 	while (k != NULL) {
-		if (k->len == keyn && memcmp(k+1, key, keyn) == 0) {
+		if (k->len == keyn && memcmp((char *) (k+1), key, keyn) == 0) {
+            if (new != NULL) {
+                *new = false;
+            }
 			return k;
 		}
 		k = k->next;
@@ -136,8 +141,11 @@ void *dict_find(struct dict *dict, struct allocator *al,
         // See if the item is in the unstable list
         k = db->unstable;
         while (k != NULL) {
-            if (k->len == keyn && memcmp(k+1, key, keyn) == 0) {
+            if (k->len == keyn && memcmp((char *) (k+1), key, keyn) == 0) {
                 mutex_release(&dict->locks[index % dict->nlocks]);
+                if (new != NULL) {
+                    *new = false;
+                }
                 return k;
             }
             k = k->next;
@@ -149,7 +157,7 @@ void *dict_find(struct dict *dict, struct allocator *al,
 		double f = (double)dict->count / (double)dict->length;
 		if (f > dict->growth_threshold) {
 			dict_resize(dict, dict->length * dict->growth_factor - 1);
-			return dict_find(dict, al, key, keyn);
+			return dict_find(dict, al, key, keyn, new);
 		}
 	}
 
@@ -171,12 +179,15 @@ void *dict_find(struct dict *dict, struct allocator *al,
 		dict->count++;
     }
 
+    if (new != NULL) {
+        *new = true;
+    }
 	return k;
 }
 
 // Similar to dict_find(), but gets a lock on the bucket
 struct keynode *dict_find_lock(struct dict *dict, struct allocator *al,
-                            const void *key, unsigned int keyn){
+                            const void *key, unsigned int keyn, bool *new){
     uint32_t hash = hash_func(key, keyn);
     unsigned int index = hash % dict->length;
     struct dict_bucket *db = &dict->table[index];
@@ -187,7 +198,10 @@ struct keynode *dict_find_lock(struct dict *dict, struct allocator *al,
 
 	struct keynode *k = db->stable;
 	while (k != NULL) {
-		if (k->len == keyn && memcmp(k+1, key, keyn) == 0) {
+		if (k->len == keyn && memcmp((char *) (k+1), key, keyn) == 0) {
+            if (new != NULL) {
+                *new = false;
+            }
 			return k;
 		}
 		k = k->next;
@@ -197,7 +211,10 @@ struct keynode *dict_find_lock(struct dict *dict, struct allocator *al,
         // See if the item is in the unstable list
         k = db->unstable;
         while (k != NULL) {
-            if (k->len == keyn && memcmp(k+1, key, keyn) == 0) {
+            if (k->len == keyn && memcmp((char *) (k+1), key, keyn) == 0) {
+                if (new != NULL) {
+                    *new = false;
+                }
                 return k;
             }
             k = k->next;
@@ -221,18 +238,31 @@ struct keynode *dict_find_lock(struct dict *dict, struct allocator *al,
 		dict->count++;
     }
 
+    if (new != NULL) {
+        *new = true;
+    }
 	return k;
 }
 
-void dict_find_release(struct dict *dict, struct keynode *k){
-    unsigned int index = hash_func((char *) (k+1), k->len) % dict->length;
+void dict_insert_release(struct dict *dict, const void *key, unsigned int keylen){
+    unsigned int index = hash_func(key, keylen) % dict->length;
     mutex_release(&dict->locks[index % dict->nlocks]);
 }
 
-void **dict_insert(struct dict *dict, struct allocator *al,
-        const void *key, unsigned int keyn){
-    struct keynode *k = dict_find(dict, al, key, keyn);
-    return &k->value;
+// Returns a pointer to the value
+void *dict_insert(struct dict *dict, struct allocator *al,
+                            const void *key, unsigned int keyn, bool *new){
+    struct keynode *k = dict_find(dict, al, key, keyn, new);
+    unsigned int alen = (keyn + DICT_ALIGN - 1) & ~(DICT_ALIGN - 1);
+    return (char *) (k+1) + alen;
+}
+
+// Returns a pointer to the value
+void *dict_insert_lock(struct dict *dict, struct allocator *al,
+                            const void *key, unsigned int keyn, bool *new){
+    struct keynode *k = dict_find_lock(dict, al, key, keyn, new);
+    unsigned int alen = (keyn + DICT_ALIGN - 1) & ~(DICT_ALIGN - 1);
+    return (char *) (k+1) + alen;
 }
 
 void *dict_retrieve(const void *p, unsigned int *psize){
@@ -240,7 +270,7 @@ void *dict_retrieve(const void *p, unsigned int *psize){
     if (psize != NULL) {
         *psize = k->len;
     }
-    return (void *) (k+1);
+    return (char *) (k+1);
 }
 
 void *dict_lookup(struct dict *dict, const void *key, unsigned int keyn) {
@@ -252,8 +282,9 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keyn) {
     // First look in the stable list, which does not require a lock
 	struct keynode *k = db->stable;
 	while (k != NULL) {
-		if (k->len == keyn && !memcmp(k+1, key, keyn)) {
-			return k->value;
+		if (k->len == keyn && !memcmp((char *) (k+1), key, keyn)) {
+            unsigned int alen = (keyn + DICT_ALIGN - 1) & ~(DICT_ALIGN - 1);
+			return (char *) (k+1) + alen;
 		}
 		k = k->next;
 	}
@@ -263,9 +294,10 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keyn) {
         mutex_acquire(&dict->locks[index % dict->nlocks]);
         k = db->unstable;
         while (k != NULL) {
-            if (k->len == keyn && !memcmp(k+1, key, keyn)) {
+            if (k->len == keyn && !memcmp((char *) (k+1) + dict->value_len, key, keyn)) {
                 mutex_release(&dict->locks[index % dict->nlocks]);
-                return k->value;
+                unsigned int alen = (keyn + DICT_ALIGN - 1) & ~(DICT_ALIGN - 1);
+                return (char *) (k+1) + alen;
             }
             k = k->next;
         }
@@ -280,14 +312,16 @@ void dict_iter(struct dict *dict, enumFunc f, void *env) {
         struct dict_bucket *db = &dict->table[i];
         struct keynode *k = db->stable;
         while (k != NULL) {
-            (*f)(env, k+1, k->len, k->value);
+            unsigned int alen = (k->len + DICT_ALIGN - 1) & ~(DICT_ALIGN - 1);
+            (*f)(env, (char *) (k+1), k->len, (char *) (k+1) + alen);
             k = k->next;
         }
         if (dict->concurrent) {
             mutex_acquire(&dict->locks[i % dict->nlocks]);
             k = db->unstable;
             while (k != NULL) {
-                (*f)(env, k+1, k->len, k->value);
+                unsigned int alen = (k->len + DICT_ALIGN - 1) & ~(DICT_ALIGN - 1);
+                (*f)(env, (char *) (k+1), k->len, (char *) (k+1) + alen);
                 k = k->next;
             }
             mutex_release(&dict->locks[i % dict->nlocks]);

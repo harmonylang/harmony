@@ -5,30 +5,30 @@
 
 struct hashset_t hashset_new(int initial_size) {
     struct hashset_t set;
-    set.dict = dict_new(initial_size, 0, NULL, NULL);
+    set.dict = dict_new(0, initial_size, 0, NULL, NULL);
     return set;
 }
 
-static int DUMMY;
-
 // returns true iff key was in the set before
 bool hashset_insert(struct hashset_t set, const void *key, unsigned int keylen) {
-    void **value = dict_insert(set.dict, NULL, key, keylen);
-    bool result = *value != NULL;
-    *value = &DUMMY;
-    return result;
+    bool new;
+    dict_insert(set.dict, NULL, key, keylen, &new);
+    return !new;
 }
 
 // returns true iff key was in the set before
 bool hashset_remove(struct hashset_t set, const void *key, unsigned int keylen) {
-    void **value = dict_insert(set.dict, NULL, key, keylen);
-    bool result = *value != NULL;
-    *value = NULL;
-    return result;
+    return dict_remove(set.dict, key, keylen);
 }
 
+// TODO.  Need better implementation
 bool hashset_contains(struct hashset_t set, const void *key, unsigned int keylen) {
-    return dict_lookup(set.dict, key, keylen) != NULL;
+    bool new;
+    dict_insert(set.dict, NULL, key, keylen, &new);
+    if (new) {
+        dict_remove(set.dict, key, keylen);
+    }
+    return !new;
 }
 
 void hashset_delete(struct hashset_t set) {

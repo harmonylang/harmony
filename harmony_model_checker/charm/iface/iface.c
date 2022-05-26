@@ -172,7 +172,7 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
     struct iface_graph_t *iface_graph = iface_graph_init(global->graph.size / 2);
 
     // dict from (struct node *) to (struct iface_node_t *)
-    struct dict *node_to_iface_node = dict_new(global->graph.size / 2, 0, NULL, NULL);
+    struct dict *node_to_iface_node = dict_new(sizeof(struct iface_node_t *), global->graph.size / 2, 0, NULL, NULL);
 
     struct hashset_t visited = hashset_new(0);
 
@@ -183,7 +183,7 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
         struct node *initial_node = global->graph.nodes[0];
         node_vec_push(worklist, initial_node);
         struct iface_node_t **iface_node = (struct iface_node_t **)
-                dict_insert(node_to_iface_node, NULL, &initial_node, sizeof(struct node *));
+                dict_insert(node_to_iface_node, NULL, &initial_node, sizeof(struct node *), NULL);
         *iface_node = iface_graph_add_node(iface_graph);
 
         // Give initial node the None value, though it's displayed as "__init__"
@@ -198,10 +198,11 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
         for (int i = 0; i < children->len; i++) {
             struct node *child = children->arr[i];
 
+            bool new;
             struct iface_node_t **child_iface_node = (struct iface_node_t **)
-                    dict_insert(node_to_iface_node, NULL, &child, sizeof(struct node *));
+                    dict_insert(node_to_iface_node, NULL, &child, sizeof(struct node *), &new);
 
-            if (*child_iface_node == NULL) {
+            if (new) {
                 *child_iface_node = iface_graph_add_node(iface_graph);
             }
 
@@ -241,10 +242,11 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
         for (int i = 0; i < children->len; i++) {
             struct node *child = children->arr[i];
 
+            bool new;
             struct iface_node_t **child_iface_node = (struct iface_node_t **)
-                    dict_insert(node_to_iface_node, NULL, &child, sizeof(struct node *));
+                    dict_insert(node_to_iface_node, NULL, &child, sizeof(struct node *), &new);
 
-            if (*child_iface_node == NULL) {
+            if (new) {
                 *child_iface_node = iface_graph_add_node(iface_graph);
             }
 

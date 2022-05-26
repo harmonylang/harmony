@@ -3067,8 +3067,8 @@ struct op_info *ops_get(char *opname, int size){
 }
 
 void ops_init(struct engine *engine) {
-    ops_map = dict_new(0, 0, NULL, NULL);
-    f_map = dict_new(0, 0, NULL, NULL);
+    ops_map = dict_new(sizeof(struct op_info *), 0, 0, NULL, NULL);
+    f_map = dict_new(sizeof(struct f_info *), 0, 0, NULL, NULL);
 	underscore = value_put_atom(engine, "_", 1);
 	this_atom = value_put_atom(engine, "this", 4);
     type_bool = value_put_atom(engine, "bool", 4);
@@ -3082,11 +3082,11 @@ void ops_init(struct engine *engine) {
     type_context = value_put_atom(engine, "context", 7);
 
     for (struct op_info *oi = op_table; oi->name != NULL; oi++) {
-        void **p = dict_insert(ops_map, NULL, oi->name, strlen(oi->name));
+        struct op_info **p = dict_insert(ops_map, NULL, oi->name, strlen(oi->name), NULL);
         *p = oi;
     }
     for (struct f_info *fi = f_table; fi->name != NULL; fi++) {
-        void **p = dict_insert(f_map, NULL, fi->name, strlen(fi->name));
+        struct f_info **p = dict_insert(f_map, NULL, fi->name, strlen(fi->name), NULL);
         *p = fi;
     }
 }

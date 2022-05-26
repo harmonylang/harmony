@@ -64,7 +64,7 @@ hvalue_t value_put_atom(struct engine *engine, const void *p, int size){
     if (size == 0) {
         return VALUE_ATOM;
     }
-    void *q = dict_find(engine->values->atoms, engine->allocator, p, size);
+    void *q = dict_find(engine->values->atoms, engine->allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_ATOM;
 }
 
@@ -72,7 +72,7 @@ hvalue_t value_put_set(struct engine *engine, void *p, int size){
     if (size == 0) {
         return VALUE_SET;
     }
-    void *q = dict_find(engine->values->sets, engine->allocator, p, size);
+    void *q = dict_find(engine->values->sets, engine->allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_SET;
 }
 
@@ -80,7 +80,7 @@ hvalue_t value_put_dict(struct engine *engine, void *p, int size){
     if (size == 0) {
         return VALUE_DICT;
     }
-    void *q = dict_find(engine->values->dicts, engine->allocator, p, size);
+    void *q = dict_find(engine->values->dicts, engine->allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_DICT;
 }
 
@@ -88,7 +88,7 @@ hvalue_t value_put_list(struct engine *engine, void *p, int size){
     if (size == 0) {
         return VALUE_LIST;
     }
-    void *q = dict_find(engine->values->lists, engine->allocator, p, size);
+    void *q = dict_find(engine->values->lists, engine->allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_LIST;
 }
 
@@ -96,14 +96,14 @@ hvalue_t value_put_address(struct engine *engine, void *p, int size){
     if (size == 0) {
         return VALUE_ADDRESS;
     }
-    void *q = dict_find(engine->values->addresses, engine->allocator, p, size);
+    void *q = dict_find(engine->values->addresses, engine->allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_ADDRESS;
 }
 
 hvalue_t value_put_context(struct engine *engine, struct context *ctx){
 	assert(ctx->pc >= 0);
     unsigned int size = sizeof(*ctx) + (ctx->sp * sizeof(hvalue_t));
-    void *q = dict_find(engine->values->contexts, engine->allocator, ctx, size);
+    void *q = dict_find(engine->values->contexts, engine->allocator, ctx, size, NULL);
     return (hvalue_t) q | VALUE_CONTEXT;
 }
 
@@ -742,7 +742,7 @@ hvalue_t value_atom(struct engine *engine, struct dict *map){
     if (value->u.atom.len == 0) {
         return VALUE_ATOM;
     }
-    void *p = dict_find(engine->values->atoms, engine->allocator, value->u.atom.base, value->u.atom.len);
+    void *p = dict_find(engine->values->atoms, engine->allocator, value->u.atom.base, value->u.atom.len, NULL);
     return (hvalue_t) p | VALUE_ATOM;
 }
 
@@ -766,7 +766,7 @@ hvalue_t value_dict(struct engine *engine, struct dict *map){
 
     // vals is sorted already by harmony compiler
     void *p = dict_find(engine->values->dicts, engine->allocator, vals,
-                    value->u.list.nvals * sizeof(hvalue_t) * 2);
+                    value->u.list.nvals * sizeof(hvalue_t) * 2, NULL);
     free(vals);
     return (hvalue_t) p | VALUE_DICT;
 }
@@ -785,7 +785,7 @@ hvalue_t value_set(struct engine *engine, struct dict *map){
     }
 
     // vals is sorted already by harmony compiler
-    void *p = dict_find(engine->values->sets, engine->allocator, vals, value->u.list.nvals * sizeof(hvalue_t));
+    void *p = dict_find(engine->values->sets, engine->allocator, vals, value->u.list.nvals * sizeof(hvalue_t), NULL);
     free(vals);
     return (hvalue_t) p | VALUE_SET;
 }
@@ -802,7 +802,7 @@ hvalue_t value_list(struct engine *engine, struct dict *map){
         assert(jv->type == JV_MAP);
         vals[i] = value_from_json(engine, jv->u.map);
     }
-    void *p = dict_find(engine->values->lists, engine->allocator, vals, value->u.list.nvals * sizeof(hvalue_t));
+    void *p = dict_find(engine->values->lists, engine->allocator, vals, value->u.list.nvals * sizeof(hvalue_t), NULL);
     free(vals);
     return (hvalue_t) p | VALUE_LIST;
 }
@@ -820,7 +820,7 @@ hvalue_t value_address(struct engine *engine, struct dict *map){
         vals[i] = value_from_json(engine, jv->u.map);
     }
     void *p = dict_find(engine->values->addresses, engine->allocator, vals,
-                            value->u.list.nvals * sizeof(hvalue_t));
+                            value->u.list.nvals * sizeof(hvalue_t), NULL);
     free(vals);
     return (hvalue_t) p | VALUE_ADDRESS;
 }
@@ -889,20 +889,20 @@ static bool align_test(){
 void value_init(struct values_t *values, unsigned int nworkers){
     if (align_test()) {
         // printf("malloc appears aligned to %d bytes\n", 1 << VALUE_BITS);
-        values->atoms = dict_new(1024*1024, nworkers, NULL, NULL);
-        values->dicts = dict_new(1024*1024, nworkers, NULL, NULL);
-        values->sets = dict_new(1024*1024, nworkers, NULL, NULL);
-        values->lists = dict_new(1024*1024, nworkers, NULL, NULL);
-        values->addresses = dict_new(1024*1024, nworkers, NULL, NULL);
-        values->contexts = dict_new(1024*1024, nworkers, NULL, NULL);
+        values->atoms = dict_new(0, 0, nworkers, NULL, NULL);
+        values->dicts = dict_new(0, 0, nworkers, NULL, NULL);
+        values->sets = dict_new(0, 0, nworkers, NULL, NULL);
+        values->lists = dict_new(0, 0, nworkers, NULL, NULL);
+        values->addresses = dict_new(0, 0, nworkers, NULL, NULL);
+        values->contexts = dict_new(0, 0, nworkers, NULL, NULL);
     }
     else {
-        values->atoms = dict_new(1024*1024, nworkers, align_alloc, align_free);
-        values->dicts = dict_new(1024*1024, nworkers, align_alloc, align_free);
-        values->sets = dict_new(1024*1024, nworkers, align_alloc, align_free);
-        values->lists = dict_new(1024*1024, nworkers, align_alloc, align_free);
-        values->addresses = dict_new(1024*1024, nworkers, align_alloc, align_free);
-        values->contexts = dict_new(1024*1024, nworkers, align_alloc, align_free);
+        values->atoms = dict_new(0, 0, nworkers, align_alloc, align_free);
+        values->dicts = dict_new(0, 0, nworkers, align_alloc, align_free);
+        values->sets = dict_new(0, 0, nworkers, align_alloc, align_free);
+        values->lists = dict_new(0, 0, nworkers, align_alloc, align_free);
+        values->addresses = dict_new(0, 0, nworkers, align_alloc, align_free);
+        values->contexts = dict_new(0, 0, nworkers, align_alloc, align_free);
     }
 }
 

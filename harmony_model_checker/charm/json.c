@@ -79,8 +79,9 @@ static void json_parse_atom(json_buf_t *buf, json_buf_t *atom){
 
 void json_map_append(struct json_value *map, json_buf_t key, struct json_value *jv){
 	assert(map->type == JV_MAP);
-	void **p = dict_insert(map->u.map, NULL, key.base, key.len);
-	if (*p != 0) {
+    bool new;
+	struct json_value **p = dict_insert(map->u.map, NULL, key.base, key.len, &new);
+	if (!new) {
 		fprintf(stderr, "json_map_append: duplicate key: '%.*s'\n",
 							(int) key.len, key.base);
 	}
@@ -95,7 +96,7 @@ static struct json_value *json_parse_struct(json_buf_t *buf){
 
 	struct json_value *jv = new_alloc(struct json_value);
 	jv->type = JV_MAP;
-	jv->u.map = dict_new(0, 0, NULL, NULL);
+	jv->u.map = dict_new(sizeof(struct json_value *), 0, 0, NULL, NULL);
 	for (;;) {
 		json_skip_blanks(buf);
 		assert(buf->len > 0);
