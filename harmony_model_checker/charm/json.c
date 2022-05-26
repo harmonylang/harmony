@@ -85,7 +85,6 @@ void json_map_append(struct json_value *map, json_buf_t key, struct json_value *
 		fprintf(stderr, "json_map_append: duplicate key: '%.*s'\n",
 							(int) key.len, key.base);
 	}
-	assert(*p == 0);
 	*p = jv;
 }
 
