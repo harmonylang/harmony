@@ -482,6 +482,7 @@ static bool onestep(
     struct node *next = dict_insert_lock(w->visited, &w->allocator,
                 sc, sizeof(struct state), &new);
     if (new) {
+        memset(next, 0, sizeof(*next));
         next->len = node->len + weight;
         next->steps = node->steps + instrcnt;
         next->to_parent = edge;
