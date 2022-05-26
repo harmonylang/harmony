@@ -1372,7 +1372,8 @@ static void enum_loc(
 
     fprintf(out, "    \"%.*s\": { ", key_size, (char *) key);
 
-    struct json_value *jv = value;
+    struct json_value **pjv = value;
+    struct json_value *jv = *pjv;
     assert(jv->type == JV_MAP);
 
     struct json_value *file = dict_lookup(jv->u.map, "file", 4);
