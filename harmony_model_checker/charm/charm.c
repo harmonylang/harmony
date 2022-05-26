@@ -1914,6 +1914,7 @@ int main(int argc, char **argv){
     // Put the initial state in the visited map
     struct dict *visited = dict_new(sizeof(struct node), 0, nworkers, NULL, NULL);
     struct node *node = dict_insert(visited, NULL, state, sizeof(*state), NULL);
+    memset(node, 0, sizeof(*node));
     node->state = *state;
     graph_add(&global->graph, node);
 
