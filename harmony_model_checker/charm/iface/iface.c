@@ -81,7 +81,7 @@ struct node_vec_t *find_one_step_children(struct node *n) {
 
         hashset_insert(visited, &node, sizeof(struct node *));
 
-        struct context *ctx = value_get(node->after, NULL);
+        struct context *ctx = value_get(node->to_parent->after, NULL);
         if (node != n && (ctx->atomic == 0 || ctx->terminated)) {
             node_vec_push(result, node);
         } else {

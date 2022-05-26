@@ -473,10 +473,11 @@ static bool onestep(
     }
 
     // Weight of this step
-    int weight = ctx == node->after ? 0 : 1;
+    int weight = (node->to_parent != NULL && ctx == node->to_parent->after) ? 0 : 1;
 
     // Allocate edge now
     struct edge *edge = walloc(w, sizeof(struct edge), false);
+    edge->src = node;
     edge->ctx = ctx;
     edge->choice = choice_copy;
     edge->interrupt = interrupt;
@@ -494,24 +495,16 @@ static bool onestep(
         int steps = node->steps + instrcnt;
         if (len < next->len || (len == next->len && steps < next->steps)) {
             next->len = len;
-            next->parent = node;
             next->steps = steps;
-            next->before = ctx;
-            next->after = after;
-            next->choice = choice_copy;
-            next->interrupt = interrupt;
+            next->to_parent = edge;
         }
     }
     else {
         next = node_alloc(w);
-        next->parent = node;
-        next->state = *sc;
-        next->before = ctx;
-        next->choice = choice_copy;
-        next->interrupt = interrupt;
-        next->after = after;
         next->len = node->len + weight;
         next->steps = node->steps + instrcnt;
+        next->to_parent = edge;
+        next->state = *sc;
         *w->last = next;
         w->last = &next->next;
         k->value = next;
@@ -541,7 +534,6 @@ static bool onestep(
     }
 
     // Backward edge from node to parent.
-    edge->src = node;
     edge->bwdnext = next->bwd;
     next->bwd = edge;
 
@@ -730,7 +722,7 @@ char *ctx_status(struct node *node, hvalue_t ctx) {
         return "choosing";
     }
     while (node->state.choosing != 0) {
-        node = node->parent;
+        node = node->to_parent->src;
     }
     struct edge *edge;
     for (edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
@@ -1230,12 +1222,13 @@ void path_dump(
 ) {
     struct node *node = last;
 
-    last = parent == NULL ? last->parent : parent;
-    if (last->parent == NULL) {
+    last = parent == NULL ? last->to_parent->src : parent;
+    if (last->to_parent == NULL) {
         fprintf(file, "\n");
     }
     else {
-        path_dump(global, file, last, last->parent, last->choice, oldstate, oldctx, last->interrupt, last->steps);
+        struct edge *e = last->to_parent;
+        path_dump(global, file, last, e->src, e->choice, oldstate, oldctx, e->interrupt, last->steps);
         fprintf(file, ",\n");
     }
 
@@ -1245,7 +1238,7 @@ void path_dump(
 
     /* Find the starting context in the list of processes.
      */
-    hvalue_t ctx = node->before;
+    hvalue_t ctx = node->to_parent->ctx;
     int pid;
     for (pid = 0; pid < global->nprocesses; pid++) {
         if (global->processes[pid] == ctx) {
@@ -1474,7 +1467,7 @@ static void detect_busywait(struct minheap *failures, struct node *node){
 		if (is_stuck(node, node, ctxs[i], false) == BW_RETURN) {
 			struct failure *f = new_alloc(struct failure);
 			f->type = FAIL_BUSYWAIT;
-			f->choice = node->choice;
+			f->choice = node->to_parent->choice;
 			f->node = node;
 			minheap_insert(failures, f);
 			// break;
@@ -1935,7 +1928,6 @@ int main(int argc, char **argv){
     struct dict *visited = dict_new(1024*1024, nworkers, NULL, NULL);
     struct node *node = node_alloc(NULL);
     node->state = *state;
-    node->after = ictx;
     graph_add(&global->graph, node);
     void **p = dict_insert(visited, NULL, state, sizeof(*state));
     assert(*p == NULL);
@@ -2093,7 +2085,7 @@ int main(int argc, char **argv){
 						!dfa_is_final(global->dfa, node->state.dfa_state)) {
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_BEHAVIOR;
-                    f->choice = node->choice;
+                    f->choice = node->to_parent->choice;
                     f->node = node;
                     minheap_insert(global->failures, f);
                     // break;
@@ -2110,7 +2102,7 @@ int main(int argc, char **argv){
                     nbad++;
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_TERMINATION;
-                    f->choice = node->choice;
+                    f->choice = node->to_parent->choice;
                     f->node = node;
                     minheap_insert(global->failures, f);
                     // break;
@@ -2140,8 +2132,8 @@ int main(int argc, char **argv){
             assert(node->id == i);
             fprintf(df, "\nNode %d:\n", node->id);
             fprintf(df, "    component: %d\n", node->component);
-            if (node->parent != NULL) {
-                fprintf(df, "    parent: %d\n", node->parent->id);
+            if (node->to_parent != NULL) {
+                fprintf(df, "    parent: %d\n", node->to_parent->src->id);
             }
             fprintf(df, "    vars: %s\n", value_string(node->state.vars));
             fprintf(df, "    fwd:\n");

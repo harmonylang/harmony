@@ -55,16 +55,14 @@ struct node {
     unsigned int id;        // nodes are numbered starting from 0
     struct edge *fwd;       // forward edges
     struct edge *bwd;       // backward edges
+    bool final;             // only eternal threads left (TODO: need this?)
 
     // How to get here from parent node
-    struct node *parent;    // shortest path to initial state
     int len;                // length of path to initial state
     int steps;              // #microsteps from root
-    hvalue_t before;        // context before state change
-    hvalue_t after;         // context after state change (current context)
-    hvalue_t choice;        // choice made if any
-    bool interrupt;         // set if gotten here by interrupt
-    bool final;             // only eternal threads left
+    struct edge *to_parent;
+
+    // TODO.  Allocate the rest after model checking, or use union?
 
     // SCC
     bool visited;           // for Kosaraju algorithm

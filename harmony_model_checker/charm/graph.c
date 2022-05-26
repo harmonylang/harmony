@@ -115,7 +115,7 @@ void graph_check_for_data_race(
                 if (ai->multiplicity > 1 && !ai->load && ai->atomic == 0) {
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_RACE;
-                    f->choice = node->choice;
+                    f->choice = node->to_parent->choice;
                     f->node = node;
                     f->address = value_put_address(engine, ai->indices, ai->n * sizeof(hvalue_t));
                     minheap_insert(warnings, f);
@@ -131,7 +131,7 @@ void graph_check_for_data_race(
                                            min * sizeof(hvalue_t)) == 0) {
                                     struct failure *f = new_alloc(struct failure);
                                     f->type = FAIL_RACE;
-                                    f->choice = node->choice;
+                                    f->choice = node->to_parent->choice;
                                     f->node = node;
                                     f->address = value_put_address(engine, ai->indices, min * sizeof(hvalue_t));
                                     minheap_insert(warnings, f);
