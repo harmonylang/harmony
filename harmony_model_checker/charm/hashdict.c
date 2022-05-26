@@ -273,6 +273,8 @@ void *dict_retrieve(const void *p, unsigned int *psize){
     return (char *) (k+1);
 }
 
+// This assumes that the value is a pointer.  Returns NULL if there is
+// no entry but does not create an entry.
 void *dict_lookup(struct dict *dict, const void *key, unsigned int keyn) {
     uint32_t hash = hash_func(key, keyn);
     unsigned int index = hash % dict->length;
@@ -284,7 +286,8 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keyn) {
 	while (k != NULL) {
 		if (k->len == keyn && !memcmp((char *) (k+1), key, keyn)) {
             unsigned int alen = (keyn + DICT_ALIGN - 1) & ~(DICT_ALIGN - 1);
-			return (char *) (k+1) + alen;
+			void **p = (void **) ((char *) (k+1) + alen);
+            return *p;
 		}
 		k = k->next;
 	}
@@ -297,7 +300,8 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keyn) {
             if (k->len == keyn && !memcmp((char *) (k+1) + dict->value_len, key, keyn)) {
                 mutex_release(&dict->locks[index % dict->nlocks]);
                 unsigned int alen = (keyn + DICT_ALIGN - 1) & ~(DICT_ALIGN - 1);
-                return (char *) (k+1) + alen;
+                void **p = (void **) ((char *) (k+1) + alen);
+                return *p;
             }
             k = k->next;
         }
