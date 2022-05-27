@@ -1725,7 +1725,6 @@ static void print_trans_upcall(void *env, const void *key, unsigned int key_size
     }
     fprintf(pte->out, "],[%s]]", strbuf_getstr(sb));
     strbuf_deinit(sb);
-    free(sb);
 }
 
 static void print_transitions(FILE *out, struct dict *symbols, struct edge *edges){
