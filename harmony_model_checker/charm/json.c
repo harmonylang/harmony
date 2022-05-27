@@ -17,7 +17,9 @@
 #define buf_adv(b)		do { assert((b)->len > 0); (b)->base++; (b)->len--; } while (false)
 
 static void json_map_cleanup(void *env, const void *key, unsigned int keylen, void *val){
-	json_value_free(val);
+    struct json_value **pjv = val;
+
+	json_value_free(*pjv);
 }
 
 void json_value_free(struct json_value *jv){
@@ -266,7 +268,8 @@ static void json_dump_map(void *env, const void *key, unsigned int keylen, void 
 	unsigned int ind = (size_t) env;
 	json_indent(ind);
 	printf("%.*s: ", keylen, (char *) key);
-	json_dump_ind(val, ind + 2);
+    struct json_value **pjv = val;
+	json_dump_ind(*pjv, ind + 2);
 }
 
 static void json_dump_string(json_buf_t buf){
