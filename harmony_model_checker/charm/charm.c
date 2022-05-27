@@ -1716,8 +1716,9 @@ static void print_trans_upcall(void *env, const void *key, unsigned int key_size
     }
     fprintf(pte->out, "        [[");
     for (unsigned int i = 0; i < nkeys; i++) {
-        unsigned int *p = dict_lookup(pte->symbols, &log[i], sizeof(log[i]));
-        assert(p != NULL);
+        bool new;
+        unsigned int *p = dict_insert(pte->symbols, NULL, &log[i], sizeof(log[i]), &new);
+        assert(!new);
         if (i != 0) {
             fprintf(pte->out, ",");
         }
