@@ -517,7 +517,12 @@ void op_AtomicInc(const void *env, struct state *state, struct step *step, struc
     struct context *ctx = step->ctx;
 
     ctx->atomic++;
-    ctx->pc++;
+    if (ctx->atomic == 0) {
+        value_ctx_failure(step->ctx, &step->engine, "AtomicInc overflow");
+    }
+    else {
+        ctx->pc++;
+    }
 }
 
 void op_Choose(const void *env, struct state *state, struct step *step, struct global_t *global){
@@ -1003,7 +1008,12 @@ void op_ReadonlyInc(const void *env, struct state *state, struct step *step, str
     struct context *ctx = step->ctx;
 
     ctx->readonly++;
-    ctx->pc++;
+    if (ctx->readonly == 0) {
+        value_ctx_failure(step->ctx, &step->engine, "ReadonlyInc overflow");
+    }
+    else {
+        ctx->pc++;
+    }
 }
 
 // On the stack are:
@@ -1163,7 +1173,7 @@ void op_Spawn(
     ctx->name = ef->name;
     ctx->arg = arg;
     ctx->this = thisval;
-    ctx->entry = VALUE_TO_PC(pc);
+    // ctx->entry = VALUE_TO_PC(pc);
     ctx->pc = pc;
     ctx->vars = VALUE_DICT;
     ctx->interruptlevel = false;
@@ -1772,12 +1782,15 @@ hvalue_t f_any(struct state *state, struct context *ctx, hvalue_t *args, int n, 
     return value_ctx_failure(ctx, engine, "any() can only be applied to sets or dictionaries");
 }
 
+#ifdef notdef
 hvalue_t nametag(struct context *ctx, struct engine *engine){
     hvalue_t nt = value_dict_store(engine, VALUE_DICT,
             VALUE_TO_INT(0), ctx->entry);
     return value_dict_store(engine, nt, VALUE_TO_INT(1), ctx->arg);
 }
+#endif
 
+#ifdef notdef
 hvalue_t f_atLabel(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     assert(n == 1);
     if (ctx->atomic == 0) {
@@ -1806,6 +1819,7 @@ hvalue_t f_atLabel(struct state *state, struct context *ctx, hvalue_t *args, int
     }
     return bag;
 }
+#endif
 
 hvalue_t f_countLabel(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     assert(n == 1);
@@ -3043,7 +3057,7 @@ struct f_info f_table[] = {
     { "abs", f_abs },
     { "all", f_all },
     { "any", f_any },
-    { "atLabel", f_atLabel },
+    // { "atLabel", f_atLabel },
     { "BagAdd", f_value_bag_add },
     { "countLabel", f_countLabel },
     { "DictAdd", f_dict_add },

@@ -550,8 +550,8 @@ static void value_string_context(struct strbuf *sb, hvalue_t v) {
 #else
     strbuf_printf(sb, "name=");
     strbuf_value_string(sb, ctx->name);
-    strbuf_printf(sb, ",entry=");
-    strbuf_value_string(sb, ctx->entry);
+    // strbuf_printf(sb, ",entry=");
+    // strbuf_value_string(sb, ctx->entry);
     strbuf_printf(sb, ",arg=");
     strbuf_value_string(sb, ctx->arg);
     strbuf_printf(sb, ",this=");

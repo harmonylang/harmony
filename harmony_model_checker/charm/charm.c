@@ -754,7 +754,7 @@ void print_context(
     free(a);
 
     // assert(VALUE_TYPE(c->entry) == VALUE_PC);   TODO
-    fprintf(file, "          \"entry\": \"%d\",\n", (int) (c->entry >> VALUE_BITS));
+    // fprintf(file, "          \"entry\": \"%d\",\n", (int) (c->entry >> VALUE_BITS));
 
     fprintf(file, "          \"pc\": \"%d\",\n", c->pc);
     fprintf(file, "          \"fp\": \"%d\",\n", c->fp);
