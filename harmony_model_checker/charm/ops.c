@@ -178,11 +178,10 @@ struct var_tree *var_parse(struct engine *engine, char *s, int len, int *index){
 
 void interrupt_invoke(struct step *step){
     assert(!step->ctx->interruptlevel);
-	assert(VALUE_TYPE(step->ctx->trap_pc) == VALUE_PC);
     ctx_push(step->ctx, VALUE_TO_PC(step->ctx->pc));
     ctx_push(step->ctx, VALUE_TO_INT(CALLTYPE_INTERRUPT));
     ctx_push(step->ctx, step->ctx->trap_arg);
-    step->ctx->pc = VALUE_FROM_PC(step->ctx->trap_pc);
+    step->ctx->pc = step->ctx->trap_pc;
     step->ctx->trap_pc = 0;
     step->ctx->interruptlevel = true;
 }
@@ -1416,13 +1415,14 @@ void op_StoreVar(const void *env, struct state *state, struct step *step, struct
 }
 
 void op_Trap(const void *env, struct state *state, struct step *step, struct global_t *global){
-    step->ctx->trap_pc = ctx_pop(step->ctx);
-    if (VALUE_TYPE(step->ctx->trap_pc) != VALUE_PC) {
+    hvalue_t trap_pc = ctx_pop(step->ctx);
+    if (VALUE_TYPE(trap_pc) != VALUE_PC) {
         value_ctx_failure(step->ctx, &step->engine, "trap: not a method");
         return;
     }
-    assert(VALUE_FROM_PC(step->ctx->trap_pc) < (hvalue_t) global->code.len);
-    assert(strcmp(global->code.instrs[VALUE_FROM_PC(step->ctx->trap_pc)].oi->name, "Frame") == 0);
+    step->ctx->trap_pc = VALUE_FROM_PC(trap_pc);
+    assert(step->ctx->trap_pc < (hvalue_t) global->code.len);
+    assert(strcmp(global->code.instrs[step->ctx->trap_pc].oi->name, "Frame") == 0);
     step->ctx->trap_arg = ctx_pop(step->ctx);
     step->ctx->pc++;
 }

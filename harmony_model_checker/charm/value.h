@@ -19,14 +19,12 @@ typedef struct state {
 } state;
 
 typedef struct context {          // context value
-    // hvalue_t entry;           // entry point of main method
     hvalue_t name;            // name of method
     hvalue_t arg;             // argument provided to spawn
     hvalue_t this;            // thread-local state
     hvalue_t vars;            // method-local variables
-    hvalue_t trap_pc;         // trap program counter
-    hvalue_t trap_arg;        // trap argument
     hvalue_t failure;         // string value, or 0 if no failure
+    hvalue_t trap_arg;        // trap argument
     bool atomicFlag : 1;      // to implement lazy atomicity
     bool interruptlevel : 1;  // interrupt level
     bool stopped : 1;         // context is stopped
@@ -35,6 +33,7 @@ typedef struct context {          // context value
     uint8_t readonly;         // readonly counter
     uint8_t atomic;           // atomic counter
     uint16_t pc;              // program counter
+    uint16_t trap_pc;         // trap program counter
     uint16_t fp;              // frame pointer
     uint16_t sp;              // stack size
     hvalue_t stack[0];        // growing stack

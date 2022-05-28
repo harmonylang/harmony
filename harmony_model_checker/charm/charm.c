@@ -780,15 +780,14 @@ void print_context(
     }
 
     if (c->trap_pc != 0) {
-        s = value_string(c->trap_pc);
         a = value_string(c->trap_arg);
         if (*a == '(') {
-            fprintf(file, "          \"trap\": \"%s%s\",\n", s, a);
+            fprintf(file, "          \"trap\": \"PC(%u)%s\",\n", c->trap_pc, a);
         }
         else {
-            fprintf(file, "          \"trap\": \"%s(%s)\",\n", s, a);
+            fprintf(file, "          \"trap\": \"PC(%u)(%s)\",\n", c->trap_pc, a);
         }
-        free(s);
+        free(a);
     }
 
     if (c->interruptlevel) {
