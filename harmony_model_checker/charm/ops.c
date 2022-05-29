@@ -178,8 +178,8 @@ struct var_tree *var_parse(struct engine *engine, char *s, int len, int *index){
 
 void interrupt_invoke(struct step *step){
     assert(!step->ctx->interruptlevel);
-    ctx_push(step->ctx, VALUE_TO_PC(step->ctx->pc));
-    ctx_push(step->ctx, VALUE_TO_INT(CALLTYPE_INTERRUPT));
+    ctx_push(step->ctx,
+        VALUE_TO_INT((step->ctx->pc << CALLTYPE_BITS) | CALLTYPE_INTERRUPT));
     ctx_push(step->ctx, step->ctx->trap_arg);
     step->ctx->pc = step->ctx->trap_pc;
     step->ctx->trap_pc = 0;
@@ -435,8 +435,7 @@ void op_Apply(const void *env, struct state *state, struct step *step, struct gl
         }
         return;
     case VALUE_PC:
-        ctx_push(step->ctx, VALUE_TO_PC(step->ctx->pc + 1));
-        ctx_push(step->ctx, VALUE_TO_INT(CALLTYPE_NORMAL));
+        ctx_push(step->ctx, VALUE_TO_INT(((step->ctx->pc + 1) << CALLTYPE_BITS) | CALLTYPE_NORMAL));
         ctx_push(step->ctx, e);
         assert(VALUE_FROM_PC(method) != step->ctx->pc);
         step->ctx->pc = VALUE_FROM_PC(method);
@@ -1019,8 +1018,7 @@ void op_ReadonlyInc(const void *env, struct state *state, struct step *step, str
 //  - frame pointer
 //  - saved variables
 //  - saved argument for stack trace
-//  - calltype: process, normal, or interrupt
-//  - return address if normal or interrupt
+//  - call: process, normal, or interrupt plus return address
 void op_Return(const void *env, struct state *state, struct step *step, struct global_t *global){
     hvalue_t result = value_dict_load(step->ctx->vars, value_put_atom(&step->engine, "result", 6));
     hvalue_t fp = ctx_pop(step->ctx);
@@ -1041,30 +1039,28 @@ void op_Return(const void *env, struct state *state, struct step *step, struct g
         step->ctx->terminated = true;
         return;
     }
-    hvalue_t calltype = ctx_pop(step->ctx);
-    assert(VALUE_TYPE(calltype) == VALUE_INT);
-    switch (VALUE_FROM_INT(calltype)) {
+    hvalue_t callval = ctx_pop(step->ctx);
+    assert(VALUE_TYPE(callval) == VALUE_INT);
+    unsigned int call = VALUE_FROM_INT(callval);
+    switch (call & CALLTYPE_MASK) {
     case CALLTYPE_PROCESS:
         step->ctx->terminated = true;
-        ctx_push(step->ctx, calltype);
+        // Restore stack so arg can be printed for identifying context
+        ctx_push(step->ctx, callval);
         ctx_push(step->ctx, arg);
         break;
     case CALLTYPE_NORMAL:
         {
-            hvalue_t pc = ctx_pop(step->ctx);
-            assert(VALUE_TYPE(pc) == VALUE_PC);
-            pc = VALUE_FROM_PC(pc);
-            assert(pc != (hvalue_t) step->ctx->pc);
+            unsigned int pc = call >> CALLTYPE_BITS;
+            assert(pc != step->ctx->pc);
             ctx_push(step->ctx, result);
             step->ctx->pc = pc;
         }
         break;
     case CALLTYPE_INTERRUPT:
         step->ctx->interruptlevel = false;
-        hvalue_t pc = ctx_pop(step->ctx);
-        assert(VALUE_TYPE(pc) == VALUE_PC);
-        pc = VALUE_FROM_PC(pc);
-        assert(pc != (hvalue_t) step->ctx->pc);
+        unsigned int pc = call >> CALLTYPE_BITS;
+        assert(pc != step->ctx->pc);
         step->ctx->pc = pc;
         break;
     default:

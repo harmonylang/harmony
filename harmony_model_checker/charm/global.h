@@ -6,6 +6,8 @@
 
 #define new_alloc(t)	(t *) calloc(1, sizeof(t))
 
+#define CALLTYPE_BITS          4
+#define CALLTYPE_MASK          ((1 << CALLTYPE_BITS) - 1)
 #define CALLTYPE_PROCESS       1
 #define CALLTYPE_NORMAL        2
 #define CALLTYPE_INTERRUPT     3

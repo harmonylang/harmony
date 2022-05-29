@@ -610,7 +610,7 @@ char *json_escape_value(hvalue_t v){
     return r;
 }
 
-bool print_trace(
+static bool print_trace(
     struct global_t *global,
     FILE *file,
     struct context *ctx,
@@ -625,23 +625,20 @@ bool print_trace(
 
 	int level = 0, orig_pc = pc;
     if (strcmp(global->code.instrs[pc].oi->name, "Frame") == 0) {
-        hvalue_t ct = ctx->stack[ctx->sp - 2];
-        assert(VALUE_TYPE(ct) == VALUE_INT);
-        switch (VALUE_FROM_INT(ct)) {
+        hvalue_t callval = ctx->stack[ctx->sp - 2];
+        assert(VALUE_TYPE(callval) == VALUE_INT);
+        unsigned int call = VALUE_FROM_INT(callval);
+        switch (call & CALLTYPE_MASK) {
         case CALLTYPE_PROCESS:
             pc++;
             break;
         case CALLTYPE_INTERRUPT:
         case CALLTYPE_NORMAL:
-            {
-                hvalue_t retaddr = ctx->stack[ctx->sp - 3];
-                assert(VALUE_TYPE(retaddr) == VALUE_PC);
-                pc = VALUE_FROM_PC(retaddr);
-            }
+            pc = call >> CALLTYPE_BITS;
             break;
         default:
-            fprintf(stderr, "call type: %"PRI_HVAL" %d %d %d\n", ct, ctx->sp, ctx->fp, ctx->pc);
-            // panic("print_trace: bad call type 1");
+            fprintf(stderr, "call type: %x %d %d %d\n", call, ctx->sp, ctx->fp, ctx->pc);
+            panic("print_trace: bad call type 1");
         }
     }
     while (--pc >= 0) {
@@ -652,13 +649,26 @@ bool print_trace(
 		}
         else if (strcmp(name, "Frame") == 0) {
 			if (level == 0) {
-				if (fp >= 5) {
-                    assert(VALUE_TYPE(ctx->stack[fp - 5]) == VALUE_PC);
-					int npc = VALUE_FROM_PC(ctx->stack[fp - 5]);
-					hvalue_t nvars = ctx->stack[fp - 2];
-					int nfp = ctx->stack[fp - 1] >> VALUE_BITS;
-					if (print_trace(global, file, ctx, npc, nfp, nvars)) {
-                        fprintf(file, ",\n");
+				if (fp > 4) {
+                    hvalue_t callval = ctx->stack[fp - 4];
+                    assert(VALUE_TYPE(callval) == VALUE_INT);
+                    unsigned int call = VALUE_FROM_INT(callval);
+                    switch (call & CALLTYPE_MASK) {
+                    case CALLTYPE_PROCESS:
+                        panic("XXX");
+                    case CALLTYPE_INTERRUPT:
+                    case CALLTYPE_NORMAL:
+                        { 
+                            unsigned int npc = call >>= CALLTYPE_BITS;
+                            hvalue_t nvars = ctx->stack[fp - 2];
+                            int nfp = ctx->stack[fp - 1] >> VALUE_BITS;
+                            if (print_trace(global, file, ctx, npc, nfp, nvars)) {
+                                fprintf(file, ",\n");
+                            }
+                        }
+                        break;
+                    default:
+                        panic("YYY");
                     }
 				}
 				fprintf(file, "            {\n");
@@ -676,9 +686,10 @@ bool print_trace(
 					fprintf(file, "              \"method\": \"%.*s(%s)\",\n", len - 2, s + 1, a);
 				}
 
-                hvalue_t ct = ctx->stack[fp - 4];
-                assert(VALUE_TYPE(ct) == VALUE_INT);
-                switch (VALUE_FROM_INT(ct)) {
+                hvalue_t callval = ctx->stack[fp - 4];
+                assert(VALUE_TYPE(callval) == VALUE_INT);
+                unsigned int call = VALUE_FROM_INT(callval);
+                switch (call & CALLTYPE_MASK) {
                 case CALLTYPE_PROCESS:
                     fprintf(file, "              \"calltype\": \"process\",\n");
                     break;
@@ -689,6 +700,7 @@ bool print_trace(
                     fprintf(file, "              \"calltype\": \"interrupt\",\n");
                     break;
                 default:
+                    printf(">>> %x\n", call);
                     panic("print_trace: bad call type 2");
                 }
 
@@ -763,7 +775,7 @@ void print_context(
 
 #ifdef notdef
     {
-        fprintf(file, "STACK %d:\n", c->fp);
+        fprintf(file, "STACK1 %d:\n", c->fp);
         for (int x = 0; x < c->sp; x++) {
             fprintf(file, "    %d: %s\n", x, value_string(c->stack[x]));
         }
@@ -953,6 +965,14 @@ void diff_state(
     fprintf(file, "          \"npc\": \"%d\",\n", newctx->pc);
     if (newctx->fp != oldctx->fp) {
         fprintf(file, "          \"fp\": \"%d\",\n", newctx->fp);
+#ifdef notdef
+        {
+            fprintf(stderr, "STACK2 %d:\n", newctx->fp);
+            for (int x = 0; x < newctx->sp; x++) {
+                fprintf(stderr, "    %d: %s\n", x, value_string(newctx->stack[x]));
+            }
+        }
+#endif
         fprintf(file, "          \"trace\": [\n");
         print_trace(global, file, newctx, newctx->pc, newctx->fp, newctx->vars);
         fprintf(file, "\n");
