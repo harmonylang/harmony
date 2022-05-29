@@ -160,8 +160,8 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
     memset(&iface_step, 0, sizeof(iface_step));
     iface_step.engine.values = &global->values;
     iface_step.ctx = new_alloc(struct context);
-    iface_step.ctx->name = value_put_atom(&iface_step.engine, "__iface__", 8);
-    iface_step.ctx->arg = VALUE_DICT;
+    // iface_step.ctx->name = value_put_atom(&iface_step.engine, "__iface__", 8);
+    // iface_step.ctx->arg = VALUE_DICT;
     iface_step.ctx->this = VALUE_DICT;
     iface_step.ctx->vars = VALUE_DICT;
     iface_step.ctx->atomic = iface_step.ctx->readonly = 1;

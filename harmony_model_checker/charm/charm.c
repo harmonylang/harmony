@@ -247,7 +247,9 @@ static bool onestep(
             double now = gettime();
             if (now - global->lasttime > 1) {
                 if (global->lasttime != 0) {
-                    char *p = value_string(step->ctx->name);
+                    assert(strcmp(global->code.instrs[step->ctx->entry].oi->name, "Frame"));
+                    const struct env_Frame *ef = global->code.instrs[step->ctx->entry].env;
+                    char *p = value_string(ef->name);
                     fprintf(stderr, "%s pc=%d states=%d diameter=%u queue=%d\n",
                             p, step->ctx->pc, global->enqueued, global->diameter, global->enqueued - global->dequeued);
                     free(p);
@@ -733,17 +735,18 @@ void print_context(
     int tid,
     struct node *node
 ) {
-    char *s, *a;
-
     fprintf(file, "        {\n");
     fprintf(file, "          \"tid\": \"%d\",\n", tid);
-    fprintf(file, "          \"yhash\": \"%"PRI_HVAL"\",\n", ctx);
+    // fprintf(file, "          \"yhash\": \"%"PRI_HVAL"\",\n", ctx);
 
     struct context *c = value_get(ctx, NULL);
 
-    s = value_string(c->name);
+    assert(strcmp(global->code.instrs[c->entry].oi->name, "Frame"));
+    const struct env_Frame *ef = global->code.instrs[c->entry].env;
+    char *s = value_string(ef->name);
 	int len = strlen(s);
-    a = json_escape_value(c->arg);
+    assert(c->sp > 1);
+    char *a = json_escape_value(c->stack[1]);
     if (*a == '(') {
         fprintf(file, "          \"name\": \"%.*s%s\",\n", len - 2, s + 1, a);
     }
@@ -753,8 +756,7 @@ void print_context(
     free(s);
     free(a);
 
-    // assert(VALUE_TYPE(c->entry) == VALUE_PC);   TODO
-    // fprintf(file, "          \"entry\": \"%d\",\n", (int) (c->entry >> VALUE_BITS));
+    fprintf(file, "          \"entry\": \"%u\",\n", c->entry);
 
     fprintf(file, "          \"pc\": \"%d\",\n", c->pc);
     fprintf(file, "          \"fp\": \"%d\",\n", c->fp);
@@ -858,8 +860,7 @@ void print_state(
 
     // hvalue_t inv_nv = value_put_atom("name", 4);
     // hvalue_t inv_tv = value_put_atom("tag", 3);
-    inv_step.ctx->name = value_put_atom(&inv_step.engine, "__invariant__", 13);
-    inv_step.ctx->arg = VALUE_LIST;
+    // inv_step.ctx->name = value_put_atom(&inv_step.engine, "__invariant__", 13);
     inv_step.ctx->this = VALUE_DICT;
     inv_step.ctx->vars = VALUE_DICT;
     inv_step.ctx->atomic = inv_step.ctx->readonly = 1;
@@ -873,7 +874,8 @@ void print_state(
     int nfailures = 0;
     for (unsigned int i = 0; i < size; i++) {
         assert(VALUE_TYPE(vals[i]) == VALUE_PC);
-        inv_step.ctx->pc = VALUE_FROM_PC(vals[i]);
+        inv_step.ctx->entry = VALUE_FROM_PC(vals[i]);
+        inv_step.ctx->pc = inv_step.ctx->entry;
         assert(strcmp(global->code.instrs[inv_step.ctx->pc].oi->name, "Invariant") == 0);
         int end = invariant_cnt(global->code.instrs[inv_step.ctx->pc].env);
         bool b = invariant_check(global, state, &inv_step, end);
@@ -1235,9 +1237,12 @@ void path_dump(
 
     struct context *context = value_get(ctx, NULL);
     assert(!context->terminated);
-    char *name = value_string(context->name);
+    assert(strcmp(global->code.instrs[context->entry].oi->name, "Frame"));
+    const struct env_Frame *ef = global->code.instrs[context->entry].env;
+    char *name = value_string(ef->name);
 	int len = strlen(name);
-    char *arg = json_escape_value(context->arg);
+    assert(context->sp > 1);
+    char *arg = json_escape_value(context->stack[1]);
     // char *c = value_string(choice);
     fprintf(file, "      \"tid\": \"%d\",\n", pid);
     fprintf(file, "      \"xhash\": \"%"PRI_HVAL"\",\n", ctx);
@@ -1829,7 +1834,6 @@ int main(int argc, char **argv){
     global->enqueued = 0;
     global->dequeued = 0;
     global->dumpfirst = false;
-    global->init_name = value_put_atom(&engine, "__init__", 8);
 
     // First read and parse the DFA if any
     if (dfafile != NULL) {
@@ -1870,8 +1874,6 @@ int main(int argc, char **argv){
 
     // Create an initial state
     struct context *init_ctx = calloc(1, sizeof(struct context) + MAX_CONTEXT_STACK * sizeof(hvalue_t));
-    init_ctx->name = global->init_name;
-    init_ctx->arg = VALUE_LIST;
     init_ctx->this = VALUE_DICT;
     init_ctx->vars = VALUE_DICT;
     init_ctx->atomic = 1;
@@ -1936,8 +1938,7 @@ int main(int argc, char **argv){
         // Create a context for evaluating invariants
         w->inv_step.ctx = calloc(1, sizeof(struct context) +
                                 MAX_CONTEXT_STACK * sizeof(hvalue_t));
-        w->inv_step.ctx->name = value_put_atom(&engine, "__invariant__", 13);
-        w->inv_step.ctx->arg = VALUE_LIST;
+        // w->inv_step.ctx->name = value_put_atom(&engine, "__invariant__", 13);
         w->inv_step.ctx->this = VALUE_DICT;
         w->inv_step.ctx->vars = VALUE_DICT;
         w->inv_step.ctx->atomic = w->inv_step.ctx->readonly = 1;
@@ -2127,7 +2128,7 @@ int main(int argc, char **argv){
             for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext, eno++) {
                 fprintf(df, "        %d:\n", eno);
                 struct context *ctx = value_get(edge->ctx, NULL);
-                fprintf(df, "            context: %s %s %d\n", value_string(ctx->name), value_string(ctx->arg), ctx->pc);
+                // fprintf(df, "            context: %s %s %d\n", value_string(ctx->name), value_string(ctx->arg), ctx->pc);
                 fprintf(df, "            choice: %s\n", value_string(edge->choice));
                 fprintf(df, "            node: %d (%d)\n", edge->dst->id, edge->dst->component);
                 fprintf(df, "            log:");
@@ -2143,7 +2144,7 @@ int main(int argc, char **argv){
             for (struct edge *edge = node->bwd; edge != NULL; edge = edge->bwdnext, eno++) {
                 fprintf(df, "        %d:\n", eno);
                 struct context *ctx = value_get(edge->ctx, NULL);
-                fprintf(df, "            context: %s %s %d\n", value_string(ctx->name), value_string(ctx->arg), ctx->pc);
+                // fprintf(df, "            context: %s %s %d\n", value_string(ctx->name), value_string(ctx->arg), ctx->pc);
                 fprintf(df, "            choice: %s\n", value_string(edge->choice));
                 fprintf(df, "            node: %d (%d)\n", edge->src->id, edge->src->component);
                 fprintf(df, "            log:");

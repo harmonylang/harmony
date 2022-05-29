@@ -18,7 +18,6 @@ struct global_t {
     int dequeued;                // #states dequeued
     bool dumpfirst;              // for json dumping
     struct dfa *dfa;             // for tracking correct behaviors
-    hvalue_t init_name;          // "__init__" atom
     unsigned int diameter;       // graph diameter
     bool run_direct;             // non-model-checked mode
 };

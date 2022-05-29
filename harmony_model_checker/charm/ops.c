@@ -1019,7 +1019,7 @@ void op_ReadonlyInc(const void *env, struct state *state, struct step *step, str
 //  - frame pointer
 //  - saved variables
 //  - saved argument for stack trace
-//  - process, normal, or interrupt
+//  - calltype: process, normal, or interrupt
 //  - return address if normal or interrupt
 void op_Return(const void *env, struct state *state, struct step *step, struct global_t *global){
     hvalue_t result = value_dict_load(step->ctx->vars, value_put_atom(&step->engine, "result", 6));
@@ -1035,8 +1035,9 @@ void op_Return(const void *env, struct state *state, struct step *step, struct g
     hvalue_t oldvars = ctx_pop(step->ctx);
     assert(VALUE_TYPE(oldvars) == VALUE_DICT);
     step->ctx->vars = oldvars;
-    (void) ctx_pop(step->ctx);   // argument saved for stack trace
+    hvalue_t arg = ctx_pop(step->ctx);   // argument saved for stack trace
     if (step->ctx->sp == 0) {     // __init__
+        assert(false);
         step->ctx->terminated = true;
         return;
     }
@@ -1045,6 +1046,8 @@ void op_Return(const void *env, struct state *state, struct step *step, struct g
     switch (VALUE_FROM_INT(calltype)) {
     case CALLTYPE_PROCESS:
         step->ctx->terminated = true;
+        ctx_push(step->ctx, calltype);
+        ctx_push(step->ctx, arg);
         break;
     case CALLTYPE_NORMAL:
         {
@@ -1168,12 +1171,8 @@ void op_Spawn(
     struct context *ctx = calloc(1, sizeof(struct context) +
                         2 * sizeof(hvalue_t));
 
-    const struct env_Frame *ef = global->code.instrs[pc].env;
-    ctx->name = ef->name;
-    ctx->arg = arg;
     ctx->this = thisval;
-    // ctx->entry = VALUE_TO_PC(pc);
-    ctx->pc = pc;
+    ctx->entry = ctx->pc = pc;
     ctx->vars = VALUE_DICT;
     ctx->interruptlevel = false;
     ctx->eternal = se->eternal;
@@ -1323,9 +1322,9 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
             step->ai->load = is_sequential(state->seqs, step->ai->indices, step->ai->n);
         }
 
-        if (size == 1 && step->ctx->name != global->init_name) {
+        if (size == 1 && step->ctx->entry != 0) {
             hvalue_t newvars;
-            if (!value_dict_trystore(&step->engine, state->vars, indices[0], v, step->ctx->name == global->init_name, &newvars)){
+            if (!value_dict_trystore(&step->engine, state->vars, indices[0], v, step->ctx->entry == 0, &newvars)){
                 char *x = indices_string(indices, size);
                 value_ctx_failure(step->ctx, &step->engine, "Store: declare a local variable %s (or set during initialization)", x);
                 free(x);
@@ -1346,9 +1345,9 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
             step->ai->n = es->n;
             step->ai->load = is_sequential(state->seqs, step->ai->indices, step->ai->n);
         }
-        if (es->n == 1 && step->ctx->name != global->init_name) {
+        if (es->n == 1 && step->ctx->entry != 0) {
             hvalue_t newvars;
-            if (!value_dict_trystore(&step->engine, state->vars, es->indices[0], v, step->ctx->name == global->init_name, &newvars)){
+            if (!value_dict_trystore(&step->engine, state->vars, es->indices[0], v, step->ctx->entry == 0, &newvars)){
                 char *x = indices_string(es->indices, es->n);
                 value_ctx_failure(step->ctx, &step->engine, "Store: declare a local variable %s (or set during initialization)", x);
                 free(x);
@@ -1781,45 +1780,6 @@ hvalue_t f_any(struct state *state, struct context *ctx, hvalue_t *args, int n, 
     }
     return value_ctx_failure(ctx, engine, "any() can only be applied to sets or dictionaries");
 }
-
-#ifdef notdef
-hvalue_t nametag(struct context *ctx, struct engine *engine){
-    hvalue_t nt = value_dict_store(engine, VALUE_DICT,
-            VALUE_TO_INT(0), ctx->entry);
-    return value_dict_store(engine, nt, VALUE_TO_INT(1), ctx->arg);
-}
-#endif
-
-#ifdef notdef
-hvalue_t f_atLabel(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
-    assert(n == 1);
-    if (ctx->atomic == 0) {
-        return value_ctx_failure(ctx, engine, "atLabel: can only be called in atomic mode");
-    }
-    hvalue_t e = args[0];
-    if (VALUE_TYPE(e) != VALUE_PC) {
-        return value_ctx_failure(ctx, engine, "atLabel: not a label");
-    }
-    e = VALUE_FROM_PC(e);
-
-    unsigned int size;
-    hvalue_t *vals = value_get(state->ctxbag, &size);
-    size /= sizeof(hvalue_t);
-    assert(size > 0);
-    assert(size % 2 == 0);
-    hvalue_t bag = VALUE_DICT;
-    for (unsigned int i = 0; i < size; i += 2) {
-        assert(VALUE_TYPE(vals[i]) == VALUE_CONTEXT);
-        assert(VALUE_TYPE(vals[i+1]) == VALUE_INT);
-        struct context *ctx = value_get(vals[i], NULL);
-        if ((hvalue_t) ctx->pc == e) {
-            bag = value_bag_add(engine, bag, nametag(ctx, engine),
-                (int) VALUE_FROM_INT(vals[i+1]));
-        }
-    }
-    return bag;
-}
-#endif
 
 hvalue_t f_countLabel(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     assert(n == 1);
@@ -3057,7 +3017,6 @@ struct f_info f_table[] = {
     { "abs", f_abs },
     { "all", f_all },
     { "any", f_any },
-    // { "atLabel", f_atLabel },
     { "BagAdd", f_value_bag_add },
     { "countLabel", f_countLabel },
     { "DictAdd", f_dict_add },

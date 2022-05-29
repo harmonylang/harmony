@@ -15,26 +15,26 @@ struct component {
 };
 
 struct access_info {
-    struct access_info *next; // linked list maintenance
-    hvalue_t *indices;        // address of load/store
-    unsigned int n;           // length of address
-    bool load;                // store or del if false
-    int pc;                   // for debugging
-    int multiplicity;         // #identical contexts
-    int atomic;               // atomic counter
+    struct access_info *next;        // linked list maintenance
+    hvalue_t *indices;               // address of load/store
+    uint8_t n;                       // length of address
+    uint8_t atomic;                  // atomic counter
+    uint16_t pc;                     // for debugging
+    unsigned int multiplicity : 15;  // #identical contexts
+    bool load : 1;                   // store or del if false
 };
 
 struct edge {
     struct edge *fwdnext;    // forward linked list maintenance
     struct edge *bwdnext;    // backward linked list maintenance
     hvalue_t ctx, choice;    // ctx that made the microstep, choice if any
-    bool interrupt;          // set if state change is an interrupt
     struct node *src;        // source node
     struct node *dst;        // destination node
     hvalue_t after;          // resulting context
     struct access_info *ai;  // to detect data races
     hvalue_t *log;           // print history
-    unsigned int nlog;       // size of print history
+    uint16_t nlog;           // size of print history
+    bool interrupt : 1;      // set if state change is an interrupt
 };
 
 enum fail_type {
@@ -52,24 +52,23 @@ struct node {
 
     // Information about state
     struct state state;     // state corresponding to this node
-    unsigned int id;        // nodes are numbered starting from 0
     struct edge *fwd;       // forward edges
     struct edge *bwd;       // backward edges
-    bool final;             // only eternal threads left (TODO: need this?)
 
-    // How to get here from parent node
-    int len;                // length of path to initial state
-    int steps;              // #microsteps from root
-    struct edge *to_parent;
+    struct edge *to_parent; // pointer towards initial state
+    uint32_t id;            // nodes are numbered starting from 0
+    uint16_t len;           // length of path to initial state
+    uint16_t steps;         // #microsteps from root
+    bool final: 1;          // only eternal threads left (TODO: need this?)
 
     // TODO.  Allocate the rest after model checking, or use union?
 
-    // SCC
-    bool visited;           // for Kosaraju algorithm
-    unsigned int component; // strongly connected component id
-
     // NFA compression
-    bool reachable;
+    bool reachable : 1;
+
+    // SCC
+    bool visited : 1;       // for Kosaraju algorithm
+    uint32_t component;     // strongly connected component id
 };
 
 struct failure {

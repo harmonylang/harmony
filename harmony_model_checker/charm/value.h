@@ -19,8 +19,6 @@ typedef struct state {
 } state;
 
 typedef struct context {          // context value
-    hvalue_t name;            // name of method
-    hvalue_t arg;             // argument provided to spawn
     hvalue_t this;            // thread-local state
     hvalue_t vars;            // method-local variables
     hvalue_t failure;         // string value, or 0 if no failure
@@ -36,6 +34,7 @@ typedef struct context {          // context value
     uint16_t trap_pc;         // trap program counter
     uint16_t fp;              // frame pointer
     uint16_t sp;              // stack size
+    uint16_t entry;           // pc of method
     hvalue_t stack[0];        // growing stack
 } context;
 
