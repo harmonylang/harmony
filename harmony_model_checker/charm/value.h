@@ -18,25 +18,33 @@ typedef struct state {
     hvalue_t dfa_state;
 } state;
 
-typedef struct context {          // context value
-    hvalue_t this;            // thread-local state
+typedef struct context {   // context value
     hvalue_t vars;            // method-local variables
-    hvalue_t failure;         // string value, or 0 if no failure
-    hvalue_t trap_arg;        // trap argument
     bool atomicFlag : 1;      // to implement lazy atomicity
     bool interruptlevel : 1;  // interrupt level
     bool stopped : 1;         // context is stopped
     bool terminated : 1;      // context has terminated
+    bool failed : 1;          // context has failed
     bool eternal : 1;         // context runs indefinitely
+    bool extended : 1;        // context extended with more values
     uint8_t readonly;         // readonly counter
     uint8_t atomic;           // atomic counter
     uint16_t pc;              // program counter
-    uint16_t trap_pc;         // trap program counter
     uint16_t fp;              // frame pointer
     uint16_t sp;              // stack size
     uint16_t entry;           // pc of method
-    hvalue_t stack[0];        // growing stack
+    hvalue_t thestack[0];     // growing stack
+
+// Context can be extended with the following additional values
+#define ctx_this        thestack[0]
+#define ctx_failure     thestack[1]
+#define ctx_trap_pc     thestack[2]
+#define ctx_trap_arg    thestack[3]
+#define ctx_extent      4
+
 } context;
+
+#define ctx_stack(c)    ((c)->extended ? &(c)->thestack[ctx_extent] : (c)->thestack)
 
 typedef struct combined {           // combination of current state and current context
     struct state state;
@@ -130,6 +138,7 @@ hvalue_t value_dict_remove(struct engine *engine, hvalue_t dict, hvalue_t key);
 hvalue_t value_bag_add(struct engine *engine, hvalue_t bag, hvalue_t v, int multiplicity);
 void value_ctx_push(struct context *ctx, hvalue_t v);
 hvalue_t value_ctx_pop(struct context *ctx);
+void value_ctx_extend(struct context *ctx);
 hvalue_t value_ctx_failure(struct context *ctx, struct engine *engine, char *fmt, ...);
 bool value_ctx_all_eternal(hvalue_t ctxbag);
 

@@ -48,12 +48,12 @@ static hvalue_t type_dict, type_set, type_address, type_context;
 
 static inline void ctx_push(struct context *ctx, hvalue_t v){
     // TODO.  Check for stack overflow
-    ctx->stack[ctx->sp++] = v;
+    ctx_stack(ctx)[ctx->sp++] = v;
 }
 
 static inline hvalue_t ctx_pop(struct context *ctx){
     assert(ctx->sp > 0);
-    return ctx->stack[--ctx->sp];
+    return ctx_stack(ctx)[--ctx->sp];
 }
 
 static bool is_sequential(hvalue_t seqvars, hvalue_t *indices, unsigned int n){
@@ -120,7 +120,7 @@ hvalue_t var_match_rec(struct context *ctx, struct var_tree *vt, struct engine *
 
 void var_match(struct context *ctx, struct var_tree *vt, struct engine *engine, hvalue_t arg){
     hvalue_t vars = var_match_rec(ctx, vt, engine, arg, ctx->vars);
-    if (ctx->failure == 0) {
+    if (!ctx->failed) {
         ctx->vars = vars;
     }
 }
@@ -177,12 +177,13 @@ struct var_tree *var_parse(struct engine *engine, char *s, int len, int *index){
 }
 
 void interrupt_invoke(struct step *step){
+    assert(step->ctx->extended);
     assert(!step->ctx->interruptlevel);
     ctx_push(step->ctx,
         VALUE_TO_INT((step->ctx->pc << CALLTYPE_BITS) | CALLTYPE_INTERRUPT));
-    ctx_push(step->ctx, step->ctx->trap_arg);
-    step->ctx->pc = step->ctx->trap_pc;
-    step->ctx->trap_pc = 0;
+    ctx_push(step->ctx, step->ctx->ctx_trap_arg);
+    step->ctx->pc = VALUE_FROM_PC(step->ctx->ctx_trap_pc);
+    step->ctx->ctx_trap_pc = 0;
     step->ctx->interruptlevel = true;
 }
 
@@ -573,7 +574,7 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
 
     // Peek at the collection
     assert(ctx->sp > 0);
-    hvalue_t v = ctx->stack[ctx->sp - 1];        // the collection
+    hvalue_t v = ctx_stack(ctx)[ctx->sp - 1];        // the collection
 
     if (VALUE_TYPE(v) == VALUE_SET || VALUE_TYPE(v) == VALUE_LIST) {
         // Get the collection
@@ -581,7 +582,7 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
         hvalue_t *vals = value_get(v, &size);
         size /= sizeof(hvalue_t);
         if (idx >= size) {
-            ctx->stack[ctx->sp - 1] = VALUE_FALSE;
+            ctx_stack(ctx)[ctx->sp - 1] = VALUE_FALSE;
         }
         else {
             var_match(step->ctx, ec->value, &step->engine, vals[idx]);
@@ -599,7 +600,7 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
         hvalue_t *vals = value_get(v, &size);
         size /= 2 * sizeof(hvalue_t);
         if (idx >= size) {
-            ctx->stack[ctx->sp - 1] = VALUE_FALSE;
+            ctx_stack(ctx)[ctx->sp - 1] = VALUE_FALSE;
         }
         else {
             if (ec->key == NULL) {
@@ -619,7 +620,7 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
         unsigned int size;
         char *chars = value_get(v, &size);
         if (idx >= size) {
-            ctx->stack[ctx->sp - 1] = VALUE_FALSE;
+            ctx_stack(ctx)[ctx->sp - 1] = VALUE_FALSE;
         }
         else {
             hvalue_t e = value_put_atom(&step->engine, &chars[idx], 1);
@@ -708,11 +709,15 @@ void op_DelVar(const void *env, struct state *state, struct step *step, struct g
 
         bool result;
         if (indices[0] == this_atom) {
-            if (VALUE_TYPE(step->ctx->this) != VALUE_DICT) {
+            if (!step->ctx->extended) {
+                value_ctx_failure(step->ctx, &step->engine, "DelVar: context does not have 'this'");
+                return;
+            }
+            if (VALUE_TYPE(step->ctx->ctx_this) != VALUE_DICT) {
                 value_ctx_failure(step->ctx, &step->engine, "DelVar: 'this' is not a dictionary");
                 return;
             }
-		    result = ind_remove(step->ctx->this, &indices[1], size - 1, &step->engine, &step->ctx->this);
+		    result = ind_remove(step->ctx->ctx_this, &indices[1], size - 1, &step->engine, &step->ctx->ctx_this);
         }
         else {
 		    result = ind_remove(step->ctx->vars, indices, size, &step->engine, &step->ctx->vars);
@@ -763,7 +768,7 @@ void op_Frame(const void *env, struct state *state, struct step *step, struct gl
 
     // try to match against parameters
     var_match(step->ctx, ef->args, &step->engine, arg);
-    if (step->ctx->failure != 0) {
+    if (step->ctx->failed) {
         return;
     }
  
@@ -921,11 +926,15 @@ void op_LoadVar(const void *env, struct state *state, struct step *step, struct 
 
         bool result;
         if (indices[0] == this_atom) {
-            if (VALUE_TYPE(step->ctx->this) != VALUE_DICT) {
+            if (!step->ctx->extended) {
+                value_ctx_failure(step->ctx, &step->engine, "LoadVar: context does not have 'this'");
+                return;
+            }
+            if (VALUE_TYPE(step->ctx->ctx_this) != VALUE_DICT) {
                 value_ctx_failure(step->ctx, &step->engine, "LoadVar: 'this' is not a dictionary");
                 return;
             }
-            result = ind_tryload(&step->engine, step->ctx->this, &indices[1], size - 1, &v);
+            result = ind_tryload(&step->engine, step->ctx->ctx_this, &indices[1], size - 1, &v);
         }
         else {
             result = ind_tryload(&step->engine, step->ctx->vars, indices, size, &v);
@@ -940,7 +949,15 @@ void op_LoadVar(const void *env, struct state *state, struct step *step, struct 
     }
     else {
         if (el->name == this_atom) {
-            ctx_push(step->ctx, step->ctx->this);
+            if (!step->ctx->extended) {
+                value_ctx_failure(step->ctx, &step->engine, "LoadVar: context does not have 'this'");
+                return;
+            }
+            if (VALUE_TYPE(step->ctx->ctx_this) != VALUE_DICT) {
+                value_ctx_failure(step->ctx, &step->engine, "LoadVar: 'this' is not a dictionary");
+                return;
+            }
+            ctx_push(step->ctx, step->ctx->ctx_this);
         }
         else if (value_tryload(&step->engine, step->ctx->vars, el->name, &v)) {
             ctx_push(step->ctx, v);
@@ -959,11 +976,12 @@ void op_Move(const void *env, struct state *state, struct step *step, struct glo
     const struct env_Move *em = env;
     struct context *ctx = step->ctx;
     int offset = ctx->sp - em->offset;
+    hvalue_t *stack = ctx_stack(ctx);
 
-    hvalue_t v = ctx->stack[offset];
-    memmove(&ctx->stack[offset], &ctx->stack[offset + 1],
+    hvalue_t v = stack[offset];
+    memmove(&stack[offset], &stack[offset + 1],
                 (em->offset - 1) * sizeof(hvalue_t));
-    ctx->stack[ctx->sp - 1] = v;
+    stack[ctx->sp - 1] = v;
     ctx->pc++;
 }
 
@@ -975,7 +993,7 @@ void op_Nary(const void *env, struct state *state, struct step *step, struct glo
         args[i] = ctx_pop(step->ctx);
     }
     hvalue_t result = (*en->fi->f)(state, step->ctx, args, en->arity, &step->engine);
-    if (step->ctx->failure == 0) {
+    if (!step->ctx->failed) {
         ctx_push(step->ctx, result);
         step->ctx->pc++;
     }
@@ -1165,9 +1183,12 @@ void op_Spawn(
     assert(strcmp(global->code.instrs[pc].oi->name, "Frame") == 0);
 
     struct context *ctx = calloc(1, sizeof(struct context) +
-                        2 * sizeof(hvalue_t));
+                        (ctx_extent + 2) * sizeof(hvalue_t));
 
-    ctx->this = thisval;
+    if (thisval != VALUE_DICT) {
+        value_ctx_extend(ctx);
+        ctx->ctx_this = thisval;
+    }
     ctx->entry = ctx->pc = pc;
     ctx->vars = VALUE_DICT;
     ctx->interruptlevel = false;
@@ -1377,11 +1398,14 @@ void op_StoreVar(const void *env, struct state *state, struct step *step, struct
 
         bool result;
         if (indices[0] == this_atom) {
-            if (VALUE_TYPE(step->ctx->this) != VALUE_DICT) {
+            if (!step->ctx->extended) {
+                value_ctx_extend(step->ctx);
+            }
+            if (VALUE_TYPE(step->ctx->ctx_this) != VALUE_DICT) {
                 value_ctx_failure(step->ctx, &step->engine, "StoreVar: 'this' is not a dictionary");
                 return;
             }
-            result = ind_trystore(step->ctx->this, &indices[1], size - 1, v, &step->engine, &step->ctx->this);
+            result = ind_trystore(step->ctx->ctx_this, &indices[1], size - 1, v, &step->engine, &step->ctx->ctx_this);
         }
 
         else {
@@ -1397,12 +1421,19 @@ void op_StoreVar(const void *env, struct state *state, struct step *step, struct
     }
     else {
         if (es->args->type == VT_NAME && es->args->u.name == this_atom) {
-            step->ctx->this = v;
+            if (!step->ctx->extended) {
+                value_ctx_extend(step->ctx);
+            }
+            if (VALUE_TYPE(step->ctx->ctx_this) != VALUE_DICT) {
+                value_ctx_failure(step->ctx, &step->engine, "StoreVar: 'this' is not a dictionary");
+                return;
+            }
+            step->ctx->ctx_this = v;
             step->ctx->pc++;
         }
         else {
             var_match(step->ctx, es->args, &step->engine, v);
-            if (step->ctx->failure == 0) {
+            if (!step->ctx->failed) {
                 step->ctx->pc++;
             }
         }
@@ -1415,10 +1446,11 @@ void op_Trap(const void *env, struct state *state, struct step *step, struct glo
         value_ctx_failure(step->ctx, &step->engine, "trap: not a method");
         return;
     }
-    step->ctx->trap_pc = VALUE_FROM_PC(trap_pc);
-    assert(step->ctx->trap_pc < (hvalue_t) global->code.len);
-    assert(strcmp(global->code.instrs[step->ctx->trap_pc].oi->name, "Frame") == 0);
-    step->ctx->trap_arg = ctx_pop(step->ctx);
+    value_ctx_extend(step->ctx);
+    step->ctx->ctx_trap_pc = trap_pc;
+    assert(VALUE_FROM_PC(trap_pc) < (hvalue_t) global->code.len);
+    assert(strcmp(global->code.instrs[VALUE_FROM_PC(trap_pc)].oi->name, "Frame") == 0);
+    step->ctx->ctx_trap_arg = ctx_pop(step->ctx);
     step->ctx->pc++;
 }
 

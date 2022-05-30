@@ -553,16 +553,22 @@ static void value_string_context(struct strbuf *sb, hvalue_t v) {
     strbuf_printf(sb, ",entry=%u", ctx->entry);
     // strbuf_printf(sb, ",arg=");
     // strbuf_value_string(sb, ctx->arg);
-    strbuf_printf(sb, ",this=");
-    strbuf_value_string(sb, ctx->this);
     strbuf_printf(sb, ",vars=");
     strbuf_value_string(sb, ctx->vars);
-    strbuf_printf(sb, ",trap_pc=");
-    strbuf_value_string(sb, ctx->trap_pc);
-    strbuf_printf(sb, ",trap_arg=");
-    strbuf_value_string(sb, ctx->trap_arg);
-    strbuf_printf(sb, ",failure=");
-    strbuf_value_string(sb, ctx->failure);
+    if (ctx->extended) {
+        strbuf_printf(sb, ",this=");
+        strbuf_value_string(sb, ctx->ctx_this);
+        if (ctx->ctx_trap_pc != 0) {
+            strbuf_printf(sb, ",trap_pc=");
+            strbuf_value_string(sb, ctx->ctx_trap_pc);
+            strbuf_printf(sb, ",trap_arg=");
+            strbuf_value_string(sb, ctx->ctx_trap_arg);
+        }
+        if (ctx->ctx_failure != 0) {
+            strbuf_printf(sb, ",failure=");
+            strbuf_value_string(sb, ctx->ctx_failure);
+        }
+    }
 
     strbuf_printf(sb, ",pc=%d", ctx->pc);
     strbuf_printf(sb, ",fp=%d", ctx->fp);
@@ -580,7 +586,7 @@ static void value_string_context(struct strbuf *sb, hvalue_t v) {
         if (i != 0) {
             strbuf_printf(sb, ",");
         }
-        strbuf_value_string(sb, ctx->stack[i]);
+        strbuf_value_string(sb, ctx_stack(ctx)[i]);
     }
 
     strbuf_printf(sb, "])");
@@ -1294,25 +1300,38 @@ hvalue_t value_bag_add(struct engine *engine, hvalue_t bag, hvalue_t v, int mult
 
 void value_ctx_push(struct context *ctx, hvalue_t v){
     // TODO.  Check for stack overflow
-    ctx->stack[ctx->sp++] = v;
+    ctx_stack(ctx)[ctx->sp++] = v;
 }
 
 hvalue_t value_ctx_pop(struct context *ctx){
     assert(ctx->sp > 0);
-    return ctx->stack[--ctx->sp];
+    return ctx_stack(ctx)[--ctx->sp];
+}
+
+void value_ctx_extend(struct context *ctx){
+    if (ctx->extended) {
+        return;
+    }
+    memmove(&ctx->thestack[0], &ctx->thestack[ctx_extent], ctx->sp * sizeof(hvalue_t));
+    memset(&ctx->thestack[0], 0, ctx_extent * sizeof(hvalue_t));
+    ctx->ctx_this = VALUE_DICT;
+    ctx->extended = true;
 }
 
 hvalue_t value_ctx_failure(struct context *ctx, struct engine *engine, char *fmt, ...){
     va_list args;
 
-    assert(ctx->failure == 0);
+    assert(!ctx->failed);
+    value_ctx_extend(ctx);
+    assert(ctx->ctx_failure == 0);
 
     struct strbuf sb;
     strbuf_init(&sb);
     va_start(args, fmt);
     strbuf_vprintf(&sb, fmt, args);
     va_end(args);
-    ctx->failure = value_put_atom(engine, strbuf_getstr(&sb), strbuf_getlen(&sb));
+    ctx->ctx_failure = value_put_atom(engine, strbuf_getstr(&sb), strbuf_getlen(&sb));
+    ctx->failed = true;
     strbuf_deinit(&sb);
 
     return 0;

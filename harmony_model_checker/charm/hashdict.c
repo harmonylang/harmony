@@ -52,7 +52,7 @@ struct dict *dict_new(unsigned int value_len, unsigned int initial_size,
 	dict->length = initial_size;
 	dict->count = 0;
 	dict->table = calloc(sizeof(struct dict_bucket), initial_size);
-    dict->nlocks = nworkers * 16;        // TODO
+    dict->nlocks = nworkers * 64;        // TODO
     dict->locks = malloc(dict->nlocks * sizeof(mutex_t));
 	for (unsigned int i = 0; i < dict->nlocks; i++) {
 		mutex_init(&dict->locks[i]);

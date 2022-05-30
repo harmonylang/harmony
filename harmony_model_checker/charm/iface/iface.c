@@ -109,7 +109,7 @@ struct node_vec_t *find_all_children(struct node *n) {
 
 uint64_t iface_evaluate(struct global_t *global, struct state *state, struct step *step) {
     step->ctx->terminated = false;
-    step->ctx->failure = 0;
+    step->ctx->failed = false;
     step->ctx->sp = 0;
     step->ctx->pc++;
 
@@ -121,7 +121,7 @@ uint64_t iface_evaluate(struct global_t *global, struct state *state, struct ste
 
         int oldpc = step->ctx->pc;
         (*oi->op)(global->code.instrs[oldpc].env, state, step, global);
-        if (step->ctx->failure != 0) {
+        if (step->ctx->failed) {
             step->ctx->sp = 0;
             return 0;
         }
@@ -162,7 +162,7 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
     iface_step.ctx = new_alloc(struct context);
     // iface_step.ctx->name = value_put_atom(&iface_step.engine, "__iface__", 8);
     // iface_step.ctx->arg = VALUE_DICT;
-    iface_step.ctx->this = VALUE_DICT;
+    // iface_step.ctx->this = VALUE_DICT;
     iface_step.ctx->vars = VALUE_DICT;
     iface_step.ctx->atomic = iface_step.ctx->readonly = 1;
     iface_step.ctx->interruptlevel = false;
@@ -230,7 +230,7 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
         iface_node->terminated = value_ctx_all_eternal(node->state.ctxbag);
         iface_node->choosing = node->state.choosing != 0;
         iface_node->state = &node->state;
-        if (iface_step.ctx->failure != 0) {
+        if (iface_step.ctx->failed) {
             iface_node->value = VALUE_ADDRESS;
 #ifndef NDEBUG
             printf("Iface Failure: %s\n", value_string(iface_step.ctx->failure));

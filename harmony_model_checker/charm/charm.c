@@ -36,7 +36,6 @@ mutex_t run_mutex;       // to protect count
 mutex_t run_waiting;     // for main thread to wait on
 
 mutex_t todo_lock;
-struct node *todo_list;
 
 // One of these per worker thread
 struct worker {
@@ -56,7 +55,8 @@ struct worker {
     struct value_stable vs;     // TODO: dict stable counters
 
     struct node *results;       // list of resulting states
-    struct node **last;         // to keep track of end
+    unsigned int count;         // number of resulting states
+    unsigned int node_id;       // node_ids to use for resulting states
     struct failure *failures;   // list of failures
 
     char *alloc_buf;            // allocated buffer
@@ -103,8 +103,8 @@ static void run_thread(struct global_t *global, struct state *state, struct cont
         if (step.ctx->terminated) {
             break;
         }
-        if (step.ctx->failure != 0) {
-            char *s = value_string(step.ctx->failure);
+        if (step.ctx->failed) {
+            char *s = value_string(step.ctx->ctx_failure);
             printf("Failure: %s\n", s);
             free(s);
             break;
@@ -148,13 +148,13 @@ void spawn_thread(struct global_t *global, struct state *state, struct context *
 
 bool invariant_check(struct global_t *global, struct state *state, struct step *step, int end){
     assert(step->ctx->sp == 0);
-    assert(step->ctx->failure == 0);
+    assert(!step->ctx->failed);
     step->ctx->pc++;
     while (step->ctx->pc != end) {
         struct op_info *oi = global->code.instrs[step->ctx->pc].oi;
         int oldpc = step->ctx->pc;
         (*oi->op)(global->code.instrs[oldpc].env, state, step, global);
-        if (step->ctx->failure != 0) {
+        if (step->ctx->failed) {
             step->ctx->sp = 0;
             return false;
         }
@@ -164,7 +164,7 @@ bool invariant_check(struct global_t *global, struct state *state, struct step *
     assert(step->ctx->sp == 1);
     step->ctx->sp = 0;
     assert(step->ctx->fp == 0);
-    hvalue_t b = step->ctx->stack[0];
+    hvalue_t b = ctx_stack(step->ctx)[0];
     assert(VALUE_TYPE(b) == VALUE_BOOL);
     return VALUE_FROM_BOOL(b);
 }
@@ -185,8 +185,8 @@ bool check_invariants(struct worker *w, struct node *node, struct step *step){
         assert(strcmp(global->code.instrs[step->ctx->pc].oi->name, "Invariant") == 0);
         int end = invariant_cnt(global->code.instrs[step->ctx->pc].env);
         bool b = invariant_check(global, state, step, end);
-        if (step->ctx->failure != 0) {
-            printf("Invariant failed: %s\n", value_string(step->ctx->failure));
+        if (step->ctx->failed) {
+            printf("Invariant failed: %s\n", value_string(step->ctx->ctx_failure));
             b = false;
         }
         if (!b) {
@@ -218,13 +218,14 @@ static bool onestep(
     int multiplicity        // #contexts that are in the current state
 ) {
     assert(!step->ctx->terminated);
-    assert(step->ctx->failure == 0);
+    assert(!step->ctx->failed);
 
     struct global_t *global = w->global;
 
     // See if we should also try an interrupt.
     if (interrupt) {
-		assert(step->ctx->trap_pc != 0);
+        assert(step->ctx->extended);
+		assert(step->ctx->ctx_trap_pc != 0);
         interrupt_invoke(step);
     }
 
@@ -247,7 +248,7 @@ static bool onestep(
             double now = gettime();
             if (now - global->lasttime > 1) {
                 if (global->lasttime != 0) {
-                    assert(strcmp(global->code.instrs[step->ctx->entry].oi->name, "Frame"));
+                    assert(strcmp(global->code.instrs[step->ctx->entry].oi->name, "Frame") == 0);
                     const struct env_Frame *ef = global->code.instrs[step->ctx->entry].env;
                     char *p = value_string(ef->name);
                     fprintf(stderr, "%s pc=%d states=%d diameter=%u queue=%d\n",
@@ -267,7 +268,7 @@ static bool onestep(
         struct op_info *oi = instrs[pc].oi;
         if (instrs[pc].choose) {
             assert(step->ctx->sp > 0);
-            step->ctx->stack[step->ctx->sp - 1] = choice;
+            ctx_stack(step->ctx)[step->ctx->sp - 1] = choice;
             step->ctx->pc++;
         }
         else if (instrs[pc].atomicinc) {
@@ -307,7 +308,7 @@ static bool onestep(
             terminated = true;
             break;
         }
-        if (step->ctx->failure != 0) {
+        if (step->ctx->failed) {
             failure = true;
             break;
         }
@@ -330,7 +331,7 @@ static bool onestep(
             dict_insert(infloop, NULL, combo, combosize, &new);
             free(combo);
             if (!new) {
-                step->ctx->failure = value_put_atom(&step->engine, "infinite loop", 13);
+                value_ctx_failure(step->ctx, &step->engine, "infinite loop");
                 failure = infinite_loop = true;
                 break;
             }
@@ -359,7 +360,7 @@ static bool onestep(
                 break;
             }
 #endif
-            hvalue_t s = step->ctx->stack[step->ctx->sp - 1];
+            hvalue_t s = ctx_stack(step->ctx)[step->ctx->sp - 1];
             if (VALUE_TYPE(s) != VALUE_SET) {
                 value_ctx_failure(step->ctx, &step->engine, "choose operation requires a set");
                 failure = true;
@@ -396,11 +397,12 @@ static bool onestep(
             bool breakable = next_instr->breakable;
 
             // Deal with interrupts if enabled
-            if (step->ctx->trap_pc != 0 && !step->ctx->interruptlevel) {
+            if (step->ctx->extended && step->ctx->ctx_trap_pc != 0 &&
+                                !step->ctx->interruptlevel) {
                 // If this is a thread exit, break so we can invoke the
                 // interrupt handler one more time
                 if (next_instr->retop) {
-                    hvalue_t ct = step->ctx->stack[step->ctx->sp - 4];
+                    hvalue_t ct = ctx_stack(step->ctx)[step->ctx->sp - 4];
                     assert(VALUE_TYPE(ct) == VALUE_INT);
                     if (VALUE_FROM_INT(ct) == CALLTYPE_PROCESS) {
                         breakable = true;
@@ -489,8 +491,9 @@ static bool onestep(
         next->steps = node->steps + instrcnt;
         next->to_parent = edge;
         next->state = *sc;
-        *w->last = next;
-        w->last = &next->next;
+        next->next = w->results;
+        w->results = next;
+        w->count++;
     }
     else {
         int len = node->len + weight;
@@ -561,7 +564,7 @@ static void make_step(
     step.ctx = &w->ctx;
 
     // See if we need to interrupt
-    if (sc.choosing == 0 && cc->trap_pc != 0 && !cc->interruptlevel) {
+    if (sc.choosing == 0 && cc->extended && cc->ctx_trap_pc != 0 && !cc->interruptlevel) {
         bool succ = onestep(w, node, &sc, ctx, &step, choice, true, false, multiplicity);
         if (!succ) {        // ran into an infinite loop
             (void) onestep(w, node, &sc, ctx, &step, choice, true, true, multiplicity);
@@ -625,7 +628,7 @@ static bool print_trace(
 
 	int level = 0, orig_pc = pc;
     if (strcmp(global->code.instrs[pc].oi->name, "Frame") == 0) {
-        hvalue_t callval = ctx->stack[ctx->sp - 2];
+        hvalue_t callval = ctx_stack(ctx)[ctx->sp - 2];
         assert(VALUE_TYPE(callval) == VALUE_INT);
         unsigned int call = VALUE_FROM_INT(callval);
         switch (call & CALLTYPE_MASK) {
@@ -650,7 +653,7 @@ static bool print_trace(
         else if (strcmp(name, "Frame") == 0) {
 			if (level == 0) {
 				if (fp > 4) {
-                    hvalue_t callval = ctx->stack[fp - 4];
+                    hvalue_t callval = ctx_stack(ctx)[fp - 4];
                     assert(VALUE_TYPE(callval) == VALUE_INT);
                     unsigned int call = VALUE_FROM_INT(callval);
                     switch (call & CALLTYPE_MASK) {
@@ -660,8 +663,8 @@ static bool print_trace(
                     case CALLTYPE_NORMAL:
                         { 
                             unsigned int npc = call >>= CALLTYPE_BITS;
-                            hvalue_t nvars = ctx->stack[fp - 2];
-                            int nfp = ctx->stack[fp - 1] >> VALUE_BITS;
+                            hvalue_t nvars = ctx_stack(ctx)[fp - 2];
+                            int nfp = ctx_stack(ctx)[fp - 1] >> VALUE_BITS;
                             if (print_trace(global, file, ctx, npc, nfp, nvars)) {
                                 fprintf(file, ",\n");
                             }
@@ -678,7 +681,7 @@ static bool print_trace(
 				const struct env_Frame *ef = global->code.instrs[pc].env;
 				char *s = value_string(ef->name), *a = NULL;
 				int len = strlen(s);
-                a = json_escape_value(ctx->stack[fp - 3]);
+                a = json_escape_value(ctx_stack(ctx)[fp - 3]);
 				if (*a == '(') {
 					fprintf(file, "              \"method\": \"%.*s%s\",\n", len - 2, s + 1, a);
 				}
@@ -686,7 +689,7 @@ static bool print_trace(
 					fprintf(file, "              \"method\": \"%.*s(%s)\",\n", len - 2, s + 1, a);
 				}
 
-                hvalue_t callval = ctx->stack[fp - 4];
+                hvalue_t callval = ctx_stack(ctx)[fp - 4];
                 assert(VALUE_TYPE(callval) == VALUE_INT);
                 unsigned int call = VALUE_FROM_INT(callval);
                 switch (call & CALLTYPE_MASK) {
@@ -753,12 +756,12 @@ void print_context(
 
     struct context *c = value_get(ctx, NULL);
 
-    assert(strcmp(global->code.instrs[c->entry].oi->name, "Frame"));
+    assert(strcmp(global->code.instrs[c->entry].oi->name, "Frame") == 0);
     const struct env_Frame *ef = global->code.instrs[c->entry].env;
     char *s = value_string(ef->name);
 	int len = strlen(s);
     assert(c->sp > 1);
-    char *a = json_escape_value(c->stack[1]);
+    char *a = json_escape_value(ctx_stack(c)[1]);
     if (*a == '(') {
         fprintf(file, "          \"name\": \"%.*s%s\",\n", len - 2, s + 1, a);
     }
@@ -777,7 +780,7 @@ void print_context(
     {
         fprintf(file, "STACK1 %d:\n", c->fp);
         for (int x = 0; x < c->sp; x++) {
-            fprintf(file, "    %d: %s\n", x, value_string(c->stack[x]));
+            fprintf(file, "    %d: %s\n", x, value_string(ctx_stack(k)[x]));
         }
     }
 #endif
@@ -787,25 +790,33 @@ void print_context(
     fprintf(file, "\n");
     fprintf(file, "          ],\n");
 
-    if (c->failure != 0) {
-        s = value_string(c->failure);
+    if (c->failed) {
+        s = value_string(c->ctx_failure);
         fprintf(file, "          \"failure\": %s,\n", s);
         free(s);
     }
 
-    if (c->trap_pc != 0) {
-        a = value_string(c->trap_arg);
+    if (c->extended && c->ctx_trap_pc != 0) {
+        s = value_string(c->ctx_trap_pc);
+        a = value_string(c->ctx_trap_arg);
         if (*a == '(') {
-            fprintf(file, "          \"trap\": \"PC(%u)%s\",\n", c->trap_pc, a);
+            fprintf(file, "          \"trap\": \"%s%s\",\n", s, a);
         }
         else {
-            fprintf(file, "          \"trap\": \"PC(%u)(%s)\",\n", c->trap_pc, a);
+            fprintf(file, "          \"trap\": \"%s(%s)\",\n", s, a);
         }
         free(a);
+        free(s);
     }
 
     if (c->interruptlevel) {
         fprintf(file, "          \"interruptlevel\": \"1\",\n");
+    }
+
+    if (c->extended) {
+        s = value_json(c->ctx_this);
+        fprintf(file, "          \"this\": %s\n", s);
+        free(s);
     }
 
     if (c->atomic != 0) {
@@ -816,22 +827,22 @@ void print_context(
     }
 
     if (c->terminated) {
-        fprintf(file, "          \"mode\": \"terminated\",\n");
+        fprintf(file, "          \"mode\": \"terminated\"\n");
     }
-    else if (c->failure != 0) {
-        fprintf(file, "          \"mode\": \"failed\",\n");
+    else if (c->failed) {
+        fprintf(file, "          \"mode\": \"failed\"\n");
     }
     else if (c->stopped) {
-        fprintf(file, "          \"mode\": \"stopped\",\n");
+        fprintf(file, "          \"mode\": \"stopped\"\n");
     }
     else {
-        fprintf(file, "          \"mode\": \"%s\",\n", ctx_status(node, ctx));
+        fprintf(file, "          \"mode\": \"%s\"\n", ctx_status(node, ctx));
     }
 
 #ifdef notdef
     fprintf(file, "          \"stack\": [\n");
     for (int i = 0; i < c->sp; i++) {
-        s = value_string(c->stack[i]);
+        s = value_string(ctx_stack(k)[i]);
         if (i < c->sp - 1) {
             fprintf(file, "            \"%s\",\n", s);
         }
@@ -842,10 +853,6 @@ void print_context(
     }
     fprintf(file, "          ],\n");
 #endif
-
-    s = value_json(c->this);
-    fprintf(file, "          \"this\": %s\n", s);
-    free(s);
 
     fprintf(file, "        }");
 }
@@ -873,7 +880,6 @@ void print_state(
     // hvalue_t inv_nv = value_put_atom("name", 4);
     // hvalue_t inv_tv = value_put_atom("tag", 3);
     // inv_step.ctx->name = value_put_atom(&inv_step.engine, "__invariant__", 13);
-    inv_step.ctx->this = VALUE_DICT;
     inv_step.ctx->vars = VALUE_DICT;
     inv_step.ctx->atomic = inv_step.ctx->readonly = 1;
     inv_step.ctx->interruptlevel = false;
@@ -891,7 +897,7 @@ void print_state(
         assert(strcmp(global->code.instrs[inv_step.ctx->pc].oi->name, "Invariant") == 0);
         int end = invariant_cnt(global->code.instrs[inv_step.ctx->pc].env);
         bool b = invariant_check(global, state, &inv_step, end);
-        if (inv_step.ctx->failure != 0) {
+        if (inv_step.ctx->failed) {
             b = false;
         }
         if (!b) {
@@ -900,11 +906,11 @@ void print_state(
             }
             fprintf(file, "\n        {\n");
             fprintf(file, "          \"pc\": \"%u\",\n", (unsigned int) VALUE_FROM_PC(vals[i]));
-            if (inv_step.ctx->failure == 0) {
+            if (!inv_step.ctx->failed) {
                 fprintf(file, "          \"reason\": \"invariant violated\"\n");
             }
             else {
-                char *val = value_string(inv_step.ctx->failure);
+                char *val = value_string(inv_step.ctx->ctx_failure);
 				int len = strlen(val);
                 fprintf(file, "          \"reason\": \"%.*s\"\n", len - 2, val + 1);
                 free(val);
@@ -969,7 +975,7 @@ void diff_state(
         {
             fprintf(stderr, "STACK2 %d:\n", newctx->fp);
             for (int x = 0; x < newctx->sp; x++) {
-                fprintf(stderr, "    %d: %s\n", x, value_string(newctx->stack[x]));
+                fprintf(stderr, "    %d: %s\n", x, value_string(ctx_stack(newctx)[x]));
             }
         }
 #endif
@@ -978,8 +984,8 @@ void diff_state(
         fprintf(file, "\n");
         fprintf(file, "          ],\n");
     }
-    if (newctx->this != oldctx->this) {
-        char *val = value_json(newctx->this);
+    if (newctx->extended && newctx->ctx_this != oldctx->ctx_this) {
+        char *val = value_json(newctx->ctx_this);
         fprintf(file, "          \"this\": %s,\n", val);
         free(val);
     }
@@ -997,8 +1003,8 @@ void diff_state(
     if (newctx->interruptlevel != oldctx->interruptlevel) {
         fprintf(file, "          \"interruptlevel\": \"%d\",\n", newctx->interruptlevel ? 1 : 0);
     }
-    if (newctx->failure != 0) {
-        char *val = value_string(newctx->failure);
+    if (newctx->failed) {
+        char *val = value_string(newctx->ctx_failure);
         fprintf(file, "          \"failure\": %s,\n", val);
         fprintf(file, "          \"mode\": \"failed\",\n");
         free(val);
@@ -1009,7 +1015,7 @@ void diff_state(
 
     int common;
     for (common = 0; common < newctx->sp && common < oldctx->sp; common++) {
-        if (newctx->stack[common] != oldctx->stack[common]) {
+        if (ctx_stack(newctx)[common] != ctx_stack(oldctx)[common]) {
             break;
         }
     }
@@ -1021,7 +1027,7 @@ void diff_state(
         if (i > common) {
             fprintf(file, ",");
         }
-        char *val = value_json(newctx->stack[i]);
+        char *val = value_json(ctx_stack(newctx)[i]);
         fprintf(file, " %s", val);
         free(val);
     }
@@ -1087,13 +1093,14 @@ hvalue_t twostep(
     step.ctx = calloc(1, sizeof(struct context) +
                             MAX_CONTEXT_STACK * sizeof(hvalue_t));
     memcpy(step.ctx, cc, size);
-    if (step.ctx->terminated || step.ctx->failure != 0) {
+    if (step.ctx->terminated || step.ctx->failed) {
         free(step.ctx);
         return ctx;
     }
 
     if (interrupt) {
-		assert(step.ctx->trap_pc != 0);
+        assert(step.ctx->extended);
+		assert(step.ctx->ctx_trap_pc != 0);
         interrupt_invoke(&step);
         diff_dump(global, file, oldstate, sc, oldctx, step.ctx, true, false, 0, NULL);
     }
@@ -1107,11 +1114,11 @@ hvalue_t twostep(
         struct instr_t *instrs = global->code.instrs;
         struct op_info *oi = instrs[pc].oi;
         if (instrs[pc].choose) {
-            step.ctx->stack[step.ctx->sp - 1] = choice;
+            ctx_stack(step.ctx)[step.ctx->sp - 1] = choice;
             step.ctx->pc++;
         }
         else if (instrs[pc].print) {
-            print = value_json(step.ctx->stack[step.ctx->sp - 1]);
+            print = value_json(ctx_stack(step.ctx)[step.ctx->sp - 1]);
             (*oi->op)(instrs[pc].env, sc, &step, global);
         }
         else {
@@ -1119,7 +1126,7 @@ hvalue_t twostep(
         }
 
         // Infinite loop detection
-        if (!step.ctx->terminated && step.ctx->failure == 0) {
+        if (!step.ctx->terminated && step.ctx->failed) {
             if (infloop == NULL) {
                 // TODO.  infloop should be deallocated
                 infloop = dict_new(0, 0, 0, NULL, NULL);
@@ -1134,13 +1141,13 @@ hvalue_t twostep(
             dict_insert(infloop, NULL, combo, combosize, &new);
             free(combo);
             if (!new) {
-                step.ctx->failure = value_put_atom(&step.engine, "infinite loop", 13);
+                value_ctx_failure(step.ctx, &step.engine, "infinite loop");
             }
         }
 
         diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice, print);
         free(print);
-        if (step.ctx->terminated || step.ctx->failure != 0 || step.ctx->stopped) {
+        if (step.ctx->terminated || step.ctx->failed || step.ctx->stopped) {
             break;
         }
         instrcnt++;
@@ -1164,7 +1171,7 @@ hvalue_t twostep(
                 break;
             }
 #endif
-            hvalue_t s = step.ctx->stack[step.ctx->sp - 1];
+            hvalue_t s = ctx_stack(step.ctx)[step.ctx->sp - 1];
             if (VALUE_TYPE(s) != VALUE_SET) {
                 value_ctx_failure(step.ctx, &step.engine, "choose operation requires a set");
                 diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice, NULL);
@@ -1257,12 +1264,12 @@ void path_dump(
 
     struct context *context = value_get(ctx, NULL);
     assert(!context->terminated);
-    assert(strcmp(global->code.instrs[context->entry].oi->name, "Frame"));
+    assert(strcmp(global->code.instrs[context->entry].oi->name, "Frame") == 0);
     const struct env_Frame *ef = global->code.instrs[context->entry].env;
     char *name = value_string(ef->name);
 	int len = strlen(name);
     assert(context->sp > 1);
-    char *arg = json_escape_value(context->stack[1]);
+    char *arg = json_escape_value(ctx_stack(context)[1]);
     // char *c = value_string(choice);
     fprintf(file, "      \"tid\": \"%d\",\n", pid);
     fprintf(file, "      \"xhash\": \"%"PRI_HVAL"\",\n", ctx);
@@ -1507,98 +1514,112 @@ static int fail_cmp(void *f1, void *f2){
 }
 
 static void do_work(struct worker *w){
-	struct node *node;
+    struct global_t *global = w->global;
 
     for (;;) {
         mutex_acquire(&todo_lock);
-        node = todo_list;
-        if (node == NULL) {
+        unsigned int start = global->todo;
+        unsigned int nleft = global->graph.size - start;
+        if (nleft == 0) {
             mutex_release(&todo_lock);
             break;
         }
-        todo_list = node->next;
+
+        unsigned int take = nleft / w->nworkers / 2;
+        if (take < 100) {
+            take = 100;
+        }
+        if (take > nleft) {
+            take = nleft;
+        }
+        global->todo = start + take;
         mutex_release(&todo_lock);
 
-		struct state *state = &node->state;
-		w->global->dequeued++; // TODO race condition
+        while (take > 0) {
+            struct node *node = global->graph.nodes[start++];
+            struct state *state = &node->state;
 
-		if (state->choosing != 0) {
-			assert(VALUE_TYPE(state->choosing) == VALUE_CONTEXT);
+            if (state->choosing != 0) {
+                assert(VALUE_TYPE(state->choosing) == VALUE_CONTEXT);
 
-			struct context *cc = value_get(state->choosing, NULL);
-			assert(cc != NULL);
-			assert(cc->sp > 0);
-			hvalue_t s = cc->stack[cc->sp - 1];
-			assert(VALUE_TYPE(s) == VALUE_SET);
-			unsigned int size;
-			hvalue_t *vals = value_get(s, &size);
-			size /= sizeof(hvalue_t);
-			assert(size > 0);
-			for (unsigned int i = 0; i < size; i++) {
-				make_step(
-					w,
-					node,
-					state->choosing,
-					vals[i],
-					1
-				);
-			}
-		}
-		else {
-			unsigned int size;
-			hvalue_t *ctxs = value_get(state->ctxbag, &size);
-			size /= sizeof(hvalue_t);
-			assert(size >= 0);
-			for (unsigned int i = 0; i < size; i += 2) {
-				assert(VALUE_TYPE(ctxs[i]) == VALUE_CONTEXT);
-				assert(VALUE_TYPE(ctxs[i+1]) == VALUE_INT);
-				make_step(
-					w,
-					node,
-					ctxs[i],
-					0,
-					VALUE_FROM_INT(ctxs[i+1])
-				);
-			}
-		}
-	}
+                struct context *cc = value_get(state->choosing, NULL);
+                assert(cc != NULL);
+                assert(cc->sp > 0);
+                hvalue_t s = ctx_stack(cc)[cc->sp - 1];
+                assert(VALUE_TYPE(s) == VALUE_SET);
+                unsigned int size;
+                hvalue_t *vals = value_get(s, &size);
+                size /= sizeof(hvalue_t);
+                assert(size > 0);
+                for (unsigned int i = 0; i < size; i++) {
+                    make_step(
+                        w,
+                        node,
+                        state->choosing,
+                        vals[i],
+                        1
+                    );
+                }
+            }
+            else {
+                unsigned int size;
+                hvalue_t *ctxs = value_get(state->ctxbag, &size);
+                size /= sizeof(hvalue_t);
+                assert(size >= 0);
+                for (unsigned int i = 0; i < size; i += 2) {
+                    assert(VALUE_TYPE(ctxs[i]) == VALUE_CONTEXT);
+                    assert(VALUE_TYPE(ctxs[i+1]) == VALUE_INT);
+                    make_step(
+                        w,
+                        node,
+                        ctxs[i],
+                        0,
+                        VALUE_FROM_INT(ctxs[i+1])
+                    );
+                }
+            }
+            take--;
+        }
+    }
 }
 
 static void worker(void *arg){
     struct worker *w = arg;
+    struct global_t *global = w->global;
 
     barrier_wait(w->start_barrier);
     for (int epoch = 0;; epoch++) {
         // parallel phase starts now
 		// printf("WORKER %d starting epoch %d\n", w->index, epoch);
 		do_work(w);
+
         // wait for others to finish
-		// printf("WORKER %d finished epoch %d %f %f\n", w->index, epoch, work_time, wait_time);
+		// printf("WORKER %d finished epoch %d %u %u\n", w->index, epoch, w->count, w->node_id);
         barrier_wait(w->middle_barrier);
-		// printf("WORKER %d make stable %d %f %f\n", w->index, epoch, work_time, wait_time);
-        value_make_stable(&w->global->values, w->index, &w->vs);
+
+		// printf("WORKER %d make stable %d %u %u\n", w->index, epoch, w->count, w->node_id);
+        value_make_stable(&global->values, w->index, &w->vs);
         w->nstable = dict_make_stable(w->visited, w->index);
+
+        // Wait for coordinator to have grown the graph table
         barrier_wait(w->end_barrier);
+		// printf("WORKER %d fill table %d %u %u\n", w->index, epoch, w->count, w->node_id);
+
+        // Fill the graph table
+        for (unsigned int i = 0; w->count != 0; i++) {
+            struct node *node = w->results;
+            global->graph.nodes[w->node_id++] = node;
+            w->results = node->next;
+            w->count--;
+        }
+        assert(w->results == NULL);
+
         // start of sequential phase
         barrier_wait(w->start_barrier);
     }
 }
 
 void process_results(struct global_t *global, struct worker *w){
-	struct node *node;
-    struct node *results = w->results;
-
-    while ((node = results) != NULL) {
-		results = node->next;
-        graph_add(&global->graph, node);   // sets node->id
-        assert(node->id != 0);
-        global->enqueued++;
-    }
-    *w->last = todo_list;
-    todo_list = w->results;
-    w->results = NULL;
-    w->last = &w->results;
-
     struct failure *f;
     while ((f = w->failures) != NULL) {
         w->failures = f->next;
@@ -1894,7 +1915,6 @@ int main(int argc, char **argv){
 
     // Create an initial state
     struct context *init_ctx = calloc(1, sizeof(struct context) + MAX_CONTEXT_STACK * sizeof(hvalue_t));
-    init_ctx->this = VALUE_DICT;
     init_ctx->vars = VALUE_DICT;
     init_ctx->atomic = 1;
     init_ctx->atomicFlag = true;
@@ -1953,13 +1973,11 @@ int main(int argc, char **argv){
         w->index = i;
         w->nworkers = nworkers;
         w->visited = visited;
-        w->last = &w->results;
 
         // Create a context for evaluating invariants
         w->inv_step.ctx = calloc(1, sizeof(struct context) +
                                 MAX_CONTEXT_STACK * sizeof(hvalue_t));
         // w->inv_step.ctx->name = value_put_atom(&engine, "__invariant__", 13);
-        w->inv_step.ctx->this = VALUE_DICT;
         w->inv_step.ctx->vars = VALUE_DICT;
         w->inv_step.ctx->atomic = w->inv_step.ctx->readonly = 1;
         w->inv_step.ctx->interruptlevel = false;
@@ -1979,7 +1997,7 @@ int main(int argc, char **argv){
         thread_create(worker, &workers[i]);
     }
 
-    todo_list = node;
+    // make sure first node gets process
     global->enqueued++;
 
     double before = gettime(), postproc = 0;
@@ -1988,10 +2006,27 @@ int main(int argc, char **argv){
         value_set_concurrent(&global->values);
         dict_set_concurrent(visited);
 
-        // make the threads work
         barrier_wait(&start_barrier);
+
+        // Threads are working to create the next layer of nodes
+
         barrier_wait(&middle_barrier);
+
+        assert(global->todo == global->graph.size);
+
+        // the threads completed producing the next layer of nodes in the graph
+        // Grow the graph table.
+        unsigned int total = 0;
+        for (unsigned int i = 0; i < nworkers; i++) {
+            struct worker *w = &workers[i];
+            w->node_id = global->todo + total;
+            total += w->count;
+        }
+        graph_add_multiple(&global->graph, total);
+        global->enqueued += total;
+
         barrier_wait(&end_barrier);
+
         // printf("Diameter %d\n", global->diameter);
         global->diameter++;
 
@@ -2006,6 +2041,7 @@ int main(int argc, char **argv){
             value_stable_add(&vs, &w->vs);
         }
 
+        // TODO.  Parallelize among workers
         dict_set_sequential(visited, nstable);
         value_set_sequential(&global->values, &vs);
 
@@ -2016,7 +2052,7 @@ int main(int argc, char **argv){
 
         postproc += gettime() - before_postproc;
 
-        if (todo_list == NULL) {
+        if (global->todo == global->graph.size) {
             break;
         }
     }
