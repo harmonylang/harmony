@@ -1234,14 +1234,19 @@ void path_dump(
 ) {
     struct node *node = last;
 
-    last = parent == NULL ? last->to_parent->src : parent;
     if (last->to_parent == NULL) {
-        fprintf(file, "\n");
+        last = NULL;
     }
     else {
-        struct edge *e = last->to_parent;
-        path_dump(global, file, last, e->src, e->choice, oldstate, oldctx, e->interrupt, last->steps);
-        fprintf(file, ",\n");
+        last = parent == NULL ? last->to_parent->src : parent;
+        if (last->to_parent == NULL) {
+            fprintf(file, "\n");
+        }
+        else {
+            struct edge *e = last->to_parent;
+            path_dump(global, file, last, e->src, e->choice, oldstate, oldctx, e->interrupt, last->steps);
+            fprintf(file, ",\n");
+        }
     }
 
     fprintf(file, "    {\n");
