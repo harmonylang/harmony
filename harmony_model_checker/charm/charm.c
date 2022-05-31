@@ -811,7 +811,7 @@ void print_context(
 
     if (c->extended) {
         s = value_json(c->ctx_this);
-        fprintf(file, "          \"this\": %s\n", s);
+        fprintf(file, "          \"this\": %s,\n", s);
         free(s);
     }
 

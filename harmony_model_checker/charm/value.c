@@ -103,6 +103,9 @@ hvalue_t value_put_address(struct engine *engine, void *p, int size){
 hvalue_t value_put_context(struct engine *engine, struct context *ctx){
 	assert(ctx->pc >= 0);
     unsigned int size = sizeof(*ctx) + (ctx->sp * sizeof(hvalue_t));
+    if (ctx->extended) {
+        size += ctx_extent * sizeof(hvalue_t);
+    }
     void *q = dict_find(engine->values->contexts, engine->allocator, ctx, size, NULL);
     return (hvalue_t) q | VALUE_CONTEXT;
 }
