@@ -1234,19 +1234,14 @@ void path_dump(
 ) {
     struct node *node = last;
 
+    last = parent == NULL ? last->to_parent->src : parent;
     if (last->to_parent == NULL) {
-        return;
+        fprintf(file, "\n");
     }
     else {
-        last = parent == NULL ? last->to_parent->src : parent;
-        if (last->to_parent == NULL) {
-            fprintf(file, "\n");
-        }
-        else {
-            struct edge *e = last->to_parent;
-            path_dump(global, file, last, e->src, e->choice, oldstate, oldctx, e->interrupt, last->steps);
-            fprintf(file, ",\n");
-        }
+        struct edge *e = last->to_parent;
+        path_dump(global, file, last, e->src, e->choice, oldstate, oldctx, e->interrupt, last->steps);
+        fprintf(file, ",\n");
     }
 
     fprintf(file, "    {\n");
@@ -2044,10 +2039,10 @@ int main(int argc, char **argv){
 
         postproc += gettime() - before_postproc;
 
-        if (global->todo == global->graph.size) {
-            break;
-        }
         if (!minheap_empty(global->failures)) {
+            global->todo = global->graph.size;
+        }
+        if (global->todo == global->graph.size) {
             break;
         }
 

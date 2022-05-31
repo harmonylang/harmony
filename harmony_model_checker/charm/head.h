@@ -1,1 +1,1 @@
-// #undef NDEBUG
+#undef NDEBUG
