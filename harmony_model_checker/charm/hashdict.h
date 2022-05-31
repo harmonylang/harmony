@@ -43,7 +43,7 @@ struct dict {
     unsigned int nlocks;
 	double growth_threshold;
 	unsigned int growth_factor;
-    int concurrent;         // 0 = not concurrent
+    bool concurrent;         // 0 = not concurrent
     void *(*malloc)(size_t size);
     void (*free)(void *);
 };

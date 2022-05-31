@@ -1606,6 +1606,7 @@ static void worker(void *arg){
         // Fill the graph table
         for (unsigned int i = 0; w->count != 0; i++) {
             struct node *node = w->results;
+			node->id = w->node_id;
             global->graph.nodes[w->node_id++] = node;
             w->results = node->next;
             w->count--;
@@ -2034,9 +2035,6 @@ int main(int argc, char **argv){
 
         double before_postproc = gettime();
 
-        dict_set_sequential(visited);
-        value_set_sequential(&global->values);
-
         // Collect the failures of all the workers
         for (unsigned int i = 0; i < nworkers; i++) {
 			process_results(global, &workers[i]);
@@ -2052,6 +2050,9 @@ int main(int argc, char **argv){
 
         // The threads now update the hash tables and the graph table
     }
+
+	dict_set_sequential(visited);
+	value_set_sequential(&global->values);
 
     printf("#states %d (time %.3lf+%.3lf=%.3lf)\n", global->graph.size, gettime() - before - postproc, postproc, gettime() - before);
  

@@ -232,9 +232,6 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
         iface_node->state = &node->state;
         if (iface_step.ctx->failed) {
             iface_node->value = VALUE_ADDRESS;
-#ifndef NDEBUG
-            printf("Iface Failure: %s\n", value_string(iface_step.ctx->failure));
-#endif
         }
 
         struct node_vec_t *children = find_all_children(node);

@@ -59,7 +59,7 @@ struct dict *dict_new(unsigned int value_len, unsigned int initial_size,
 	}
 	dict->growth_threshold = 2;
 	dict->growth_factor = 10;
-	dict->concurrent = 0;
+	dict->concurrent = false;
     dict->workers = calloc(sizeof(struct dict_worker), nworkers);
     dict->nworkers = nworkers;
     for (unsigned int i = 0; i < nworkers; i++) {
@@ -343,12 +343,14 @@ void dict_set_concurrent(struct dict *dict) {
         free(dict->old_table);
         dict->old_table = dict->table;
     }
-    dict->concurrent = 1;
+    dict->concurrent = true;
 }
 
 // When going from concurrent to sequential, need to move over
 // the unstable values.
 void dict_make_stable(struct dict *dict, unsigned int worker){
+    assert(dict->concurrent);
+
     if (dict->length != dict->old_length) {
         unsigned int first = worker * dict->old_length / dict->nworkers;
         unsigned int last = (worker + 1) * dict->old_length / dict->nworkers;
@@ -403,8 +405,6 @@ void dict_grow_prepare(struct dict *dict){
         dict->length *= factor;
         dict->table = calloc(sizeof(struct dict_bucket), dict->length);
     }
-
-    dict->concurrent = false;
 }
 
 void dict_set_sequential(struct dict *dict) {
@@ -427,5 +427,5 @@ void dict_set_sequential(struct dict *dict) {
     }
 #endif
 
-    dict->concurrent = 0;
+    dict->concurrent = false;
 }
