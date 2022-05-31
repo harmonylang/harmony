@@ -1847,7 +1847,6 @@ int main(int argc, char **argv){
 
     // Determine how many worker threads to use
     unsigned int nworkers = getNumCores();
-nworkers = 2;
 	printf("nworkers = %d\n", nworkers);
     barrier_t start_barrier, middle_barrier, end_barrier;
     barrier_init(&start_barrier, nworkers + 1);

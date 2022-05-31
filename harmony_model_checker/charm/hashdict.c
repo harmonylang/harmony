@@ -98,7 +98,6 @@ static inline void dict_reinsert_when_resizing(struct dict *dict, struct keynode
 }
 
 static void dict_resize(struct dict *dict, unsigned int newsize) {
-    panic("WWW");
 	unsigned int o = dict->length;
 	struct dict_bucket *old = dict->table;
 	dict->table = calloc(sizeof(struct dict_bucket), newsize);
@@ -351,7 +350,6 @@ void dict_make_stable(struct dict *dict, unsigned int worker){
     assert(dict->concurrent);
 
     if (dict->length != dict->old_length) {
-        panic("ZZZ");
         unsigned int first = worker * dict->old_length / dict->nworkers;
         unsigned int last = (worker + 1) * dict->old_length / dict->nworkers;
         for (unsigned i = first; i < last; i++) {
