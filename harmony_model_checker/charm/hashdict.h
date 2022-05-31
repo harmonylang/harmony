@@ -28,18 +28,21 @@ struct dict_bucket {
 
 struct dict_worker {
     struct keynode **unstable;   // one for each of the workers
+    unsigned int count;          // #unstable entries added
 };
 		
 struct dict {
     unsigned int value_len;
 	struct dict_bucket *table;
 	unsigned int length, count;
+	struct dict_bucket *old_table;
+	unsigned int old_length, old_count;
     struct dict_worker *workers;
     unsigned int nworkers;
     mutex_t *locks;
     unsigned int nlocks;
 	double growth_threshold;
-	double growth_factor;
+	unsigned int growth_factor;
     int concurrent;         // 0 = not concurrent
     void *(*malloc)(size_t size);
     void (*free)(void *);
@@ -59,6 +62,8 @@ struct keynode *dict_find(struct dict *dict, struct allocator *al, const void *k
 void *dict_retrieve(const void *p, unsigned int *psize);
 void dict_iter(struct dict *dict, enumFunc f, void *user);
 void dict_set_concurrent(struct dict *dict);
-int dict_make_stable(struct dict *dict, unsigned int worker);
-void dict_set_sequential(struct dict *dict, int n);
+void dict_make_stable(struct dict *dict, unsigned int worker);
+void dict_set_sequential(struct dict *dict);
+void dict_grow_prepare(struct dict *dict);
+
 #endif

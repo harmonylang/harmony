@@ -919,32 +919,31 @@ void value_set_concurrent(struct values_t *values){
     dict_set_concurrent(values->contexts);
 }
 
-void value_make_stable(struct values_t *values,
-            unsigned int worker, struct value_stable *vs){
-    vs->atom = dict_make_stable(values->atoms, worker);
-    vs->dict = dict_make_stable(values->dicts, worker);
-    vs->set = dict_make_stable(values->sets, worker);
-    vs->list = dict_make_stable(values->lists, worker);
-    vs->address = dict_make_stable(values->addresses, worker);
-    vs->context = dict_make_stable(values->contexts, worker);
+void value_make_stable(struct values_t *values, unsigned int worker){
+    dict_make_stable(values->atoms, worker);
+    dict_make_stable(values->dicts, worker);
+    dict_make_stable(values->sets, worker);
+    dict_make_stable(values->lists, worker);
+    dict_make_stable(values->addresses, worker);
+    dict_make_stable(values->contexts, worker);
 }
 
-void value_stable_add(struct value_stable *vs, struct value_stable *vs2){
-    vs->atom += vs2->atom;
-    vs->dict += vs2->dict;
-    vs->set += vs2->set;
-    vs->list += vs2->list;
-    vs->address += vs2->address;
-    vs->context += vs2->context;
+void value_grow_prepare(struct values_t *values) {
+    dict_grow_prepare(values->atoms);
+    dict_grow_prepare(values->dicts);
+    dict_grow_prepare(values->sets);
+    dict_grow_prepare(values->lists);
+    dict_grow_prepare(values->addresses);
+    dict_grow_prepare(values->contexts);
 }
 
-void value_set_sequential(struct values_t *values, struct value_stable *vs){
-    dict_set_sequential(values->atoms, vs->atom);
-    dict_set_sequential(values->dicts, vs->dict);
-    dict_set_sequential(values->sets, vs->set);
-    dict_set_sequential(values->lists, vs->list);
-    dict_set_sequential(values->addresses, vs->address);
-    dict_set_sequential(values->contexts, vs->context);
+void value_set_sequential(struct values_t *values){
+    dict_set_sequential(values->atoms);
+    dict_set_sequential(values->dicts);
+    dict_set_sequential(values->sets);
+    dict_set_sequential(values->lists);
+    dict_set_sequential(values->addresses);
+    dict_set_sequential(values->contexts);
 }
 
 // Store key:value in the given dictionary and returns its value code

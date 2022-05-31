@@ -60,16 +60,6 @@ typedef struct values_t {
     struct dict *contexts;
 } values_t;
 
-// For value_make_stable and value_set_sequential
-struct value_stable {
-    int atom;
-    int dict;
-    int set;
-    int list;
-    int address;
-    int context;
-};
-
 struct engine {
     struct allocator *allocator;
     struct values_t *values;
@@ -77,10 +67,8 @@ struct engine {
 
 void value_init(struct values_t *values, unsigned int nworkers);
 void value_set_concurrent(struct values_t *values);
-void value_stable_add(struct value_stable *vs, struct value_stable *vs2);
-void value_make_stable(struct values_t *values,
-            unsigned int worker, struct value_stable *vs);
-void value_set_sequential(struct values_t *values, struct value_stable *vs);
+void value_make_stable(struct values_t *values, unsigned int worker);
+void value_set_sequential(struct values_t *values);
 hvalue_t value_from_json(struct engine *engine, struct dict *map);
 int value_cmp(hvalue_t v1, hvalue_t v2);
 void *value_get(hvalue_t v, unsigned int *size);
@@ -141,6 +129,7 @@ hvalue_t value_ctx_pop(struct context *ctx);
 void value_ctx_extend(struct context *ctx);
 hvalue_t value_ctx_failure(struct context *ctx, struct engine *engine, char *fmt, ...);
 bool value_ctx_all_eternal(hvalue_t ctxbag);
+void value_grow_prepare(struct values_t *values);
 
 
 #endif //SRC_VALUE_H

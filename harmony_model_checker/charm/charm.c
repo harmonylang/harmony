@@ -50,10 +50,6 @@ struct worker {
     int timecnt;                 // to reduce gettime() overhead
     struct step inv_step;        // for evaluating invariants
 
-    // for dict_make_stable and dict_set_sequential
-    unsigned int nstable;
-    struct value_stable vs;     // TODO: dict stable counters
-
     struct node *results;       // list of resulting states
     unsigned int count;         // number of resulting states
     unsigned int node_id;       // node_ids to use for resulting states
@@ -1589,21 +1585,23 @@ static void worker(void *arg){
 
     barrier_wait(w->start_barrier);
     for (int epoch = 0;; epoch++) {
-        // parallel phase starts now
-		// printf("WORKER %d starting epoch %d\n", w->index, epoch);
+        // (first) parallel phase starts now
+		printf("WORKER %d starting epoch %d\n", w->index, epoch);
 		do_work(w);
 
         // wait for others to finish
-		// printf("WORKER %d finished epoch %d %u %u\n", w->index, epoch, w->count, w->node_id);
+		printf("WORKER %d finished epoch %d %u %u\n", w->index, epoch, w->count, w->node_id);
         barrier_wait(w->middle_barrier);
 
-		// printf("WORKER %d make stable %d %u %u\n", w->index, epoch, w->count, w->node_id);
-        value_make_stable(&global->values, w->index, &w->vs);
-        w->nstable = dict_make_stable(w->visited, w->index);
+        // Wait for coordinator to have grown the graph table and hash tables
 
-        // Wait for coordinator to have grown the graph table
         barrier_wait(w->end_barrier);
-		// printf("WORKER %d fill table %d %u %u\n", w->index, epoch, w->count, w->node_id);
+
+		printf("WORKER %d make stable %d %u %u\n", w->index, epoch, w->count, w->node_id);
+        value_make_stable(&global->values, w->index);
+        dict_make_stable(w->visited, w->index);
+
+		printf("WORKER %d fill table %d %u %u\n", w->index, epoch, w->count, w->node_id);
 
         // Fill the graph table
         for (unsigned int i = 0; w->count != 0; i++) {
@@ -1614,7 +1612,6 @@ static void worker(void *arg){
         }
         assert(w->results == NULL);
 
-        // start of sequential phase
         barrier_wait(w->start_barrier);
     }
 }
@@ -2000,21 +1997,26 @@ int main(int argc, char **argv){
     // make sure first node gets process
     global->enqueued++;
 
+    // Put the value dictionaries in concurrent mode
+    value_set_concurrent(&global->values);
+    dict_set_concurrent(visited);
+
     double before = gettime(), postproc = 0;
     while (minheap_empty(global->failures)) {
-        // Put the value dictionaries in concurrent mode
-        value_set_concurrent(&global->values);
-        dict_set_concurrent(visited);
-
         barrier_wait(&start_barrier);
 
-        // Threads are working to create the next layer of nodes
+        // Threads are working to create the next layer of nodes.
+        // Stay out of their way!
 
         barrier_wait(&middle_barrier);
 
+        // Back to sequential mode
         assert(global->todo == global->graph.size);
 
-        // the threads completed producing the next layer of nodes in the graph
+        global->diameter++;
+        // printf("Diameter %d\n", global->diameter);
+
+        // The threads completed producing the next layer of nodes in the graph.
         // Grow the graph table.
         unsigned int total = 0;
         for (unsigned int i = 0; i < nworkers; i++) {
@@ -2025,27 +2027,17 @@ int main(int argc, char **argv){
         graph_add_multiple(&global->graph, total);
         global->enqueued += total;
 
-        barrier_wait(&end_barrier);
-
-        // printf("Diameter %d\n", global->diameter);
-        global->diameter++;
+        // Prepare the grow the hash tables as well (but the actual work of
+        // rehashing is distributed among the threads in the next phase
+        dict_grow_prepare(visited);
+        value_grow_prepare(&global->values);
 
         double before_postproc = gettime();
 
-        int nstable = 0;
-        struct value_stable vs;
-        memset(&vs, 0, sizeof(vs));
-        for (unsigned int i = 0; i < nworkers; i++) {
-            struct worker *w = &workers[i];
-            nstable += w->nstable;
-            value_stable_add(&vs, &w->vs);
-        }
+        dict_set_sequential(visited);
+        value_set_sequential(&global->values);
 
-        // TODO.  Parallelize among workers
-        dict_set_sequential(visited, nstable);
-        value_set_sequential(&global->values, &vs);
-
-        // Collect the results of all the workers
+        // Collect the failures of all the workers
         for (unsigned int i = 0; i < nworkers; i++) {
 			process_results(global, &workers[i]);
         }
@@ -2055,6 +2047,10 @@ int main(int argc, char **argv){
         if (global->todo == global->graph.size) {
             break;
         }
+
+        barrier_wait(&end_barrier);
+
+        // The threads now update the hash tables and the graph table
     }
 
     printf("#states %d (time %.3lf+%.3lf=%.3lf)\n", global->graph.size, gettime() - before - postproc, postproc, gettime() - before);
