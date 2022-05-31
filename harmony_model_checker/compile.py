@@ -72,7 +72,7 @@ def _load_string(string, scope: Scope, code: Code, filename="<string-code>"):
     legacy_harmony.namestack.pop()
 
 
-def _load_file(filename: str, scope: Scope, code: Code):
+def _load_file(filename: str, scope: Scope, code: Code, init: bool):
     if filename in legacy_harmony.files:
         return
     legacy_harmony.namestack.append(filename)
@@ -85,6 +85,9 @@ def _load_file(filename: str, scope: Scope, code: Code):
             message="Unknown error: unable to parse Harmony file",
             filename=filename
         )
+
+    if init:
+        code.append(FrameOp(("__init__", None, None, None), []), ast.token, ast.endtoken)
 
     for mod in ast.getImports():
         _do_import(scope, code, mod)
@@ -104,6 +107,8 @@ def _load_file(filename: str, scope: Scope, code: Code):
         scope.names[lexeme] = ("constant", (lb, file, line, column))
 
     ast.compile(scope, code)
+    if init:
+        code.append(ReturnOp(), ast.token, ast.endtoken)  # to terminate "__init__" process
     legacy_harmony.namestack.pop()
 
 
@@ -129,7 +134,7 @@ def _do_import(scope: Scope, code: Code, module):
         for directory in [os.path.dirname(legacy_harmony.namestack[-1]), os.path.join(install_path, "modules"), "."]:
             filename = os.path.join(directory, modname + ".hny")
             if os.path.exists(filename):
-                _load_file(filename, scope2, code)
+                _load_file(filename, scope2, code, False)
                 found = True
                 break
         if not found:
@@ -229,13 +234,10 @@ def do_compile(fname: str, consts: List[str], mods: List[str], interface: List[s
     scope = Scope(None)
     scope.inherit = True
     code = Code()
-    code.append(FrameOp(("__init__", None, None, None), []))
-    _load_file(str(fname), scope, code)
-    if interface is not None:
-        _load_string("def __iface__(): result = (%s)" %
-                    interface, scope, code, "interface")
-
-    code.append(ReturnOp())  # to terminate "__init__" process
+    _load_file(str(fname), scope, code, True)
+    # if interface is not None:
+    #     _load_string("def __iface__(): result = (%s)" %
+    #                 interface, scope, code, "interface")
 
     unused_constant_def = legacy_harmony.constants.keys() - legacy_harmony.used_constants
     unused_module_def = legacy_harmony.modules.keys() - legacy_harmony.imported.keys()

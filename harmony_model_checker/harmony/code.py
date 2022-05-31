@@ -2,10 +2,10 @@ from harmony_model_checker.harmony.ops import *
 
 
 class Labeled_Op:
-    def __init__(self, op, file, line, labels):
+    def __init__(self, op, start, stop, labels):
         self.op = op
-        self.file = file
-        self.line = line
+        self.start = start
+        self.stop = stop
         self.labels = labels
         self.live_in = set()
         self.live_out = set()
@@ -21,12 +21,10 @@ class Code:
         self.curFile = file
         self.curLine = line
 
-    def append(self, op, file=None, line=0, labels=set()):
-        if file == None:
-            file = self.curFile
-        if line == 0:
-            line = self.curLine
-        self.labeled_ops.append(Labeled_Op(op, file, line, labels | self.endlabels))
+    def append(self, op, start, stop, labels=set()):
+        assert len(start) == 4
+        assert len(stop) == 4
+        self.labeled_ops.append(Labeled_Op(op, start, stop, labels | self.endlabels))
         self.endlabels = set()
 
     def nextLabel(self, endlabel):
@@ -91,7 +89,7 @@ class Code:
         newcode = Code()
         for lop in self.labeled_ops:
             # print(lop.op, lop.live_in, lop.live_out)
-            file, line = lop.file, lop.line
+            (_, file, line, _)  = lop.start
 
             # If a variable is live on output of any predecessor but not
             # live on input, delete it first
@@ -103,9 +101,9 @@ class Code:
 
             labels = lop.labels
             for d in sorted(lop.pre_del - { 'this' }):
-                newcode.append(DelVarOp((d, None, None, None)), file, line, labels)
+                newcode.append(DelVarOp((d, None, None, None)), lop.start, lop.stop, labels)
                 labels = set()
-            newcode.append(lop.op, file, line, labels)
+            newcode.append(lop.op, lop.start, lop.stop, labels)
 
             # If a variable is defined or live on input but not live on output,
             # immediately delete afterward
@@ -113,7 +111,7 @@ class Code:
             # lop.post_del = (lop.op.define() | lop.live_in) - lop.live_out
             lop.post_del = lop.live_in - lop.live_out
             for d in sorted(lop.post_del - { 'this' }):
-                newcode.append(DelVarOp((d, None, None, None)), file, line)
+                newcode.append(DelVarOp((d, None, None, None)), lop.start, lop.stop)
 
         return newcode
 

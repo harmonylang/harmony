@@ -1226,7 +1226,7 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
         firstTime = True
         for pc in range(len(code.labeled_ops)):
             lop = code.labeled_ops[pc]
-            file, line = lop.file, lop.line
+            (_, file, line, _) = lop.start
             if file != None:
                 if firstTime:
                     firstTime = False
