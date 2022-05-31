@@ -2149,7 +2149,7 @@ int main(int argc, char **argv){
                     nbad++;
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_TERMINATION;
-                    f->choice = node->to_parent->choice;
+                    f->choice = node->to_parent == NULL ? 0 : node->to_parent->choice;
                     f->node = node;
                     minheap_insert(global->failures, f);
                     // break;
