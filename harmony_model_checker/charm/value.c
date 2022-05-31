@@ -1311,8 +1311,8 @@ void value_ctx_extend(struct context *ctx){
     if (ctx->extended) {
         return;
     }
-    memmove(&ctx->thestack[0], &ctx->thestack[ctx_extent], ctx->sp * sizeof(hvalue_t));
-    memset(&ctx->thestack[0], 0, ctx_extent * sizeof(hvalue_t));
+    memmove(&ctx->thestack[ctx_extent], ctx->thestack, ctx->sp * sizeof(hvalue_t));
+    memset(ctx->thestack, 0, ctx_extent * sizeof(hvalue_t));
     ctx->ctx_this = VALUE_DICT;
     ctx->extended = true;
 }
