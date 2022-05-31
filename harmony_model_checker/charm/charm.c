@@ -1235,7 +1235,7 @@ void path_dump(
     struct node *node = last;
 
     if (last->to_parent == NULL) {
-        last = NULL;
+        return;
     }
     else {
         last = parent == NULL ? last->to_parent->src : parent;
