@@ -5,7 +5,7 @@
 
 struct hashset_t hashset_new(int initial_size) {
     struct hashset_t set;
-    set.dict = dict_new(0, initial_size, 0, NULL, NULL);
+    set.dict = dict_new("hashset", 0, initial_size, 0, NULL, NULL);
     return set;
 }
 

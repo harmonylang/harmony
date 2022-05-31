@@ -893,20 +893,20 @@ static bool align_test(){
 void value_init(struct values_t *values, unsigned int nworkers){
     if (align_test()) {
         // printf("malloc appears aligned to %d bytes\n", 1 << VALUE_BITS);
-        values->atoms = dict_new(0, 0, nworkers, NULL, NULL);
-        values->dicts = dict_new(0, 0, nworkers, NULL, NULL);
-        values->sets = dict_new(0, 0, nworkers, NULL, NULL);
-        values->lists = dict_new(0, 0, nworkers, NULL, NULL);
-        values->addresses = dict_new(0, 0, nworkers, NULL, NULL);
-        values->contexts = dict_new(0, 0, nworkers, NULL, NULL);
+        values->atoms = dict_new("atoms", 0, 0, nworkers, NULL, NULL);
+        values->dicts = dict_new("dicts", 0, 0, nworkers, NULL, NULL);
+        values->sets = dict_new("sets", 0, 0, nworkers, NULL, NULL);
+        values->lists = dict_new("lists", 0, 0, nworkers, NULL, NULL);
+        values->addresses = dict_new("addresses", 0, 0, nworkers, NULL, NULL);
+        values->contexts = dict_new("contexts", 0, 0, nworkers, NULL, NULL);
     }
     else {
-        values->atoms = dict_new(0, 0, nworkers, align_alloc, align_free);
-        values->dicts = dict_new(0, 0, nworkers, align_alloc, align_free);
-        values->sets = dict_new(0, 0, nworkers, align_alloc, align_free);
-        values->lists = dict_new(0, 0, nworkers, align_alloc, align_free);
-        values->addresses = dict_new(0, 0, nworkers, align_alloc, align_free);
-        values->contexts = dict_new(0, 0, nworkers, align_alloc, align_free);
+        values->atoms = dict_new("atoms", 0, 0, nworkers, align_alloc, align_free);
+        values->dicts = dict_new("dicts", 0, 0, nworkers, align_alloc, align_free);
+        values->sets = dict_new("sets", 0, 0, nworkers, align_alloc, align_free);
+        values->lists = dict_new("lists", 0, 0, nworkers, align_alloc, align_free);
+        values->addresses = dict_new("addresses", 0, 0, nworkers, align_alloc, align_free);
+        values->contexts = dict_new("contexts", 0, 0, nworkers, align_alloc, align_free);
     }
 }
 

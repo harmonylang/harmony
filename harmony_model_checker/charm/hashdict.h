@@ -32,6 +32,7 @@ struct dict_worker {
 };
 		
 struct dict {
+    char *whoami;
     unsigned int value_len;
 	struct dict_bucket *table;
 	unsigned int length, count;
@@ -48,7 +49,7 @@ struct dict {
     void (*free)(void *);
 };
 
-struct dict *dict_new(unsigned int value_len, unsigned int initial_size,
+struct dict *dict_new(char *whoami, unsigned int value_len, unsigned int initial_size,
     unsigned int nworkers, void *(*malloc)(size_t size), void (*free)(void *));
 void dict_delete(struct dict *dict);
 void *dict_lookup(struct dict *dict, const void *key, unsigned int keylen);

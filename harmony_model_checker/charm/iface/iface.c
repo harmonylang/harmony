@@ -172,7 +172,7 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
     struct iface_graph_t *iface_graph = iface_graph_init(global->graph.size / 2);
 
     // dict from (struct node *) to (struct iface_node_t *)
-    struct dict *node_to_iface_node = dict_new(sizeof(struct iface_node_t *), global->graph.size / 2, 0, NULL, NULL);
+    struct dict *node_to_iface_node = dict_new("iface", sizeof(struct iface_node_t *), global->graph.size / 2, 0, NULL, NULL);
 
     struct hashset_t visited = hashset_new(0);
 
