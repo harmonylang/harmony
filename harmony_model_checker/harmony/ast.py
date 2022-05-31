@@ -12,7 +12,7 @@ constants = {}          # constants modified with -c
 used_constants = set()  # constants modified and used
 
 class AST:
-    def __init__(self, token, atomically):
+    def __init__(self, endtoken, token, atomically):
         # Check that token is of the form (lexeme, file, line, column)
         assert isinstance(token, tuple), token
         assert len(token) == 4, len(token)
@@ -21,6 +21,7 @@ class AST:
         assert isinstance(file, str), file
         assert isinstance(line, int), line
         assert isinstance(column, int), line
+        self.endtoken = endtoken
         self.token = token
         self.atomically = atomically
 
@@ -116,8 +117,8 @@ class AST:
 
 
 class ComprehensionAST(AST):
-    def __init__(self, token, atomically, iter, value):
-        super().__init__(token, atomically)
+    def __init__(self, endtoken, token, atomically, iter, value):
+        super().__init__(endtoken, token, atomically)
         self.iter = iter
         self.value = value
     
@@ -197,8 +198,8 @@ class ComprehensionAST(AST):
             code.append(LoadVarOp(accu))
 
 class ConstantAST(AST):
-    def __init__(self, const):
-        AST.__init__(self, const, False)
+    def __init__(self, endtoken, const):
+        AST.__init__(self, endtoken, const, False)
         self.const = const
 
     def __repr__(self):
@@ -215,8 +216,8 @@ class ConstantAST(AST):
 
 
 class NameAST(AST):
-    def __init__(self, name):
-        AST.__init__(self, name, False)
+    def __init__(self, endtoken, name):
+        AST.__init__(self, endtoken, name, False)
         self.name = name
 
     def __repr__(self):
@@ -291,8 +292,8 @@ class NameAST(AST):
 
 
 class SetAST(AST):
-    def __init__(self, token, collection):
-        AST.__init__(self, token, False)
+    def __init__(self, endtoken, token, collection):
+        AST.__init__(self, endtoken, token, False)
         self.collection = collection
 
     def __repr__(self):
@@ -312,8 +313,8 @@ class SetAST(AST):
 
 
 class RangeAST(AST):
-    def __init__(self, lhs, rhs, token):
-        AST.__init__(self, token, False)
+    def __init__(self, endtoken, lhs, rhs, token):
+        AST.__init__(self, endtoken, token, False)
         self.lhs = lhs
         self.rhs = rhs
 
@@ -334,8 +335,8 @@ class RangeAST(AST):
 
 
 class TupleAST(AST):
-    def __init__(self, list, token):
-        AST.__init__(self, token, False)
+    def __init__(self, endtoken, list, token):
+        AST.__init__(self, endtoken, token, False)
         self.list = list
 
     def __repr__(self):
@@ -377,8 +378,8 @@ class TupleAST(AST):
 
 
 class DictAST(AST):
-    def __init__(self, token, record):
-        AST.__init__(self, token, False)
+    def __init__(self, endtoken, token, record):
+        AST.__init__(self, endtoken, token, False)
         self.record = record
 
     def __repr__(self):
@@ -400,8 +401,8 @@ class DictAST(AST):
 
 
 class SetComprehensionAST(ComprehensionAST):
-    def __init__(self, value, iter, token):
-        super().__init__(token, False, iter, value)
+    def __init__(self, endtoken, value, iter, token):
+        super().__init__(endtoken, token, False, iter, value)
 
     def __repr__(self):
         return "SetComprehension(" + str(self.iter) + "," + str(self.value) + ")"
@@ -414,8 +415,8 @@ class SetComprehensionAST(ComprehensionAST):
 
 
 class DictComprehensionAST(ComprehensionAST):
-    def __init__(self, key, value, iter, token):
-        super().__init__(token, False, iter, value)
+    def __init__(self, endtoken, key, value, iter, token):
+        super().__init__(endtoken, token, False, iter, value)
         self.key = key
 
     def __repr__(self):
@@ -429,8 +430,8 @@ class DictComprehensionAST(ComprehensionAST):
 
 
 class ListComprehensionAST(ComprehensionAST):
-    def __init__(self, value, iter, token):
-        super().__init__(token, False, iter, value)
+    def __init__(self, endtoken, value, iter, token):
+        super().__init__(endtoken, token, False, iter, value)
 
     def __repr__(self):
         return "ListComprehension(" + str(self.value) + ")"
@@ -444,8 +445,8 @@ class ListComprehensionAST(ComprehensionAST):
 
 # N-ary operator
 class NaryAST(AST):
-    def __init__(self, op, args):
-        AST.__init__(self, op, False)
+    def __init__(self, endtoken, op, args):
+        AST.__init__(self, endtoken, op, False)
         self.op = op
         self.args = args
         assert all(isinstance(x, AST) for x in args), args
@@ -515,8 +516,8 @@ class NaryAST(AST):
 
 
 class CmpAST(AST):
-    def __init__(self, token, ops, args):
-        AST.__init__(self, token, False)
+    def __init__(self, endtoken, token, ops, args):
+        AST.__init__(self, endtoken, token, False)
         self.ops = ops
         self.args = args
         assert len(ops) == len(args) - 1
@@ -554,8 +555,8 @@ class CmpAST(AST):
 
 
 class ApplyAST(AST):
-    def __init__(self, method, arg, token):
-        AST.__init__(self, token, False)
+    def __init__(self, endtoken, method, arg, token):
+        AST.__init__(self, endtoken, token, False)
         self.method = method
         self.arg = arg
 
@@ -650,8 +651,8 @@ class ApplyAST(AST):
 
 
 class PointerAST(AST):
-    def __init__(self, expr, token):
-        AST.__init__(self, token, False)
+    def __init__(self, endtoken, expr, token):
+        AST.__init__(self, endtoken, token, False)
         self.expr = expr
 
     def __repr__(self):
@@ -678,8 +679,8 @@ class PointerAST(AST):
 
 
 class AssignmentAST(AST):
-    def __init__(self, lhslist, rv, op, atomically):
-        AST.__init__(self, op, atomically)
+    def __init__(self, endtoken, lhslist, rv, op, atomically):
+        AST.__init__(self, endtoken, op, atomically)
         self.lhslist = lhslist  # a, b = c, d = e = ...
         self.rv = rv  # rhs expression
         self.op = op  # ... op= ...
@@ -794,8 +795,8 @@ class AssignmentAST(AST):
 
 
 class DelAST(AST):
-    def __init__(self, token, atomically, lv):
-        AST.__init__(self, token, atomically)
+    def __init__(self, endtoken, token, atomically, lv):
+        AST.__init__(self, endtoken, token, atomically)
         self.lv = lv
 
     def __repr__(self):
@@ -819,8 +820,8 @@ class DelAST(AST):
 
 
 class SetIntLevelAST(AST):
-    def __init__(self, token, arg):
-        AST.__init__(self, token, False)
+    def __init__(self, endtoken, token, arg):
+        AST.__init__(self, endtoken, token, False)
         self.arg = arg
 
     def __repr__(self):
@@ -835,8 +836,8 @@ class SetIntLevelAST(AST):
 
 
 class SaveAST(AST):
-    def __init__(self, token, expr):
-        AST.__init__(self, token, False)
+    def __init__(self, endtoken, token, expr):
+        AST.__init__(self, endtoken, token, False)
         self.expr = expr
 
     def __repr__(self):
@@ -852,8 +853,8 @@ class SaveAST(AST):
 
 
 class StopAST(AST):
-    def __init__(self, token, expr):
-        AST.__init__(self, token, False)
+    def __init__(self, endtoken, token, expr):
+        AST.__init__(self, endtoken, token, False)
         self.expr = expr
 
     def __repr__(self):
@@ -870,8 +871,8 @@ class StopAST(AST):
 
 
 class AddressAST(AST):
-    def __init__(self, token, lv):
-        AST.__init__(self, token, False)
+    def __init__(self, endtoken, token, lv):
+        AST.__init__(self, endtoken, token, False)
         self.lv = lv
 
     def __repr__(self):
@@ -931,8 +932,8 @@ class AddressAST(AST):
 
 
 class PassAST(AST):
-    def __init__(self, token, atomically):
-        AST.__init__(self, token, atomically)
+    def __init__(self, endtoken, token, atomically):
+        AST.__init__(self, endtoken, token, atomically)
 
     def __repr__(self):
         return "Pass"
@@ -945,8 +946,8 @@ class PassAST(AST):
 
 
 class BlockAST(AST):
-    def __init__(self, token, atomically, b):
-        AST.__init__(self, token, atomically)
+    def __init__(self, endtoken, token, atomically, b):
+        AST.__init__(self, endtoken, token, atomically)
         assert len(b) > 0
         self.b = b
 
@@ -981,8 +982,8 @@ class BlockAST(AST):
 
 
 class IfAST(AST):
-    def __init__(self, token, atomically, alts, stat):
-        AST.__init__(self, token, atomically)
+    def __init__(self, endtoken, token, atomically, alts, stat):
+        AST.__init__(self, endtoken, token, atomically)
         self.alts = alts  # alternatives
         self.stat = stat  # else statement
 
@@ -1034,8 +1035,8 @@ class IfAST(AST):
 
 
 class WhileAST(AST):
-    def __init__(self, token, atomically, cond, stat):
-        AST.__init__(self, token, atomically)
+    def __init__(self, endtoken, token, atomically, cond, stat):
+        AST.__init__(self, endtoken, token, atomically)
         self.cond = cond
         self.stat = stat
 
@@ -1071,8 +1072,8 @@ class WhileAST(AST):
 
 
 class InvariantAST(AST):
-    def __init__(self, cond, token, atomically):
-        AST.__init__(self, token, atomically)
+    def __init__(self, endtoken, cond, token, atomically):
+        AST.__init__(self, endtoken, token, atomically)
         self.cond = cond
 
     def __repr__(self):
@@ -1099,8 +1100,8 @@ class InvariantAST(AST):
 
 
 class LetAST(AST):
-    def __init__(self, token, atomically, vars, stat):
-        AST.__init__(self, token, atomically)
+    def __init__(self, endtoken, token, atomically, vars, stat):
+        AST.__init__(self, endtoken, token, atomically)
         self.vars = vars
         self.stat = stat
 
@@ -1127,8 +1128,8 @@ class LetAST(AST):
 
 
 class VarAST(AST):
-    def __init__(self, token, atomically, vars):
-        AST.__init__(self, token, atomically)
+    def __init__(self, endtoken, token, atomically, vars):
+        AST.__init__(self, endtoken, token, atomically)
         self.vars = vars
 
     def __repr__(self):
@@ -1149,8 +1150,8 @@ class VarAST(AST):
 
 
 class ForAST(ComprehensionAST):
-    def __init__(self, iter, stat, token, atomically):
-        super().__init__(token, atomically, iter, stat)
+    def __init__(self, endtoken, iter, stat, token, atomically):
+        super().__init__(endtoken, token, atomically, iter, stat)
 
     def __repr__(self):
         return "For(" + str(self.iter) + ", " + str(self.value) + ")"
@@ -1178,8 +1179,8 @@ class LetWhenAST(AST):
     #   - ('var', bv, ast)              // let bv = ast
     #   - ('cond', cond)                // when cond:
     #   - ('exists', bv, expr)    // when exists bv in expr
-    def __init__(self, token, atomically, vars_and_conds, stat):
-        AST.__init__(self, token, atomically)
+    def __init__(self, endtoken, token, atomically, vars_and_conds, stat):
+        AST.__init__(self, endtoken, token, atomically)
         self.vars_and_conds = vars_and_conds
         self.stat = stat
 
@@ -1286,8 +1287,8 @@ class LetWhenAST(AST):
 
 
 class AtomicAST(AST):
-    def __init__(self, token, atomically, stat):
-        AST.__init__(self, token, atomically)
+    def __init__(self, endtoken, token, atomically, stat):
+        AST.__init__(self, endtoken, token, atomically)
         self.stat = stat
 
     def __repr__(self):
@@ -1310,8 +1311,8 @@ class AtomicAST(AST):
 
 
 class AssertAST(AST):
-    def __init__(self, token, atomically, cond, expr):
-        AST.__init__(self, token, atomically)
+    def __init__(self, endtoken, token, atomically, cond, expr):
+        AST.__init__(self, endtoken, token, atomically)
         self.cond = cond
         self.expr = expr
 
@@ -1333,8 +1334,8 @@ class AssertAST(AST):
 
 
 class PrintAST(AST):
-    def __init__(self, token, atomically, expr):
-        AST.__init__(self, token, atomically)
+    def __init__(self, endtoken, token, atomically, expr):
+        AST.__init__(self, endtoken, token, atomically)
         self.expr = expr
 
     def __repr__(self):
@@ -1353,8 +1354,8 @@ class PrintAST(AST):
 
 
 class MethodAST(AST):
-    def __init__(self, token, atomically, name, args, stat):
-        AST.__init__(self, token, atomically)
+    def __init__(self, endtoken, token, atomically, name, args, stat):
+        AST.__init__(self, endtoken, token, atomically)
         self.name = name
         self.args = args
         self.stat = stat
@@ -1403,8 +1404,8 @@ class MethodAST(AST):
 
 
 class LambdaAST(AST):
-    def __init__(self, args, stat, token, atomically):
-        AST.__init__(self, token, atomically)
+    def __init__(self, endtoken, args, stat, token, atomically):
+        AST.__init__(self, endtoken, token, atomically)
         self.args = args
         self.stat = stat
 
@@ -1446,8 +1447,8 @@ class LambdaAST(AST):
 
 
 class CallAST(AST):
-    def __init__(self, token, atomically, expr):
-        AST.__init__(self, token, atomically)
+    def __init__(self, endtoken, token, atomically, expr):
+        AST.__init__(self, endtoken, token, atomically)
         self.expr = expr
 
     def __repr__(self):
@@ -1467,8 +1468,8 @@ class CallAST(AST):
 
 
 class SpawnAST(AST):
-    def __init__(self, token, atomically, method, arg, this, eternal):
-        AST.__init__(self, token, atomically)
+    def __init__(self, endtoken, token, atomically, method, arg, this, eternal):
+        AST.__init__(self, endtoken, token, atomically)
         self.method = method
         self.arg = arg
         self.this = this
@@ -1492,8 +1493,8 @@ class SpawnAST(AST):
 
 
 class TrapAST(AST):
-    def __init__(self, token, atomically, method, arg):
-        AST.__init__(self, token, atomically)
+    def __init__(self, endtoken, token, atomically, method, arg):
+        AST.__init__(self, endtoken, token, atomically)
         self.method = method
         self.arg = arg
 
@@ -1511,8 +1512,8 @@ class TrapAST(AST):
 
 
 class GoAST(AST):
-    def __init__(self, token, atomically, ctx, result):
-        AST.__init__(self, token, atomically)
+    def __init__(self, endtoken, token, atomically, ctx, result):
+        AST.__init__(self, endtoken, token, atomically)
         self.ctx = ctx
         self.result = result
 
@@ -1535,8 +1536,8 @@ class GoAST(AST):
 
 
 class ImportAST(AST):
-    def __init__(self, token, atomically, modlist):
-        AST.__init__(self, token, atomically)
+    def __init__(self, endtoken, token, atomically, modlist):
+        AST.__init__(self, endtoken, token, atomically)
         self.modlist = modlist
 
     def __repr__(self):
@@ -1554,8 +1555,8 @@ class ImportAST(AST):
 
 
 class FromAST(AST):
-    def __init__(self, token, atomically, module, items):
-        AST.__init__(self, token, atomically)
+    def __init__(self, endtoken, token, atomically, module, items):
+        AST.__init__(self, endtoken, token, atomically)
         self.module = module
         self.items = items
 
@@ -1591,8 +1592,8 @@ class FromAST(AST):
 
 
 class LocationAST(AST):
-    def __init__(self, token, ast, file, line):
-        AST.__init__(self, token, True)
+    def __init__(self, endtoken, token, ast, file, line):
+        AST.__init__(self, endtoken, token, True)
         self.ast = ast
         self.file = file
         self.line = line
@@ -1615,8 +1616,8 @@ class LocationAST(AST):
 
 
 class LabelStatAST(AST):
-    def __init__(self, token, labels, ast):
-        AST.__init__(self, token, True)
+    def __init__(self, endtoken, token, labels, ast):
+        AST.__init__(self, endtoken, token, True)
         self.labels = {lb: LabelValue(None, lb[0]) for lb in labels}
         self.ast = ast
 
@@ -1646,8 +1647,8 @@ class LabelStatAST(AST):
 
 
 class SequentialAST(AST):
-    def __init__(self, token, atomically, vars):
-        AST.__init__(self, token, atomically)
+    def __init__(self, endtoken, token, atomically, vars):
+        AST.__init__(self, endtoken, token, atomically)
         self.vars = vars
 
     def __repr__(self):
@@ -1663,8 +1664,8 @@ class SequentialAST(AST):
 
 
 class ConstAST(AST):
-    def __init__(self, token, atomically, const, expr):
-        AST.__init__(self, token, atomically)
+    def __init__(self, endtoken, token, atomically, const, expr):
+        AST.__init__(self, endtoken, token, atomically)
         self.const = const
         self.expr = expr
 
