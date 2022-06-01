@@ -75,7 +75,6 @@ struct failure {
     struct failure *next;   // for linked list maintenance
     enum fail_type type;
     struct node *node;      // failed state
-    struct node *parent;    // if NULL, use node->parent
     hvalue_t choice;        // choice if any
     bool interrupt;         // interrupt transition
     hvalue_t address;       // in case of data race

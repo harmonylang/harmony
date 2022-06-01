@@ -327,13 +327,15 @@ static bool onestep(
             dict_insert(infloop, NULL, combo, combosize, &new);
             free(combo);
             if (!new) {
-                value_ctx_failure(step->ctx, &step->engine, "infinite loop");
-                failure = infinite_loop = true;
-                break;
-            }
-            else {
-                // start over, as twostep does not have instrcnt optimization
-                return false;
+                if (infloop_detect) {
+                    value_ctx_failure(step->ctx, &step->engine, "infinite loop");
+                    failure = infinite_loop = true;
+                    break;
+                }
+                else {
+                    // start over, as twostep does not have instrcnt optimization
+                    return false;
+                }
             }
         }
 
@@ -506,7 +508,6 @@ static bool onestep(
         f->type = infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
         f->choice = choice_copy;
         f->interrupt = interrupt;
-        f->parent = node;
         f->node = next;
         f->next = w->failures;
         w->failures = f;
@@ -517,7 +518,6 @@ static bool onestep(
             f->type = FAIL_INVARIANT;
             f->choice = choice_copy;
             f->interrupt = interrupt;
-            f->parent = node;
             f->node = next;
             f->next = w->failures;
             w->failures = f;
@@ -1224,23 +1224,22 @@ hvalue_t twostep(
 void path_dump(
     struct global_t *global,
     FILE *file,
-    struct node *last,
-    struct node *parent,
+    struct node *node,
     hvalue_t choice,
     struct state *oldstate,
     struct context **oldctx,
     bool interrupt,
     int nsteps
 ) {
-    struct node *node = last;
+    struct edge *e = node->to_parent;
+    assert(e != NULL);
+    struct node *last = e->src;
 
-    last = parent == NULL ? last->to_parent->src : parent;
     if (last->to_parent == NULL) {
         fprintf(file, "\n");
     }
     else {
-        struct edge *e = last->to_parent;
-        path_dump(global, file, last, e->src, e->choice, oldstate, oldctx, e->interrupt, last->steps);
+        path_dump(global, file, last, e->choice, oldstate, oldctx, e->interrupt, last->steps);
         fprintf(file, ",\n");
     }
 
@@ -2405,7 +2404,7 @@ int main(int argc, char **argv){
         memset(&oldstate, 0, sizeof(oldstate));
         struct context *oldctx = calloc(1, sizeof(*oldctx));
         global->dumpfirst = true;
-        path_dump(global, out, bad->node, bad->parent, bad->choice, &oldstate, &oldctx, bad->interrupt, bad->node->steps);
+        path_dump(global, out, bad->node, bad->choice, &oldstate, &oldctx, bad->interrupt, bad->node->steps);
         fprintf(out, "\n");
         free(oldctx);
         fprintf(out, "  ],\n");
