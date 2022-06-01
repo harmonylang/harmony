@@ -230,10 +230,10 @@ static bool onestep(
 
     bool choosing = false, infinite_loop = false;
     struct dict *infloop = NULL;        // infinite loop detector
-    int instrcnt = 0;
+    unsigned int instrcnt = 0;
     struct state as_state;
     hvalue_t as_context = 0;
-    int as_instrcnt = 0;
+    unsigned int as_instrcnt = 0;
     bool rollback = false, failure = false, stopped = false;
     bool terminated = false;
     for (;;) {
@@ -264,6 +264,7 @@ static bool onestep(
         struct op_info *oi = instrs[pc].oi;
         if (instrs[pc].choose) {
             assert(step->ctx->sp > 0);
+            assert(choice != 0);
             ctx_stack(step->ctx)[step->ctx->sp - 1] = choice;
             step->ctx->pc++;
         }
@@ -478,6 +479,7 @@ static bool onestep(
     edge->ai = step->ai;
     edge->log = step->log;
     edge->nlog = step->nlog;
+    edge->nsteps = instrcnt;
 
     // See if this state has been computed before
     bool new;
@@ -506,9 +508,7 @@ static bool onestep(
     if (failure) {
         struct failure *f = new_alloc(struct failure);
         f->type = infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
-        f->choice = choice_copy;
-        f->interrupt = interrupt;
-        f->node = next;
+        f->edge = edge;
         f->next = w->failures;
         w->failures = f;
     }
@@ -516,9 +516,7 @@ static bool onestep(
         if (!check_invariants(w, next, &w->inv_step)) {
             struct failure *f = new_alloc(struct failure);
             f->type = FAIL_INVARIANT;
-            f->choice = choice_copy;
-            f->interrupt = interrupt;
-            f->node = next;
+            f->edge = edge;
             f->next = w->failures;
             w->failures = f;
         }
@@ -1073,7 +1071,7 @@ hvalue_t twostep(
     struct state *oldstate,
     struct context **oldctx,
     hvalue_t nextvars,
-    int nsteps
+    unsigned int nsteps
 ){
     // Make a copy of the state
     struct state *sc = new_alloc(struct state);
@@ -1102,7 +1100,7 @@ hvalue_t twostep(
     }
 
     struct dict *infloop = NULL;        // infinite loop detector
-    int instrcnt = 0;
+    unsigned int instrcnt = 0;
     for (;;) {
         int pc = step.ctx->pc;
 
@@ -1110,6 +1108,7 @@ hvalue_t twostep(
         struct instr_t *instrs = global->code.instrs;
         struct op_info *oi = instrs[pc].oi;
         if (instrs[pc].choose) {
+            assert(choice != 0);
             ctx_stack(step.ctx)[step.ctx->sp - 1] = choice;
             step.ctx->pc++;
         }
@@ -1122,7 +1121,7 @@ hvalue_t twostep(
         }
 
         // Infinite loop detection
-        if (!step.ctx->terminated && step.ctx->failed) {
+        if (!step.ctx->terminated && !step.ctx->failed) {
             if (infloop == NULL) {
                 // TODO.  infloop should be deallocated
                 infloop = dict_new("infloop2", 0, 0, 0, NULL, NULL);
@@ -1141,13 +1140,14 @@ hvalue_t twostep(
             }
         }
 
-        diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice, print);
+        assert(!instrs[pc].choose || choice != 0);
+        diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, instrs[pc].choose, choice, print);
         free(print);
         if (step.ctx->terminated || step.ctx->failed || step.ctx->stopped) {
             break;
         }
         instrcnt++;
-        if (instrcnt >= nsteps - node->steps) {
+        if (instrcnt >= nsteps) {
             break;
         }
         if (step.ctx->pc == pc) {
@@ -1224,22 +1224,18 @@ hvalue_t twostep(
 void path_dump(
     struct global_t *global,
     FILE *file,
-    struct node *node,
-    hvalue_t choice,
+    struct edge *e,
     struct state *oldstate,
-    struct context **oldctx,
-    bool interrupt,
-    int nsteps
+    struct context **oldctx
 ) {
-    struct edge *e = node->to_parent;
-    assert(e != NULL);
+    struct node *node = e->dst;
     struct node *last = e->src;
 
     if (last->to_parent == NULL) {
         fprintf(file, "\n");
     }
     else {
-        path_dump(global, file, last, e->choice, oldstate, oldctx, e->interrupt, last->steps);
+        path_dump(global, file, last->to_parent, oldstate, oldctx);
         fprintf(file, ",\n");
     }
 
@@ -1249,7 +1245,7 @@ void path_dump(
 
     /* Find the starting context in the list of processes.
      */
-    hvalue_t ctx = node->to_parent->ctx;
+    hvalue_t ctx = e->ctx;
     int pid;
     for (pid = 0; pid < global->nprocesses; pid++) {
         if (global->processes[pid] == ctx) {
@@ -1265,7 +1261,7 @@ void path_dump(
 	int len = strlen(name);
     assert(context->sp > 1);
     char *arg = json_escape_value(ctx_stack(context)[1]);
-    // char *c = value_string(choice);
+    char *c = e->choice == 0 ? NULL : value_string(e->choice);
     fprintf(file, "      \"tid\": \"%d\",\n", pid);
     fprintf(file, "      \"xhash\": \"%"PRI_HVAL"\",\n", ctx);
     if (*arg == '(') {
@@ -1274,12 +1270,14 @@ void path_dump(
     else {
         fprintf(file, "      \"name\": \"%.*s(%s)\",\n", len - 2, name + 1, arg);
     }
-    // fprintf(file, "      \"choice\": \"%s\",\n", c);
+    if (c != NULL) {
+        fprintf(file, "      \"choice\": \"%s\",\n", c);
+    }
     global->dumpfirst = true;
     fprintf(file, "      \"microsteps\": [");
     free(name);
     free(arg);
-    // free(c);
+    free(c);
     memset(*oldctx, 0, sizeof(**oldctx));
     (*oldctx)->pc = context->pc;
 
@@ -1290,12 +1288,12 @@ void path_dump(
         file,
         last,
         ctx,
-        choice,
-        interrupt,
+        e->choice,
+        e->interrupt,
         oldstate,
         oldctx,
         node->state.vars,
-        nsteps
+        e->nsteps
     );
     fprintf(file, "\n      ],\n");
 
@@ -1482,8 +1480,7 @@ static void detect_busywait(struct minheap *failures, struct node *node){
 		if (is_stuck(node, node, ctxs[i], false) == BW_RETURN) {
 			struct failure *f = new_alloc(struct failure);
 			f->type = FAIL_BUSYWAIT;
-			f->choice = node->to_parent->choice;
-			f->node = node;
+			f->edge = node->to_parent;
 			minheap_insert(failures, f);
 			// break;
 		}
@@ -1505,7 +1502,7 @@ static int node_cmp(void *n1, void *n2){
 static int fail_cmp(void *f1, void *f2){
     struct failure *fail1 = f1, *fail2 = f2;
 
-    return node_cmp(fail1->node, fail2->node);
+    return node_cmp(fail1->edge->dst, fail2->edge->dst);
 }
 
 static void do_work(struct worker *w){
@@ -2131,8 +2128,7 @@ int main(int argc, char **argv){
 						!dfa_is_final(global->dfa, node->state.dfa_state)) {
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_BEHAVIOR;
-                    f->choice = node->to_parent->choice;
-                    f->node = node;
+                    f->edge = node->to_parent;
                     minheap_insert(global->failures, f);
                     // break;
                 }
@@ -2148,8 +2144,7 @@ int main(int argc, char **argv){
                     nbad++;
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_TERMINATION;
-                    f->choice = node->to_parent == NULL ? 0 : node->to_parent->choice;
-                    f->node = node;
+                    f->edge = node->to_parent;
                     minheap_insert(global->failures, f);
                     // break;
                 }
@@ -2404,7 +2399,7 @@ int main(int argc, char **argv){
         memset(&oldstate, 0, sizeof(oldstate));
         struct context *oldctx = calloc(1, sizeof(*oldctx));
         global->dumpfirst = true;
-        path_dump(global, out, bad->node, bad->choice, &oldstate, &oldctx, bad->interrupt, bad->node->steps);
+        path_dump(global, out, bad->edge, &oldstate, &oldctx);
         fprintf(out, "\n");
         free(oldctx);
         fprintf(out, "  ],\n");

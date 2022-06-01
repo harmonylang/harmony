@@ -33,7 +33,8 @@ struct edge {
     hvalue_t after;          // resulting context
     struct access_info *ai;  // to detect data races
     hvalue_t *log;           // print history
-    uint16_t nlog;           // size of print history
+    uint16_t nsteps;         // # microsteps
+    uint16_t nlog : 15;      // size of print history
     bool interrupt : 1;      // set if state change is an interrupt
 };
 
@@ -73,10 +74,8 @@ struct node {
 
 struct failure {
     struct failure *next;   // for linked list maintenance
-    enum fail_type type;
-    struct node *node;      // failed state
-    hvalue_t choice;        // choice if any
-    bool interrupt;         // interrupt transition
+    enum fail_type type;    // failure type
+    struct edge *edge;      // edge->dst is the faulty state
     hvalue_t address;       // in case of data race
 };
 
