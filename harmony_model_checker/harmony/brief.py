@@ -12,8 +12,10 @@ def brief_idx(js):
 def brief_string(js):
     type = js["type"]
     v = js["value"]
-    if type in { "bool", "int" }:
+    if type == "bool":
         return v
+    if type == "int":
+        return str(v) if instanceof(v, int) else v
     if type == "atom":
         return json.dumps(v, ensure_ascii=False)
     if type == "set":
@@ -42,7 +44,7 @@ def brief_string(js):
             return "None"
         return "?" + v[0]["value"] + "".join([ brief_idx(kv) for kv in v[1:] ])
     if type == "context":
-        return "CONTEXT(" + brief_string(v["name"]) + ")"
+        return "CONTEXT(" + str(v["entry"]) + ")"
 
 def brief_print_vars(d):
     print("{", end="")
