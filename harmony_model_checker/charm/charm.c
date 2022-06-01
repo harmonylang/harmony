@@ -504,6 +504,7 @@ static bool onestep(
             next->to_parent = edge;
         }
     }
+    edge->dst = next;
 
     if (failure) {
         struct failure *f = new_alloc(struct failure);
@@ -1229,13 +1230,13 @@ void path_dump(
     struct context **oldctx
 ) {
     struct node *node = e->dst;
-    struct node *last = e->src;
+    struct node *parent = e->src;
 
-    if (last->to_parent == NULL) {
+    if (parent->to_parent == NULL) {
         fprintf(file, "\n");
     }
     else {
-        path_dump(global, file, last->to_parent, oldstate, oldctx);
+        path_dump(global, file, parent->to_parent, oldstate, oldctx);
         fprintf(file, ",\n");
     }
 
@@ -1286,7 +1287,7 @@ void path_dump(
     global->processes[pid] = twostep(
         global,
         file,
-        last,
+        parent,
         ctx,
         e->choice,
         e->interrupt,
