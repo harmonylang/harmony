@@ -750,9 +750,19 @@ void print_context(
 ) {
     fprintf(file, "        {\n");
     fprintf(file, "          \"tid\": \"%d\",\n", tid);
-    // fprintf(file, "          \"yhash\": \"%"PRI_HVAL"\",\n", ctx);
+    fprintf(file, "          \"yhash\": \"%"PRI_HVAL"\",\n", ctx);
 
-    struct context *c = value_get(ctx, NULL);
+    unsigned int size;
+    struct context *c = value_get(ctx, &size);
+
+#ifdef notdef
+    fprintf(file, "          \"dump\": \"");
+    unsigned char *p = (unsigned char *) c;
+    for (unsigned i = 0; i < size; i++) {
+        fprintf(file, "%02x", *p++);
+    }
+    fprintf(file, "\",\n");
+#endif
 
     assert(strcmp(global->code.instrs[c->entry].oi->name, "Frame") == 0);
     const struct env_Frame *ef = global->code.instrs[c->entry].env;
@@ -919,6 +929,20 @@ void print_state(
     }
     fprintf(file, "\n      ],\n");
     free(inv_step.ctx);
+
+    fprintf(file, "      \"ctxbag\": {\n");
+    unsigned int nctxs;
+    hvalue_t *ctxs = value_get(node->state.ctxbag, &nctxs);
+    nctxs /= sizeof(hvalue_t);
+    for (unsigned int i = 0; i < nctxs; i += 2) {
+        if (i > 0) {
+            fprintf(file, ",\n");
+        }
+        assert(VALUE_TYPE(ctxs[i]) == VALUE_CONTEXT);
+        assert(VALUE_TYPE(ctxs[i+1]) == VALUE_INT);
+        fprintf(file, "          \"%"PRIx64"\": \"%u\"", ctxs[i], (unsigned int) VALUE_FROM_INT(ctxs[i+1]));
+    }
+    fprintf(file, "\n      },\n");
 
     fprintf(file, "      \"contexts\": [\n");
     for (int i = 0; i < global->nprocesses; i++) {
@@ -1116,6 +1140,12 @@ hvalue_t twostep(
             ctx_stack(step.ctx)[step.ctx->sp - 1] = choice;
             step.ctx->pc++;
         }
+        else if (instrs[pc].atomicinc) {
+            if (instrcnt == 0) {
+                step.ctx->atomicFlag = true;
+            }
+            (*oi->op)(instrs[pc].env, sc, &step, global);
+        }
         else if (instrs[pc].print) {
             print = value_json(ctx_stack(step.ctx)[step.ctx->sp - 1]);
             (*oi->op)(instrs[pc].env, sc, &step, global);
@@ -1217,6 +1247,9 @@ hvalue_t twostep(
 
     // assert(sc->vars == nextvars);
     ctx = value_put_context(&step.engine, step.ctx);
+    if ((ctx & 0xFFFF00000000) == 0x600000000000) {
+        printf("YYYYYYY\n");
+    }
 
     free(sc);
     free(step.ctx);
