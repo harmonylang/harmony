@@ -1265,7 +1265,7 @@ void path_dump(
 	int len = strlen(name);
     assert(context->sp > 1);
     char *arg = json_escape_value(ctx_stack(context)[1]);
-    char *c = e->choice == 0 ? NULL : value_string(e->choice);
+    char *c = e->choice == 0 ? NULL : value_json(e->choice);
     fprintf(file, "      \"tid\": \"%d\",\n", pid);
     fprintf(file, "      \"xhash\": \"%"PRI_HVAL"\",\n", ctx);
     if (*arg == '(') {
