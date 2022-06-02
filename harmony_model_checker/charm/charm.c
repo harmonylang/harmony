@@ -1272,7 +1272,7 @@ void path_dump(
         fprintf(file, "      \"name\": \"%.*s(%s)\",\n", len - 2, name + 1, arg);
     }
     if (c != NULL) {
-        fprintf(file, "      \"choice\": \"%s\",\n", c);
+        fprintf(file, "      \"choice\": %s,\n", c);
     }
     global->dumpfirst = true;
     fprintf(file, "      \"microsteps\": [");

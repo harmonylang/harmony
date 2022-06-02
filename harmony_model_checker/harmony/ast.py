@@ -1230,7 +1230,7 @@ class LetWhenAST(AST):
                 var, expr = var_or_cond[1:]
                 expr.compile(ns, code)
                 code.append(StoreVarOp(var), self.token, self.endtoken)
-                self.define(ns, var, self.token, self.endtoken)
+                self.define(ns, var)
             elif var_or_cond[0] == 'cond':
                 cond = var_or_cond[1]
                 cond.compile(ns, code)

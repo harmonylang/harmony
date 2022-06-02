@@ -15,7 +15,7 @@ def brief_string(js):
     if type == "bool":
         return v
     if type == "int":
-        return str(v) if instanceof(v, int) else v
+        return str(v) if isinstance(v, int) else v
     if type == "atom":
         return json.dumps(v, ensure_ascii=False)
     if type == "set":
