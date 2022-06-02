@@ -371,7 +371,6 @@ static bool onestep(
             hvalue_t *vals = value_get(s, &size);
             size /= sizeof(hvalue_t);
             if (size == 0) {
-                printf("EMPTY CHOICE\n");
                 value_ctx_failure(step->ctx, &step->engine, "choose operation requires a non-empty set");
                 instrcnt++;
                 failure = true;
@@ -1182,7 +1181,6 @@ hvalue_t twostep(
             hvalue_t *vals = value_get(s, &size);
             size /= sizeof(hvalue_t);
             if (size == 0) {
-                printf("EMPTY SET AGAIN\n");
                 value_ctx_failure(step.ctx, &step.engine, "choose operation requires a non-empty set");
                 diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice, NULL);
                 break;
