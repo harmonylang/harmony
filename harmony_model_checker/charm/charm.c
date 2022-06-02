@@ -355,6 +355,7 @@ static bool onestep(
 #ifdef TODO
             if (0 && step->ctx->readonly > 0) {    // TODO
                 value_ctx_failure(step->ctx, &step->engine, "can't choose in assertion or invariant");
+                instrcnt++;
                 failure = true;
                 break;
             }
@@ -362,6 +363,7 @@ static bool onestep(
             hvalue_t s = ctx_stack(step->ctx)[step->ctx->sp - 1];
             if (VALUE_TYPE(s) != VALUE_SET) {
                 value_ctx_failure(step->ctx, &step->engine, "choose operation requires a set");
+                instrcnt++;
                 failure = true;
                 break;
             }
@@ -369,7 +371,9 @@ static bool onestep(
             hvalue_t *vals = value_get(s, &size);
             size /= sizeof(hvalue_t);
             if (size == 0) {
+                printf("EMPTY CHOICE\n");
                 value_ctx_failure(step->ctx, &step->engine, "choose operation requires a non-empty set");
+                instrcnt++;
                 failure = true;
                 break;
             }
@@ -1178,6 +1182,7 @@ hvalue_t twostep(
             hvalue_t *vals = value_get(s, &size);
             size /= sizeof(hvalue_t);
             if (size == 0) {
+                printf("EMPTY SET AGAIN\n");
                 value_ctx_failure(step.ctx, &step.engine, "choose operation requires a non-empty set");
                 diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice, NULL);
                 break;
