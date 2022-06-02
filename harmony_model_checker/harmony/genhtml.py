@@ -305,20 +305,13 @@ class GenHTML:
         print("</html>", file=f)
 
     def var_convert(self, v):
-        if v["type"] != "dict" and v["type"] != "list":
+        if v["type"] != "dict":
             return json_string(v)
-        if v["type"] == "dict":
-            d = {}
-            for kv in v["value"]:
-                k = json_string(kv["key"])
-                d[k] = self.var_convert(kv["value"])
-            return d
-        else:
-            assert v["type"] == "list"
-            d = {}
-            for i, val in enumerate(v["value"]):
-                d[str(i)] = self.var_convert(val)
-            return d
+        d = {}
+        for kv in v["value"]:
+            k = json_string(kv["key"])
+            d[k] = self.var_convert(kv["value"])
+        return d
 
     def dict_merge(self, vardir, d):
         for (k, v) in d.items():
