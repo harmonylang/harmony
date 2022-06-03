@@ -679,8 +679,8 @@ class PointerAST(AST):
 
 
 class AssignmentAST(AST):
-    def __init__(self, endtoken, lhslist, rv, op, atomically):
-        AST.__init__(self, endtoken, op, atomically)
+    def __init__(self, endtoken, token, lhslist, rv, op, atomically):
+        AST.__init__(self, endtoken, token, op, atomically)
         self.lhslist = lhslist  # a, b = c, d = e = ...
         self.rv = rv  # rhs expression
         self.op = op  # ... op= ...
