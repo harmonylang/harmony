@@ -11,6 +11,7 @@ struct global_t {
     struct values_t values;
     struct graph_t graph;
     unsigned int todo;           // points into graph->nodes
+    mutex_t todo_lock;           // to access the todo list
     struct minheap *failures;    // queue of "struct failure"  (TODO: make part of struct node "issues")
     hvalue_t *processes;         // list of contexts of processes
     int nprocesses;              // the number of processes in the list
