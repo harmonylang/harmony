@@ -592,6 +592,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     # Visit a parse tree produced by HarmonyParser#nary_expr.
     def visitNary_expr(self, ctx: HarmonyParser.Nary_exprContext):
         expressions = [self.visit(e) for e in ctx.expr_rule()]
+        tkn = self.get_token(ctx.start, ctx.start.text)
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
         if ctx.comp_op():
             comps = [self.visit(o) for o in ctx.comp_op()]
@@ -618,18 +619,18 @@ class HarmonyVisitorImpl(HarmonyVisitor):
                         lexeme=actual[0]
                     )
             binop = ops[0]
-            return NaryAST(endtoken, binop, expressions)
+            return NaryAST(endtoken, tkn, binop, expressions)
         if ctx.IF():
             condition = self.visit(ctx.nary_expr())
             expressions.insert(1, condition)
             op_token = self.get_token(ctx.IF().symbol, str(ctx.IF()))
-            return NaryAST(endtoken, op_token, expressions)
+            return NaryAST(endtoken, tkn, op_token, expressions)
         if ctx.IN():
             in_token = self.get_token(ctx.IN().symbol, str(ctx.IN()))
-            ast = NaryAST(endtoken, in_token, expressions)
+            ast = NaryAST(endtoken, tkn, in_token, expressions)
             if ctx.NOT():
                 not_token = self.get_token(ctx.NOT().symbol, str(ctx.NOT()))
-                return NaryAST(endtoken, not_token, [ast])
+                return NaryAST(endtoken, tkn, not_token, [ast])
             return ast
         return expressions[0]
 
@@ -656,7 +657,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         if ctx.unary_op():
             op = self.visit(ctx.unary_op())
             expr = self.visit(ctx.expr_rule())
-            return NaryAST(endtoken, op, [expr])
+            return NaryAST(endtoken, tkn, op, [expr])
         if ctx.application():
             return self.visit(ctx.application())
         raise HarmonyCompilerError(

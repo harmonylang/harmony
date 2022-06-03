@@ -445,8 +445,8 @@ class ListComprehensionAST(ComprehensionAST):
 
 # N-ary operator
 class NaryAST(AST):
-    def __init__(self, endtoken, op, args):
-        AST.__init__(self, endtoken, op, False)
+    def __init__(self, endtoken, token, op, args):
+        AST.__init__(self, endtoken, token, False)
         self.op = op
         self.args = args
         assert all(isinstance(x, AST) for x in args), args
