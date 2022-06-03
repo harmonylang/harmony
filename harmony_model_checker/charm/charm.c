@@ -1443,6 +1443,14 @@ static void enum_loc(
     assert(line->type == JV_ATOM);
     fprintf(out, "\"line\": \"%.*s\", ", line->u.atom.len, line->u.atom.base);
 
+    static char *tocopy[] = { "column", "endline", "endcolumn", NULL };
+    for (unsigned int i = 0; tocopy[i] != NULL; i++) {
+        char *key2 = tocopy[i];
+        struct json_value *jv2 = dict_lookup(jv->u.map, key2, strlen(key2));
+        assert(jv2->type == JV_ATOM);
+        fprintf(out, "\"%s\": \"%.*s\", ", key2, jv2->u.atom.len, jv2->u.atom.base);
+    }
+
     char **p = dict_insert(code_map, NULL, &pc, sizeof(pc), NULL);
     struct strbuf sb;
     strbuf_init(&sb);
