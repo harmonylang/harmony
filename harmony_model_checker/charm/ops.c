@@ -539,13 +539,14 @@ void op_Choose(const void *env, struct state *state, struct step *step, struct g
         for (;;) {
             printf("--> "); fflush(stdout);
             unsigned int selection;
-            scanf("%u", &selection);
-            selection -= 1;
-            if (selection < size) {
-                step->ctx->pc++;
-                ctx_push(step->ctx, vals[selection]);
-                return;
-            }
+            if (scanf("%u", &selection) == 1) {
+		selection -= 1;
+		if (selection < size) {
+		    step->ctx->pc++;
+		    ctx_push(step->ctx, vals[selection]);
+		    return;
+		}
+	    }
             printf("Bad selection. Try again\n");
         }
     }

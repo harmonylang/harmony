@@ -6,7 +6,7 @@ parser:
 	java -jar antlr-4.9.3-complete.jar -Dlanguage=Python3 -visitor Harmony.g4 -o harmony_model_checker/parser -no-listener
 
 dependencies:
-	pip install -r requirements.txt
+	pip3 install -r requirements.txt
 
 gen:
 	printf "\n__package__ = \"harmony_model_checker\"\n" > harmony_model_checker/__init__.py

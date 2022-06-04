@@ -2093,8 +2093,8 @@ int main(int argc, char **argv){
 
     printf("#states %d (time %.3lf+%.3lf=%.3lf)\n", global->graph.size, gettime() - before - postproc, postproc, gettime() - before);
 
-	dict_set_sequential(visited);
-	value_set_sequential(&global->values);
+    dict_set_sequential(visited);
+    value_set_sequential(&global->values);
  
     printf("Phase 3: analysis\n");
     if (minheap_empty(global->failures)) {
@@ -2110,6 +2110,7 @@ int main(int argc, char **argv){
         }
 
         // find the strongly connected components
+	printf("Find components\n");
         unsigned int ncomponents = graph_find_scc(&global->graph);
         printf("%u components\n", ncomponents);
 
