@@ -350,8 +350,8 @@ void dict_make_stable(struct dict *dict, unsigned int worker){
     assert(dict->concurrent);
 
     if (dict->length != dict->old_length) {
-        unsigned int first = worker * dict->old_length / dict->nworkers;
-        unsigned int last = (worker + 1) * dict->old_length / dict->nworkers;
+        unsigned int first = (uint64_t) worker * dict->old_length / dict->nworkers;
+        unsigned int last = (uint64_t) (worker + 1) * dict->old_length / dict->nworkers;
         for (unsigned i = first; i < last; i++) {
             struct dict_bucket *b = &dict->old_table[i];
             struct dict_assoc *k = b->stable;

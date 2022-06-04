@@ -2115,6 +2115,7 @@ int main(int argc, char **argv){
         }
 
         // find the strongly connected components
+        printf("find connected components\n");
         unsigned int ncomponents = graph_find_scc(&global->graph);
         printf("%u components\n", ncomponents);
 
