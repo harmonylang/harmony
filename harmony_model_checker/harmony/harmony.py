@@ -1227,14 +1227,14 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
         for pc in range(len(code.labeled_ops)):
             lop = code.labeled_ops[pc]
             (_, file, line, column) = lop.start
-            (_, _, endline, endcolumn) = lop.stop
+            (endlexeme, _, endline, endcolumn) = lop.stop
             if file != None:
                 if firstTime:
                     firstTime = False
                     print(file=f)
                 else:
                     print(",", file=f)
-                print("    \"%d\": { \"file\": %s, \"line\": %d, \"column\": %d, \"endline\": %d, \"endcolumn\": %d, \"code\": %s }"%(pc, json.dumps(file, ensure_ascii=False), line, column, endline, endcolumn, json.dumps(files[file][line-1], ensure_ascii=False)), file=f, end="")
+                print("    \"%d\": { \"file\": %s, \"line\": %d, \"column\": %d, \"endline\": %d, \"endcolumn\": %d, \"code\": %s }"%(pc, json.dumps(file, ensure_ascii=False), line, column, endline, endcolumn + len(endlexeme) - 1, json.dumps(files[file][line-1], ensure_ascii=False)), file=f, end="")
         print(file=f)
         print("  }", file=f)
         print("}", file=f)

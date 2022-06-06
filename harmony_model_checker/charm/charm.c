@@ -35,8 +35,6 @@ unsigned int run_count;  // counter of #threads
 mutex_t run_mutex;       // to protect count
 mutex_t run_waiting;     // for main thread to wait on
 
-mutex_t todo_lock;
-
 // One of these per worker thread
 struct worker {
     struct global_t *global;     // global state
@@ -1445,6 +1443,14 @@ static void enum_loc(
     assert(line->type == JV_ATOM);
     fprintf(out, "\"line\": \"%.*s\", ", line->u.atom.len, line->u.atom.base);
 
+    static char *tocopy[] = { "column", "endline", "endcolumn", NULL };
+    for (unsigned int i = 0; tocopy[i] != NULL; i++) {
+        char *key2 = tocopy[i];
+        struct json_value *jv2 = dict_lookup(jv->u.map, key2, strlen(key2));
+        assert(jv2->type == JV_ATOM);
+        fprintf(out, "\"%s\": \"%.*s\", ", key2, jv2->u.atom.len, jv2->u.atom.base);
+    }
+
     char **p = dict_insert(code_map, NULL, &pc, sizeof(pc), NULL);
     struct strbuf sb;
     strbuf_init(&sb);
@@ -1546,11 +1552,11 @@ static void do_work(struct worker *w){
     struct global_t *global = w->global;
 
     for (;;) {
-        mutex_acquire(&todo_lock);
+        mutex_acquire(&global->todo_lock);
         unsigned int start = global->todo;
         unsigned int nleft = global->graph.size - start;
         if (nleft == 0) {
-            mutex_release(&todo_lock);
+            mutex_release(&global->todo_lock);
             break;
         }
 
@@ -1562,7 +1568,7 @@ static void do_work(struct worker *w){
             take = nleft;
         }
         global->todo = start + take;
-        mutex_release(&todo_lock);
+        mutex_release(&global->todo_lock);
 
         while (take > 0) {
             struct node *node = global->graph.nodes[start++];
@@ -1876,8 +1882,6 @@ int main(int argc, char **argv){
     char *fname = argv[i];
     double timeout = gettime() + maxtime;
 
-    mutex_init(&todo_lock);
-
     // Determine how many worker threads to use
     unsigned int nworkers = getNumCores();
 	printf("nworkers = %d\n", nworkers);
@@ -1888,6 +1892,7 @@ int main(int argc, char **argv){
 
     // initialize modules
     struct global_t *global = new_alloc(struct global_t);
+    mutex_init(&global->todo_lock);
     value_init(&global->values, nworkers);
 
     struct engine engine;
@@ -2110,7 +2115,7 @@ int main(int argc, char **argv){
         }
 
         // find the strongly connected components
-	printf("Find components\n");
+        printf("find connected components\n");
         unsigned int ncomponents = graph_find_scc(&global->graph);
         printf("%u components\n", ncomponents);
 
