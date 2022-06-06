@@ -1115,6 +1115,7 @@ hvalue_t twostep(
     memcpy(step.ctx, cc, size);
     if (step.ctx->terminated || step.ctx->failed) {
         free(step.ctx);
+        printf("XYZXYZXYZ\n");
         return ctx;
     }
 
@@ -1253,7 +1254,7 @@ hvalue_t twostep(
     free(step.ctx);
     free(step.log);
 
-    return ctx;
+    return after;
 }
 
 void path_dump(
@@ -1287,6 +1288,9 @@ void path_dump(
             break;
         }
     }
+    assert(pid < global->nprocesses);
+    // fprintf(file, "      \"OLDPID\": \"%d\",\n", pid);
+    // fprintf(file, "      \"OLDCTX\": \"%llx\",\n", ctx);
 
     struct context *context = value_get(ctx, NULL);
     assert(!context->terminated);
@@ -1317,7 +1321,6 @@ void path_dump(
     (*oldctx)->pc = context->pc;
 
     // Recreate the steps
-    assert(pid < global->nprocesses);
     global->processes[pid] = twostep(
         global,
         file,
@@ -1331,6 +1334,7 @@ void path_dump(
         e->nsteps
     );
     fprintf(file, "\n      ],\n");
+    // fprintf(file, "      \"NEWCTX\": \"%llx\",\n", global->processes[pid]);
 
     /* Match each context to a process.
      */

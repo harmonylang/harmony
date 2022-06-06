@@ -32,8 +32,9 @@ def acquire(binsema):
         !binsema = True
 
 def release(binsema):
-    assert !binsema
-    atomically !binsema = False
+    atomically:
+        assert !binsema
+        !binsema = False
     
 def held(binsema):
     result = !binsema
