@@ -311,6 +311,15 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
         return SequentialAST(endtoken, tkn, False, expr)
 
+    # Visit a parse tree produced by HarmonyParser#builtin_stmt.
+    def visitBuiltin_stmt(self, ctx: HarmonyParser.Builtin_stmtContext):
+        name = str(ctx.NAME())
+        nametkn = self.get_token(ctx.NAME().symbol, name)
+        value = str(ctx.STRING())[1:-1]     # remove quotes
+        tkn = self.get_token(ctx.start, ctx.start.text)
+        endtoken = self.get_token(ctx.stop, ctx.stop.text)
+        return BuiltinAST(endtoken, tkn, NameAST(nametkn, nametkn), value)
+
     # Visit a parse tree produced by HarmonyParser#atomic_block.
     def visitAtomic_block(self, ctx: HarmonyParser.Atomic_blockContext):
         stmts = self.visit(ctx.block())

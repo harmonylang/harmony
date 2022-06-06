@@ -1087,6 +1087,22 @@ void op_Return(const void *env, struct state *state, struct step *step, struct g
     }
 }
 
+void op_Builtin(const void *env, struct state *state, struct step *step, struct global_t *global){
+    const struct env_Builtin *eb = env;
+    hvalue_t name = ctx_pop(step->ctx);
+    if (VALUE_TYPE(name) != VALUE_PC) {
+        char *p = value_string(name);
+        value_ctx_failure(step->ctx, &step->engine, "Builtin %s: not a PC value", p);
+        free(p);
+        return;
+    }
+
+    char *p = value_string(eb->method);
+    printf("BUILTIN %u --> %s\n", (unsigned) VALUE_FROM_PC(name), p);
+    free(p);
+    step->ctx->pc++;
+}
+
 void op_Sequential(const void *env, struct state *state, struct step *step, struct global_t *global){
     hvalue_t addr = ctx_pop(step->ctx);
     if (VALUE_TYPE(addr) != VALUE_ADDRESS) {
@@ -1473,6 +1489,14 @@ void *init_Save(struct dict *map, struct engine *engine){ return NULL; }
 void *init_Sequential(struct dict *map, struct engine *engine){ return NULL; }
 void *init_SetIntLevel(struct dict *map, struct engine *engine){ return NULL; }
 void *init_Trap(struct dict *map, struct engine *engine){ return NULL; }
+
+void *init_Builtin(struct dict *map, struct engine *engine){
+    struct env_Builtin *env = new_alloc(struct env_Builtin);
+    struct json_value *value = dict_lookup(map, "value", 5);
+    assert(value->type == JV_ATOM);
+    env->method = value_put_atom(engine, value->u.atom.base, value->u.atom.len);
+    return env;
+}
 
 void *init_Cut(struct dict *map, struct engine *engine){
     struct env_Cut *env = new_alloc(struct env_Cut);
@@ -2989,6 +3013,7 @@ struct op_info op_table[] = {
 	{ "Assert2", init_Assert2, op_Assert2 },
 	{ "AtomicDec", init_AtomicDec, op_AtomicDec },
 	{ "AtomicInc", init_AtomicInc, op_AtomicInc },
+	{ "Builtin", init_Builtin, op_Builtin },
 	{ "Choose", init_Choose, op_Choose },
 	{ "Continue", init_Continue, op_Continue },
 	{ "Cut", init_Cut, op_Cut },

@@ -1663,6 +1663,23 @@ class SequentialAST(AST):
         return visitor.visit_sequential(self, *args, **kwargs)
 
 
+class BuiltinAST(AST):
+    def __init__(self, endtoken, token, name, value):
+        AST.__init__(self, endtoken, token, False)
+        self.name = name
+        self.value = value
+
+    def __repr__(self):
+        return "Builtin(" + str(self.name) + ", " + self.value + ")"
+
+    def compile(self, scope, code):
+        self.name.compile(scope, code)
+        code.append(BuiltinOp(self.value), self.token, self.endtoken)
+
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_builtin(self, *args, **kwargs)
+
+
 class ConstAST(AST):
     def __init__(self, endtoken, token, atomically, const, expr):
         AST.__init__(self, endtoken, token, atomically)

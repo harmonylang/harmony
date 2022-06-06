@@ -25,6 +25,10 @@ struct op_info {
     void (*op)(const void *env, struct state *state, struct step *step, struct global_t *global);
 };
 
+struct env_Builtin {
+    hvalue_t method;
+};
+
 struct env_Cut {
     struct var_tree *key, *value;
 };

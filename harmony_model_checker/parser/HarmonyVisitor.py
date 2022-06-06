@@ -239,6 +239,11 @@ class HarmonyVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by HarmonyParser#builtin_stmt.
+    def visitBuiltin_stmt(self, ctx:HarmonyParser.Builtin_stmtContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by HarmonyParser#atomic_block.
     def visitAtomic_block(self, ctx:HarmonyParser.Atomic_blockContext):
         return self.visitChildren(ctx)
