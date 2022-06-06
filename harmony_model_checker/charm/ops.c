@@ -590,9 +590,21 @@ static void do_return(struct state *state, struct step *step, struct global_t *g
     }
 }
 
-void op_fff(const void *env, struct state *state, struct step *step, struct global_t *global){
-    hvalue_t arg = ctx_pop(step->ctx);   // argument saved for stack trace
-    do_return(state, step, global, arg, VALUE_TO_INT(3));
+// Built-in list.tail method
+void op_List_Tail(const void *env, struct state *state, struct step *step, struct global_t *global){
+    hvalue_t arg = ctx_pop(step->ctx);
+    if (VALUE_TYPE(arg) != VALUE_LIST) {
+        value_ctx_failure(step->ctx, &step->engine, "list.tail: not a list");
+        return;
+    }
+    unsigned int size;
+    hvalue_t *list = value_get(arg, &size);
+    if (size == 0) {
+        value_ctx_failure(step->ctx, &step->engine, "list.tail: empty list");
+        return;
+    }
+    hvalue_t result = value_put_list(&step->engine, &list[1], size - sizeof(hvalue_t));
+    do_return(state, step, global, arg, result);
 }
 
 // This operation expects on the top of the stack the set to iterate over
@@ -1102,14 +1114,14 @@ void op_Builtin(const void *env, struct state *state, struct step *step, struct 
         return;
     }
     if (VALUE_FROM_PC(pc) >= global->code.len) {
-        value_ctx_failure(step->ctx, &step->engine, "Builtin %s: not a value pc");
+        value_ctx_failure(step->ctx, &step->engine, "Builtin %u: not a valid pc", (unsigned) VALUE_FROM_PC(pc));
         return;
     }
     struct op_info *oi = global->code.instrs[VALUE_FROM_PC(pc)].oi;
-    if (strcmp(oi->name, "Frame") != 0) {
-        value_ctx_failure(step->ctx, &step->engine, "Builtin %s: not a Frame instruction");
-        return;
-    }
+//    if (strcmp(oi->name, "Frame") != 0) {
+//        value_ctx_failure(step->ctx, &step->engine, "Builtin %u: not a Frame instruction", (unsigned) VALUE_FROM_PC(pc));
+//        return;
+//    }
 
     unsigned int len;
     char *p = value_get(eb->method, &len);
@@ -3027,7 +3039,6 @@ hvalue_t f_xor(struct state *state, struct context *ctx, hvalue_t *args, int n, 
 }
 
 struct op_info op_table[] = {
-    { "fff", NULL, op_fff },
 	{ "Address", init_Address, op_Address },
 	{ "Apply", init_Apply, op_Apply },
 	{ "Assert", init_Assert, op_Assert },
@@ -3065,6 +3076,10 @@ struct op_info op_table[] = {
 	{ "Store", init_Store, op_Store },
 	{ "StoreVar", init_StoreVar, op_StoreVar },
 	{ "Trap", init_Trap, op_Trap },
+
+    // Built-in methods
+    { "list$tail", NULL, op_List_Tail },
+
     { NULL, NULL, NULL }
 };
 

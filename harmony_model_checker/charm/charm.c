@@ -1244,10 +1244,10 @@ hvalue_t twostep(
     }
 
     // assert(sc->vars == nextvars);
-    ctx = value_put_context(&step.engine, step.ctx);
-    if ((ctx & 0xFFFF00000000) == 0x600000000000) {
-        printf("YYYYYYY\n");
-    }
+    // ctx = value_put_context(&step.engine, step.ctx);
+    // if ((ctx & 0xFFFF00000000) == 0x600000000000) {
+    //     printf("YYYYYYY\n");
+    // }
 
     free(sc);
     free(step.ctx);

@@ -8,6 +8,7 @@ def append(s, e):
 def head(s):
     result = s[0]
 
+builtin tail "list$tail"
 def tail(s):
     result = subseq(s, 1, len(s))
 
