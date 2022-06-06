@@ -13,7 +13,7 @@ struct instr_t {
 
 struct code_t {
     struct instr_t *instrs;
-    int len;
+    unsigned int len;
     struct dict *code_map;       // maps pc to file:line
 };
 

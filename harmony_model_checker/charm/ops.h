@@ -7,7 +7,7 @@
 #include "value.h"
 #include "global.h"
 
-void ops_init(struct engine *engine);
+void ops_init(struct global_t *global, struct engine *engine);
 struct op_info *ops_get(char *opname, int size);
 
 struct step {

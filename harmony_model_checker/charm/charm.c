@@ -1898,7 +1898,7 @@ int main(int argc, char **argv){
     struct engine engine;
     engine.allocator = NULL;
     engine.values = &global->values;
-    ops_init(&engine);
+    ops_init(global, &engine);
 
     graph_init(&global->graph, 1024*1024);
     global->failures = minheap_create(fail_cmp);

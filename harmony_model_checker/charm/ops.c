@@ -559,6 +559,42 @@ void op_Continue(const void *env, struct state *state, struct step *step, struct
     step->ctx->pc++;
 }
 
+// TODO.  Get rid of arg
+static void do_return(struct state *state, struct step *step, struct global_t *global, hvalue_t arg, hvalue_t result){
+    hvalue_t callval = ctx_pop(step->ctx);
+    assert(VALUE_TYPE(callval) == VALUE_INT);
+    unsigned int call = VALUE_FROM_INT(callval);
+    switch (call & CALLTYPE_MASK) {
+    case CALLTYPE_PROCESS:
+        step->ctx->terminated = true;
+        // Restore stack so arg can be printed for identifying context
+        ctx_push(step->ctx, callval);
+        ctx_push(step->ctx, arg);
+        break;
+    case CALLTYPE_NORMAL:
+        {
+            unsigned int pc = call >> CALLTYPE_BITS;
+            assert(pc != step->ctx->pc);
+            ctx_push(step->ctx, result);
+            step->ctx->pc = pc;
+        }
+        break;
+    case CALLTYPE_INTERRUPT:
+        step->ctx->interruptlevel = false;
+        unsigned int pc = call >> CALLTYPE_BITS;
+        assert(pc != step->ctx->pc);
+        step->ctx->pc = pc;
+        break;
+    default:
+        panic("Return: bad call type");
+    }
+}
+
+void op_fff(const void *env, struct state *state, struct step *step, struct global_t *global){
+    hvalue_t arg = ctx_pop(step->ctx);   // argument saved for stack trace
+    do_return(state, step, global, arg, VALUE_TO_INT(3));
+}
+
 // This operation expects on the top of the stack the set to iterate over
 // and an integer index.  If the index is valid (not the size of the
 // collection), then it assigns the given element to key and value and
@@ -1053,53 +1089,37 @@ void op_Return(const void *env, struct state *state, struct step *step, struct g
     assert(VALUE_TYPE(oldvars) == VALUE_DICT);
     step->ctx->vars = oldvars;
     hvalue_t arg = ctx_pop(step->ctx);   // argument saved for stack trace
-    if (step->ctx->sp == 0) {     // __init__
-        assert(false);
-        step->ctx->terminated = true;
-        return;
-    }
-    hvalue_t callval = ctx_pop(step->ctx);
-    assert(VALUE_TYPE(callval) == VALUE_INT);
-    unsigned int call = VALUE_FROM_INT(callval);
-    switch (call & CALLTYPE_MASK) {
-    case CALLTYPE_PROCESS:
-        step->ctx->terminated = true;
-        // Restore stack so arg can be printed for identifying context
-        ctx_push(step->ctx, callval);
-        ctx_push(step->ctx, arg);
-        break;
-    case CALLTYPE_NORMAL:
-        {
-            unsigned int pc = call >> CALLTYPE_BITS;
-            assert(pc != step->ctx->pc);
-            ctx_push(step->ctx, result);
-            step->ctx->pc = pc;
-        }
-        break;
-    case CALLTYPE_INTERRUPT:
-        step->ctx->interruptlevel = false;
-        unsigned int pc = call >> CALLTYPE_BITS;
-        assert(pc != step->ctx->pc);
-        step->ctx->pc = pc;
-        break;
-    default:
-        panic("op_Return: bad call type");
-    }
+    do_return(state, step, global, arg, result);
 }
 
 void op_Builtin(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_Builtin *eb = env;
-    hvalue_t name = ctx_pop(step->ctx);
-    if (VALUE_TYPE(name) != VALUE_PC) {
-        char *p = value_string(name);
+    hvalue_t pc = ctx_pop(step->ctx);
+    if (VALUE_TYPE(pc) != VALUE_PC) {
+        char *p = value_string(pc);
         value_ctx_failure(step->ctx, &step->engine, "Builtin %s: not a PC value", p);
         free(p);
         return;
     }
+    if (VALUE_FROM_PC(pc) >= global->code.len) {
+        value_ctx_failure(step->ctx, &step->engine, "Builtin %s: not a value pc");
+        return;
+    }
+    struct op_info *oi = global->code.instrs[VALUE_FROM_PC(pc)].oi;
+    if (strcmp(oi->name, "Frame") != 0) {
+        value_ctx_failure(step->ctx, &step->engine, "Builtin %s: not a Frame instruction");
+        return;
+    }
 
-    char *p = value_string(eb->method);
-    printf("BUILTIN %u --> %s\n", (unsigned) VALUE_FROM_PC(name), p);
-    free(p);
+    unsigned int len;
+    char *p = value_get(eb->method, &len);
+    oi = dict_lookup(ops_map, p, len);
+    if (oi == NULL) {
+        value_ctx_failure(step->ctx, &step->engine, "Builtin: no method %.*s", len, p);
+        return;
+    }
+
+    global->code.instrs[VALUE_FROM_PC(pc)].oi = oi;
     step->ctx->pc++;
 }
 
@@ -3007,6 +3027,7 @@ hvalue_t f_xor(struct state *state, struct context *ctx, hvalue_t *args, int n, 
 }
 
 struct op_info op_table[] = {
+    { "fff", NULL, op_fff },
 	{ "Address", init_Address, op_Address },
 	{ "Apply", init_Apply, op_Apply },
 	{ "Assert", init_Assert, op_Assert },
@@ -3093,7 +3114,7 @@ struct op_info *ops_get(char *opname, int size){
     return dict_lookup(ops_map, opname, size);
 }
 
-void ops_init(struct engine *engine) {
+void ops_init(struct global_t *global, struct engine *engine) {
     ops_map = dict_new("ops", sizeof(struct op_info *), 0, 0, NULL, NULL);
     f_map = dict_new("functions", sizeof(struct f_info *), 0, 0, NULL, NULL);
 	underscore = value_put_atom(engine, "_", 1);
