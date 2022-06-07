@@ -137,7 +137,7 @@ class Brief:
             top = json.load(f)
             assert isinstance(top, dict)
             if top["issue"] == "No issues":
-                behavior_parse(top, True, outputfiles, behavior)
+                behavior_parse(top, False, outputfiles, behavior)
                 return True
 
             # print("Issue:", top["issue"])

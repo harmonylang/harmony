@@ -229,6 +229,7 @@ def eps_closure(states, transitions, current):
 def behavior_parse(js, minify, outputfiles, behavior):
     if outputfiles["hfa"] == None and outputfiles["png"] == None and outputfiles["gv"] == None and behavior == None:
         return
+    minify = outputfiles["png"] != None or outputfiles["gv"] != None
 
     states = set()
     initial_state = None;
