@@ -58,18 +58,15 @@ struct node {
 
     struct edge *to_parent; // pointer towards initial state
     uint32_t id;            // nodes are numbered starting from 0
+    uint32_t component;     // strongly connected component id
     uint16_t len;           // length of path to initial state
     uint16_t steps;         // #microsteps from root
-    bool final: 1;          // only eternal threads left (TODO: need this?)
+    bool final : 1;         // only eternal threads left (TODO: need this?)
+    bool visited : 1;       // for busy wait detection
 
     // TODO.  Allocate the rest after model checking, or use union?
-
     // NFA compression
     bool reachable : 1;
-
-    // SCC
-    bool visited : 1;       // for Kosaraju algorithm
-    uint32_t component;     // strongly connected component id
 };
 
 struct failure {
@@ -96,6 +93,8 @@ void graph_check_for_data_race(
 );
 void graph_add(struct graph_t *graph, struct node *node);
 unsigned int graph_add_multiple(struct graph_t *graph, unsigned int n);
-int graph_find_scc(struct graph_t *graph);
+unsigned int graph_find_scc(struct graph_t *graph);
+struct scc *graph_find_scc_one(struct graph_t *graph, struct scc *scc, unsigned int component);
+struct scc *scc_alloc(unsigned int start, unsigned int finish, struct scc *next);
 
 #endif //SRC_GRAPH_H

@@ -44,12 +44,14 @@ struct worker {
     struct dict *visited;
 
     unsigned int index;          // index of worker
+    struct worker *workers;      // points to list of workers
     unsigned int nworkers;       // total number of workers
     int timecnt;                 // to reduce gettime() overhead
     struct step inv_step;        // for evaluating invariants
 
     struct node *results;       // list of resulting states
     unsigned int count;         // number of resulting states
+    struct edge **edges;        // lists of edges to fix, one for each worker
     unsigned int node_id;       // node_ids to use for resulting states
     struct failure *failures;   // list of failures
 
@@ -527,6 +529,13 @@ static bool onestep(
     // Backward edge from node to parent.
     edge->bwdnext = next->bwd;
     next->bwd = edge;
+
+    // Don't do the forward edge at this time as that would involve lockng
+    // the parent node.  Instead assign that task to one of the workers
+    // in the next phase.
+    struct edge **pe = &w->edges[node->id % w->nworkers];
+    edge->fwdnext = *pe;
+    *pe = edge;
 
     dict_insert_release(w->visited, sc, sizeof(struct state));
 
@@ -1622,6 +1631,68 @@ static void do_work(struct worker *w){
     }
 }
 
+static void work_phase2(struct worker *w, struct global_t *global){
+    mutex_acquire(&global->todo_lock);
+    for (;;) {
+        if (global->scc_todo == NULL) {
+            global->scc_nwaiting++;
+            if (global->scc_nwaiting == global->nworkers) {
+                mutex_release(&global->todo_wait);
+                break;
+            }
+            mutex_release(&global->todo_lock);
+            mutex_acquire(&global->todo_wait);
+            if (global->scc_nwaiting == global->nworkers) {
+                mutex_release(&global->todo_wait);
+                break;
+            }
+            global->scc_nwaiting--;
+        }
+
+        // Grab work
+        unsigned int component = global->ncomponents++;
+        struct scc *scc = global->scc_todo;
+        assert(scc != NULL);
+        global->scc_todo = scc->next;
+        scc->next = NULL;
+
+        // Split binary semaphore release
+        if (global->scc_todo != NULL && global->scc_nwaiting > 0) {
+            mutex_release(&global->todo_wait);
+        }
+        else {
+            mutex_release(&global->todo_lock);
+        }
+
+        for (;;) {
+            // Do the work
+            assert(scc->next == NULL);
+            scc = graph_find_scc_one(&global->graph, scc, component);
+
+            // Put new work on the list except the last (which we'll do ourselves)
+            mutex_acquire(&global->todo_lock);
+            while (scc != NULL && scc->next != NULL) {
+                struct scc *next = scc->next;
+                scc->next = global->scc_todo;
+                global->scc_todo = scc;
+                scc = next;
+            }
+            if (scc == NULL) {      // get more work
+                break;
+            }
+            component = global->ncomponents++;
+
+            // Split binary semaphore release
+            if (global->scc_todo != NULL && global->scc_nwaiting > 0) {
+                mutex_release(&global->todo_wait);
+            }
+            else {
+                mutex_release(&global->todo_lock);
+            }
+        }
+    }
+}
+
 static void worker(void *arg){
     struct worker *w = arg;
     struct global_t *global = w->global;
@@ -1637,7 +1708,23 @@ static void worker(void *arg){
 		// printf("WORKER %d finished epoch %d %u %u\n", w->index, epoch, w->count, w->node_id);
         barrier_wait(w->middle_barrier);
 
+        if (global->phase2) {
+            work_phase2(w, global);
+            barrier_wait(w->end_barrier);
+            break;
+        }
+
         // Wait for coordinator to have grown the graph table and hash tables
+        // In the mean time fix the forward edges
+        for (unsigned i = 0; i < w->nworkers; i++) {
+            struct edge **pe = &w->workers[i].edges[w->index], *e;
+            while ((e = *pe) != NULL) {
+                *pe = e->fwdnext;
+                struct node *src = e->src;
+                e->fwdnext = src->fwd;
+                src->fwd = e;
+            }
+        }
 
         barrier_wait(w->end_barrier);
 
@@ -1887,17 +1974,20 @@ int main(int argc, char **argv){
     double timeout = gettime() + maxtime;
 
     // Determine how many worker threads to use
-    unsigned int nworkers = getNumCores();
-	printf("nworkers = %d\n", nworkers);
+    struct global_t *global = new_alloc(struct global_t);
+    global->nworkers = getNumCores();
+	printf("nworkers = %d\n", global->nworkers);
+
     barrier_t start_barrier, middle_barrier, end_barrier;
-    barrier_init(&start_barrier, nworkers + 1);
-    barrier_init(&middle_barrier, nworkers + 1);
-    barrier_init(&end_barrier, nworkers + 1);
+    barrier_init(&start_barrier, global->nworkers + 1);
+    barrier_init(&middle_barrier, global->nworkers + 1);
+    barrier_init(&end_barrier, global->nworkers + 1);
 
     // initialize modules
-    struct global_t *global = new_alloc(struct global_t);
     mutex_init(&global->todo_lock);
-    value_init(&global->values, nworkers);
+    mutex_init(&global->todo_wait);
+    mutex_acquire(&global->todo_wait);          // Split Binary Semaphore
+    value_init(&global->values, global->nworkers);
 
     struct engine engine;
     engine.allocator = NULL;
@@ -1992,15 +2082,15 @@ int main(int argc, char **argv){
     }
 
     // Put the initial state in the visited map
-    struct dict *visited = dict_new("visited", sizeof(struct node), 0, nworkers, NULL, NULL);
+    struct dict *visited = dict_new("visited", sizeof(struct node), 0, global->nworkers, NULL, NULL);
     struct node *node = dict_insert(visited, NULL, state, sizeof(*state), NULL);
     memset(node, 0, sizeof(*node));
     node->state = *state;
     graph_add(&global->graph, node);
 
     // Allocate space for worker info
-    struct worker *workers = calloc(nworkers, sizeof(*workers));
-    for (unsigned int i = 0; i < nworkers; i++) {
+    struct worker *workers = calloc(global->nworkers, sizeof(*workers));
+    for (unsigned int i = 0; i < global->nworkers; i++) {
         struct worker *w = &workers[i];
         w->global = global;
         w->timeout = timeout;
@@ -2008,8 +2098,10 @@ int main(int argc, char **argv){
         w->middle_barrier = &middle_barrier;
         w->end_barrier = &end_barrier;
         w->index = i;
-        w->nworkers = nworkers;
+        w->workers = workers;
+        w->nworkers = global->nworkers;
         w->visited = visited;
+        w->edges = calloc(global->nworkers, sizeof(struct edge *));
 
         // Create a context for evaluating invariants
         w->inv_step.ctx = calloc(1, sizeof(struct context) +
@@ -2030,7 +2122,7 @@ int main(int argc, char **argv){
     }
 
     // Start the workers, who'll wait on the start barrier
-    for (unsigned int i = 0; i < nworkers; i++) {
+    for (unsigned int i = 0; i < global->nworkers; i++) {
         thread_create(worker, &workers[i]);
     }
 
@@ -2061,7 +2153,7 @@ int main(int argc, char **argv){
         // The threads completed producing the next layer of nodes in the graph.
         // Grow the graph table.
         unsigned int total = 0;
-        for (unsigned int i = 0; i < nworkers; i++) {
+        for (unsigned int i = 0; i < global->nworkers; i++) {
             struct worker *w = &workers[i];
             w->node_id = global->todo + total;
             total += w->count;
@@ -2075,7 +2167,7 @@ int main(int argc, char **argv){
         value_grow_prepare(&global->values);
 
         // Collect the failures of all the workers
-        for (unsigned int i = 0; i < nworkers; i++) {
+        for (unsigned int i = 0; i < global->nworkers; i++) {
 			process_results(global, &workers[i]);
         }
 
@@ -2107,27 +2199,39 @@ int main(int argc, char **argv){
  
     printf("Phase 3: analysis\n");
     if (minheap_empty(global->failures)) {
-        // Link the forward edges
+#ifdef OLD_SCC
+        // find the strongly connected components
+        unsigned int ncomponents = graph_find_scc(&global->graph);
+#endif
+
+#ifdef DUMP_GRAPH
+        printf("digraph Harmony {\n");
         for (unsigned int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
-            for (struct edge *edge = node->bwd; edge != NULL; edge = edge->bwdnext) {
-                struct node *other = edge->src;
-                edge->dst = node;
-                edge->fwdnext = other->fwd;
-                other->fwd = edge;
+            printf(" s%u [label=\"%u/%u\"]\n", i, i, node->component);
+        }
+        for (unsigned int i = 0; i < global->graph.size; i++) {
+            struct node *node = global->graph.nodes[i];
+            for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
+                printf(" s%u -> s%u\n", node->id, edge->dst->id);
             }
         }
+        printf("}\n");
+#endif
 
-        // find the strongly connected components
-        printf("find connected components\n");
-        unsigned int ncomponents = graph_find_scc(&global->graph);
-        printf("%u components\n", ncomponents);
+        global->phase2 = true;
+        global->scc_todo = scc_alloc(0, global->graph.size, NULL);
+        barrier_wait(&middle_barrier);
+        // Workers working on finding SCCs
+        barrier_wait(&end_barrier);
+
+        printf("%u components\n", global->ncomponents);
 
         // mark the components that are "good" because they have a way out
-        struct component *components = calloc(ncomponents, sizeof(*components));
+        struct component *components = calloc(global->ncomponents, sizeof(*components));
         for (unsigned int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
-			assert(node->component < ncomponents);
+			assert(node->component < global->ncomponents);
             struct component *comp = &components[node->component];
             if (comp->size == 0) {
                 comp->rep = node;
@@ -2155,7 +2259,7 @@ int main(int argc, char **argv){
 
         // components that have only one shared state and only eternal
         // threads are good because it means all its threads are blocked
-        for (unsigned int i = 0; i < ncomponents; i++) {
+        for (unsigned int i = 0; i < global->ncomponents; i++) {
             struct component *comp = &components[i];
             assert(comp->size > 0);
             if (!comp->good && comp->all_same) {
@@ -2167,7 +2271,7 @@ int main(int argc, char **argv){
         // Look for states in final components
         for (unsigned int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
-			assert(node->component < ncomponents);
+			assert(node->component < global->ncomponents);
             struct component *comp = &components[node->component];
             if (comp->final) {
                 node->final = true;
