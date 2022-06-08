@@ -75,7 +75,8 @@ struct scc *graph_find_scc_one(struct graph_t *graph, struct scc *scc, unsigned 
             break;
         }
     }
-    if (optim) {
+    if (!optim) {
+        optim = true;
         for (struct edge *e = node->bwd; e != NULL; e = e->bwdnext) {
             struct node *next = e->dst;
             if (next->id >= start && next->id < finish) {
@@ -84,6 +85,7 @@ struct scc *graph_find_scc_one(struct graph_t *graph, struct scc *scc, unsigned 
         }
     }
     if (optim) {
+        node->component = component;
         scc->start++;
         if (scc->start < scc->finish) {
             return scc;
