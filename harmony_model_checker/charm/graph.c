@@ -63,6 +63,35 @@ struct scc *graph_find_scc_one(struct graph_t *graph, struct scc *scc, unsigned 
     unsigned int finish = scc->finish;
     assert(start < finish);
     struct scc *next_scc = scc->next;
+
+    // Optimization. See if this node has either no incoming or
+    // no outgoing edges.  If so, it's a component in its own right
+    bool optim = true;
+    struct node *node = graph->nodes[start];
+    for (struct edge *e = node->fwd; e != NULL; e = e->fwdnext) {
+        struct node *next = e->dst;
+        if (next->id >= start && next->id < finish) {
+            optim = false;
+            break;
+        }
+    }
+    if (optim) {
+        for (struct edge *e = node->bwd; e != NULL; e = e->bwdnext) {
+            struct node *next = e->dst;
+            if (next->id >= start && next->id < finish) {
+                optim = false;
+            }
+        }
+    }
+    if (optim) {
+        scc->start++;
+        if (scc->start < scc->finish) {
+            return scc;
+        }
+        free(scc);
+        return next_scc;
+    }
+
     free(scc);
     scc = next_scc;
 
