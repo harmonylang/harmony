@@ -23,10 +23,8 @@ struct global_t {
     unsigned int ncomponents;    // to generate component identifiers
     struct minheap *failures;    // queue of "struct failure"  (TODO: make part of struct node "issues")
     hvalue_t *processes;         // list of contexts of processes
-    int nprocesses;              // the number of processes in the list
+    unsigned int nprocesses;     // the number of processes in the list
     double lasttime;             // since last report printed
-    int enqueued;                // #states enqueued
-    int dequeued;                // #states dequeued
     bool dumpfirst;              // for json dumping
     struct dfa *dfa;             // for tracking correct behaviors
     unsigned int diameter;       // graph diameter

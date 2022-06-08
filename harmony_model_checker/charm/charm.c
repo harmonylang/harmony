@@ -49,6 +49,9 @@ struct worker {
     int timecnt;                 // to reduce gettime() overhead
     struct step inv_step;        // for evaluating invariants
 
+    unsigned int dequeued;      // total number of dequeued states
+    unsigned int enqueued;      // total number of enqueued states
+
     struct node *results;       // list of resulting states
     unsigned int count;         // number of resulting states
     struct edge **edges;        // lists of edges to fix, one for each worker
@@ -247,8 +250,14 @@ static bool onestep(
                     assert(strcmp(global->code.instrs[step->ctx->entry].oi->name, "Frame") == 0);
                     const struct env_Frame *ef = global->code.instrs[step->ctx->entry].env;
                     char *p = value_string(ef->name);
-                    fprintf(stderr, "%s pc=%d states=%d diameter=%u queue=%d\n",
-                            p, step->ctx->pc, global->enqueued, global->diameter, global->enqueued - global->dequeued);
+                    unsigned int enqueued = 0, dequeued = 0;
+                    for (unsigned int i = 0; i < w->nworkers; i++) {
+                        struct worker *w2 = &w->workers[i];
+                        enqueued += w2->enqueued;
+                        dequeued += w2->dequeued;
+                    }
+                    fprintf(stderr, "%s pc=%d states=%u diameter=%u queue=%d\n",
+                            p, step->ctx->pc, enqueued, global->diameter, enqueued - dequeued);
                     free(p);
                 }
                 global->lasttime = now;
@@ -497,10 +506,11 @@ static bool onestep(
         next->next = w->results;
         w->results = next;
         w->count++;
+        w->enqueued++;
     }
     else {
-        int len = node->len + weight;
-        int steps = node->steps + instrcnt;
+        unsigned int len = node->len + weight;
+        unsigned int steps = node->steps + instrcnt;
         if (len < next->len || (len == next->len && steps < next->steps)) {
             next->len = len;
             next->steps = steps;
@@ -952,7 +962,7 @@ void print_state(
     fprintf(file, "\n      },\n");
 
     fprintf(file, "      \"contexts\": [\n");
-    for (int i = 0; i < global->nprocesses; i++) {
+    for (unsigned int i = 0; i < global->nprocesses; i++) {
         print_context(global, file, global->processes[i], i, node);
         if (i < global->nprocesses - 1) {
             fprintf(file, ",");
@@ -1291,7 +1301,7 @@ void path_dump(
     /* Find the starting context in the list of processes.
      */
     hvalue_t ctx = e->ctx;
-    int pid;
+    unsigned int pid;
     for (pid = 0; pid < global->nprocesses; pid++) {
         if (global->processes[pid] == ctx) {
             break;
@@ -1356,7 +1366,7 @@ void path_dump(
         assert(VALUE_TYPE(ctxs[i+1]) == VALUE_INT);
         int cnt = VALUE_FROM_INT(ctxs[i+1]);
         for (int j = 0; j < cnt; j++) {
-            int k;
+            unsigned int k;
             for (k = 0; k < global->nprocesses; k++) {
                 if (!matched[k] && global->processes[k] == ctxs[i]) {
                     matched[k] = true;
@@ -1586,6 +1596,7 @@ static void do_work(struct worker *w){
         while (take > 0) {
             struct node *node = global->graph.nodes[start++];
             struct state *state = &node->state;
+            w->dequeued++;
 
             if (state->choosing != 0) {
                 assert(VALUE_TYPE(state->choosing) == VALUE_CONTEXT);
@@ -1996,12 +2007,6 @@ int main(int argc, char **argv){
 
     graph_init(&global->graph, 1024*1024);
     global->failures = minheap_create(fail_cmp);
-    global->processes = NULL;
-    global->nprocesses = 0;
-    global->lasttime = 0;
-    global->enqueued = 0;
-    global->dequeued = 0;
-    global->dumpfirst = false;
 
     // First read and parse the DFA if any
     if (dfafile != NULL) {
@@ -2126,9 +2131,6 @@ int main(int argc, char **argv){
         thread_create(worker, &workers[i]);
     }
 
-    // make sure first node gets process
-    global->enqueued++;
-
     // Put the state and value dictionaries in concurrent mode
     value_set_concurrent(&global->values);
     dict_set_concurrent(visited);
@@ -2159,7 +2161,6 @@ int main(int argc, char **argv){
             total += w->count;
         }
         graph_add_multiple(&global->graph, total);
-        global->enqueued += total;
 
         // Prepare the grow the hash tables as well (but the actual work of
         // rehashing is distributed among the threads in the next phase
