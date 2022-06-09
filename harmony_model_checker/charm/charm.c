@@ -63,6 +63,8 @@ struct worker {
 
     struct allocator allocator; // mostly for hashdict
 
+    unsigned int *profile;      // one integer for every instruction in the HVM code
+
     // These need to be next to one another
     struct context ctx;
     hvalue_t stack[MAX_CONTEXT_STACK];
@@ -269,6 +271,7 @@ static bool onestep(
             w->timecnt = 100;
         }
 
+        w->profile[pc]++;       // for profiling
         struct instr_t *instrs = global->code.instrs;
         struct op_info *oi = instrs[pc].oi;
         if (instrs[pc].choose) {
@@ -2107,6 +2110,7 @@ int main(int argc, char **argv){
         w->nworkers = global->nworkers;
         w->visited = visited;
         w->edges = calloc(global->nworkers, sizeof(struct edge *));
+        w->profile = calloc(global->code.len, sizeof(*w->profile));
 
         // Create a context for evaluating invariants
         w->inv_step.ctx = calloc(1, sizeof(struct context) +
@@ -2460,47 +2464,20 @@ int main(int argc, char **argv){
         }
         fprintf(out, "\n");
         fprintf(out, "  ],\n");
-#ifdef notdef
-        fprintf(out, "  \"edges\": [\n");
-        first = true;
-        bool first_log;
-        for (unsigned int i = 0; i < global->graph.size; i++) {
-            struct node *node = global->graph.nodes[i];
-            if (node->reachable) {
-                for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
-                    assert(edge->dst->reachable);
-                    if (first) {
-                        first = false;
-                    }
-                    else {
-                        fprintf(out, ",\n");
-                    }
-                    fprintf(out, "    {\n");
-                    fprintf(out, "      \"src\": %d,\n", node->id);
-                    fprintf(out, "      \"dst\": %d,\n", edge->dst->id);
-                    fprintf(out, "      \"print\": [");
-                    first_log = true;
-                    for (int j = 0; j < edge->nlog; j++) {
-                        if (first_log) {
-                            first_log = false;
-                            fprintf(out, "\n");
-                        }
-                        else {
-                            fprintf(out, ",\n");
-                        }
-                        char *p = value_json(edge->log[j]);
-                        fprintf(out, "        %s", p);
-                        free(p);
-                    }
-                    fprintf(out, "\n");
-                    fprintf(out, "      ]\n");
-                    fprintf(out, "    }");
-                }
+        fprintf(out, "  \"profile\": [\n");
+        for (unsigned int pc = 0; pc < global->code.len; pc++) {
+            unsigned int count = 0;
+            for (unsigned int i = 0; i < global->nworkers; i++) {
+                struct worker *w = &workers[i];
+                count += w->profile[pc];
             }
+            if (pc > 0) {
+                fprintf(out, ",\n");
+            }
+            fprintf(out, "    %u", count);
         }
         fprintf(out, "\n");
         fprintf(out, "  ],\n");
-#endif // notdef
     }
     else {
         // Find shortest "bad" path

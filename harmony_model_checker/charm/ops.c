@@ -607,6 +607,77 @@ void op_List_Tail(const void *env, struct state *state, struct step *step, struc
     do_return(state, step, global, arg, result);
 }
 
+// Built-in bag.add method
+void op_Bag_Add(const void *env, struct state *state, struct step *step, struct global_t *global){
+    hvalue_t arg = ctx_pop(step->ctx);
+    if (VALUE_TYPE(arg) != VALUE_LIST) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.add: not a tuple");
+        return;
+    }
+    unsigned int size;
+    hvalue_t *args = value_get(arg, &size);
+    if (size != 2 * sizeof(hvalue_t)) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.add: requires two arguments");
+        return;
+    }
+    if (VALUE_TYPE(args[0]) != VALUE_DICT) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.add: first argument must be a bag");
+        return;
+    }
+    hvalue_t *bag = value_copy_extend(args[0], 2*sizeof(hvalue_t), &size);
+    size /= sizeof(hvalue_t);
+
+    // If the key is in the bag, just increment its multiplicity
+    unsigned int i;
+    for (i = 0; i < size; i += 2) {
+        if (bag[i] == args[1]) {
+            if (VALUE_TYPE(bag[i+1]) != VALUE_INT || (int64_t) VALUE_FROM_INT(bag[i+1]) <= 0) {
+                value_ctx_failure(step->ctx, &step->engine, "bag.add: not a proper bag");
+                return;
+            }
+            bag[i+1] = VALUE_TO_INT(VALUE_FROM_INT(bag[i+1]) + 1);
+            hvalue_t result = value_put_dict(&step->engine, bag, size * sizeof(hvalue_t));
+            free(bag);
+            do_return(state, step, global, arg, result);
+            return;
+        }
+        int k = value_cmp(bag[i], args[1]);
+        if (k > 0) {
+            break;
+        }
+    }
+
+    // Insert the key at location i
+    memmove(&bag[i+2], &bag[i], (size - i) * sizeof(hvalue_t));
+    bag[i] = args[1];
+    bag[i+1] = VALUE_TO_INT(1);
+    hvalue_t result = value_put_dict(&step->engine, bag,
+                                    (size + 2) * sizeof(hvalue_t));
+    free(bag);
+    do_return(state, step, global, arg, result);
+}
+
+// Built-in bag.size method
+void op_Bag_Size(const void *env, struct state *state, struct step *step, struct global_t *global){
+    hvalue_t arg = ctx_pop(step->ctx);
+    if (VALUE_TYPE(arg) != VALUE_DICT) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.size: not a dict");
+        return;
+    }
+    unsigned int size;
+    hvalue_t *list = value_get(arg, &size);
+    size /= sizeof(hvalue_t);
+    unsigned int total = 0;
+    for (unsigned int i = 1; i < size; i += 2) {
+        if (VALUE_TYPE(list[i]) != VALUE_INT) {
+            value_ctx_failure(step->ctx, &step->engine, "bag.size: not a bag");
+            return;
+        }
+        total += VALUE_FROM_INT(list[i]);
+    }
+    do_return(state, step, global, arg, VALUE_TO_INT(total));
+}
+
 // This operation expects on the top of the stack the set to iterate over
 // and an integer index.  If the index is valid (not the size of the
 // collection), then it assigns the given element to key and value and
@@ -3079,6 +3150,8 @@ struct op_info op_table[] = {
 
     // Built-in methods
     { "list$tail", NULL, op_List_Tail },
+    { "bag$add", NULL, op_Bag_Add },
+    { "bag$size", NULL, op_Bag_Size },
 
     { NULL, NULL, NULL }
 };
