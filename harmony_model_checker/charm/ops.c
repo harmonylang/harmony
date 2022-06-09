@@ -624,37 +624,37 @@ void op_Bag_Add(const void *env, struct state *state, struct step *step, struct 
         value_ctx_failure(step->ctx, &step->engine, "bag.add: first argument must be a bag");
         return;
     }
-    hvalue_t *bag = value_copy_extend(args[0], 2*sizeof(hvalue_t), &size);
-    size /= sizeof(hvalue_t);
-
-    // If the key is in the bag, just increment its multiplicity
-    unsigned int i;
-    for (i = 0; i < size; i += 2) {
-        if (bag[i] == args[1]) {
-            if (VALUE_TYPE(bag[i+1]) != VALUE_INT || (int64_t) VALUE_FROM_INT(bag[i+1]) <= 0) {
-                value_ctx_failure(step->ctx, &step->engine, "bag.add: not a proper bag");
-                return;
-            }
-            bag[i+1] = VALUE_TO_INT(VALUE_FROM_INT(bag[i+1]) + 1);
-            hvalue_t result = value_put_dict(&step->engine, bag, size * sizeof(hvalue_t));
-            free(bag);
-            do_return(state, step, global, arg, result);
-            return;
-        }
-        int k = value_cmp(bag[i], args[1]);
-        if (k > 0) {
-            break;
-        }
-    }
-
-    // Insert the key at location i
-    memmove(&bag[i+2], &bag[i], (size - i) * sizeof(hvalue_t));
-    bag[i] = args[1];
-    bag[i+1] = VALUE_TO_INT(1);
-    hvalue_t result = value_put_dict(&step->engine, bag,
-                                    (size + 2) * sizeof(hvalue_t));
-    free(bag);
+    hvalue_t result = value_bag_add(&step->engine, args[0], args[1], 1);
     do_return(state, step, global, arg, result);
+}
+
+// Built-in bag.multiplicity method
+void op_Bag_Multiplicity(const void *env, struct state *state, struct step *step, struct global_t *global){
+    hvalue_t arg = ctx_pop(step->ctx);
+    if (VALUE_TYPE(arg) != VALUE_LIST) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.multiplicity: not a tuple");
+        return;
+    }
+    unsigned int size;
+    hvalue_t *args = value_get(arg, &size);
+    if (size != 2 * sizeof(hvalue_t)) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.multiplicity: requires two arguments");
+        return;
+    }
+    if (VALUE_TYPE(args[0]) != VALUE_DICT) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.multiplicity: first argument must be a bag");
+        return;
+    }
+    hvalue_t result;
+    if (value_tryload(&step->engine, args[0], args[1], &result)) {
+        if (VALUE_TYPE(result) != VALUE_INT) {
+            value_ctx_failure(step->ctx, &step->engine, "bag.multiplicity: not a good bag");
+        }
+        do_return(state, step, global, arg, result);
+    }
+    else {
+        do_return(state, step, global, arg, VALUE_TO_INT(0));
+    }
 }
 
 // Built-in bag.size method
@@ -2774,49 +2774,6 @@ hvalue_t f_set_add(struct state *state, struct context *ctx, hvalue_t *args, int
     return result;
 }
 
-// TODO: is this used??
-hvalue_t f_value_bag_add(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
-    assert(n == 2);
-    int64_t elt = args[0], dict = args[1];
-    assert(VALUE_TYPE(dict) == VALUE_DICT);
-    unsigned int size;
-    hvalue_t *vals = value_get(dict, &size), *v;
-
-    unsigned int i = 0;
-    int cmp = 1;
-    for (v = vals; i < size; i += 2 * sizeof(hvalue_t), v++) {
-        cmp = value_cmp(elt, *v);
-        if (cmp <= 0) {
-            break;
-        }
-    }
-
-    if (cmp == 0) {
-        assert(VALUE_TYPE(v[1]) == VALUE_INT);
-        int cnt = VALUE_FROM_INT(v[1]) + 1;
-        hvalue_t *nvals = malloc(size);
-        memcpy(nvals, vals, size);
-        * (hvalue_t *) ((char *) nvals + (i + sizeof(hvalue_t))) =
-                                        VALUE_TO_INT(cnt);
-
-        hvalue_t result = value_put_dict(engine, nvals, size);
-        free(nvals);
-        return result;
-    }
-    else {
-        hvalue_t *nvals = malloc(size + 2*sizeof(hvalue_t));
-        memcpy(nvals, vals, i);
-        * (hvalue_t *) ((char *) nvals + i) = elt;
-        * (hvalue_t *) ((char *) nvals + (i + sizeof(hvalue_t))) =
-                                        VALUE_TO_INT(1);
-        memcpy((char *) nvals + i + 2*sizeof(hvalue_t), v, size - i);
-
-        hvalue_t result = value_put_dict(engine, nvals, size + 2*sizeof(hvalue_t));
-        free(nvals);
-        return result;
-    }
-}
-
 hvalue_t f_shiftleft(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     assert(n == 2);
     int64_t e1 = args[0], e2 = args[1];
@@ -3151,6 +3108,7 @@ struct op_info op_table[] = {
     // Built-in methods
     { "list$tail", NULL, op_List_Tail },
     { "bag$add", NULL, op_Bag_Add },
+    { "bag$multiplicity", NULL, op_Bag_Multiplicity },
     { "bag$size", NULL, op_Bag_Size },
 
     { NULL, NULL, NULL }
@@ -3180,7 +3138,6 @@ struct f_info f_table[] = {
     { "abs", f_abs },
     { "all", f_all },
     { "any", f_any },
-    { "BagAdd", f_value_bag_add },
     { "countLabel", f_countLabel },
     { "DictAdd", f_dict_add },
     { "in", f_in },

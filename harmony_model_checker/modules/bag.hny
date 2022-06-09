@@ -12,6 +12,7 @@ def fromList(a):
         else:
             result[v] = 1
 
+builtin multiplicity "bag$multiplicity"
 def multiplicity(bg, elt):
     if elt in bg:
         result = bg[elt]
