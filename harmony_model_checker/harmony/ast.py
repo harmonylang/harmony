@@ -1000,13 +1000,13 @@ class IfAST(AST):
             code.append(AtomicIncOp(True), self.token, self.endtoken)
         last = len(self.alts) - 1
         for i, alt in enumerate(self.alts):
-            (rest, stat, thefile, theline) = alt
-            code.location(thefile, theline)
+            (rest, stat, starttoken, endtoken) = alt
+            code.location(starttoken[1], starttoken[2])
             negate = isinstance(rest, NaryAST) and rest.op[0] == "not"
             cond = rest.args[0] if negate else rest
             cond.compile(scope, code)
             iflabel = LabelValue(None, "$%d_%d" % (label, sublabel))
-            code.append(JumpCondOp(negate, iflabel), self.token, self.endtoken)
+            code.append(JumpCondOp(negate, iflabel), starttoken, starttoken)
             sublabel += 1
             stat.compile(scope, code)
             if self.stat != None or i != last:

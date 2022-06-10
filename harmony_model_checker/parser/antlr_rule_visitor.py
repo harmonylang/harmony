@@ -403,12 +403,12 @@ class HarmonyVisitorImpl(HarmonyVisitor):
 
     # Visit a parse tree produced by HarmonyParser#if_block.
     def visitIf_block(self, ctx: HarmonyParser.If_blockContext):
-        cond = self.visit(ctx.expr())
-        if_block = self.visit(ctx.block())
-        alts = [(cond, if_block, self.file, ctx.start.line)]
-        else_block = None
         tkn = self.get_token(ctx.start, ctx.start.text)
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
+        cond = self.visit(ctx.expr())
+        if_block = self.visit(ctx.block())
+        alts = [(cond, if_block, tkn, endtoken)]
+        else_block = None
         if ctx.elif_block() is not None:
             for c in ctx.elif_block():
                 alts.append(self.visit(c))
@@ -418,9 +418,11 @@ class HarmonyVisitorImpl(HarmonyVisitor):
 
     # Visit a parse tree produced by HarmonyParser#elif_block.
     def visitElif_block(self, ctx: HarmonyParser.Elif_blockContext):
+        tkn = self.get_token(ctx.start, ctx.start.text)
+        endtoken = self.get_token(ctx.stop, ctx.stop.text)
         cond = self.visit(ctx.expr())
         stmts = self.visit(ctx.block())
-        return cond, stmts, self.file, ctx.start.line
+        return cond, stmts, tkn, endtoken
 
     # Visit a parse tree produced by HarmonyParser#else_block.
     def visitElse_block(self, ctx: HarmonyParser.Else_blockContext):
