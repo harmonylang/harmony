@@ -167,7 +167,7 @@ class ComprehensionAST(AST):
             code.append(CutOp(var, var2), self.token, self.endtoken)
             code.append(JumpCondOp(False, endlabel), self.token, self.endtoken)
             self.rec_comprehension(scope, code, iter[1:], startlabel, accu, ctype)
-            code.append(JumpOp(startlabel), self.token, self.endtoken)
+            code.append(JumpOp(startlabel), self.endtoken, self.endtoken)
             code.nextLabel(endlabel)
 
         else:
@@ -472,7 +472,7 @@ class NaryAST(AST):
             for i in range(1, n):
                 code.append(JumpCondOp(op == "or", lastlabel), self.token, self.endtoken)
                 self.args[i].compile(scope, code)
-            code.append(JumpOp(endlabel), self.token, self.endtoken)
+            code.append(JumpOp(endlabel), self.op, self.op)
             code.nextLabel(lastlabel)
             code.append(PushOp((op == "or", file, line, column)), self.token, self.endtoken)
             code.nextLabel(endlabel)
@@ -484,7 +484,7 @@ class NaryAST(AST):
             labelcnt += 1
             code.append(JumpCondOp(False, truelabel), self.token, self.endtoken)
             self.args[1].compile(scope, code)
-            code.append(JumpOp(endlabel), self.token, self.endtoken)
+            code.append(JumpOp(endlabel), self.op, self.op)
             code.nextLabel(truelabel)
             code.append(PushOp((True, file, line, column)), self.token, self.endtoken)
             code.nextLabel(endlabel)
@@ -498,7 +498,7 @@ class NaryAST(AST):
             labelcnt += 1
             code.append(JumpCondOp(negate, elselabel), self.token, self.endtoken)
             self.args[0].compile(scope, code)  # "if" expr
-            code.append(JumpOp(endlabel), self.token, self.endtoken)
+            code.append(JumpOp(endlabel), self.op, self.op)
             code.nextLabel(elselabel)
             self.args[2].compile(scope, code)  # "else" expr
             code.nextLabel(endlabel)
@@ -1010,7 +1010,7 @@ class IfAST(AST):
             sublabel += 1
             stat.compile(scope, code)
             if self.stat != None or i != last:
-                code.append(JumpOp(endlabel), self.token, self.endtoken)
+                code.append(JumpOp(endlabel), endtoken, endtoken)
             code.nextLabel(iflabel)
         if self.stat != None:
             self.stat.compile(scope, code)
@@ -1056,7 +1056,7 @@ class WhileAST(AST):
         cond.compile(scope, code)
         code.append(JumpCondOp(negate, endlabel), self.token, self.endtoken)
         self.stat.compile(scope, code)
-        code.append(JumpOp(startlabel), self.token, self.endtoken)
+        code.append(JumpOp(startlabel), self.endtoken, self.endtoken)
         code.nextLabel(endlabel)
         if self.atomically:
             code.append(AtomicDecOp(), self.token, self.endtoken)
@@ -1253,20 +1253,20 @@ class LetWhenAST(AST):
                 if self.atomically:
                     code.append(ReadonlyDecOp(), self.token, self.endtoken)
                     code.append(AtomicDecOp(), self.token, self.endtoken)
-                code.append(JumpOp(label_start), self.token, self.endtoken)
+                code.append(JumpOp(label_start), self.endtoken, self.endtoken)
 
                 # select:
                 code.nextLabel(label_select)
                 code.append(ChooseOp(), self.token, self.endtoken)
                 code.append(StoreVarOp(bv), self.token, self.endtoken)
-        code.append(JumpOp(label_body), self.token, self.endtoken)
+        code.append(JumpOp(label_body), self.endtoken, self.endtoken)
 
         # condfailed:
         code.nextLabel(label_condfailed)
         if self.atomically:
             code.append(ReadonlyDecOp(), self.token, self.endtoken)
             code.append(AtomicDecOp(), self.token, self.endtoken)
-        code.append(JumpOp(label_start), self.token, self.endtoken)
+        code.append(JumpOp(label_start), self.endtoken, self.endtoken)
 
         # body:
         code.nextLabel(label_body)
@@ -1370,7 +1370,7 @@ class MethodAST(AST):
         endlabel = LabelValue(None, "$%d" % labelcnt)
         labelcnt += 1
         (lexeme, file, line, column) = self.name
-        code.append(JumpOp(endlabel), self.token, self.endtoken)
+        code.append(JumpOp(endlabel), self.token, self.token)
         code.nextLabel(self.label)
         code.append(FrameOp(self.name, self.args), self.token, self.endtoken)
         # scope.names[lexeme] = ("constant", (self.label, file, line, column))
@@ -1418,7 +1418,7 @@ class LambdaAST(AST):
     def compile_body(self, scope, code):
         startlabel = LabelValue(None, "lambda")
         endlabel = LabelValue(None, "lambda")
-        code.append(JumpOp(endlabel), self.token, self.endtoken)
+        code.append(JumpOp(endlabel), self.token, self.token)
         code.nextLabel(startlabel)
         code.append(FrameOp(self.token, self.args), self.token, self.endtoken)
 
