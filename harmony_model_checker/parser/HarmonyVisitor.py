@@ -159,6 +159,11 @@ class HarmonyVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by HarmonyParser#assign_op.
+    def visitAssign_op(self, ctx:HarmonyParser.Assign_opContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by HarmonyParser#aug_assign_op.
     def visitAug_assign_op(self, ctx:HarmonyParser.Aug_assign_opContext):
         return self.visitChildren(ctx)

@@ -175,6 +175,10 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
         return AddressAST(endtoken, tkn, expr)
 
+    # Visit a parse tree produced by HarmonyParser#assign_op.
+    def visitAssign_op(self, ctx: HarmonyParser.Assign_opContext):
+        return self.get_token(ctx.start, ctx.getText())
+
     # Visit a parse tree produced by HarmonyParser#aug_assign_op.
     def visitAug_assign_op(self, ctx: HarmonyParser.Aug_assign_opContext):
         return self.get_token(ctx.start, ctx.getText())
@@ -188,20 +192,21 @@ class HarmonyVisitorImpl(HarmonyVisitor):
 
     # Visit a parse tree produced by HarmonyParser#assign_stmt.
     def visitAssign_stmt(self, ctx: HarmonyParser.Assign_stmtContext):
+        ops = [self.visit(e) for e in ctx.assign_op()]
         expr = [self.visit(e) for e in ctx.tuple_rule()]
         tkn = self.get_token(ctx.start, ctx.start.text)
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
-        return AssignmentAST(endtoken, tkn, expr[:-1], expr[-1], self.get_token(ctx.start, '='), False)
+        return AssignmentAST(endtoken, tkn, expr[:-1], expr[-1], ops, False)
 
     # Visit a parse tree produced by HarmonyParser#aug_assign_stmt.
     def visitAug_assign_stmt(self, ctx: HarmonyParser.Aug_assign_stmtContext):
         op = self.visit(ctx.aug_assign_op())
         expressions = [self.visit(e) for e in ctx.tuple_rule()]
-        lhs = expressions[:-1]
-        rhs = expressions[-1]
+        lhs = expressions[0]
+        rhs = expressions[1]
         tkn = self.get_token(ctx.start, ctx.start.text)
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
-        return AssignmentAST(endtoken, tkn, lhs, rhs, op, False)
+        return AuxAssignmentAST(endtoken, tkn, lhs, rhs, op, False)
 
     # Visit a parse tree produced by HarmonyParser#const_assign_stmt.
     def visitConst_assign_stmt(self, ctx: HarmonyParser.Const_assign_stmtContext):

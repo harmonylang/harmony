@@ -677,69 +677,18 @@ class PointerAST(AST):
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_pointer(self, *args, **kwargs)
 
-
 class AssignmentAST(AST):
-    def __init__(self, endtoken, token, lhslist, rv, op, atomically):
+    def __init__(self, endtoken, token, lhslist, rv, ops, atomically):
         AST.__init__(self, endtoken, token, atomically)
         self.lhslist = lhslist  # a, b = c, d = e = ...
         self.rv = rv  # rhs expression
-        self.op = op  # ... op= ...
+        self.ops = ops
 
     def __repr__(self):
         return "Assignment(" + str(self.lhslist) + ", " + str(self.rv) + \
-               ", " + str(self.op) + ")"
-
-    # handle an "x op= y" assignment
-    def opassign(self, lv, scope, code):
-        if self.atomically:
-            code.append(AtomicIncOp(True), self.token, self.endtoken)
-        lvar = lv.localVar(scope)
-        if isinstance(lv, NameAST):
-            # handled separately for assembly code readability
-            (t, v) = scope.lookup(lv.name)
-            lexeme, file, line, column = self.token
-            if t == "module":
-                raise HarmonyCompilerError(
-                    filename=file,
-                    lexeme=lexeme,
-                    line=line,
-                    column=column,
-                    message='Cannot operate on module %s' % str(lv.name),
-                )
-            if t in {"constant", "local-const"}:
-                raise HarmonyCompilerError(
-                    filename=file,
-                    lexeme=lexeme,
-                    line=line,
-                    column=column,
-                    message='Cannot operate on constant %s' % str(lv.name),
-                )
-            assert t in {"local-var", "global"}
-            ld = LoadOp(lv.name, lv.name, scope.prefix) if t == "global" else LoadVarOp(lv.name)
-        else:
-            lv.ph1(scope, code)
-            code.append(DupOp(), self.token, self.endtoken)  # duplicate the addres
-            ld = LoadOp(None, self.op, None) if lvar == None else LoadVarOp(None, lvar)
-        code.append(ld, self.token, self.endtoken)  # load the valu
-        self.rv.compile(scope, code)  # compile the rhs
-        (lexeme, file, line, column) = self.op
-        code.append(NaryOp((lexeme[:-1], file, line, column), 2), self.token, self.endtoken)
-        if isinstance(lv, NameAST):
-            st = StoreOp(lv.name, lv.name, scope.prefix) if lvar == None else StoreVarOp(lv.name, lvar)
-        else:
-            st = StoreOp(None, self.op, None) if lvar == None else StoreVarOp(None, lvar)
-        code.append(st, self.token, self.op)
-        if self.atomically:
-            code.append(AtomicDecOp(), self.token, self.endtoken)
+               ", " + str(self.ops) + ")"
 
     def compile(self, scope, code):
-        (lexeme, file, line, column) = self.op
-        if lexeme != '=':
-            assert len(self.lhslist) == 1, self.lhslist
-            lv = self.lhslist[0]
-            self.opassign(lv, scope, code)
-            return
-
         if self.atomically:
             code.append(AtomicIncOp(True), self.token, self.endtoken)
 
@@ -780,10 +729,10 @@ class AssignmentAST(AST):
                     )
                 assert t in {"local-var", "global"}, (t, lvs.name)
                 if v[0] == "_":
-                    code.append(PopOp(), self.token, self.endtoken)
+                    code.append(PopOp(), self.token, self.ops[0])
                 else:
                     st = StoreOp(lvs.name, lvs.name, scope.prefix) if t == "global" else StoreVarOp(lvs.name)
-                    code.append(st, self.token, self.endtoken)
+                    code.append(st, self.token, self.ops[0])
             else:
                 lvs.ph2(scope, code, skip)
 
@@ -793,6 +742,63 @@ class AssignmentAST(AST):
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_assignment(self, *args, **kwargs)
 
+
+class AuxAssignmentAST(AST):
+    def __init__(self, endtoken, token, lhs, rv, op, atomically):
+        AST.__init__(self, endtoken, token, atomically)
+        self.lhs = lhs
+        self.rv = rv  # rhs expression
+        self.op = op  # ... op= ...
+
+    def __repr__(self):
+        return "AuxAssignment(" + str(self.lhs) + ", " + str(self.rv) + \
+               ", " + str(self.op) + ")"
+
+    def compile(self, scope, code):
+        if self.atomically:
+            code.append(AtomicIncOp(True), self.token, self.endtoken)
+        lv = self.lhs
+        lvar = lv.localVar(scope)
+        if isinstance(lv, NameAST):
+            # handled separately for assembly code readability
+            (t, v) = scope.lookup(lv.name)
+            lexeme, file, line, column = self.token
+            if t == "module":
+                raise HarmonyCompilerError(
+                    filename=file,
+                    lexeme=lexeme,
+                    line=line,
+                    column=column,
+                    message='Cannot operate on module %s' % str(lv.name),
+                )
+            if t in {"constant", "local-const"}:
+                raise HarmonyCompilerError(
+                    filename=file,
+                    lexeme=lexeme,
+                    line=line,
+                    column=column,
+                    message='Cannot operate on constant %s' % str(lv.name),
+                )
+            assert t in {"local-var", "global"}
+            ld = LoadOp(lv.name, lv.name, scope.prefix) if t == "global" else LoadVarOp(lv.name)
+        else:
+            lv.ph1(scope, code)
+            code.append(DupOp(), self.token, self.endtoken)  # duplicate the addres
+            ld = LoadOp(None, self.op, None) if lvar == None else LoadVarOp(None, lvar)
+        code.append(ld, self.token, self.endtoken)  # load the valu
+        self.rv.compile(scope, code)  # compile the rhs
+        (lexeme, file, line, column) = self.op
+        code.append(NaryOp((lexeme[:-1], file, line, column), 2), self.token, self.endtoken)
+        if isinstance(lv, NameAST):
+            st = StoreOp(lv.name, lv.name, scope.prefix) if lvar == None else StoreVarOp(lv.name, lvar)
+        else:
+            st = StoreOp(None, self.op, None) if lvar == None else StoreVarOp(None, lvar)
+        code.append(st, self.token, self.op)
+        if self.atomically:
+            code.append(AtomicDecOp(), self.token, self.endtoken)
+
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_assignment(self, *args, **kwargs)
 
 class DelAST(AST):
     def __init__(self, endtoken, token, atomically, lv):
