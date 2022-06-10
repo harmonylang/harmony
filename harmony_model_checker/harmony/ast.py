@@ -548,7 +548,7 @@ class CmpAST(AST):
         code.append(NaryOp(self.ops[n - 2], 2), self.token, self.endtoken)
         code.nextLabel(endlabel)
         if n > 2:
-            code.append(DelVarOp(T), self.token, self.endtoken)
+            code.append(DelVarOp(T), self.token, self.endtoken)     # TODO: is this necessary???
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_cmp(self, *args, **kwargs)
@@ -728,7 +728,7 @@ class AssignmentAST(AST):
             st = StoreOp(lv.name, lv.name, scope.prefix) if lvar == None else StoreVarOp(lv.name, lvar)
         else:
             st = StoreOp(None, self.op, None) if lvar == None else StoreVarOp(None, lvar)
-        code.append(st, self.token, self.endtoken)
+        code.append(st, self.token, self.op)
         if self.atomically:
             code.append(AtomicDecOp(), self.token, self.endtoken)
 
