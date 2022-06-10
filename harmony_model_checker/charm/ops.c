@@ -699,6 +699,56 @@ void op_Bag_Size(const void *env, struct state *state, struct step *step, struct
     do_return(state, step, global, arg, VALUE_TO_INT(total));
 }
 
+// Built-in bag.bmax method
+void op_Bag_Bmax(const void *env, struct state *state, struct step *step, struct global_t *global){
+    hvalue_t arg = ctx_pop(step->ctx);
+    if (arg == VALUE_DICT) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.bmax: empty bag");
+        return;
+    }
+    if (VALUE_TYPE(arg) != VALUE_DICT) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.bmax: not a dict");
+        return;
+    }
+    unsigned int size;
+    hvalue_t *list = value_get(arg, &size);
+    size /= sizeof(hvalue_t);
+    assert(size >= 2);
+    hvalue_t result = list[0];
+    for (unsigned int i = 2; i < size; i += 2) {
+        int cmp = value_cmp(result, list[i]);
+        if (cmp > 0) {
+            result = list[i];
+        }
+    }
+    do_return(state, step, global, arg, result);
+}
+
+// Built-in bag.bmin method
+void op_Bag_Bmin(const void *env, struct state *state, struct step *step, struct global_t *global){
+    hvalue_t arg = ctx_pop(step->ctx);
+    if (arg == VALUE_DICT) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.bmax: empty bag");
+        return;
+    }
+    if (VALUE_TYPE(arg) != VALUE_DICT) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.bmax: not a dict");
+        return;
+    }
+    unsigned int size;
+    hvalue_t *list = value_get(arg, &size);
+    size /= sizeof(hvalue_t);
+    assert(size >= 2);
+    hvalue_t result = list[0];
+    for (unsigned int i = 2; i < size; i += 2) {
+        int cmp = value_cmp(result, list[i]);
+        if (cmp < 0) {
+            result = list[i];
+        }
+    }
+    do_return(state, step, global, arg, result);
+}
+
 // This operation expects on the top of the stack the set to iterate over
 // and an integer index.  If the index is valid (not the size of the
 // collection), then it assigns the given element to key and value and
@@ -3129,6 +3179,8 @@ struct op_info op_table[] = {
     // Built-in methods
     { "list$tail", NULL, op_List_Tail },
     { "bag$add", NULL, op_Bag_Add },
+    { "bag$bmax", NULL, op_Bag_Bmax },
+    { "bag$bmin", NULL, op_Bag_Bmin },
     { "bag$multiplicity", NULL, op_Bag_Multiplicity },
     { "bag$remove", NULL, op_Bag_Remove },
     { "bag$size", NULL, op_Bag_Size },

@@ -25,10 +25,14 @@ def size(bg):
     for _:c in bg:
         result += c
 
+builtin bmin "bag$bmin"
 def bmin(bg):
+    assert bg != {:}
     result = min(keys(bg))
 
+builtin bmax "bag$bmax"
 def bmax(bg):
+    assert bg != {:}
     result = max(keys(bg))
 
 def bchoose(bg):
