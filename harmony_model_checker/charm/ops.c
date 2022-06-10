@@ -43,6 +43,7 @@ struct var_tree {
 // These are initialized in ops_init and are immutable.
 static struct dict *ops_map, *f_map;
 static hvalue_t underscore, this_atom;
+static hvalue_t alloc_pool_atom, alloc_next_atom;
 static hvalue_t type_bool, type_int, type_str, type_pc, type_list;
 static hvalue_t type_dict, type_set, type_address, type_context;
 
@@ -588,6 +589,28 @@ static void do_return(struct state *state, struct step *step, struct global_t *g
     default:
         panic("Return: bad call type");
     }
+}
+
+// Built-in alloc.malloc method
+void op_Alloc_Malloc(const void *env, struct state *state, struct step *step, struct global_t *global){
+    hvalue_t arg = ctx_pop(step->ctx);
+    hvalue_t next = value_dict_load(state->vars, alloc_next_atom);
+
+    // Assign arg to alloc$pool[alloc$next]
+    hvalue_t addr[2];
+    addr[0] = alloc_pool_atom;
+    addr[1] = next;
+    if (!ind_trystore(state->vars, addr, 2, arg, &step->engine, &state->vars)) {
+        panic("op_Alloc_Malloc: store value failed");
+    }
+
+    // Increment next
+    next = VALUE_TO_INT(VALUE_FROM_INT(next) + 1);
+    state->vars = value_dict_store(&step->engine, state->vars, alloc_next_atom, next);
+
+    // Return the address
+    hvalue_t result = value_put_address(&step->engine, addr, sizeof(addr));
+    do_return(state, step, global, arg, result);
 }
 
 // Built-in list.tail method
@@ -3177,13 +3200,14 @@ struct op_info op_table[] = {
 	{ "Trap", init_Trap, op_Trap },
 
     // Built-in methods
-    { "list$tail", NULL, op_List_Tail },
+    { "alloc$malloc", NULL, op_Alloc_Malloc },
     { "bag$add", NULL, op_Bag_Add },
     { "bag$bmax", NULL, op_Bag_Bmax },
     { "bag$bmin", NULL, op_Bag_Bmin },
     { "bag$multiplicity", NULL, op_Bag_Multiplicity },
     { "bag$remove", NULL, op_Bag_Remove },
     { "bag$size", NULL, op_Bag_Size },
+    { "list$tail", NULL, op_List_Tail },
 
     { NULL, NULL, NULL }
 };
@@ -3247,6 +3271,8 @@ void ops_init(struct global_t *global, struct engine *engine) {
     type_set = value_put_atom(engine, "set", 3);
     type_address = value_put_atom(engine, "address", 7);
     type_context = value_put_atom(engine, "context", 7);
+	alloc_pool_atom = value_put_atom(engine, "alloc$pool", 10);
+	alloc_next_atom = value_put_atom(engine, "alloc$next", 10);
 
     for (struct op_info *oi = op_table; oi->name != NULL; oi++) {
         struct op_info **p = dict_insert(ops_map, NULL, oi->name, strlen(oi->name), NULL);
