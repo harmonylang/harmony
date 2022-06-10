@@ -458,15 +458,7 @@ static bool onestep(
     }
 
     // Remove old context from the bag
-    hvalue_t count = value_dict_load(sc->ctxbag, ctx);
-    assert(VALUE_TYPE(count) == VALUE_INT);
-    count -= 1 << VALUE_BITS;
-    if (count == VALUE_INT) {
-        sc->ctxbag = value_dict_remove(&step->engine, sc->ctxbag, ctx);
-    }
-    else {
-        sc->ctxbag = value_dict_store(&step->engine, sc->ctxbag, ctx, count);
-    }
+    sc->ctxbag = value_bag_remove(&step->engine, sc->ctxbag, ctx);
 
     // If choosing, save in state
     if (choosing) {

@@ -628,6 +628,27 @@ void op_Bag_Add(const void *env, struct state *state, struct step *step, struct 
     do_return(state, step, global, arg, result);
 }
 
+// Built-in bag.remove method
+void op_Bag_Remove(const void *env, struct state *state, struct step *step, struct global_t *global){
+    hvalue_t arg = ctx_pop(step->ctx);
+    if (VALUE_TYPE(arg) != VALUE_LIST) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.remove: not a tuple");
+        return;
+    }
+    unsigned int size;
+    hvalue_t *args = value_get(arg, &size);
+    if (size != 2 * sizeof(hvalue_t)) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.remove: requires two arguments");
+        return;
+    }
+    if (VALUE_TYPE(args[0]) != VALUE_DICT) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.remove: first argument must be a bag");
+        return;
+    }
+    hvalue_t result = value_bag_remove(&step->engine, args[0], args[1]);
+    do_return(state, step, global, arg, result);
+}
+
 // Built-in bag.multiplicity method
 void op_Bag_Multiplicity(const void *env, struct state *state, struct step *step, struct global_t *global){
     hvalue_t arg = ctx_pop(step->ctx);
@@ -3109,6 +3130,7 @@ struct op_info op_table[] = {
     { "list$tail", NULL, op_List_Tail },
     { "bag$add", NULL, op_Bag_Add },
     { "bag$multiplicity", NULL, op_Bag_Multiplicity },
+    { "bag$remove", NULL, op_Bag_Remove },
     { "bag$size", NULL, op_Bag_Size },
 
     { NULL, NULL, NULL }

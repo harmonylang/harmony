@@ -1301,6 +1301,19 @@ hvalue_t value_bag_add(struct engine *engine, hvalue_t bag, hvalue_t v, int mult
     }
 }
 
+hvalue_t value_bag_remove(struct engine *engine, hvalue_t bag, hvalue_t v){
+    assert(VALUE_TYPE(bag) == VALUE_DICT);
+    hvalue_t count = value_dict_load(bag, v);
+    assert(VALUE_TYPE(count) == VALUE_INT);
+    count -= 1 << VALUE_BITS;
+    if (count == VALUE_INT) {
+        return value_dict_remove(engine, bag, v);
+    }
+    else {
+        return value_dict_store(engine, bag, v, count);
+    }
+}
+
 void value_ctx_push(struct context *ctx, hvalue_t v){
     // TODO.  Check for stack overflow
     ctx_stack(ctx)[ctx->sp++] = v;
