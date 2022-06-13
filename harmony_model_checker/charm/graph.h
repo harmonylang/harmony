@@ -48,6 +48,8 @@ enum fail_type {
     FAIL_RACE
 };
 
+// TODO: node->state should be equivalent to ((struct state *) node) - 1
+//       This would save a little more memory.
 struct node {
 	struct node *next;		// for linked list
 
