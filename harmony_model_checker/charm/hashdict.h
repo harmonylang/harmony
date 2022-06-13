@@ -56,11 +56,9 @@ void dict_delete(struct dict *dict);
 void *dict_lookup(struct dict *dict, const void *key, unsigned int keylen);
 bool dict_remove(struct dict *dict, const void *key, unsigned int keylen);
 void *dict_insert(struct dict *dict, struct allocator *al, const void *key, unsigned int keylen, bool *new);
-void *dict_insert_lock(struct dict *dict, struct allocator *al, const void *key, unsigned int keylen, bool *new);
+void *dict_insert_lock(struct dict *dict, struct allocator *al, const void *key, unsigned int keylen, bool *new, mutex_t **lock);
 struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
-                            const void *key, unsigned int keyn, bool *new);
-void dict_find_release(struct dict *dict, const struct dict_assoc *da);
-void dict_insert_release(struct dict *dict, const void *key, unsigned int keylen);
+                            const void *key, unsigned int keyn, bool *new, mutex_t **lock);
 struct dict_assoc *dict_find(struct dict *dict, struct allocator *al, const void *key, unsigned int keylen, bool *new);
 void *dict_retrieve(const void *p, unsigned int *psize);
 void dict_iter(struct dict *dict, dict_enumfunc f, void *user);

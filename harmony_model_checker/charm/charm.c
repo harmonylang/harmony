@@ -491,8 +491,9 @@ static bool onestep(
 
     // See if this state has been computed before
     bool new;
+    mutex_t *lock;
     struct dict_assoc *da = dict_find_lock(w->visited, &w->allocator,
-                sc, sizeof(struct state), &new);
+                sc, sizeof(struct state), &new, &lock);
     struct state *state = (struct state *) (da + 1);
     struct node *next = (struct node *) (state + 1);
     if (new) {
@@ -501,10 +502,6 @@ static bool onestep(
         next->steps = node->steps + instrcnt;
         next->to_parent = edge;
         next->state = state;
-        next->next = w->results;
-        w->results = next;
-        w->count++;
-        w->enqueued++;
     }
     else {
         unsigned int len = node->len + weight;
@@ -515,11 +512,12 @@ static bool onestep(
             next->to_parent = edge;
         }
     }
-    edge->dst = next;
 
     // Backward edge from node to parent.
     edge->bwdnext = next->bwd;
     next->bwd = edge;
+
+    mutex_release(lock);
 
     // Don't do the forward edge at this time as that would involve lockng
     // the parent node.  Instead assign that task to one of the workers
@@ -527,8 +525,14 @@ static bool onestep(
     struct edge **pe = &w->edges[node->id % w->nworkers];
     edge->fwdnext = *pe;
     *pe = edge;
+    edge->dst = next;
 
-    dict_find_release(w->visited, da);
+    if (new) {
+        next->next = w->results;
+        w->results = next;
+        w->count++;
+        w->enqueued++;
+    }
 
     if (failure) {
         struct failure *f = new_alloc(struct failure);

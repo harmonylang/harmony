@@ -191,11 +191,13 @@ struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
 
 // Similar to dict_find(), but gets a lock on the bucket
 struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
-                            const void *key, unsigned int keylen, bool *new){
+                            const void *key, unsigned int keylen, bool *new, mutex_t **lock){
     assert(dict->concurrent);
     uint32_t hash = hash_func(key, keylen);
     unsigned int index = hash % dict->length;
     struct dict_bucket *db = &dict->table[index];
+
+    *lock = &dict->locks[index % dict->nlocks];
 
 	struct dict_assoc *k = db->stable;
 	while (k != NULL) {
@@ -203,7 +205,7 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
             if (new != NULL) {
                 *new = false;
             }
-            mutex_acquire(&dict->locks[index % dict->nlocks]);
+            mutex_acquire(*lock);
 			return k;
 		}
 		k = k->next;
@@ -212,7 +214,7 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
     unsigned int worker = index * dict->nworkers / dict->length;
     struct dict_worker *dw = &dict->workers[al->worker];
 
-    mutex_acquire(&dict->locks[index % dict->nlocks]);
+    mutex_acquire(*lock);
     // See if the item is in the unstable list
     k = db->unstable;
     while (k != NULL) {
@@ -242,16 +244,6 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
 	return k;
 }
 
-void dict_insert_release(struct dict *dict, const void *key, unsigned int keylen){
-    unsigned int index = hash_func(key, keylen) % dict->length;
-    mutex_release(&dict->locks[index % dict->nlocks]);
-}
-
-void dict_find_release(struct dict *dict, const struct dict_assoc *da){
-    unsigned int index = hash_func((char *) (da + 1), da->len) % dict->length;
-    mutex_release(&dict->locks[index % dict->nlocks]);
-}
-
 // Returns a pointer to the value
 void *dict_insert(struct dict *dict, struct allocator *al,
                             const void *key, unsigned int keylen, bool *new){
@@ -262,8 +254,8 @@ void *dict_insert(struct dict *dict, struct allocator *al,
 
 // Returns a pointer to the value
 void *dict_insert_lock(struct dict *dict, struct allocator *al,
-                            const void *key, unsigned int keylen, bool *new){
-    struct dict_assoc *k = dict_find_lock(dict, al, key, keylen, new);
+                            const void *key, unsigned int keylen, bool *new, mutex_t **lock){
+    struct dict_assoc *k = dict_find_lock(dict, al, key, keylen, new, lock);
     unsigned int alen = (keylen + DICT_ALIGN - 1) & ~(DICT_ALIGN - 1);
     return (char *) (k+1) + alen;
 }
