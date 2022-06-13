@@ -14,8 +14,10 @@ struct scc {
 struct global_t {
     struct code_t code;
     struct values_t values;
-    struct graph_t graph;
+    struct graph_t graph;        // the Kripke structure
     unsigned int todo;           // points into graph->nodes
+    unsigned int goal;           // points into graph->nodes
+    bool layer_done;
     mutex_t todo_lock;           // to access the todo list
     mutex_t todo_wait;           // to wait for SCC tasks
     unsigned int nworkers;       // total number of threads

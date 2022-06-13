@@ -1572,7 +1572,7 @@ static void do_work(struct worker *w){
     for (;;) {
         mutex_acquire(&global->todo_lock);
         unsigned int start = global->todo;
-        unsigned int nleft = global->graph.size - start;
+        unsigned int nleft = global->goal - start;
         if (nleft == 0) {
             mutex_release(&global->todo_lock);
             break;
@@ -1738,15 +1738,17 @@ static void worker(void *arg){
         value_make_stable(&global->values, w->index);
         dict_make_stable(w->visited, w->index);
 
-        // Fill the graph table
-        for (unsigned int i = 0; w->count != 0; i++) {
-            struct node *node = w->results;
-			node->id = w->node_id;
-            global->graph.nodes[w->node_id++] = node;
-            w->results = node->next;
-            w->count--;
+        if (global->layer_done) {
+            // Fill the graph table
+            for (unsigned int i = 0; w->count != 0; i++) {
+                struct node *node = w->results;
+                node->id = w->node_id;
+                global->graph.nodes[w->node_id++] = node;
+                w->results = node->next;
+                w->count--;
+            }
+            assert(w->results == NULL);
         }
-        assert(w->results == NULL);
     }
 }
 
@@ -2087,6 +2089,7 @@ int main(int argc, char **argv){
     memset(node, 0, sizeof(*node));
     node->state = *state;
     graph_add(&global->graph, node);
+    global->goal = 1;
 
     // Allocate space for worker info
     struct worker *workers = calloc(global->nworkers, sizeof(*workers));
@@ -2140,41 +2143,52 @@ int main(int argc, char **argv){
 
         barrier_wait(&middle_barrier);
 
-        double before_postproc = gettime();
-
         // Back to sequential mode
-        assert(global->todo == global->graph.size);
 
-        global->diameter++;
-        // printf("Diameter %d\n", global->diameter);
-
-        // The threads completed producing the next layer of nodes in the graph.
-        // Grow the graph table.
-        unsigned int total = 0;
-        for (unsigned int i = 0; i < global->nworkers; i++) {
-            struct worker *w = &workers[i];
-            w->node_id = global->todo + total;
-            total += w->count;
-        }
-        graph_add_multiple(&global->graph, total);
-
-        // Prepare the grow the hash tables as well (but the actual work of
+        // Prepare the grow the hash tables (but the actual work of
         // rehashing is distributed among the threads in the next phase
+        double before_postproc = gettime();
         dict_grow_prepare(visited);
         value_grow_prepare(&global->values);
-
-        // Collect the failures of all the workers
-        for (unsigned int i = 0; i < global->nworkers; i++) {
-			process_results(global, &workers[i]);
-        }
-
         postproc += gettime() - before_postproc;
 
-        if (!minheap_empty(global->failures)) {
-            global->todo = global->graph.size;
+        // End of a layer in the Kripke structure?
+        global->layer_done = global->todo == global->graph.size;
+        if (global->layer_done) {
+            global->diameter++;
+            // printf("Diameter %d\n", global->diameter);
+
+            // The threads completed producing the next layer of nodes in the graph.
+            // Grow the graph table.
+            unsigned int total = 0;
+            for (unsigned int i = 0; i < global->nworkers; i++) {
+                struct worker *w = &workers[i];
+                w->node_id = global->todo + total;
+                total += w->count;
+            }
+            graph_add_multiple(&global->graph, total);
+
+            // Collect the failures of all the workers
+            for (unsigned int i = 0; i < global->nworkers; i++) {
+                process_results(global, &workers[i]);
+            }
+
+            if (!minheap_empty(global->failures)) {
+                // Pretend we're done
+                global->todo = global->graph.size;
+            }
+            if (global->todo == global->graph.size) { // no new nodes added
+                break;
+            }
         }
-        if (global->todo == global->graph.size) {
-            break;
+
+        // Determine the new goal
+        unsigned int nleft = global->graph.size - global->todo;
+        if (nleft > 2048 * global->nworkers) {
+            global->goal = global->todo + 2048 * global->nworkers;
+        }
+        else {
+            global->goal = global->graph.size;
         }
 
         // printf("Coordinator back to workers (%d)\n", global->diameter);
