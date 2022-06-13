@@ -70,6 +70,22 @@ struct worker {
     hvalue_t stack[MAX_CONTEXT_STACK];
 };
 
+static inline uint32_t meiyan(const char *key, int count) {
+	typedef uint32_t *P;
+	uint32_t h = 0x811c9dc5;
+	while (count >= 8) {
+		h = (h ^ ((((*(P)key) << 5) | ((*(P)key) >> 27)) ^ *(P)(key + 4))) * 0xad3e7;
+		count -= 8;
+		key += 8;
+	}
+	#define tmp h = (h ^ *(uint16_t*)key) * 0xad3e7; key += 2;
+	if (count & 4) { tmp tmp }
+	if (count & 2) { tmp }
+	if (count & 1) { h = (h ^ *key) * 0xad3e7; }
+	#undef tmp
+	return h ^ (h >> 16);
+}
+
 // Per thread one-time memory allocator (no free)
 static void *walloc(void *ctx, unsigned int size, bool zero){
     struct worker *w = ctx;
@@ -490,10 +506,11 @@ static bool onestep(
     edge->nsteps = instrcnt;
 
     // See if this state has been computed before
+    uint32_t h = meiyan((char *) sc, sizeof(*sc));
     bool new;
     mutex_t *lock;
-    struct dict_assoc *da = dict_find_lock(w->visited, &w->allocator,
-                sc, sizeof(struct state), &new, &lock);
+    struct dict_assoc *da = dict_find_lock(w->workers[h % w->nworkers].visited, &w->allocator,
+                sc, sizeof(*sc), &new, &lock);
     struct state *state = (struct state *) (da + 1);
     struct node *next = (struct node *) (state + 1);
     if (new) {
@@ -1743,7 +1760,7 @@ static void worker(void *arg){
 
 		// printf("WORKER %d make stable %d %u %u\n", w->index, epoch, w->count, w->node_id);
         value_make_stable(&global->values, w->index);
-        dict_make_stable(w->visited, w->index);
+        // dict_make_stable(w->visited, w->index);
 
         if (global->layer_done) {
             // Fill the graph table
@@ -2090,18 +2107,11 @@ int main(int argc, char **argv){
         exit(0);
     }
 
-    // Put the initial state in the visited map
-    struct dict *visited = dict_new("visited", sizeof(struct node), 0, global->nworkers, NULL, NULL);
-    struct node *node = dict_insert(visited, NULL, state, sizeof(*state), NULL);
-    memset(node, 0, sizeof(*node));
-    node->state = state;
-    graph_add(&global->graph, node);
-    global->goal = 1;
-
     // Allocate space for worker info
     struct worker *workers = calloc(global->nworkers, sizeof(*workers));
     for (unsigned int i = 0; i < global->nworkers; i++) {
         struct worker *w = &workers[i];
+        w->visited = dict_new("visited", sizeof(struct node), 0, global->nworkers, NULL, NULL);
         w->global = global;
         w->timeout = timeout;
         w->start_barrier = &start_barrier;
@@ -2110,7 +2120,6 @@ int main(int argc, char **argv){
         w->index = i;
         w->workers = workers;
         w->nworkers = global->nworkers;
-        w->visited = visited;
         w->edges = calloc(global->nworkers, sizeof(struct edge *));
         w->profile = calloc(global->code.len, sizeof(*w->profile));
 
@@ -2132,6 +2141,14 @@ int main(int argc, char **argv){
         w->allocator.worker = i;
     }
 
+    // Put the initial state in the visited map
+    uint32_t h = meiyan((char *) state, sizeof(*state));
+    struct node *node = dict_insert(workers[h % global->nworkers].visited, NULL, state, sizeof(*state), NULL);
+    memset(node, 0, sizeof(*node));
+    node->state = state;
+    graph_add(&global->graph, node);
+    global->goal = 1;
+
     // Start the workers, who'll wait on the start barrier
     for (unsigned int i = 0; i < global->nworkers; i++) {
         thread_create(worker, &workers[i]);
@@ -2139,7 +2156,10 @@ int main(int argc, char **argv){
 
     // Put the state and value dictionaries in concurrent mode
     value_set_concurrent(&global->values);
-    dict_set_concurrent(visited);
+    for (unsigned int i = 0; i < global->nworkers; i++) {
+        struct worker *w = &workers[i];
+        dict_set_concurrent(w->visited);
+    }
 
     double before = gettime(), postproc = 0;
     for (;;) {
@@ -2155,7 +2175,10 @@ int main(int argc, char **argv){
         // Prepare the grow the hash tables (but the actual work of
         // rehashing is distributed among the threads in the next phase
         double before_postproc = gettime();
-        dict_grow_prepare(visited);
+        for (unsigned int i = 0; i < global->nworkers; i++) {
+            struct worker *w = &workers[i];
+            dict_grow_prepare(w->visited);
+        }
         value_grow_prepare(&global->values);
         postproc += gettime() - before_postproc;
 
@@ -2212,10 +2235,13 @@ int main(int argc, char **argv){
 
     printf("#states %d (time %.3lf+%.3lf=%.3lf)\n", global->graph.size, gettime() - before - postproc, postproc, gettime() - before);
 
-    dict_set_sequential(visited);
+    for (unsigned int i = 0; i < global->nworkers; i++) {
+        struct worker *w = &workers[i];
+        dict_set_sequential(w->visited);
+    }
     value_set_sequential(&global->values);
 
-    dict_dump(visited);
+    // dict_dump(visited);
     dict_dump(global->values.dicts);
     // dict_dump(global->values.addresses);
     // dict_dump(global->values.atoms);
