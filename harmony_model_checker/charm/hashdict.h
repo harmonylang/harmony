@@ -19,7 +19,7 @@ typedef void (*dict_enumfunc)(void *env, const void *key, unsigned int key_size,
 struct dict_assoc {
 	struct dict_assoc *next;
     struct dict_assoc *unstable_next;
-	unsigned int len;                   // key length
+	unsigned int len;               // key length
 };
 
 struct dict_bucket {
@@ -28,7 +28,8 @@ struct dict_bucket {
 
 struct dict_worker {
     struct dict_assoc **unstable;   // one for each of the workers
-    unsigned int count;          // #unstable entries added
+    unsigned int count;             // #unstable entries added
+    unsigned int clashes;           // some profiling
 };
 		
 struct dict {
@@ -58,6 +59,7 @@ void *dict_insert(struct dict *dict, struct allocator *al, const void *key, unsi
 void *dict_insert_lock(struct dict *dict, struct allocator *al, const void *key, unsigned int keylen, bool *new);
 struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
                             const void *key, unsigned int keyn, bool *new);
+void dict_find_release(struct dict *dict, const struct dict_assoc *da);
 void dict_insert_release(struct dict *dict, const void *key, unsigned int keylen);
 struct dict_assoc *dict_find(struct dict *dict, struct allocator *al, const void *key, unsigned int keylen, bool *new);
 void *dict_retrieve(const void *p, unsigned int *psize);
@@ -66,5 +68,6 @@ void dict_set_concurrent(struct dict *dict);
 void dict_make_stable(struct dict *dict, unsigned int worker);
 void dict_set_sequential(struct dict *dict);
 void dict_grow_prepare(struct dict *dict);
+void dict_dump(struct dict *dict);
 
 #endif

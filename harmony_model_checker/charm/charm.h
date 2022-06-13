@@ -17,7 +17,7 @@ struct global_t {
     struct graph_t graph;        // the Kripke structure
     unsigned int todo;           // points into graph->nodes
     unsigned int goal;           // points into graph->nodes
-    bool layer_done;
+    bool layer_done;             // all states in a layer completed
     mutex_t todo_lock;           // to access the todo list
     mutex_t todo_wait;           // to wait for SCC tasks
     unsigned int nworkers;       // total number of threads
@@ -27,6 +27,7 @@ struct global_t {
     hvalue_t *processes;         // list of contexts of processes
     unsigned int nprocesses;     // the number of processes in the list
     double lasttime;             // since last report printed
+    unsigned int last_nstates;   // to measure #states / second
     bool dumpfirst;              // for json dumping
     struct dfa *dfa;             // for tracking correct behaviors
     unsigned int diameter;       // graph diameter
