@@ -1760,7 +1760,10 @@ static void worker(void *arg){
 
 		// printf("WORKER %d make stable %d %u %u\n", w->index, epoch, w->count, w->node_id);
         value_make_stable(&global->values, w->index);
-        // dict_make_stable(w->visited, w->index);
+        for (unsigned int i = 0; i < global->nworkers; i++) {
+            struct worker *w2 = &w->workers[i];
+            dict_make_stable(w2->visited, w->index);
+        }
 
         if (global->layer_done) {
             // Fill the graph table
