@@ -73,6 +73,7 @@ struct worker {
 static inline uint32_t meiyan(const char *key, int count) {
 	typedef uint32_t *P;
 	uint32_t h = 0x811c9dc5;
+	// uint32_t h = ~0x811c9dc5; // 0x811c9dc5;
 	while (count >= 8) {
 		h = (h ^ ((((*(P)key) << 5) | ((*(P)key) >> 27)) ^ *(P)(key + 4))) * 0xad3e7;
 		count -= 8;
