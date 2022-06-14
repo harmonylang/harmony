@@ -1016,7 +1016,7 @@ class IfAST(AST):
             sublabel += 1
             stat.compile(scope, code)
             if self.stat != None or i != last:
-                code.append(JumpOp(endlabel), endtoken, endtoken)
+                code.append(JumpOp(endlabel), starttoken, endtoken)
             code.nextLabel(iflabel)
         if self.stat != None:
             self.stat.compile(scope, code)
