@@ -227,11 +227,10 @@ static bool ind_trystore(hvalue_t root, hvalue_t *indices, int n, hvalue_t value
                     return true;
                 }
                 int n = size * sizeof(hvalue_t);
-                hvalue_t *copy = malloc(n);
+                hvalue_t copy[n];
                 memcpy(copy, vals, n);
                 copy[i + 1] = nd;
                 hvalue_t v = value_put_dict(engine, copy, n);
-                free(copy);
                 *result = v;
                 return true;
             }
@@ -266,11 +265,10 @@ static bool ind_trystore(hvalue_t root, hvalue_t *indices, int n, hvalue_t value
             return true;
         }
         int nsize = size * sizeof(hvalue_t);
-        hvalue_t *copy = malloc(nsize);
+        hvalue_t copy[nsize];
         memcpy(copy, vals, nsize);
         copy[index] = nd;
         hvalue_t v = value_put_list(engine, copy, nsize);
-        free(copy);
         *result = v;
         return true;
     }
@@ -308,11 +306,10 @@ bool ind_remove(hvalue_t root, hvalue_t *indices, int n, struct engine *engine,
                     return true;
                 }
                 int n = size * sizeof(hvalue_t);
-                hvalue_t *copy = malloc(n);
+                hvalue_t copy[n];
                 memcpy(copy, vals, n);
                 copy[i + 1] = nd;
                 hvalue_t v = value_put_dict(engine, copy, n);
-                free(copy);
                 *result = v;
                 return true;
             }
@@ -346,11 +343,10 @@ bool ind_remove(hvalue_t root, hvalue_t *indices, int n, struct engine *engine,
             return true;
         }
         int n = size * sizeof(hvalue_t);
-        hvalue_t *copy = malloc(n);
+        hvalue_t copy[n];
         memcpy(copy, vals, n);
         copy[index] = nd;
         hvalue_t v = value_put_list(engine, copy, n);
-        free(copy);
         *result = v;
         return true;
     }
@@ -2010,14 +2006,13 @@ hvalue_t f_intersection(
     if (VALUE_TYPE(e1) == VALUE_SET) {
         // get all the sets
 		assert(n > 0);
-        struct val_info *vi = malloc(n * sizeof(*vi));
+        struct val_info vi[n];
 		vi[0].vals = value_get(args[0], &vi[0].size); 
 		vi[0].index = 0;
         unsigned int min_size = vi[0].size;     // minimum set size
         hvalue_t max_val = vi[0].vals[0];       // maximum value over the minima of all sets
         for (int i = 1; i < n; i++) {
             if (VALUE_TYPE(args[i]) != VALUE_SET) {
-                free(vi);
                 return value_ctx_failure(ctx, engine, "'&' applied to mix of sets and other types");
             }
             if (args[i] == VALUE_SET) {
@@ -2037,7 +2032,6 @@ hvalue_t f_intersection(
 
         // If any are empty lists, we're done.
         if (min_size == 0) {
-            free(vi);
             return VALUE_SET;
         }
 
@@ -2089,7 +2083,6 @@ hvalue_t f_intersection(
         }
 
         hvalue_t result = value_put_set(engine, vals, (char *) v - (char *) vals);
-        free(vi);
         free(vals);
         return result;
     }
@@ -2101,11 +2094,10 @@ hvalue_t f_intersection(
         return value_ctx_failure(ctx, engine, "'&' can only be applied to ints and dicts");
     }
     // get all the dictionaries
-    struct val_info *vi = malloc(n * sizeof(*vi));
+    struct val_info vi[n];
     int total = 0;
     for (int i = 0; i < n; i++) {
         if (VALUE_TYPE(args[i]) != VALUE_DICT) {
-            free(vi);
             return value_ctx_failure(ctx, engine, "'&' applied to mix of dictionaries and other types");
         }
         if (args[i] == VALUE_DICT) {
@@ -2120,7 +2112,6 @@ hvalue_t f_intersection(
 
     // If all are empty dictionaries, we're done.
     if (total == 0) {
-        free(vi);
         return VALUE_DICT;
     }
 
@@ -2159,7 +2150,6 @@ hvalue_t f_intersection(
     }
 
     hvalue_t result = value_put_dict(engine, vals, 2 * out * sizeof(hvalue_t));
-    free(vi);
     free(vals);
     return result;
 }
@@ -2510,12 +2500,11 @@ hvalue_t f_plus(struct state *state, struct context *ctx, hvalue_t *args, int n,
 
     if (VALUE_TYPE(e1) == VALUE_LIST) {
         // get all the lists
-        struct val_info *vi = malloc(n * sizeof(*vi));
+        struct val_info vi[n];
         int total = 0;
         for (int i = 0; i < n; i++) {
             if (VALUE_TYPE(args[i]) != VALUE_LIST) {
                 value_ctx_failure(ctx, engine, "+: applied to mix of value types");
-                free(vi);
                 return 0;
             }
             if (args[i] == VALUE_LIST) {
@@ -2530,7 +2519,6 @@ hvalue_t f_plus(struct state *state, struct context *ctx, hvalue_t *args, int n,
 
         // If all are empty lists, we're done.
         if (total == 0) {
-            free(vi);
             return VALUE_LIST;
         }
 
@@ -2543,8 +2531,6 @@ hvalue_t f_plus(struct state *state, struct context *ctx, hvalue_t *args, int n,
         }
 
         hvalue_t result = value_put_list(engine, vals, total);
-
-        free(vi);
         free(vals);
         return result;
     }
@@ -2876,11 +2862,10 @@ hvalue_t f_union(struct state *state, struct context *ctx, hvalue_t *args, int n
 
     if (VALUE_TYPE(e1) == VALUE_SET) {
         // get all the sets
-        struct val_info *vi = malloc(n * sizeof(*vi));
+        struct val_info vi[n];
         int total = 0;
         for (int i = 0; i < n; i++) {
             if (VALUE_TYPE(args[i]) != VALUE_SET) {
-                free(vi);
                 return value_ctx_failure(ctx, engine, "'|' applied to mix of sets and other types");
             }
             if (args[i] == VALUE_SET) {
@@ -2895,7 +2880,6 @@ hvalue_t f_union(struct state *state, struct context *ctx, hvalue_t *args, int n
 
         // If all are empty lists, we're done.
         if (total == 0) {
-            free(vi);
             return VALUE_SET;
         }
 
@@ -2909,7 +2893,6 @@ hvalue_t f_union(struct state *state, struct context *ctx, hvalue_t *args, int n
 
         n = sort(vals, total / sizeof(hvalue_t));
         hvalue_t result = value_put_set(engine, vals, n * sizeof(hvalue_t));
-        free(vi);
         free(vals);
         return result;
     }
@@ -2918,11 +2901,10 @@ hvalue_t f_union(struct state *state, struct context *ctx, hvalue_t *args, int n
         return value_ctx_failure(ctx, engine, "'|' can only be applied to ints, sets, and dicts");
     }
     // get all the dictionaries
-    struct val_info *vi = malloc(n * sizeof(*vi));
+    struct val_info vi[n];
     int total = 0;
     for (int i = 0; i < n; i++) {
         if (VALUE_TYPE(args[i]) != VALUE_DICT) {
-            free(vi);
             return value_ctx_failure(ctx, engine, "'|' applied to mix of dictionaries and other types");
         }
         if (args[i] == VALUE_DICT) {
@@ -2937,7 +2919,6 @@ hvalue_t f_union(struct state *state, struct context *ctx, hvalue_t *args, int n
 
     // If all are empty dictionaries, we're done.
     if (total == 0) {
-        free(vi);
         return VALUE_DICT;
     }
 
@@ -2965,7 +2946,6 @@ hvalue_t f_union(struct state *state, struct context *ctx, hvalue_t *args, int n
     n++;
 
     hvalue_t result = value_put_dict(engine, vals, 2 * n * sizeof(hvalue_t));
-    free(vi);
     free(vals);
     return result;
 }
@@ -2985,11 +2965,10 @@ hvalue_t f_xor(struct state *state, struct context *ctx, hvalue_t *args, int n, 
     }
 
     // get all the sets
-    struct val_info *vi = malloc(n * sizeof(*vi));
+    struct val_info vi[n];
     int total = 0;
     for (int i = 0; i < n; i++) {
         if (VALUE_TYPE(args[i]) != VALUE_SET) {
-            free(vi);
             return value_ctx_failure(ctx, engine, "'^' applied to mix of value types");
         }
         if (args[i] == VALUE_SET) {
@@ -3004,7 +2983,6 @@ hvalue_t f_xor(struct state *state, struct context *ctx, hvalue_t *args, int n, 
 
     // If all are empty lists, we're done.
     if (total == 0) {
-        free(vi);
         return VALUE_SET;
     }
 
@@ -3033,7 +3011,6 @@ hvalue_t f_xor(struct state *state, struct context *ctx, hvalue_t *args, int n, 
     }
 
     hvalue_t result = value_put_set(engine, vals, k * sizeof(hvalue_t));
-    free(vi);
     free(vals);
     return result;
 }

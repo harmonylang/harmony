@@ -455,15 +455,7 @@ static bool onestep(
     }
 
     // Remove old context from the bag
-    hvalue_t count = value_dict_load(sc->ctxbag, ctx);
-    assert(VALUE_TYPE(count) == VALUE_INT);
-    count -= 1 << VALUE_BITS;
-    if (count == VALUE_INT) {
-        sc->ctxbag = value_dict_remove(&step->engine, sc->ctxbag, ctx);
-    }
-    else {
-        sc->ctxbag = value_dict_store(&step->engine, sc->ctxbag, ctx, count);
-    }
+    sc->ctxbag = value_bag_remove(&step->engine, sc->ctxbag, ctx);
 
     // If choosing, save in state
     if (choosing) {
@@ -1243,15 +1235,7 @@ hvalue_t twostep(
     }
 
     // Remove old context from the bag
-    hvalue_t count = value_dict_load(sc->ctxbag, ctx);
-    assert(VALUE_TYPE(count) == VALUE_INT);
-    count -= 1 << VALUE_BITS;
-    if (count == VALUE_INT) {
-        sc->ctxbag = value_dict_remove(&step.engine, sc->ctxbag, ctx);
-    }
-    else {
-        sc->ctxbag = value_dict_store(&step.engine, sc->ctxbag, ctx, count);
-    }
+    sc->ctxbag = value_bag_remove(&step.engine, sc->ctxbag, ctx);
 
     hvalue_t after = value_put_context(&step.engine, step.ctx);
 
@@ -1778,8 +1762,6 @@ char *state_string(struct state *state){
     v = value_string(state->ctxbag);
     strbuf_printf(&sb, ",%s", v); free(v);
     v = value_string(state->stopbag);
-    strbuf_printf(&sb, ",%s", v); free(v);
-    v = value_string(state->termbag);
     strbuf_printf(&sb, ",%s", v); free(v);
     v = value_string(state->invariants);
     strbuf_printf(&sb, ",%s}", v); free(v);

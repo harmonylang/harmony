@@ -13,7 +13,6 @@ typedef struct state {
     hvalue_t choosing;    // context that is choosing if non-zero
     hvalue_t ctxbag;      // bag of running contexts
     hvalue_t stopbag;     // bag of stopped contexts
-    hvalue_t termbag;     // bag of terminated contexts
     hvalue_t invariants;  // set of invariants that must hold
     hvalue_t dfa_state;
 } state;
@@ -124,6 +123,7 @@ bool value_tryload(struct engine *engine, hvalue_t dict, hvalue_t key, hvalue_t 
 hvalue_t value_remove(struct engine *engine, hvalue_t root, hvalue_t key);
 hvalue_t value_dict_remove(struct engine *engine, hvalue_t dict, hvalue_t key);
 hvalue_t value_bag_add(struct engine *engine, hvalue_t bag, hvalue_t v, int multiplicity);
+hvalue_t value_bag_remove(struct engine *engine, hvalue_t bag, hvalue_t v);
 void value_ctx_push(struct context *ctx, hvalue_t v);
 hvalue_t value_ctx_pop(struct context *ctx);
 void value_ctx_extend(struct context *ctx);
