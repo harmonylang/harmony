@@ -368,10 +368,10 @@ void op_Address(const void *env, struct state *state, struct step *step, struct 
     }
 
     unsigned int size;
-    hvalue_t *indices = value_copy_extend(av, sizeof(hvalue_t), &size);
+    hvalue_t *indices_orig = value_get(av, &size);
+    hvalue_t indices[size / sizeof(hvalue_t) + 1];
     indices[size / sizeof(hvalue_t)] = index;
     ctx_push(step->ctx, value_put_address(&step->engine, indices, size + sizeof(index)));
-    free(indices);
     step->ctx->pc++;
 }
 
