@@ -370,6 +370,7 @@ void op_Address(const void *env, struct state *state, struct step *step, struct 
     unsigned int size;
     hvalue_t *indices_orig = value_get(av, &size);
     hvalue_t indices[size / sizeof(hvalue_t) + 1];
+    memcpy(indices, indices_orig, size);
     indices[size / sizeof(hvalue_t)] = index;
     ctx_push(step->ctx, value_put_address(&step->engine, indices, size + sizeof(index)));
     step->ctx->pc++;

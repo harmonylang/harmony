@@ -329,6 +329,9 @@ static bool onestep(
             }
 
             int stacksize = step->ctx->sp * sizeof(hvalue_t);
+            if (step->ctx->extended) {
+                stacksize += ctx_extent * sizeof(hvalue_t);
+            }
             int combosize = sizeof(struct combined) + stacksize;
             struct combined *combo = calloc(1, combosize);
             combo->state = *sc;
@@ -1173,6 +1176,9 @@ hvalue_t twostep(
 
             int stacksize = step.ctx->sp * sizeof(hvalue_t);
             int combosize = sizeof(struct combined) + stacksize;
+            if (step.ctx->extended) {
+                stacksize += ctx_extent * sizeof(hvalue_t);
+            }
             struct combined *combo = calloc(1, combosize);
             combo->state = *sc;
             memcpy(&combo->context, step.ctx, sizeof(*step.ctx) + stacksize);

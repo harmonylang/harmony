@@ -974,11 +974,10 @@ bool value_dict_trystore(struct engine *engine, hvalue_t dict, hvalue_t key, hva
                 return true;
             }
             int n = size * sizeof(hvalue_t);
-            hvalue_t *copy = malloc(n);
+            hvalue_t copy[size];
             memcpy(copy, vals, n);
             copy[i + 1] = value;
             hvalue_t v = value_put_dict(engine, copy, n);
-            free(copy);
             *result = v;
             return true;
         }
@@ -992,13 +991,12 @@ bool value_dict_trystore(struct engine *engine, hvalue_t dict, hvalue_t key, hva
     }
 
     int n = (size + 2) * sizeof(hvalue_t);
-    hvalue_t *nvals = malloc(n);
+    hvalue_t nvals[size + 2];
     memcpy(nvals, vals, i * sizeof(hvalue_t));
     nvals[i] = key;
     nvals[i+1] = value;
     memcpy(&nvals[i+2], &vals[i], (size - i) * sizeof(hvalue_t));
     hvalue_t v = value_put_dict(engine, nvals, n);
-    free(nvals);
     *result = v;
     return true;
 }
@@ -1029,11 +1027,10 @@ bool value_trystore(struct engine *engine, hvalue_t root, hvalue_t key, hvalue_t
                     *result = root;
                     return true;
                 }
-                hvalue_t *nvals = malloc(size);
+                hvalue_t nvals[n];
                 memcpy(nvals, vals, size);
                 nvals[i + 1] = value;
                 hvalue_t v = value_put_dict(engine, nvals, size);
-                free(nvals);
                 *result = v;
                 return true;
             }
@@ -1047,13 +1044,12 @@ bool value_trystore(struct engine *engine, hvalue_t root, hvalue_t key, hvalue_t
         }
 
         size += 2 * sizeof(hvalue_t);
-        hvalue_t *nvals = malloc(size);
+        hvalue_t nvals[n + 2];
         memcpy(nvals, vals, i * sizeof(hvalue_t));
         nvals[i] = key;
         nvals[i+1] = value;
         memcpy(&nvals[i+2], &vals[i], (n - i) * sizeof(hvalue_t));
         hvalue_t v = value_put_dict(engine, nvals, size);
-        free(nvals);
         *result = v;
         return true;
     }
@@ -1080,11 +1076,10 @@ bool value_trystore(struct engine *engine, hvalue_t root, hvalue_t key, hvalue_t
             }
             nsize = size;
         }
-        hvalue_t *nvals = malloc(nsize);
+        hvalue_t nvals[size / sizeof(hvalue_t)];
         memcpy(nvals, vals, size);
         nvals[index] = value;
         hvalue_t v = value_put_list(engine, nvals, nsize);
-        free(nvals);
         *result = v;
         return true;
     }
@@ -1151,12 +1146,11 @@ hvalue_t value_dict_remove(struct engine *engine, hvalue_t dict, hvalue_t key){
     for (unsigned int i = 0; i < size; i += 2) {
         if (vals[i] == key) {
             int n = (size - 2) * sizeof(hvalue_t);
-            hvalue_t *copy = malloc(n);
+            hvalue_t copy[size - 2];
             memcpy(copy, vals, i * sizeof(hvalue_t));
             memcpy(&copy[i], &vals[i+2],
                    (size - i - 2) * sizeof(hvalue_t));
             hvalue_t v = value_put_dict(engine, copy, n);
-            free(copy);
             return v;
         }
         /*
@@ -1189,12 +1183,11 @@ hvalue_t value_remove(struct engine *engine, hvalue_t root, hvalue_t key){
         for (unsigned i = 0; i < n; i += 2) {
             if (vals[i] == key) {
                 size -= 2 * sizeof(hvalue_t);
-                hvalue_t *copy = malloc(size);
+                hvalue_t copy[size / sizeof(hvalue_t)];
                 memcpy(copy, vals, i * sizeof(hvalue_t));
                 memcpy(&copy[i], &vals[i+2],
                        (n - i - 2) * sizeof(hvalue_t));
                 hvalue_t v = value_put_dict(engine, copy, size);
-                free(copy);
                 return v;
             }
             /* Not worth it
@@ -1215,12 +1208,11 @@ hvalue_t value_remove(struct engine *engine, hvalue_t root, hvalue_t key){
             return root;
         }
         size -= sizeof(hvalue_t);
-        hvalue_t *copy = malloc(size);
+        hvalue_t copy[size / sizeof(hvalue_t)];
         memcpy(copy, vals, index * sizeof(hvalue_t));
         memcpy(&copy[index], &vals[index+1],
                (n - index - 1) * sizeof(hvalue_t));
         hvalue_t v = value_put_list(engine, copy, size);
-        free(copy);
         return v;
     }
 
