@@ -490,8 +490,9 @@ static bool onestep(
 
     // See if this state has been computed before
     bool new;
+    mutex_t *lock;
     struct dict_assoc *da = dict_find_lock(w->visited, &w->allocator,
-                sc, sizeof(struct state), &new);
+                sc, sizeof(struct state), &new, &lock);
     struct state *state = (struct state *) &da[1];
     struct node *next = (struct node *) &state[1];
     if (new) {
@@ -516,6 +517,19 @@ static bool onestep(
     }
     edge->dst = next;
 
+    // Backward edge from node to parent.
+    edge->bwdnext = next->bwd;
+    next->bwd = edge;
+
+    mutex_release(lock);
+
+    // Don't do the forward edge at this time as that would involve lockng
+    // the parent node.  Instead assign that task to one of the workers
+    // in the next phase.
+    struct edge **pe = &w->edges[node->id % w->nworkers];
+    edge->fwdnext = *pe;
+    *pe = edge;
+
     if (failure) {
         struct failure *f = new_alloc(struct failure);
         f->type = infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
@@ -532,19 +546,6 @@ static bool onestep(
             w->failures = f;
         }
     }
-
-    // Backward edge from node to parent.
-    edge->bwdnext = next->bwd;
-    next->bwd = edge;
-
-    // Don't do the forward edge at this time as that would involve lockng
-    // the parent node.  Instead assign that task to one of the workers
-    // in the next phase.
-    struct edge **pe = &w->edges[node->id % w->nworkers];
-    edge->fwdnext = *pe;
-    *pe = edge;
-
-    dict_insert_release(w->visited, sc, sizeof(struct state));
 
     // We stole the access info and log
     step->ai = NULL;

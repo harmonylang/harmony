@@ -190,14 +190,13 @@ struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
 
 // Similar to dict_find(), but gets a lock on the bucket
 struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
-                            const void *key, unsigned int keyn, bool *new){
+                            const void *key, unsigned int keyn, bool *new, mutex_t **lock){
     uint32_t hash = hash_func(key, keyn);
     unsigned int index = hash % dict->length;
     struct dict_bucket *db = &dict->table[index];
+    *lock = &dict->locks[index % dict->nlocks];
 
-	if (dict->concurrent) {
-		mutex_acquire(&dict->locks[index % dict->nlocks]);
-	}
+	assert(dict->concurrent);
 
 	struct dict_assoc *k = db->stable;
 	while (k != NULL) {
@@ -205,43 +204,38 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
             if (new != NULL) {
                 *new = false;
             }
+            mutex_acquire(*lock);
 			return k;
 		}
 		k = k->next;
 	}
 
-    if (dict->concurrent) {
-        // See if the item is in the unstable list
-        k = db->unstable;
-        while (k != NULL) {
-            if (k->len == keyn && memcmp((char *) (k+1), key, keyn) == 0) {
-                if (new != NULL) {
-                    *new = false;
-                }
-                return k;
+    mutex_acquire(*lock);
+
+    // See if the item is in the unstable list
+    k = db->unstable;
+    while (k != NULL) {
+        if (k->len == keyn && memcmp((char *) (k+1), key, keyn) == 0) {
+            if (new != NULL) {
+                *new = false;
             }
-            k = k->next;
+            return k;
         }
+        k = k->next;
     }
+
 
     k = dict_assoc_new(dict, al, (char *) key, keyn, hash);
-    if (dict->concurrent) {
-        k->next = db->unstable;
-        db->unstable = k;
+    k->next = db->unstable;
+    db->unstable = k;
 
-        // Keep track of this unstable node in the list for the
-        // worker who's going to look at this bucket
-        int worker = index * dict->nworkers / dict->length;
-        struct dict_worker *dw = &dict->workers[al->worker];
-        k->unstable_next = dw->unstable[worker];
-        dw->unstable[worker] = k;
-        dw->count++;
-    }
-    else {
-        k->next = db->stable;
-        db->stable = k;
-		dict->count++;
-    }
+    // Keep track of this unstable node in the list for the
+    // worker who's going to look at this bucket
+    int worker = index * dict->nworkers / dict->length;
+    struct dict_worker *dw = &dict->workers[al->worker];
+    k->unstable_next = dw->unstable[worker];
+    dw->unstable[worker] = k;
+    dw->count++;
 
     if (new != NULL) {
         *new = true;
@@ -249,23 +243,10 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
 	return k;
 }
 
-void dict_insert_release(struct dict *dict, const void *key, unsigned int keylen){
-    unsigned int index = hash_func(key, keylen) % dict->length;
-    mutex_release(&dict->locks[index % dict->nlocks]);
-}
-
 // Returns a pointer to the value
 void *dict_insert(struct dict *dict, struct allocator *al,
                             const void *key, unsigned int keyn, bool *new){
     struct dict_assoc *k = dict_find(dict, al, key, keyn, new);
-    unsigned int alen = (keyn + DICT_ALIGN - 1) & ~(DICT_ALIGN - 1);
-    return (char *) (k+1) + alen;
-}
-
-// Returns a pointer to the value
-void *dict_insert_lock(struct dict *dict, struct allocator *al,
-                            const void *key, unsigned int keyn, bool *new){
-    struct dict_assoc *k = dict_find_lock(dict, al, key, keyn, new);
     unsigned int alen = (keyn + DICT_ALIGN - 1) & ~(DICT_ALIGN - 1);
     return (char *) (k+1) + alen;
 }
