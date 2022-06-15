@@ -1227,8 +1227,10 @@ void op_Spawn(
     assert(pc < (hvalue_t) global->code.len);
     assert(strcmp(global->code.instrs[pc].oi->name, "Frame") == 0);
 
-    struct context *ctx = calloc(1, sizeof(struct context) +
-                        (ctx_extent + 2) * sizeof(hvalue_t));
+    char context[sizeof(struct context) +
+                        (ctx_extent + 2) * sizeof(hvalue_t)];
+    struct context *ctx = (struct context *) context;
+    memset(ctx, 0, sizeof(*ctx));
 
     if (thisval != VALUE_DICT) {
         value_ctx_extend(ctx);
@@ -1241,11 +1243,16 @@ void op_Spawn(
     ctx_push(ctx, VALUE_TO_INT(CALLTYPE_PROCESS));
     ctx_push(ctx, arg);
     if (global->run_direct) {
-        spawn_thread(global, state, ctx);
+        unsigned int size = sizeof(*ctx) + (ctx->sp * sizeof(hvalue_t));
+        if (ctx->extended) {
+            size += ctx_extent * sizeof(hvalue_t);
+        }
+        struct context *copy = malloc(size + 4096);      // TODO
+        memcpy(copy, ctx, size);
+        spawn_thread(global, state, copy);
     }
     else {
         hvalue_t v = value_put_context(&step->engine, ctx);
-        free(ctx);
         state->ctxbag = value_bag_add(&step->engine, state->ctxbag, v, 1);
     }
     step->ctx->pc++;
@@ -2036,7 +2043,7 @@ hvalue_t f_intersection(
         }
 
         // Allocate sufficient memory.
-        hvalue_t *vals = malloc((size_t) min_size), *v = vals;
+        hvalue_t vals[min_size / sizeof(hvalue_t)], *v = vals;
 
         bool done = false;
         for (unsigned int i = 0; i < min_size; i++) {
@@ -2083,7 +2090,6 @@ hvalue_t f_intersection(
         }
 
         hvalue_t result = value_put_set(engine, vals, (char *) v - (char *) vals);
-        free(vals);
         return result;
     }
 
@@ -2116,7 +2122,7 @@ hvalue_t f_intersection(
     }
 
     // Concatenate the dictionaries
-    hvalue_t *vals = malloc(total);
+    hvalue_t vals[total / sizeof(hvalue_t)];
     total = 0;
     for (int i = 0; i < n; i++) {
         memcpy((char *) vals + total, vi[i].vals, vi[i].size);
@@ -2150,7 +2156,6 @@ hvalue_t f_intersection(
     }
 
     hvalue_t result = value_put_dict(engine, vals, 2 * out * sizeof(hvalue_t));
-    free(vals);
     return result;
 }
 
@@ -2195,13 +2200,12 @@ hvalue_t f_keys(struct state *state, struct context *ctx, hvalue_t *args, int n,
 
     unsigned int size;
     hvalue_t *vals = value_get(v, &size);
-    hvalue_t *keys = malloc(size / 2);
+    hvalue_t keys[size / 2 / sizeof(hvalue_t)];
     size /= 2 * sizeof(hvalue_t);
     for (unsigned int i = 0; i < size; i++) {
         keys[i] = vals[2*i];
     }
     hvalue_t result = value_put_set(engine, keys, size * sizeof(hvalue_t));
-    free(keys);
     return result;
 }
 
@@ -2405,7 +2409,7 @@ hvalue_t f_minus(
         else {
             vals2 = value_get(e2, &size2);
         }
-        hvalue_t *vals = malloc(size2);
+        hvalue_t vals[size2 / sizeof(hvalue_t)];
         size1 /= sizeof(hvalue_t);
         size2 /= sizeof(hvalue_t);
 
@@ -2430,7 +2434,6 @@ hvalue_t f_minus(
             *q++ = *p2++; size2--;
         }
         hvalue_t result = value_put_set(engine, vals, (char *) q - (char *) vals);
-        free(vals);
         return result;
     }
 }
@@ -2523,7 +2526,7 @@ hvalue_t f_plus(struct state *state, struct context *ctx, hvalue_t *args, int n,
         }
 
         // Concatenate the lists
-        hvalue_t *vals = malloc(total);
+        hvalue_t vals[total / sizeof(hvalue_t)];
         total = 0;
         for (int i = n; --i >= 0;) {
             memcpy((char *) vals + total, vi[i].vals, vi[i].size);
@@ -2531,7 +2534,6 @@ hvalue_t f_plus(struct state *state, struct context *ctx, hvalue_t *args, int n,
         }
 
         hvalue_t result = value_put_list(engine, vals, total);
-        free(vals);
         return result;
     }
 
@@ -2595,12 +2597,11 @@ hvalue_t f_range(struct state *state, struct context *ctx, hvalue_t *args, int n
     int cnt = (finish - start) + 1;
 	assert(cnt > 0);
 	assert(cnt < 1000);		// seems unlikely...
-    hvalue_t *v = malloc(cnt * sizeof(hvalue_t));
+    hvalue_t v[cnt];
     for (int i = 0; i < cnt; i++) {
         v[i] = VALUE_TO_INT(start + i);
     }
     hvalue_t result = value_put_set(engine, v, cnt * sizeof(hvalue_t));
-    free(v);
     return result;
 }
 
@@ -2610,11 +2611,10 @@ hvalue_t f_list_add(struct state *state, struct context *ctx, hvalue_t *args, in
     assert(VALUE_TYPE(list) == VALUE_LIST);
     unsigned int size;
     hvalue_t *vals = value_get(list, &size);
-    hvalue_t *nvals = malloc(size + sizeof(hvalue_t));
+    hvalue_t nvals[size / sizeof(hvalue_t) + 1];
     memcpy(nvals, vals, size);
     memcpy((char *) nvals + size, &args[0], sizeof(hvalue_t));
     hvalue_t result = value_put_list(engine, nvals, size + sizeof(hvalue_t));
-    free(nvals);
     return result;
 }
 
@@ -2640,23 +2640,21 @@ hvalue_t f_dict_add(struct state *state, struct context *ctx, hvalue_t *args, in
         if (cmp <= 0) {
             return dict;
         }
-        hvalue_t *nvals = malloc(size);
+        hvalue_t nvals[size / sizeof(hvalue_t)];
         memcpy(nvals, vals, size);
         * (hvalue_t *) ((char *) nvals + (i + sizeof(hvalue_t))) = value;
 
         hvalue_t result = value_put_dict(engine, nvals, size);
-        free(nvals);
         return result;
     }
     else {
-        hvalue_t *nvals = malloc(size + 2*sizeof(hvalue_t));
+        hvalue_t nvals[size / sizeof(hvalue_t) + 2];
         memcpy(nvals, vals, i);
         * (hvalue_t *) ((char *) nvals + i) = key;
         * (hvalue_t *) ((char *) nvals + (i + sizeof(hvalue_t))) = value;
         memcpy((char *) nvals + i + 2*sizeof(hvalue_t), v, size - i);
 
         hvalue_t result = value_put_dict(engine, nvals, size + 2*sizeof(hvalue_t));
-        free(nvals);
         return result;
     }
 }
@@ -2679,13 +2677,12 @@ hvalue_t f_set_add(struct state *state, struct context *ctx, hvalue_t *args, int
         }
     }
 
-    hvalue_t *nvals = malloc(size + sizeof(hvalue_t));
+    hvalue_t nvals[size / sizeof(hvalue_t) + 1];
     memcpy(nvals, vals, i);
     * (hvalue_t *) ((char *) nvals + i) = elt;
     memcpy((char *) nvals + i + sizeof(hvalue_t), v, size - i);
 
     hvalue_t result = value_put_set(engine, nvals, size + sizeof(hvalue_t));
-    free(nvals);
     return result;
 }
 
@@ -2709,17 +2706,16 @@ hvalue_t f_value_bag_add(struct state *state, struct context *ctx, hvalue_t *arg
     if (cmp == 0) {
         assert(VALUE_TYPE(v[1]) == VALUE_INT);
         int cnt = VALUE_FROM_INT(v[1]) + 1;
-        hvalue_t *nvals = malloc(size);
+        hvalue_t nvals[size / sizeof(hvalue_t)];
         memcpy(nvals, vals, size);
         * (hvalue_t *) ((char *) nvals + (i + sizeof(hvalue_t))) =
                                         VALUE_TO_INT(cnt);
 
         hvalue_t result = value_put_dict(engine, nvals, size);
-        free(nvals);
         return result;
     }
     else {
-        hvalue_t *nvals = malloc(size + 2*sizeof(hvalue_t));
+        hvalue_t nvals[size / sizeof(hvalue_t) + 2];
         memcpy(nvals, vals, i);
         * (hvalue_t *) ((char *) nvals + i) = elt;
         * (hvalue_t *) ((char *) nvals + (i + sizeof(hvalue_t))) =
@@ -2727,7 +2723,6 @@ hvalue_t f_value_bag_add(struct state *state, struct context *ctx, hvalue_t *arg
         memcpy((char *) nvals + i + 2*sizeof(hvalue_t), v, size - i);
 
         hvalue_t result = value_put_dict(engine, nvals, size + 2*sizeof(hvalue_t));
-        free(nvals);
         return result;
     }
 }
@@ -2821,12 +2816,11 @@ hvalue_t f_times(struct state *state, struct context *ctx, hvalue_t *args, int n
             return VALUE_DICT;
         }
         unsigned int n = size / sizeof(hvalue_t);
-        hvalue_t *r = malloc(result * size);
+        hvalue_t r[result * size / sizeof(hvalue_t)];
         for (unsigned int i = 0; i < result; i++) {
             memcpy(&r[i * n], vals, size);
         }
         hvalue_t v = value_put_list(engine, r, result * size);
-        free(r);
         return v;
     }
     assert(VALUE_TYPE(args[list]) == VALUE_ATOM);
@@ -2884,7 +2878,7 @@ hvalue_t f_union(struct state *state, struct context *ctx, hvalue_t *args, int n
         }
 
         // Concatenate the sets
-        hvalue_t *vals = malloc(total);
+        hvalue_t vals[total / sizeof(hvalue_t)];
         total = 0;
         for (int i = 0; i < n; i++) {
             memcpy((char *) vals + total, vi[i].vals, vi[i].size);
@@ -2893,7 +2887,6 @@ hvalue_t f_union(struct state *state, struct context *ctx, hvalue_t *args, int n
 
         n = sort(vals, total / sizeof(hvalue_t));
         hvalue_t result = value_put_set(engine, vals, n * sizeof(hvalue_t));
-        free(vals);
         return result;
     }
 
@@ -2923,7 +2916,7 @@ hvalue_t f_union(struct state *state, struct context *ctx, hvalue_t *args, int n
     }
 
     // Concatenate the dictionaries
-    hvalue_t *vals = malloc(total);
+    hvalue_t vals[total / sizeof(hvalue_t)];
     total = 0;
     for (int i = 0; i < n; i++) {
         memcpy((char *) vals + total, vi[i].vals, vi[i].size);
@@ -2946,7 +2939,6 @@ hvalue_t f_union(struct state *state, struct context *ctx, hvalue_t *args, int n
     n++;
 
     hvalue_t result = value_put_dict(engine, vals, 2 * n * sizeof(hvalue_t));
-    free(vals);
     return result;
 }
 
@@ -2987,7 +2979,7 @@ hvalue_t f_xor(struct state *state, struct context *ctx, hvalue_t *args, int n, 
     }
 
     // Concatenate the sets
-    hvalue_t *vals = malloc(total);
+    hvalue_t vals[total / sizeof(hvalue_t)];
     total = 0;
     for (int i = 0; i < n; i++) {
         memcpy((char *) vals + total, vi[i].vals, vi[i].size);
@@ -3011,7 +3003,6 @@ hvalue_t f_xor(struct state *state, struct context *ctx, hvalue_t *args, int n, 
     }
 
     hvalue_t result = value_put_set(engine, vals, k * sizeof(hvalue_t));
-    free(vals);
     return result;
 }
 
