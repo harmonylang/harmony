@@ -32,10 +32,10 @@ struct edge {
     struct node *dst;        // destination node
     hvalue_t after;          // resulting context
     struct access_info *ai;  // to detect data races
-    hvalue_t *log;           // print history            TODO
     uint16_t nsteps;         // # microsteps
-    uint16_t nlog : 15;      // size of print history
     bool interrupt : 1;      // set if state change is an interrupt
+    uint16_t nlog : 15;      // size of print history
+    hvalue_t log[0];         // print history (immediately follows edge)
 };
 
 enum fail_type {

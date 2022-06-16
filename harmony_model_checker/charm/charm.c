@@ -496,9 +496,7 @@ static bool onestep(
     edge->interrupt = interrupt;
     edge->after = after;
     edge->ai = step->ai;
-    // TODO edge->log = step->log;
-    edge->log = (hvalue_t *) &edge[1];
-    memcpy(&edge[1], step->log, step->nlog * sizeof(hvalue_t));
+    memcpy(edge->log, step->log, step->nlog * sizeof(hvalue_t));
     edge->nlog = step->nlog;
     edge->nsteps = instrcnt;
 
