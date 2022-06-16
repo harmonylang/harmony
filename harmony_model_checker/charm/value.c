@@ -1344,6 +1344,20 @@ hvalue_t value_ctx_failure(struct context *ctx, struct engine *engine, char *fmt
     return 0;
 }
 
+bool value_state_all_eternal(struct state *state) {
+    if (state->bagsize == 0) {
+        return true;
+    }
+    for (unsigned int i = 0; i < state->bagsize; i++) {
+        assert(VALUE_TYPE(state->contexts[i]) == VALUE_CONTEXT);
+        struct context *ctx = value_get(state->contexts[i], NULL);
+        if (!ctx->eternal) {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool value_ctx_all_eternal(hvalue_t ctxbag) {
     if (ctxbag == VALUE_DICT) {     // optimization
         return true;
@@ -1351,16 +1365,63 @@ bool value_ctx_all_eternal(hvalue_t ctxbag) {
     unsigned int size;
     hvalue_t *vals = value_get(ctxbag, &size);
     size /= sizeof(hvalue_t);
-    bool all = true;
     for (unsigned int i = 0; i < size; i += 2) {
         assert(VALUE_TYPE(vals[i]) == VALUE_CONTEXT);
         assert(VALUE_TYPE(vals[i + 1]) == VALUE_INT);
         struct context *ctx = value_get(vals[i], NULL);
         assert(ctx != NULL);
         if (!ctx->eternal) {
-            all = false;
+            return false;
+        }
+    }
+    return true;
+}
+
+void context_remove(struct state *state, hvalue_t ctx){
+    for (unsigned int i = 0; i < state->bagsize; i++) {
+        if (state->contexts[i] == ctx) {
+            if (multiplicities(state)[i] > 1) {
+                multiplicities(state)[i]--;
+            }
+            else {
+                state->bagsize--;
+                memmove(&state->contexts[i], &state->contexts[i+1],
+                        (state->bagsize - i) * sizeof(hvalue_t) + i);
+                memmove((char *) &state->contexts[state->bagsize] + i,
+                        (char *) &state->contexts[state->bagsize + 1] + i + 1,
+                        state->bagsize - i);
+            }
             break;
         }
     }
-    return all;
+}
+
+void context_add(struct state *state, hvalue_t ctx){
+    unsigned int i;
+    for (i = 0; i < state->bagsize; i++) {
+        if (state->contexts[i] == ctx) {
+            multiplicities(state)[i]++;
+            break;
+        }
+        if (state->contexts[i] > ctx) {
+            // Move the last multiplicities
+            memmove((char *) &state->contexts[state->bagsize + 1] + i + 1,
+                    (char *) &state->contexts[state->bagsize] + i,
+                    state->bagsize - i);
+            // Move the last contexts plus the first multiplicitkes
+            memmove(&state->contexts[i+1], &state->contexts[i],
+                                (state->bagsize - i) * sizeof(hvalue_t) + i);
+            state->bagsize++;
+            state->contexts[i] = ctx;
+            multiplicities(state)[i] = 1;
+            break;
+        }
+    }
+    if (i == state->bagsize) {
+        // Move the multiplicities
+        memmove(&state->contexts[i+1], &state->contexts[i], i);
+        state->bagsize++;
+        state->contexts[i] = ctx;
+        multiplicities(state)[i] = 1;
+    }
 }

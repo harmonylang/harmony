@@ -483,7 +483,7 @@ void op_Print(const void *env, struct state *state, struct step *step, struct gl
         printf("%s\n", s);
         free(s);
     }
-    step->log = realloc(step->log, (step->nlog + 1) * sizeof(symbol));
+    // TODO step->log = realloc(step->log, (step->nlog + 1) * sizeof(symbol));
     step->log[step->nlog++] = symbol;
     if (global->dfa != NULL) {
         int nstate = dfa_step(global->dfa, state->dfa_state, symbol);
@@ -854,12 +854,12 @@ void op_Go(
 
     hvalue_t result = ctx_pop(step->ctx);
     unsigned int size;
+    // TODO
     struct context *copy = value_copy_extend(ctx, sizeof(hvalue_t), &size);
     ctx_push(copy, result);
     copy->stopped = false;
-    hvalue_t v = value_put_context(&step->engine, copy);
+    context_add(state, value_put_context(&step->engine, copy));
     free(copy);
-    state->ctxbag = value_bag_add(&step->engine, state->ctxbag, v, 1);
     step->ctx->pc++;
 }
 
@@ -1248,13 +1248,12 @@ void op_Spawn(
         if (ctx->extended) {
             size += ctx_extent * sizeof(hvalue_t);
         }
-        struct context *copy = malloc(size + 4096);      // TODO
+        struct context *copy = malloc(size + 4096);      // TODO.  How much
         memcpy(copy, ctx, size);
         spawn_thread(global, state, copy);
     }
     else {
-        hvalue_t v = value_put_context(&step->engine, ctx);
-        state->ctxbag = value_bag_add(&step->engine, state->ctxbag, v, 1);
+        context_add(state, value_put_context(&step->engine, ctx));
     }
     step->ctx->pc++;
 }
@@ -1881,18 +1880,12 @@ hvalue_t f_countLabel(struct state *state, struct context *ctx, hvalue_t *args, 
     }
     e = VALUE_FROM_PC(e);
 
-    unsigned int size;
-    hvalue_t *vals = value_get(state->ctxbag, &size);
-    size /= sizeof(hvalue_t);
-    assert(size > 0);
-    assert(size % 2 == 0);
-    hvalue_t result = 0;
-    for (unsigned int i = 0; i < size; i += 2) {
-        assert(VALUE_TYPE(vals[i]) == VALUE_CONTEXT);
-        assert(VALUE_TYPE(vals[i+1]) == VALUE_INT);
-        struct context *ctx = value_get(vals[i], NULL);
+    unsigned int result = 0;
+    for (unsigned int i = 0; i < state->bagsize; i++) {
+        assert(VALUE_TYPE(state->contexts[i]) == VALUE_CONTEXT);
+        struct context *ctx = value_get(state->contexts[i], NULL);
         if ((hvalue_t) ctx->pc == e) {
-            result += VALUE_FROM_INT(vals[i+1]);
+            result += multiplicities(state)[i];
         }
     }
     return VALUE_TO_INT(result);
@@ -2687,47 +2680,6 @@ hvalue_t f_set_add(struct state *state, struct context *ctx, hvalue_t *args, int
     return result;
 }
 
-// TODO: is this used??
-hvalue_t f_value_bag_add(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
-    assert(n == 2);
-    int64_t elt = args[0], dict = args[1];
-    assert(VALUE_TYPE(dict) == VALUE_DICT);
-    unsigned int size;
-    hvalue_t *vals = value_get(dict, &size), *v;
-
-    unsigned int i = 0;
-    int cmp = 1;
-    for (v = vals; i < size; i += 2 * sizeof(hvalue_t), v++) {
-        cmp = value_cmp(elt, *v);
-        if (cmp <= 0) {
-            break;
-        }
-    }
-
-    if (cmp == 0) {
-        assert(VALUE_TYPE(v[1]) == VALUE_INT);
-        int cnt = VALUE_FROM_INT(v[1]) + 1;
-        hvalue_t nvals[size / sizeof(hvalue_t)];
-        memcpy(nvals, vals, size);
-        * (hvalue_t *) ((char *) nvals + (i + sizeof(hvalue_t))) =
-                                        VALUE_TO_INT(cnt);
-
-        hvalue_t result = value_put_dict(engine, nvals, size);
-        return result;
-    }
-    else {
-        hvalue_t nvals[size / sizeof(hvalue_t) + 2];
-        memcpy(nvals, vals, i);
-        * (hvalue_t *) ((char *) nvals + i) = elt;
-        * (hvalue_t *) ((char *) nvals + (i + sizeof(hvalue_t))) =
-                                        VALUE_TO_INT(1);
-        memcpy((char *) nvals + i + 2*sizeof(hvalue_t), v, size - i);
-
-        hvalue_t result = value_put_dict(engine, nvals, size + 2*sizeof(hvalue_t));
-        return result;
-    }
-}
-
 hvalue_t f_shiftleft(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     assert(n == 2);
     int64_t e1 = args[0], e2 = args[1];
@@ -3076,7 +3028,6 @@ struct f_info f_table[] = {
     { "abs", f_abs },
     { "all", f_all },
     { "any", f_any },
-    { "BagAdd", f_value_bag_add },
     { "countLabel", f_countLabel },
     { "DictAdd", f_dict_add },
     { "in", f_in },

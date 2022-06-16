@@ -14,7 +14,8 @@ struct step {
     struct engine engine;
     struct context *ctx;
     struct access_info *ai;
-    hvalue_t *log;
+    // TODO hvalue_t *log;
+    hvalue_t log[16];       // TODO
     unsigned int nlog;
     struct dfa_trie *dfa_trie;
 };

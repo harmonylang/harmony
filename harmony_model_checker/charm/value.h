@@ -9,13 +9,21 @@
 
 typedef struct state {
     hvalue_t vars;        // shared variables
-    hvalue_t seqs;        // sequential variables
+    hvalue_t seqs;        // sequential variables   TODO. make global
     hvalue_t choosing;    // context that is choosing if non-zero
-    hvalue_t ctxbag;      // bag of running contexts
-    hvalue_t stopbag;     // bag of stopped contexts
-    hvalue_t invariants;  // set of invariants that must hold
-    hvalue_t dfa_state;
+    hvalue_t stopbag;     // bag of stopped contexts        // TODO. Do we need this?
+    hvalue_t invariants;  // set of invariants that must hold  TODO: make global
+    uint32_t dfa_state;
+
+    // The state includes a variable-size bag of contexts.  This is represented
+    // by an array of contexts of type hvalue_t, which is followed by an array
+    // of multiplicities (of type uint8_t) with the same number of elements.
+    uint32_t bagsize;
+    hvalue_t contexts[0];   // context/multiplicity pairs
 } state;
+
+#define multiplicities(s)   ((uint8_t *) &(s)->contexts[(s)->bagsize])
+#define state_size(s)       (sizeof(struct state) + (s)->bagsize * (sizeof(hvalue_t) + 1))
 
 typedef struct context {   // context value
     hvalue_t vars;            // method-local variables
@@ -29,7 +37,7 @@ typedef struct context {   // context value
     uint8_t readonly;         // readonly counter
     uint8_t atomic;           // atomic counter
     uint16_t pc;              // program counter
-    uint16_t fp;              // frame pointer
+    uint16_t fp;              // frame pointer      TODO: get rid of this
     uint16_t sp;              // stack size
     uint16_t entry;           // pc of method
     hvalue_t thestack[0];     // growing stack
@@ -129,6 +137,9 @@ hvalue_t value_ctx_pop(struct context *ctx);
 void value_ctx_extend(struct context *ctx);
 hvalue_t value_ctx_failure(struct context *ctx, struct engine *engine, char *fmt, ...);
 bool value_ctx_all_eternal(hvalue_t ctxbag);
+bool value_state_all_eternal(struct state *state);
+void context_remove(struct state *state, hvalue_t ctx);
+void context_add(struct state *state, hvalue_t ctx);
 void value_grow_prepare(struct values_t *values);
 
 
