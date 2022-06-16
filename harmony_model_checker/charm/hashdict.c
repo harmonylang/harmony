@@ -196,6 +196,7 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
     uint32_t hash = hash_func(key, keylen);
     unsigned int index = hash % dict->length;
     struct dict_bucket *db = &dict->table[index];
+    *lock = &dict->locks[index % dict->nlocks];
 
     *lock = &dict->locks[index % dict->nlocks];
 
@@ -252,6 +253,7 @@ void *dict_insert(struct dict *dict, struct allocator *al,
     return (char *) (k+1) + alen;
 }
 
+#ifdef notdef
 // Returns a pointer to the value
 void *dict_insert_lock(struct dict *dict, struct allocator *al,
                             const void *key, unsigned int keylen, bool *new, mutex_t **lock){
@@ -259,6 +261,7 @@ void *dict_insert_lock(struct dict *dict, struct allocator *al,
     unsigned int alen = (keylen + DICT_ALIGN - 1) & ~(DICT_ALIGN - 1);
     return (char *) (k+1) + alen;
 }
+#endif
 
 void *dict_retrieve(const void *p, unsigned int *psize){
     const struct dict_assoc *k = p;

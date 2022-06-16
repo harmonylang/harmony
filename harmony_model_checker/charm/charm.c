@@ -70,23 +70,6 @@ struct worker {
     hvalue_t stack[MAX_CONTEXT_STACK];
 };
 
-static inline uint32_t meiyan(const char *key, int count) {
-	typedef uint32_t *P;
-	uint32_t h = 0x811c9dc5;
-	// uint32_t h = ~0x811c9dc5; // 0x811c9dc5;
-	while (count >= 8) {
-		h = (h ^ ((((*(P)key) << 5) | ((*(P)key) >> 27)) ^ *(P)(key + 4))) * 0xad3e7;
-		count -= 8;
-		key += 8;
-	}
-	#define tmp h = (h ^ *(uint16_t*)key) * 0xad3e7; key += 2;
-	if (count & 4) { tmp tmp }
-	if (count & 2) { tmp }
-	if (count & 1) { h = (h ^ *key) * 0xad3e7; }
-	#undef tmp
-	return h ^ (h >> 16);
-}
-
 // Per thread one-time memory allocator (no free)
 static void *walloc(void *ctx, unsigned int size, bool zero){
     struct worker *w = ctx;
@@ -237,6 +220,7 @@ static bool onestep(
 ) {
     assert(!step->ctx->terminated);
     assert(!step->ctx->failed);
+    assert(step->engine.allocator == &w->allocator);
 
     struct global_t *global = w->global;
 
@@ -253,7 +237,7 @@ static bool onestep(
     bool choosing = false, infinite_loop = false;
     struct dict *infloop = NULL;        // infinite loop detector
     unsigned int instrcnt = 0;
-    struct state as_state;
+    char as_state[sizeof(struct state) + 4096];     // TODO;
     hvalue_t as_context = 0;
     unsigned int as_instrcnt = 0;
     bool rollback = false, failure = false, stopped = false;
@@ -304,7 +288,7 @@ static bool onestep(
             }
             else if (step->ctx->atomic == 0) {
                 // Save the current state in case it needs restoring
-                as_state = *sc;
+                memcpy(as_state, sc, state_size(sc));
                 as_context = value_put_context(&step->engine, step->ctx);
                 as_instrcnt = instrcnt;
             }
@@ -324,7 +308,9 @@ static bool onestep(
                 ai->next = step->ai;
                 step->ai = ai;
             }
+            assert(step->engine.allocator == &w->allocator);
             (*oi->op)(instrs[pc].env, sc, step, global);
+            assert(step->engine.allocator == &w->allocator);
         }
 		assert(step->ctx->pc >= 0);
 		assert(step->ctx->pc < global->code.len);
@@ -346,10 +332,17 @@ static bool onestep(
 
         if (infloop_detect || instrcnt > 1000) {
             if (infloop == NULL) {
+                panic("TODO infloop 1");
                 infloop = dict_new("infloop1", 0, 0, 0, NULL, NULL);
+            }
+            else {
+                panic("TODO infloop 2");
             }
 
             int stacksize = step->ctx->sp * sizeof(hvalue_t);
+            if (step->ctx->extended) {
+                stacksize += ctx_extent * sizeof(hvalue_t);
+            }
             int combosize = sizeof(struct combined) + stacksize;
             struct combined *combo = calloc(1, combosize);
             combo->state = *sc;
@@ -466,7 +459,8 @@ static bool onestep(
 
     hvalue_t after;
     if (rollback) {
-        *sc = as_state;
+        struct state *state = (struct state *) as_state;
+        memcpy(sc, state, state_size(state));
         after = as_context;
         instrcnt = as_instrcnt;
     }
@@ -476,7 +470,7 @@ static bool onestep(
     }
 
     // Remove old context from the bag
-    sc->ctxbag = value_bag_remove(&step->engine, sc->ctxbag, ctx);
+    context_remove(sc, ctx);
 
     // If choosing, save in state
     if (choosing) {
@@ -488,32 +482,34 @@ static bool onestep(
         sc->stopbag = value_bag_add(&step->engine, sc->stopbag, after, 1);
     }
     else if (!terminated) {
-        sc->ctxbag = value_bag_add(&step->engine, sc->ctxbag, after, 1);
+        context_add(sc, after);
     }
 
     // Weight of this step
     int weight = (node->to_parent != NULL && ctx == node->to_parent->after) ? 0 : 1;
 
     // Allocate edge now
-    struct edge *edge = walloc(w, sizeof(struct edge), false);
+    struct edge *edge = walloc(w, sizeof(struct edge) + step->nlog * sizeof(hvalue_t), false);
     edge->src = node;
     edge->ctx = ctx;
     edge->choice = choice_copy;
     edge->interrupt = interrupt;
     edge->after = after;
     edge->ai = step->ai;
-    edge->log = step->log;
+    // TODO edge->log = step->log;
+    edge->log = (hvalue_t *) &edge[1];
+    memcpy(&edge[1], step->log, step->nlog * sizeof(hvalue_t));
     edge->nlog = step->nlog;
     edge->nsteps = instrcnt;
 
     // See if this state has been computed before
-    uint32_t h = meiyan((char *) sc, sizeof(*sc));
     bool new;
     mutex_t *lock;
-    struct dict_assoc *da = dict_find_lock(w->workers[h % w->nworkers].visited, &w->allocator,
-                sc, sizeof(*sc), &new, &lock);
-    struct state *state = (struct state *) (da + 1);
-    struct node *next = (struct node *) (state + 1);
+    unsigned int size = state_size(sc);
+    struct dict_assoc *da = dict_find_lock(w->visited, &w->allocator,
+                sc, size, &new, &lock);
+    struct state *state = (struct state *) &da[1];
+    struct node *next = (struct node *) ((char *) state + size);
     if (new) {
         memset(next, 0, sizeof(*next));
         next->len = node->len + weight;
@@ -571,7 +567,7 @@ static bool onestep(
 
     // We stole the access info and log
     step->ai = NULL;
-    step->log = NULL;
+    // TODO step->log = NULL;
     step->nlog = 0;
 
     return true;
@@ -590,29 +586,46 @@ static void make_step(
     step.engine.values = &w->global->values;
 
     // Make a copy of the state
-    struct state sc = *node->state;
+    unsigned int statesz = state_size(node->state);
+    // Room to grown in copy for op_Spawn
+    char copy[statesz + 64*sizeof(hvalue_t)];
+    struct state *sc = (struct state *) copy;
+    memcpy(sc, node->state, statesz);
+    assert(step.engine.allocator == &w->allocator);
 
     // Make a copy of the context
     unsigned int size;
     struct context *cc = value_get(ctx, &size);
     memcpy(&w->ctx, cc, size);
+    assert(step.engine.allocator == &w->allocator);
     step.ctx = &w->ctx;
 
     // See if we need to interrupt
-    if (sc.choosing == 0 && cc->extended && cc->ctx_trap_pc != 0 && !cc->interruptlevel) {
-        bool succ = onestep(w, node, &sc, ctx, &step, choice, true, false, multiplicity);
+    if (sc->choosing == 0 && cc->extended && cc->ctx_trap_pc != 0 && !cc->interruptlevel) {
+        bool succ = onestep(w, node, sc, ctx, &step, choice, true, false, multiplicity);
+        assert(step.engine.allocator == &w->allocator);
         if (!succ) {        // ran into an infinite loop
-            (void) onestep(w, node, &sc, ctx, &step, choice, true, true, multiplicity);
+            memcpy(sc, node->state, statesz);
+            memcpy(&w->ctx, cc, size);
+            assert(step.engine.allocator == &w->allocator);
+            (void) onestep(w, node, sc, ctx, &step, choice, true, true, multiplicity);
+            assert(step.engine.allocator == &w->allocator);
         }
 
-        sc = *node->state;
+        memcpy(sc, node->state, statesz);
         memcpy(&w->ctx, cc, size);
+        assert(step.engine.allocator == &w->allocator);
     }
 
-    sc.choosing = 0;
-    bool succ = onestep(w, node, &sc, ctx, &step, choice, false, false, multiplicity);
+    sc->choosing = 0;
+    bool succ = onestep(w, node, sc, ctx, &step, choice, false, false, multiplicity);
+    assert(step.engine.allocator == &w->allocator);
     if (!succ) {        // ran into an infinite loop
-        (void) onestep(w, node, &sc, ctx, &step, choice, false, true, multiplicity);
+        memcpy(sc, node->state, statesz);
+        memcpy(&w->ctx, cc, size);
+        assert(step.engine.allocator == &w->allocator);
+        (void) onestep(w, node, sc, ctx, &step, choice, false, true, multiplicity);
+        assert(step.engine.allocator == &w->allocator);
     }
 }
 
@@ -968,16 +981,13 @@ void print_state(
     free(inv_step.ctx);
 
     fprintf(file, "      \"ctxbag\": {\n");
-    unsigned int nctxs;
-    hvalue_t *ctxs = value_get(node->state->ctxbag, &nctxs);
-    nctxs /= sizeof(hvalue_t);
-    for (unsigned int i = 0; i < nctxs; i += 2) {
+    for (unsigned int i = 0; i < node->state->bagsize; i++) {
         if (i > 0) {
             fprintf(file, ",\n");
         }
-        assert(VALUE_TYPE(ctxs[i]) == VALUE_CONTEXT);
-        assert(VALUE_TYPE(ctxs[i+1]) == VALUE_INT);
-        fprintf(file, "          \"%"PRIx64"\": \"%u\"", ctxs[i], (unsigned int) VALUE_FROM_INT(ctxs[i+1]));
+        assert(VALUE_TYPE(node->state->contexts[i]) == VALUE_CONTEXT);
+        fprintf(file, "          \"%"PRIx64"\": \"%u\"", node->state->contexts[i],
+                multiplicities(node->state)[i]);
     }
     fprintf(file, "\n      },\n");
 
@@ -1139,7 +1149,7 @@ hvalue_t twostep(
     unsigned int nsteps
 ){
     // Make a copy of the state
-    struct state *sc = new_alloc(struct state);
+    struct state *sc = calloc(1, sizeof(struct state) + 4096);      // TODO
     *sc = *node->state;
     sc->choosing = 0;
 
@@ -1201,6 +1211,9 @@ hvalue_t twostep(
 
             int stacksize = step.ctx->sp * sizeof(hvalue_t);
             int combosize = sizeof(struct combined) + stacksize;
+            if (step.ctx->extended) {
+                stacksize += ctx_extent * sizeof(hvalue_t);
+            }
             struct combined *combo = calloc(1, combosize);
             combo->state = *sc;
             memcpy(&combo->context, step.ctx, sizeof(*step.ctx) + stacksize);
@@ -1263,15 +1276,7 @@ hvalue_t twostep(
     }
 
     // Remove old context from the bag
-    hvalue_t count = value_dict_load(sc->ctxbag, ctx);
-    assert(VALUE_TYPE(count) == VALUE_INT);
-    count -= 1 << VALUE_BITS;
-    if (count == VALUE_INT) {
-        sc->ctxbag = value_dict_remove(&step.engine, sc->ctxbag, ctx);
-    }
-    else {
-        sc->ctxbag = value_dict_store(&step.engine, sc->ctxbag, ctx, count);
-    }
+    context_remove(sc, ctx);
 
     hvalue_t after = value_put_context(&step.engine, step.ctx);
 
@@ -1280,7 +1285,7 @@ hvalue_t twostep(
         sc->stopbag = value_bag_add(&step.engine, sc->stopbag, after, 1);
     }
     else if (!step.ctx->terminated) {
-        sc->ctxbag = value_bag_add(&step.engine, sc->ctxbag, after, 1);
+        context_add(sc, after);
     }
 
     // assert(sc->vars == nextvars);
@@ -1291,7 +1296,7 @@ hvalue_t twostep(
 
     free(sc);
     free(step.ctx);
-    free(step.log);
+    // TODO free(step.log);
 
     return after;
 }
@@ -1378,17 +1383,12 @@ void path_dump(
     /* Match each context to a process.
      */
     bool *matched = calloc(global->nprocesses, sizeof(bool));
-    unsigned int nctxs;
-    hvalue_t *ctxs = value_get(node->state->ctxbag, &nctxs);
-    nctxs /= sizeof(hvalue_t);
-    for (unsigned int i = 0; i < nctxs; i += 2) {
-        assert(VALUE_TYPE(ctxs[i]) == VALUE_CONTEXT);
-        assert(VALUE_TYPE(ctxs[i+1]) == VALUE_INT);
-        int cnt = VALUE_FROM_INT(ctxs[i+1]);
-        for (int j = 0; j < cnt; j++) {
+    for (unsigned int i = 0; i < node->state->bagsize; i++) {
+        assert(VALUE_TYPE(node->state->contexts[i]) == VALUE_CONTEXT);
+        for (unsigned int j = 0; j < multiplicities(node->state)[i]; j++) {
             unsigned int k;
             for (k = 0; k < global->nprocesses; k++) {
-                if (!matched[k] && global->processes[k] == ctxs[i]) {
+                if (!matched[k] && global->processes[k] == node->state->contexts[i]) {
                     matched[k] = true;
                     break;
                 }
@@ -1396,7 +1396,7 @@ void path_dump(
             if (k == global->nprocesses) {
                 global->processes = realloc(global->processes, (global->nprocesses + 1) * sizeof(hvalue_t));
                 matched = realloc(matched, (global->nprocesses + 1) * sizeof(bool));
-                global->processes[global->nprocesses] = ctxs[i];
+                global->processes[global->nprocesses] = node->state->contexts[i];
                 matched[global->nprocesses] = true;
                 global->nprocesses++;
             }
@@ -1557,13 +1557,8 @@ static enum busywait is_stuck(
 }
 
 static void detect_busywait(struct minheap *failures, struct node *node){
-	// Get the contexts
-	unsigned int size;
-	hvalue_t *ctxs = value_get(node->state->ctxbag, &size);
-	size /= sizeof(hvalue_t);
-
-	for (unsigned int i = 0; i < size; i += 2) {
-		if (is_stuck(node, node, ctxs[i], false) == BW_RETURN) {
+	for (unsigned int i = 0; i < node->state->bagsize; i++) {
+		if (is_stuck(node, node, node->state->contexts[i], false) == BW_RETURN) {
 			struct failure *f = new_alloc(struct failure);
 			f->type = FAIL_BUSYWAIT;
 			f->edge = node->to_parent;
@@ -1641,19 +1636,14 @@ static void do_work(struct worker *w){
                 }
             }
             else {
-                unsigned int size;
-                hvalue_t *ctxs = value_get(state->ctxbag, &size);
-                size /= sizeof(hvalue_t);
-                assert(size >= 0);
-                for (unsigned int i = 0; i < size; i += 2) {
-                    assert(VALUE_TYPE(ctxs[i]) == VALUE_CONTEXT);
-                    assert(VALUE_TYPE(ctxs[i+1]) == VALUE_INT);
+                for (unsigned int i = 0; i < state->bagsize; i++) {
+                    assert(VALUE_TYPE(state->contexts[i]) == VALUE_CONTEXT);
                     make_step(
                         w,
                         node,
-                        ctxs[i],
+                        state->contexts[i],
                         0,
-                        VALUE_FROM_INT(ctxs[i+1])
+                        multiplicities(state)[i]
                     );
                 }
             }
@@ -1761,10 +1751,7 @@ static void worker(void *arg){
 
 		// printf("WORKER %d make stable %d %u %u\n", w->index, epoch, w->count, w->node_id);
         value_make_stable(&global->values, w->index);
-        for (unsigned int i = 0; i < global->nworkers; i++) {
-            struct worker *w2 = &w->workers[i];
-            dict_make_stable(w2->visited, w->index);
-        }
+        dict_make_stable(w->visited, w->index);
 
         if (global->layer_done) {
             // Fill the graph table
@@ -1800,11 +1787,7 @@ char *state_string(struct state *state){
     strbuf_printf(&sb, ",%s", v); free(v);
     v = value_string(state->choosing);
     strbuf_printf(&sb, ",%s", v); free(v);
-    v = value_string(state->ctxbag);
-    strbuf_printf(&sb, ",%s", v); free(v);
     v = value_string(state->stopbag);
-    strbuf_printf(&sb, ",%s", v); free(v);
-    v = value_string(state->termbag);
     strbuf_printf(&sb, ",%s", v); free(v);
     v = value_string(state->invariants);
     strbuf_printf(&sb, ",%s}", v); free(v);
@@ -2077,11 +2060,14 @@ int main(int argc, char **argv){
     init_ctx->atomicFlag = true;
     value_ctx_push(init_ctx, VALUE_TO_INT(CALLTYPE_PROCESS));
     value_ctx_push(init_ctx, VALUE_LIST);
-    struct state *state = new_alloc(struct state);
+
+    struct state *state = calloc(1, sizeof(struct state) + sizeof(hvalue_t) + 1);
     state->vars = VALUE_DICT;
     state->seqs = VALUE_SET;
     hvalue_t ictx = value_put_context(&engine, init_ctx);
-    state->ctxbag = value_dict_store(&engine, VALUE_DICT, ictx, VALUE_TO_INT(1));
+    state->bagsize = 1;
+    state->contexts[0] = ictx;
+    multiplicities(state)[0] = 1;
     state->stopbag = VALUE_DICT;
     state->invariants = VALUE_SET;
     state->dfa_state = global->dfa == NULL ? 0 : dfa_initial(global->dfa);
@@ -2111,11 +2097,18 @@ int main(int argc, char **argv){
         exit(0);
     }
 
+    // Put the initial state in the visited map
+    struct dict *visited = dict_new("visited", sizeof(struct node), 0, global->nworkers, NULL, NULL);
+    struct node *node = dict_insert(visited, NULL, state, state_size(state), NULL);
+    memset(node, 0, sizeof(*node));
+    node->state = state;
+    graph_add(&global->graph, node);
+
     // Allocate space for worker info
     struct worker *workers = calloc(global->nworkers, sizeof(*workers));
     for (unsigned int i = 0; i < global->nworkers; i++) {
         struct worker *w = &workers[i];
-        w->visited = dict_new("visited", sizeof(struct node), 0, global->nworkers, NULL, NULL);
+        w->visited = visited;
         w->global = global;
         w->timeout = timeout;
         w->start_barrier = &start_barrier;
@@ -2145,14 +2138,6 @@ int main(int argc, char **argv){
         w->allocator.worker = i;
     }
 
-    // Put the initial state in the visited map
-    uint32_t h = meiyan((char *) state, sizeof(*state));
-    struct node *node = dict_insert(workers[h % global->nworkers].visited, NULL, state, sizeof(*state), NULL);
-    memset(node, 0, sizeof(*node));
-    node->state = state;
-    graph_add(&global->graph, node);
-    global->goal = 1;
-
     // Start the workers, who'll wait on the start barrier
     for (unsigned int i = 0; i < global->nworkers; i++) {
         thread_create(worker, &workers[i]);
@@ -2160,10 +2145,7 @@ int main(int argc, char **argv){
 
     // Put the state and value dictionaries in concurrent mode
     value_set_concurrent(&global->values);
-    for (unsigned int i = 0; i < global->nworkers; i++) {
-        struct worker *w = &workers[i];
-        dict_set_concurrent(w->visited);
-    }
+    dict_set_concurrent(visited);
 
     double before = gettime(), postproc = 0;
     for (;;) {
@@ -2179,10 +2161,7 @@ int main(int argc, char **argv){
         // Prepare the grow the hash tables (but the actual work of
         // rehashing is distributed among the threads in the next phase
         double before_postproc = gettime();
-        for (unsigned int i = 0; i < global->nworkers; i++) {
-            struct worker *w = &workers[i];
-            dict_grow_prepare(w->visited);
-        }
+        dict_grow_prepare(visited);
         value_grow_prepare(&global->values);
         postproc += gettime() - before_postproc;
 
@@ -2239,11 +2218,8 @@ int main(int argc, char **argv){
 
     printf("#states %d (time %.3lf+%.3lf=%.3lf)\n", global->graph.size, gettime() - before - postproc, postproc, gettime() - before);
 
-    for (unsigned int i = 0; i < global->nworkers; i++) {
-        struct worker *w = &workers[i];
-        dict_set_sequential(w->visited);
-    }
     value_set_sequential(&global->values);
+    dict_set_sequential(visited);
 
     // dict_dump(visited);
     dict_dump(global->values.dicts);
@@ -2291,11 +2267,11 @@ int main(int argc, char **argv){
             struct component *comp = &components[node->component];
             if (comp->size == 0) {
                 comp->rep = node;
-                comp->all_same = value_ctx_all_eternal(node->state->ctxbag)
+                comp->all_same = value_state_all_eternal(node->state)
                     && value_ctx_all_eternal(node->state->stopbag);
             }
             else if (node->state->vars != comp->rep->state->vars ||
-                        !value_ctx_all_eternal(node->state->ctxbag) ||
+                        !value_state_all_eternal(node->state) ||
                         !value_ctx_all_eternal(node->state->stopbag)) {
                 comp->all_same = false;
             }

@@ -47,6 +47,7 @@ static void inline swap(struct graph_t *graph, unsigned int x, unsigned int y){
 }
 
 struct scc *scc_alloc(unsigned int start, unsigned int finish, struct scc *next){
+    // TODO
     struct scc *scc = new_alloc(struct scc);
     scc->start = start;
     scc->finish = finish;
@@ -90,11 +91,11 @@ struct scc *graph_find_scc_one(struct graph_t *graph, struct scc *scc, unsigned 
         if (scc->start < scc->finish) {
             return scc;
         }
-        free(scc);
+        free(scc);  // TODO
         return next_scc;
     }
 
-    free(scc);
+    free(scc);  // TODO
     scc = next_scc;
 
     // Better balancing?
