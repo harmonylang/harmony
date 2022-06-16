@@ -70,23 +70,6 @@ struct worker {
     hvalue_t stack[MAX_CONTEXT_STACK];
 };
 
-static inline uint32_t meiyan(const char *key, int count) {
-	typedef uint32_t *P;
-	uint32_t h = 0x811c9dc5;
-	// uint32_t h = ~0x811c9dc5; // 0x811c9dc5;
-	while (count >= 8) {
-		h = (h ^ ((((*(P)key) << 5) | ((*(P)key) >> 27)) ^ *(P)(key + 4))) * 0xad3e7;
-		count -= 8;
-		key += 8;
-	}
-	#define tmp h = (h ^ *(uint16_t*)key) * 0xad3e7; key += 2;
-	if (count & 4) { tmp tmp }
-	if (count & 2) { tmp }
-	if (count & 1) { h = (h ^ *key) * 0xad3e7; }
-	#undef tmp
-	return h ^ (h >> 16);
-}
-
 // Per thread one-time memory allocator (no free)
 static void *walloc(void *ctx, unsigned int size, bool zero){
     struct worker *w = ctx;
