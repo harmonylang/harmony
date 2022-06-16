@@ -1234,6 +1234,8 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
                     print(file=f)
                 else:
                     print(",", file=f)
+                if endlexeme in { "indent", "dedent" }:     # Hack...
+                    endlexeme = endlexeme[0]
                 print("    \"%d\": { \"file\": %s, \"line\": %d, \"column\": %d, \"endline\": %d, \"endcolumn\": %d, \"code\": %s }"%(pc, json.dumps(file, ensure_ascii=False), line, column, endline, endcolumn + len(endlexeme) - 1, json.dumps(files[file][line-1], ensure_ascii=False)), file=f, end="")
         print(file=f)
         print("  }", file=f)

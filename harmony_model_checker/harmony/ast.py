@@ -167,7 +167,7 @@ class ComprehensionAST(AST):
             code.append(CutOp(var, var2), self.token, self.endtoken)
             code.append(JumpCondOp(False, endlabel), self.token, self.endtoken)
             self.rec_comprehension(scope, code, iter[1:], startlabel, accu, ctype)
-            code.append(JumpOp(startlabel), self.token, self.endtoken)
+            code.append(JumpOp(startlabel), self.endtoken, self.endtoken)
             code.nextLabel(endlabel)
 
         else:
@@ -472,7 +472,7 @@ class NaryAST(AST):
             for i in range(1, n):
                 code.append(JumpCondOp(op == "or", lastlabel), self.token, self.endtoken)
                 self.args[i].compile(scope, code)
-            code.append(JumpOp(endlabel), self.token, self.endtoken)
+            code.append(JumpOp(endlabel), self.op, self.op)
             code.nextLabel(lastlabel)
             code.append(PushOp((op == "or", file, line, column)), self.token, self.endtoken)
             code.nextLabel(endlabel)
@@ -484,7 +484,7 @@ class NaryAST(AST):
             labelcnt += 1
             code.append(JumpCondOp(False, truelabel), self.token, self.endtoken)
             self.args[1].compile(scope, code)
-            code.append(JumpOp(endlabel), self.token, self.endtoken)
+            code.append(JumpOp(endlabel), self.op, self.op)
             code.nextLabel(truelabel)
             code.append(PushOp((True, file, line, column)), self.token, self.endtoken)
             code.nextLabel(endlabel)
@@ -498,7 +498,7 @@ class NaryAST(AST):
             labelcnt += 1
             code.append(JumpCondOp(negate, elselabel), self.token, self.endtoken)
             self.args[0].compile(scope, code)  # "if" expr
-            code.append(JumpOp(endlabel), self.token, self.endtoken)
+            code.append(JumpOp(endlabel), self.op, self.op)
             code.nextLabel(elselabel)
             self.args[2].compile(scope, code)  # "else" expr
             code.nextLabel(endlabel)
@@ -548,7 +548,7 @@ class CmpAST(AST):
         code.append(NaryOp(self.ops[n - 2], 2), self.token, self.endtoken)
         code.nextLabel(endlabel)
         if n > 2:
-            code.append(DelVarOp(T), self.token, self.endtoken)
+            code.append(DelVarOp(T), self.token, self.endtoken)     # TODO: is this necessary???
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_cmp(self, *args, **kwargs)
@@ -677,69 +677,18 @@ class PointerAST(AST):
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_pointer(self, *args, **kwargs)
 
-
 class AssignmentAST(AST):
-    def __init__(self, endtoken, token, lhslist, rv, op, atomically):
+    def __init__(self, endtoken, token, lhslist, rv, ops, atomically):
         AST.__init__(self, endtoken, token, atomically)
         self.lhslist = lhslist  # a, b = c, d = e = ...
         self.rv = rv  # rhs expression
-        self.op = op  # ... op= ...
+        self.ops = ops
 
     def __repr__(self):
         return "Assignment(" + str(self.lhslist) + ", " + str(self.rv) + \
-               ", " + str(self.op) + ")"
-
-    # handle an "x op= y" assignment
-    def opassign(self, lv, scope, code):
-        if self.atomically:
-            code.append(AtomicIncOp(True), self.token, self.endtoken)
-        lvar = lv.localVar(scope)
-        if isinstance(lv, NameAST):
-            # handled separately for assembly code readability
-            (t, v) = scope.lookup(lv.name)
-            lexeme, file, line, column = self.token
-            if t == "module":
-                raise HarmonyCompilerError(
-                    filename=file,
-                    lexeme=lexeme,
-                    line=line,
-                    column=column,
-                    message='Cannot operate on module %s' % str(lv.name),
-                )
-            if t in {"constant", "local-const"}:
-                raise HarmonyCompilerError(
-                    filename=file,
-                    lexeme=lexeme,
-                    line=line,
-                    column=column,
-                    message='Cannot operate on constant %s' % str(lv.name),
-                )
-            assert t in {"local-var", "global"}
-            ld = LoadOp(lv.name, lv.name, scope.prefix) if t == "global" else LoadVarOp(lv.name)
-        else:
-            lv.ph1(scope, code)
-            code.append(DupOp(), self.token, self.endtoken)  # duplicate the addres
-            ld = LoadOp(None, self.op, None) if lvar == None else LoadVarOp(None, lvar)
-        code.append(ld, self.token, self.endtoken)  # load the valu
-        self.rv.compile(scope, code)  # compile the rhs
-        (lexeme, file, line, column) = self.op
-        code.append(NaryOp((lexeme[:-1], file, line, column), 2), self.token, self.endtoken)
-        if isinstance(lv, NameAST):
-            st = StoreOp(lv.name, lv.name, scope.prefix) if lvar == None else StoreVarOp(lv.name, lvar)
-        else:
-            st = StoreOp(None, self.op, None) if lvar == None else StoreVarOp(None, lvar)
-        code.append(st, self.token, self.endtoken)
-        if self.atomically:
-            code.append(AtomicDecOp(), self.token, self.endtoken)
+               ", " + str(self.ops) + ")"
 
     def compile(self, scope, code):
-        (lexeme, file, line, column) = self.op
-        if lexeme != '=':
-            assert len(self.lhslist) == 1, self.lhslist
-            lv = self.lhslist[0]
-            self.opassign(lv, scope, code)
-            return
-
         if self.atomically:
             code.append(AtomicIncOp(True), self.token, self.endtoken)
 
@@ -780,10 +729,10 @@ class AssignmentAST(AST):
                     )
                 assert t in {"local-var", "global"}, (t, lvs.name)
                 if v[0] == "_":
-                    code.append(PopOp(), self.token, self.endtoken)
+                    code.append(PopOp(), self.token, self.ops[0])
                 else:
                     st = StoreOp(lvs.name, lvs.name, scope.prefix) if t == "global" else StoreVarOp(lvs.name)
-                    code.append(st, self.token, self.endtoken)
+                    code.append(st, self.token, self.ops[0])
             else:
                 lvs.ph2(scope, code, skip)
 
@@ -793,6 +742,63 @@ class AssignmentAST(AST):
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_assignment(self, *args, **kwargs)
 
+
+class AuxAssignmentAST(AST):
+    def __init__(self, endtoken, token, lhs, rv, op, atomically):
+        AST.__init__(self, endtoken, token, atomically)
+        self.lhs = lhs
+        self.rv = rv  # rhs expression
+        self.op = op  # ... op= ...
+
+    def __repr__(self):
+        return "AuxAssignment(" + str(self.lhs) + ", " + str(self.rv) + \
+               ", " + str(self.op) + ")"
+
+    def compile(self, scope, code):
+        if self.atomically:
+            code.append(AtomicIncOp(True), self.token, self.endtoken)
+        lv = self.lhs
+        lvar = lv.localVar(scope)
+        if isinstance(lv, NameAST):
+            # handled separately for assembly code readability
+            (t, v) = scope.lookup(lv.name)
+            lexeme, file, line, column = self.token
+            if t == "module":
+                raise HarmonyCompilerError(
+                    filename=file,
+                    lexeme=lexeme,
+                    line=line,
+                    column=column,
+                    message='Cannot operate on module %s' % str(lv.name),
+                )
+            if t in {"constant", "local-const"}:
+                raise HarmonyCompilerError(
+                    filename=file,
+                    lexeme=lexeme,
+                    line=line,
+                    column=column,
+                    message='Cannot operate on constant %s' % str(lv.name),
+                )
+            assert t in {"local-var", "global"}
+            ld = LoadOp(lv.name, lv.name, scope.prefix) if t == "global" else LoadVarOp(lv.name)
+        else:
+            lv.ph1(scope, code)
+            code.append(DupOp(), self.token, self.endtoken)  # duplicate the addres
+            ld = LoadOp(None, self.op, None) if lvar == None else LoadVarOp(None, lvar)
+        code.append(ld, self.token, self.endtoken)  # load the valu
+        self.rv.compile(scope, code)  # compile the rhs
+        (lexeme, file, line, column) = self.op
+        code.append(NaryOp((lexeme[:-1], file, line, column), 2), self.token, self.endtoken)
+        if isinstance(lv, NameAST):
+            st = StoreOp(lv.name, lv.name, scope.prefix) if lvar == None else StoreVarOp(lv.name, lvar)
+        else:
+            st = StoreOp(None, self.op, None) if lvar == None else StoreVarOp(None, lvar)
+        code.append(st, self.token, self.op)
+        if self.atomically:
+            code.append(AtomicDecOp(), self.token, self.endtoken)
+
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_assignment(self, *args, **kwargs)
 
 class DelAST(AST):
     def __init__(self, endtoken, token, atomically, lv):
@@ -1000,17 +1006,17 @@ class IfAST(AST):
             code.append(AtomicIncOp(True), self.token, self.endtoken)
         last = len(self.alts) - 1
         for i, alt in enumerate(self.alts):
-            (rest, stat, thefile, theline) = alt
-            code.location(thefile, theline)
+            (rest, stat, starttoken, endtoken) = alt
+            code.location(starttoken[1], starttoken[2])
             negate = isinstance(rest, NaryAST) and rest.op[0] == "not"
             cond = rest.args[0] if negate else rest
             cond.compile(scope, code)
             iflabel = LabelValue(None, "$%d_%d" % (label, sublabel))
-            code.append(JumpCondOp(negate, iflabel), self.token, self.endtoken)
+            code.append(JumpCondOp(negate, iflabel), starttoken, starttoken)
             sublabel += 1
             stat.compile(scope, code)
             if self.stat != None or i != last:
-                code.append(JumpOp(endlabel), self.token, self.endtoken)
+                code.append(JumpOp(endlabel), starttoken, endtoken)
             code.nextLabel(iflabel)
         if self.stat != None:
             self.stat.compile(scope, code)
@@ -1056,7 +1062,7 @@ class WhileAST(AST):
         cond.compile(scope, code)
         code.append(JumpCondOp(negate, endlabel), self.token, self.endtoken)
         self.stat.compile(scope, code)
-        code.append(JumpOp(startlabel), self.token, self.endtoken)
+        code.append(JumpOp(startlabel), self.endtoken, self.endtoken)
         code.nextLabel(endlabel)
         if self.atomically:
             code.append(AtomicDecOp(), self.token, self.endtoken)
@@ -1253,20 +1259,20 @@ class LetWhenAST(AST):
                 if self.atomically:
                     code.append(ReadonlyDecOp(), self.token, self.endtoken)
                     code.append(AtomicDecOp(), self.token, self.endtoken)
-                code.append(JumpOp(label_start), self.token, self.endtoken)
+                code.append(JumpOp(label_start), self.endtoken, self.endtoken)
 
                 # select:
                 code.nextLabel(label_select)
                 code.append(ChooseOp(), self.token, self.endtoken)
                 code.append(StoreVarOp(bv), self.token, self.endtoken)
-        code.append(JumpOp(label_body), self.token, self.endtoken)
+        code.append(JumpOp(label_body), self.endtoken, self.endtoken)
 
         # condfailed:
         code.nextLabel(label_condfailed)
         if self.atomically:
             code.append(ReadonlyDecOp(), self.token, self.endtoken)
             code.append(AtomicDecOp(), self.token, self.endtoken)
-        code.append(JumpOp(label_start), self.token, self.endtoken)
+        code.append(JumpOp(label_start), self.endtoken, self.endtoken)
 
         # body:
         code.nextLabel(label_body)
@@ -1370,7 +1376,7 @@ class MethodAST(AST):
         endlabel = LabelValue(None, "$%d" % labelcnt)
         labelcnt += 1
         (lexeme, file, line, column) = self.name
-        code.append(JumpOp(endlabel), self.token, self.endtoken)
+        code.append(JumpOp(endlabel), self.token, self.token)
         code.nextLabel(self.label)
         code.append(FrameOp(self.name, self.args), self.token, self.endtoken)
         # scope.names[lexeme] = ("constant", (self.label, file, line, column))
@@ -1418,7 +1424,7 @@ class LambdaAST(AST):
     def compile_body(self, scope, code):
         startlabel = LabelValue(None, "lambda")
         endlabel = LabelValue(None, "lambda")
-        code.append(JumpOp(endlabel), self.token, self.endtoken)
+        code.append(JumpOp(endlabel), self.token, self.token)
         code.nextLabel(startlabel)
         code.append(FrameOp(self.token, self.args), self.token, self.endtoken)
 

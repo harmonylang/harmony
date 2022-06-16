@@ -43,6 +43,7 @@ struct var_tree {
 // These are initialized in ops_init and are immutable.
 static struct dict *ops_map, *f_map;
 static hvalue_t underscore, this_atom;
+static hvalue_t alloc_pool_atom, alloc_next_atom;
 static hvalue_t type_bool, type_int, type_str, type_pc, type_list;
 static hvalue_t type_dict, type_set, type_address, type_context;
 
@@ -587,6 +588,28 @@ static void do_return(struct state *state, struct step *step, struct global_t *g
     }
 }
 
+// Built-in alloc.malloc method
+void op_Alloc_Malloc(const void *env, struct state *state, struct step *step, struct global_t *global){
+    hvalue_t arg = ctx_pop(step->ctx);
+    hvalue_t next = value_dict_load(state->vars, alloc_next_atom);
+
+    // Assign arg to alloc$pool[alloc$next]
+    hvalue_t addr[2];
+    addr[0] = alloc_pool_atom;
+    addr[1] = next;
+    if (!ind_trystore(state->vars, addr, 2, arg, &step->engine, &state->vars)) {
+        panic("op_Alloc_Malloc: store value failed");
+    }
+
+    // Increment next
+    next = VALUE_TO_INT(VALUE_FROM_INT(next) + 1);
+    state->vars = value_dict_store(&step->engine, state->vars, alloc_next_atom, next);
+
+    // Return the address
+    hvalue_t result = value_put_address(&step->engine, addr, sizeof(addr));
+    do_return(state, step, global, arg, result);
+}
+
 // Built-in list.tail method
 void op_List_Tail(const void *env, struct state *state, struct step *step, struct global_t *global){
     hvalue_t arg = ctx_pop(step->ctx);
@@ -601,6 +624,148 @@ void op_List_Tail(const void *env, struct state *state, struct step *step, struc
         return;
     }
     hvalue_t result = value_put_list(&step->engine, &list[1], size - sizeof(hvalue_t));
+    do_return(state, step, global, arg, result);
+}
+
+// Built-in bag.add method
+void op_Bag_Add(const void *env, struct state *state, struct step *step, struct global_t *global){
+    hvalue_t arg = ctx_pop(step->ctx);
+    if (VALUE_TYPE(arg) != VALUE_LIST) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.add: not a tuple");
+        return;
+    }
+    unsigned int size;
+    hvalue_t *args = value_get(arg, &size);
+    if (size != 2 * sizeof(hvalue_t)) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.add: requires two arguments");
+        return;
+    }
+    if (VALUE_TYPE(args[0]) != VALUE_DICT) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.add: first argument must be a bag");
+        return;
+    }
+    hvalue_t result = value_bag_add(&step->engine, args[0], args[1], 1);
+    do_return(state, step, global, arg, result);
+}
+
+// Built-in bag.remove method
+void op_Bag_Remove(const void *env, struct state *state, struct step *step, struct global_t *global){
+    hvalue_t arg = ctx_pop(step->ctx);
+    if (VALUE_TYPE(arg) != VALUE_LIST) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.remove: not a tuple");
+        return;
+    }
+    unsigned int size;
+    hvalue_t *args = value_get(arg, &size);
+    if (size != 2 * sizeof(hvalue_t)) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.remove: requires two arguments");
+        return;
+    }
+    if (VALUE_TYPE(args[0]) != VALUE_DICT) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.remove: first argument must be a bag");
+        return;
+    }
+    hvalue_t result = value_bag_remove(&step->engine, args[0], args[1]);
+    do_return(state, step, global, arg, result);
+}
+
+// Built-in bag.multiplicity method
+void op_Bag_Multiplicity(const void *env, struct state *state, struct step *step, struct global_t *global){
+    hvalue_t arg = ctx_pop(step->ctx);
+    if (VALUE_TYPE(arg) != VALUE_LIST) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.multiplicity: not a tuple");
+        return;
+    }
+    unsigned int size;
+    hvalue_t *args = value_get(arg, &size);
+    if (size != 2 * sizeof(hvalue_t)) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.multiplicity: requires two arguments");
+        return;
+    }
+    if (VALUE_TYPE(args[0]) != VALUE_DICT) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.multiplicity: first argument must be a bag");
+        return;
+    }
+    hvalue_t result;
+    if (value_tryload(&step->engine, args[0], args[1], &result)) {
+        if (VALUE_TYPE(result) != VALUE_INT) {
+            value_ctx_failure(step->ctx, &step->engine, "bag.multiplicity: not a good bag");
+        }
+        do_return(state, step, global, arg, result);
+    }
+    else {
+        do_return(state, step, global, arg, VALUE_TO_INT(0));
+    }
+}
+
+// Built-in bag.size method
+void op_Bag_Size(const void *env, struct state *state, struct step *step, struct global_t *global){
+    hvalue_t arg = ctx_pop(step->ctx);
+    if (VALUE_TYPE(arg) != VALUE_DICT) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.size: not a dict");
+        return;
+    }
+    unsigned int size;
+    hvalue_t *list = value_get(arg, &size);
+    size /= sizeof(hvalue_t);
+    unsigned int total = 0;
+    for (unsigned int i = 1; i < size; i += 2) {
+        if (VALUE_TYPE(list[i]) != VALUE_INT) {
+            value_ctx_failure(step->ctx, &step->engine, "bag.size: not a bag");
+            return;
+        }
+        total += VALUE_FROM_INT(list[i]);
+    }
+    do_return(state, step, global, arg, VALUE_TO_INT(total));
+}
+
+// Built-in bag.bmax method
+void op_Bag_Bmax(const void *env, struct state *state, struct step *step, struct global_t *global){
+    hvalue_t arg = ctx_pop(step->ctx);
+    if (arg == VALUE_DICT) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.bmax: empty bag");
+        return;
+    }
+    if (VALUE_TYPE(arg) != VALUE_DICT) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.bmax: not a dict");
+        return;
+    }
+    unsigned int size;
+    hvalue_t *list = value_get(arg, &size);
+    size /= sizeof(hvalue_t);
+    assert(size >= 2);
+    hvalue_t result = list[0];
+    for (unsigned int i = 2; i < size; i += 2) {
+        int cmp = value_cmp(result, list[i]);
+        if (cmp > 0) {
+            result = list[i];
+        }
+    }
+    do_return(state, step, global, arg, result);
+}
+
+// Built-in bag.bmin method
+void op_Bag_Bmin(const void *env, struct state *state, struct step *step, struct global_t *global){
+    hvalue_t arg = ctx_pop(step->ctx);
+    if (arg == VALUE_DICT) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.bmax: empty bag");
+        return;
+    }
+    if (VALUE_TYPE(arg) != VALUE_DICT) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.bmax: not a dict");
+        return;
+    }
+    unsigned int size;
+    hvalue_t *list = value_get(arg, &size);
+    size /= sizeof(hvalue_t);
+    assert(size >= 2);
+    hvalue_t result = list[0];
+    for (unsigned int i = 2; i < size; i += 2) {
+        int cmp = value_cmp(result, list[i]);
+        if (cmp < 0) {
+            result = list[i];
+        }
+    }
     do_return(state, step, global, arg, result);
 }
 
@@ -2999,6 +3164,13 @@ struct op_info op_table[] = {
 	{ "Trap", init_Trap, op_Trap },
 
     // Built-in methods
+    { "alloc$malloc", NULL, op_Alloc_Malloc },
+    { "bag$add", NULL, op_Bag_Add },
+    { "bag$bmax", NULL, op_Bag_Bmax },
+    { "bag$bmin", NULL, op_Bag_Bmin },
+    { "bag$multiplicity", NULL, op_Bag_Multiplicity },
+    { "bag$remove", NULL, op_Bag_Remove },
+    { "bag$size", NULL, op_Bag_Size },
     { "list$tail", NULL, op_List_Tail },
 
     { NULL, NULL, NULL }
@@ -3063,6 +3235,8 @@ void ops_init(struct global_t *global, struct engine *engine) {
     type_set = value_put_atom(engine, "set", 3);
     type_address = value_put_atom(engine, "address", 7);
     type_context = value_put_atom(engine, "context", 7);
+	alloc_pool_atom = value_put_atom(engine, "alloc$pool", 10);
+	alloc_next_atom = value_put_atom(engine, "alloc$next", 10);
 
     for (struct op_info *oi = op_table; oi->name != NULL; oi++) {
         struct op_info **p = dict_insert(ops_map, NULL, oi->name, strlen(oi->name), NULL);

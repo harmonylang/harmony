@@ -63,10 +63,29 @@ struct worker {
 
     struct allocator allocator; // mostly for hashdict
 
+    unsigned int *profile;      // one integer for every instruction in the HVM code
+
     // These need to be next to one another
     struct context ctx;
     hvalue_t stack[MAX_CONTEXT_STACK];
 };
+
+static inline uint32_t meiyan(const char *key, int count) {
+	typedef uint32_t *P;
+	uint32_t h = 0x811c9dc5;
+	// uint32_t h = ~0x811c9dc5; // 0x811c9dc5;
+	while (count >= 8) {
+		h = (h ^ ((((*(P)key) << 5) | ((*(P)key) >> 27)) ^ *(P)(key + 4))) * 0xad3e7;
+		count -= 8;
+		key += 8;
+	}
+	#define tmp h = (h ^ *(uint16_t*)key) * 0xad3e7; key += 2;
+	if (count & 4) { tmp tmp }
+	if (count & 2) { tmp }
+	if (count & 1) { h = (h ^ *key) * 0xad3e7; }
+	#undef tmp
+	return h ^ (h >> 16);
+}
 
 // Per thread one-time memory allocator (no free)
 static void *walloc(void *ctx, unsigned int size, bool zero){
@@ -235,7 +254,7 @@ static bool onestep(
     bool choosing = false, infinite_loop = false;
     struct dict *infloop = NULL;        // infinite loop detector
     unsigned int instrcnt = 0;
-    struct state as_state;
+    char as_state[sizeof(struct state) + 4096];     // TODO;
     hvalue_t as_context = 0;
     unsigned int as_instrcnt = 0;
     bool rollback = false, failure = false, stopped = false;
@@ -257,8 +276,9 @@ static bool onestep(
                         enqueued += w2->enqueued;
                         dequeued += w2->dequeued;
                     }
-                    fprintf(stderr, "%s pc=%d states=%u diameter=%u queue=%d\n",
-                            p, step->ctx->pc, enqueued, global->diameter, enqueued - dequeued);
+                    fprintf(stderr, "%s pc=%d states=%u diam=%u q=%d rate=%d\n",
+                            p, step->ctx->pc, enqueued, global->diameter, enqueued - dequeued, (unsigned int) ((enqueued - global->last_nstates) / (now - global->lasttime)));
+                    global->last_nstates = enqueued;
                     free(p);
                 }
                 global->lasttime = now;
@@ -270,6 +290,7 @@ static bool onestep(
             w->timecnt = 100;
         }
 
+        w->profile[pc]++;       // for profiling
         struct instr_t *instrs = global->code.instrs;
         struct op_info *oi = instrs[pc].oi;
         if (instrs[pc].choose) {
@@ -284,7 +305,7 @@ static bool onestep(
             }
             else if (step->ctx->atomic == 0) {
                 // Save the current state in case it needs restoring
-                as_state = *sc;
+                memcpy(as_state, sc, state_size(sc));
                 as_context = value_put_context(&step->engine, step->ctx);
                 as_instrcnt = instrcnt;
             }
@@ -455,7 +476,8 @@ static bool onestep(
 
     hvalue_t after;
     if (rollback) {
-        *sc = as_state;     // TODO
+        struct state *state = (struct state *) as_state;
+        memcpy(sc, state, state_size(state));
         after = as_context;
         instrcnt = as_instrcnt;
     }
@@ -505,17 +527,12 @@ static bool onestep(
                 sc, size, &new, &lock);
     struct state *state = (struct state *) &da[1];
     struct node *next = (struct node *) ((char *) state + size);
-
     if (new) {
         memset(next, 0, sizeof(*next));
         next->len = node->len + weight;
         next->steps = node->steps + instrcnt;
         next->to_parent = edge;
         next->state = state;
-        next->next = w->results;
-        w->results = next;
-        w->count++;
-        w->enqueued++;
     }
     else {
         unsigned int len = node->len + weight;
@@ -526,7 +543,6 @@ static bool onestep(
             next->to_parent = edge;
         }
     }
-    edge->dst = next;
 
     // Backward edge from node to parent.
     edge->bwdnext = next->bwd;
@@ -540,6 +556,14 @@ static bool onestep(
     struct edge **pe = &w->edges[node->id % w->nworkers];
     edge->fwdnext = *pe;
     *pe = edge;
+    edge->dst = next;
+
+    if (new) {
+        next->next = w->results;
+        w->results = next;
+        w->count++;
+        w->enqueued++;
+    }
 
     if (failure) {
         struct failure *f = new_alloc(struct failure);
@@ -1585,7 +1609,7 @@ static void do_work(struct worker *w){
     for (;;) {
         mutex_acquire(&global->todo_lock);
         unsigned int start = global->todo;
-        unsigned int nleft = global->graph.size - start;
+        unsigned int nleft = global->goal - start;
         if (nleft == 0) {
             mutex_release(&global->todo_lock);
             break;
@@ -1746,15 +1770,17 @@ static void worker(void *arg){
         value_make_stable(&global->values, w->index);
         dict_make_stable(w->visited, w->index);
 
-        // Fill the graph table
-        for (unsigned int i = 0; w->count != 0; i++) {
-            struct node *node = w->results;
-			node->id = w->node_id;
-            global->graph.nodes[w->node_id++] = node;
-            w->results = node->next;
-            w->count--;
+        if (global->layer_done) {
+            // Fill the graph table
+            for (unsigned int i = 0; w->count != 0; i++) {
+                struct node *node = w->results;
+                node->id = w->node_id;
+                global->graph.nodes[w->node_id++] = node;
+                w->results = node->next;
+                w->count--;
+            }
+            assert(w->results == NULL);
         }
-        assert(w->results == NULL);
     }
 }
 
@@ -2099,6 +2125,7 @@ int main(int argc, char **argv){
     struct worker *workers = calloc(global->nworkers, sizeof(*workers));
     for (unsigned int i = 0; i < global->nworkers; i++) {
         struct worker *w = &workers[i];
+        w->visited = visited;
         w->global = global;
         w->timeout = timeout;
         w->start_barrier = &start_barrier;
@@ -2107,8 +2134,8 @@ int main(int argc, char **argv){
         w->index = i;
         w->workers = workers;
         w->nworkers = global->nworkers;
-        w->visited = visited;
         w->edges = calloc(global->nworkers, sizeof(struct edge *));
+        w->profile = calloc(global->code.len, sizeof(*w->profile));
 
         // Create a context for evaluating invariants
         w->inv_step.ctx = calloc(1, sizeof(struct context) +
@@ -2146,41 +2173,52 @@ int main(int argc, char **argv){
 
         barrier_wait(&middle_barrier);
 
-        double before_postproc = gettime();
-
         // Back to sequential mode
-        assert(global->todo == global->graph.size);
 
-        global->diameter++;
-        // printf("Diameter %d\n", global->diameter);
-
-        // The threads completed producing the next layer of nodes in the graph.
-        // Grow the graph table.
-        unsigned int total = 0;
-        for (unsigned int i = 0; i < global->nworkers; i++) {
-            struct worker *w = &workers[i];
-            w->node_id = global->todo + total;
-            total += w->count;
-        }
-        graph_add_multiple(&global->graph, total);
-
-        // Prepare the grow the hash tables as well (but the actual work of
+        // Prepare the grow the hash tables (but the actual work of
         // rehashing is distributed among the threads in the next phase
+        double before_postproc = gettime();
         dict_grow_prepare(visited);
         value_grow_prepare(&global->values);
-
-        // Collect the failures of all the workers
-        for (unsigned int i = 0; i < global->nworkers; i++) {
-			process_results(global, &workers[i]);
-        }
-
         postproc += gettime() - before_postproc;
 
-        if (!minheap_empty(global->failures)) {
-            global->todo = global->graph.size;
+        // End of a layer in the Kripke structure?
+        global->layer_done = global->todo == global->graph.size;
+        if (global->layer_done) {
+            global->diameter++;
+            // printf("Diameter %d\n", global->diameter);
+
+            // The threads completed producing the next layer of nodes in the graph.
+            // Grow the graph table.
+            unsigned int total = 0;
+            for (unsigned int i = 0; i < global->nworkers; i++) {
+                struct worker *w = &workers[i];
+                w->node_id = global->todo + total;
+                total += w->count;
+            }
+            graph_add_multiple(&global->graph, total);
+
+            // Collect the failures of all the workers
+            for (unsigned int i = 0; i < global->nworkers; i++) {
+                process_results(global, &workers[i]);
+            }
+
+            if (!minheap_empty(global->failures)) {
+                // Pretend we're done
+                global->todo = global->graph.size;
+            }
+            if (global->todo == global->graph.size) { // no new nodes added
+                break;
+            }
         }
-        if (global->todo == global->graph.size) {
-            break;
+
+        // Determine the new goal
+        unsigned int nleft = global->graph.size - global->todo;
+        if (nleft > 1024 * global->nworkers) {
+            global->goal = global->todo + 1024 * global->nworkers;
+        }
+        else {
+            global->goal = global->graph.size;
         }
 
         // printf("Coordinator back to workers (%d)\n", global->diameter);
@@ -2197,8 +2235,16 @@ int main(int argc, char **argv){
 
     printf("#states %d (time %.3lf+%.3lf=%.3lf)\n", global->graph.size, gettime() - before - postproc, postproc, gettime() - before);
 
-    dict_set_sequential(visited);
     value_set_sequential(&global->values);
+    dict_set_sequential(visited);
+
+    // dict_dump(visited);
+    dict_dump(global->values.dicts);
+    // dict_dump(global->values.addresses);
+    // dict_dump(global->values.atoms);
+    // dict_dump(global->values.lists);
+    // dict_dump(global->values.sets);
+    // dict_dump(global->values.contexts);
  
     printf("Phase 3: analysis\n");
     if (minheap_empty(global->failures)) {
@@ -2424,53 +2470,14 @@ int main(int argc, char **argv){
         fprintf(out, "\n");
         fprintf(out, "  },\n");
 
-        fprintf(out, "  \"nodes\": [\n");
-        bool first = true;
-        for (unsigned int i = 0; i < global->graph.size; i++) {
-            struct node *node = global->graph.nodes[i];
-            assert(node->id == i);
-            if (node->reachable) {
-                if (first) {
-                    first = false;
-                }
-                else {
-                    fprintf(out, ",\n");
-                }
-                fprintf(out, "    {\n");
-                fprintf(out, "      \"idx\": %d,\n", node->id);
-                fprintf(out, "      \"component\": %d,\n", node->component);
-#ifdef notdef
-                if (node->parent != NULL) {
-                    fprintf(out, "      \"parent\": %d,\n", node->parent->id);
-                }
-                char *val = json_escape_value(node->state->vars);
-                fprintf(out, "      \"value\": \"%s:%d\",\n", val, node->state->choosing != 0);
-                free(val);
-#endif
-                print_transitions(out, symbols, node->fwd);
-                if (i == 0) {
-                    fprintf(out, "      \"type\": \"initial\"\n");
-                }
-                else if (node->final) {
-                    fprintf(out, "      \"type\": \"terminal\"\n");
-                }
-                else {
-                    fprintf(out, "      \"type\": \"normal\"\n");
-                }
-                fprintf(out, "    }");
-            }
-        }
-        fprintf(out, "\n");
-        fprintf(out, "  ],\n");
-#ifdef notdef
-        fprintf(out, "  \"edges\": [\n");
-        first = true;
-        bool first_log;
-        for (unsigned int i = 0; i < global->graph.size; i++) {
-            struct node *node = global->graph.nodes[i];
-            if (node->reachable) {
-                for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
-                    assert(edge->dst->reachable);
+        // Only output nodes if there are symbols
+        if (!se.first) {
+            fprintf(out, "  \"nodes\": [\n");
+            bool first = true;
+            for (unsigned int i = 0; i < global->graph.size; i++) {
+                struct node *node = global->graph.nodes[i];
+                assert(node->id == i);
+                if (node->reachable) {
                     if (first) {
                         first = false;
                     }
@@ -2478,31 +2485,46 @@ int main(int argc, char **argv){
                         fprintf(out, ",\n");
                     }
                     fprintf(out, "    {\n");
-                    fprintf(out, "      \"src\": %d,\n", node->id);
-                    fprintf(out, "      \"dst\": %d,\n", edge->dst->id);
-                    fprintf(out, "      \"print\": [");
-                    first_log = true;
-                    for (int j = 0; j < edge->nlog; j++) {
-                        if (first_log) {
-                            first_log = false;
-                            fprintf(out, "\n");
-                        }
-                        else {
-                            fprintf(out, ",\n");
-                        }
-                        char *p = value_json(edge->log[j]);
-                        fprintf(out, "        %s", p);
-                        free(p);
+                    fprintf(out, "      \"idx\": %d,\n", node->id);
+                    fprintf(out, "      \"component\": %d,\n", node->component);
+#ifdef notdef
+                    if (node->parent != NULL) {
+                        fprintf(out, "      \"parent\": %d,\n", node->parent->id);
                     }
-                    fprintf(out, "\n");
-                    fprintf(out, "      ]\n");
+                    char *val = json_escape_value(node->state->vars);
+                    fprintf(out, "      \"value\": \"%s:%d\",\n", val, node->state->choosing != 0);
+                    free(val);
+#endif
+                    print_transitions(out, symbols, node->fwd);
+                    if (i == 0) {
+                        fprintf(out, "      \"type\": \"initial\"\n");
+                    }
+                    else if (node->final) {
+                        fprintf(out, "      \"type\": \"terminal\"\n");
+                    }
+                    else {
+                        fprintf(out, "      \"type\": \"normal\"\n");
+                    }
                     fprintf(out, "    }");
                 }
             }
+            fprintf(out, "\n");
+            fprintf(out, "  ],\n");
+        }
+        fprintf(out, "  \"profile\": [\n");
+        for (unsigned int pc = 0; pc < global->code.len; pc++) {
+            unsigned int count = 0;
+            for (unsigned int i = 0; i < global->nworkers; i++) {
+                struct worker *w = &workers[i];
+                count += w->profile[pc];
+            }
+            if (pc > 0) {
+                fprintf(out, ",\n");
+            }
+            fprintf(out, "    %u", count);
         }
         fprintf(out, "\n");
         fprintf(out, "  ],\n");
-#endif // notdef
     }
     else {
         // Find shortest "bad" path

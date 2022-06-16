@@ -227,8 +227,7 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
         iface_step.ctx->pc = iface_pc;
         iface_node->value = iface_evaluate(global, node->state, &iface_step);
         iface_node->initial = false;
-        panic("TODO iface");
-        // iface_node->terminated = value_ctx_all_eternal(node->state->ctxbag);
+        iface_node->terminated = value_state_all_eternal(node->state);
         iface_node->choosing = node->state->choosing != 0;
         iface_node->state = node->state;
         if (iface_step.ctx->failed) {

@@ -32,7 +32,7 @@ struct edge {
     struct node *dst;        // destination node
     hvalue_t after;          // resulting context
     struct access_info *ai;  // to detect data races
-    hvalue_t *log;           // print history
+    hvalue_t *log;           // print history            TODO
     uint16_t nsteps;         // # microsteps
     uint16_t nlog : 15;      // size of print history
     bool interrupt : 1;      // set if state change is an interrupt
@@ -48,6 +48,8 @@ enum fail_type {
     FAIL_RACE
 };
 
+// TODO: node->state should be equivalent to ((struct state *) node) - 1
+//       This would save a little more memory.
 struct node {
 	struct node *next;		// for linked list
 

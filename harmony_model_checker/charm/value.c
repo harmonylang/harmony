@@ -680,6 +680,7 @@ void strbuf_value_json(struct strbuf *sb, hvalue_t v){
         value_json_context(sb, v & ~VALUE_MASK);
         break;
     default:
+        printf("bad value type: %p\n", (void *) v);
         panic("strbuf_value_json: bad value type");
     }
 }
