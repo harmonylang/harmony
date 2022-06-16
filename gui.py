@@ -13,9 +13,10 @@ from PyQt5.QtWidgets import QDialog, QApplication, QFileDialog, QMessageBox
 from PyQt5.QtGui import QTextCursor, QColor, QRegExpValidator, QSyntaxHighlighter, QTextCharFormat 
 from PIL import Image
 import numpy as np
-from codeeditor import CodeEditor
+from gui_import.codeeditor import CodeEditor
 import json
 import os
+import subprocess
 
 
 class Ui_MainWindow(object):
@@ -146,6 +147,17 @@ class Ui_MainWindow(object):
             self.filePathText.setText("")
             self.errorMsgBox("This file cannot be opened. Please open another file.")
             return
+        
+        # try compile hvm file
+        runcmd = subprocess.run(["./harmony", fname], capture_output=True)
+        returncode = runcmd.returncode
+        stdout =  runcmd.stdout.decode()
+        stderr =  runcmd.stderr.decode()
+        # .hny file fail to compile
+        if returncode != 0:
+            self.errorMsgBox("Run Failed\n" + stdout + stderr)
+            return
+        
         # try open hco file
         try:
             hcoName = fname[:-3] + "hco"
@@ -164,6 +176,7 @@ class Ui_MainWindow(object):
             self.filePathText.setText("")
             self.errorMsgBox("Cannot open hvm file. ")
             return
+        
         # set self.hco and self.hvm
         self.hco = hcoData
         self.hvm = hvmData
@@ -247,11 +260,6 @@ class Ui_MainWindow(object):
         byteCodeC1 = 1
         byteCodeC2 = 1 + len(self.hco["code"][pc])
         self.highlightByCoordinate(self.byteCode, self.byteCodeCursor, byteCodeR1, byteCodeR2, byteCodeC1, byteCodeC2)
-        print(pc)
-        print(sourceCodeR1)
-        print(sourceCodeC1)
-        print(sourceCodeR2)
-        print(sourceCodeC2)
         # if current microstep is an unconditional jump, then update an arrow
         microstep = self.hco['code'][pc]
         npc = int(self.microSteps[self.microStepPointer]["npc"])
@@ -413,9 +421,14 @@ class Ui_MainWindow(object):
         # save all the image in imgList
         for i in range(len(imgList)):
             img = Image.fromarray(imgList[i], 'RGB')
-            fileName = self.hco["locations"]["0"]["file"][:-4]
+            filePath = self.hco["locations"]["0"]["file"][:-4]
+            fileName = filePath.rsplit('/', 1)[-1]
             imageName = f"{fileName}_t{i}.png"
             imageDirName = f"{self.sourceFile[:-4]}_threadImg"
+            # print(filePath)
+            # print(fileName)
+            # print(imageName)
+            # print(imageDirName)
             try:
                 img.save(f"{imageDirName}/{imageName}")
             except:
@@ -426,8 +439,11 @@ class Ui_MainWindow(object):
         self.threadBrowser.setText("")
         self.createThreadImg()
         cursorPosition = -2
-        fileName = fileName = self.hco["locations"]["0"]["file"][:-4]
+        filePath = self.hco["locations"]["0"]["file"][:-4]
+        fileName = filePath.rsplit('/', 1)[-1]
         imageDirName = f"{self.sourceFile[:-4]}_threadImg"
+        # print(fileName)
+        # print(imageDirName)
         for i in range(self.threadNumber):
             imageName = f"{fileName}_t{i}.png"
             cursorPosition += 6
