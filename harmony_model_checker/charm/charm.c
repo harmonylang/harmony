@@ -332,11 +332,7 @@ static bool onestep(
 
         if (infloop_detect || instrcnt > 1000) {
             if (infloop == NULL) {
-                panic("TODO infloop 1");
                 infloop = dict_new("infloop1", 0, 0, 0, NULL, NULL);
-            }
-            else {
-                panic("TODO infloop 2");
             }
 
             int ctxsize = sizeof(struct context) + step->ctx->sp * sizeof(hvalue_t);
