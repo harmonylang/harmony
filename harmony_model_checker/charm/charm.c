@@ -1996,7 +1996,6 @@ int main(int argc, char **argv){
     // Determine how many worker threads to use
     struct global_t *global = new_alloc(struct global_t);
     global->nworkers = getNumCores();
-global->nworkers = 1;
 	printf("nworkers = %d\n", global->nworkers);
 
     barrier_t start_barrier, middle_barrier, end_barrier;
