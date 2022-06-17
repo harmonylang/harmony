@@ -339,14 +339,14 @@ static bool onestep(
                 panic("TODO infloop 2");
             }
 
-            int stacksize = step->ctx->sp * sizeof(hvalue_t);
+            int ctxsize = sizeof(struct context) + step->ctx->sp * sizeof(hvalue_t);
             if (step->ctx->extended) {
-                stacksize += ctx_extent * sizeof(hvalue_t);
+                ctxsize += ctx_extent * sizeof(hvalue_t);
             }
-            int combosize = sizeof(struct combined) + stacksize;
-            struct combined *combo = calloc(1, combosize);
-            combo->state = *sc;
-            memcpy(&combo->context, step->ctx, sizeof(*step->ctx) + stacksize);
+            int combosize = ctxsize + state_size(sc);
+            char *combo = calloc(1, combosize);
+            memcpy(combo, step->ctx, ctxsize);
+            memcpy(combo + ctxsize, sc, state_size(sc));
             bool new;
             dict_insert(infloop, NULL, combo, combosize, &new);
             free(combo);
@@ -1148,7 +1148,7 @@ hvalue_t twostep(
 ){
     // Make a copy of the state
     struct state *sc = calloc(1, sizeof(struct state) + 4096);      // TODO
-    *sc = *node->state;
+    memcpy(sc, node->state, state_size(node->state));
     sc->choosing = 0;
 
     struct step step;
@@ -1207,14 +1207,14 @@ hvalue_t twostep(
                 infloop = dict_new("infloop2", 0, 0, 0, NULL, NULL);
             }
 
-            int stacksize = step.ctx->sp * sizeof(hvalue_t);
-            int combosize = sizeof(struct combined) + stacksize;
+            int ctxsize = sizeof(struct context) + step.ctx->sp * sizeof(hvalue_t);
             if (step.ctx->extended) {
-                stacksize += ctx_extent * sizeof(hvalue_t);
+                ctxsize += ctx_extent * sizeof(hvalue_t);
             }
-            struct combined *combo = calloc(1, combosize);
-            combo->state = *sc;
-            memcpy(&combo->context, step.ctx, sizeof(*step.ctx) + stacksize);
+            int combosize = ctxsize + state_size(sc);
+            char *combo = calloc(1, combosize);
+            memcpy(combo, step.ctx, ctxsize);
+            memcpy(combo + ctxsize, sc, state_size(sc));
             bool new;
             dict_insert(infloop, NULL, combo, combosize, &new);
             free(combo);
@@ -1589,6 +1589,7 @@ static void do_work(struct worker *w){
 
     for (;;) {
         mutex_acquire(&global->todo_lock);
+        assert(global->goal >= global->todo);
         unsigned int start = global->todo;
         unsigned int nleft = global->goal - start;
         if (nleft == 0) {
@@ -1604,6 +1605,8 @@ static void do_work(struct worker *w){
             take = nleft;
         }
         global->todo = start + take;
+        assert(global->todo <= global->graph.size);
+        assert(global->goal >= global->todo);
         mutex_release(&global->todo_lock);
 
         while (take > 0) {
@@ -1993,6 +1996,7 @@ int main(int argc, char **argv){
     // Determine how many worker threads to use
     struct global_t *global = new_alloc(struct global_t);
     global->nworkers = getNumCores();
+global->nworkers = 1;
 	printf("nworkers = %d\n", global->nworkers);
 
     barrier_t start_barrier, middle_barrier, end_barrier;
@@ -2101,6 +2105,7 @@ int main(int argc, char **argv){
     memset(node, 0, sizeof(*node));
     node->state = state;
     graph_add(&global->graph, node);
+    global->goal = 1;
 
     // Allocate space for worker info
     struct worker *workers = calloc(global->nworkers, sizeof(*workers));
@@ -2186,7 +2191,7 @@ int main(int argc, char **argv){
 
             if (!minheap_empty(global->failures)) {
                 // Pretend we're done
-                global->todo = global->graph.size;
+                global->todo = global->goal = global->graph.size;
             }
             if (global->todo == global->graph.size) { // no new nodes added
                 break;
@@ -2201,6 +2206,7 @@ int main(int argc, char **argv){
         else {
             global->goal = global->graph.size;
         }
+        assert(global->goal >= global->todo);
 
         // printf("Coordinator back to workers (%d)\n", global->diameter);
 
@@ -2552,11 +2558,10 @@ int main(int argc, char **argv){
         }
 
         fprintf(out, "  \"macrosteps\": [");
-        struct state oldstate;
-        memset(&oldstate, 0, sizeof(oldstate));
-        struct context *oldctx = calloc(1, sizeof(*oldctx));
+        struct state *oldstate = new_alloc(struct state);
+        struct context *oldctx = new_alloc(struct context);
         global->dumpfirst = true;
-        path_dump(global, out, bad->edge, &oldstate, &oldctx);
+        path_dump(global, out, bad->edge, oldstate, /* TODO */ &oldctx);
         fprintf(out, "\n");
         free(oldctx);
         fprintf(out, "  ],\n");

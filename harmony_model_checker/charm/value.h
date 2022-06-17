@@ -53,11 +53,6 @@ typedef struct context {   // context value
 
 #define ctx_stack(c)    ((c)->extended ? &(c)->thestack[ctx_extent] : (c)->thestack)
 
-typedef struct combined {           // combination of current state and current context
-    struct state state;
-    struct context context;
-} combined;
-
 typedef struct values_t {
     struct dict *atoms;
     struct dict *dicts;
