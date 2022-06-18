@@ -178,7 +178,7 @@ struct var_tree *var_parse(struct engine *engine, char *s, int len, int *index){
 
 // Check for potential stack overflow
 static inline bool check_stack(struct context *ctx, unsigned int needed) {
-    return ctx->sp < MAX_CONTEXT_STACK - needed;
+    return ctx->sp < MAX_CONTEXT_STACK - ctx_extent - needed;
 }
 
 void interrupt_invoke(struct step *step){

@@ -1307,7 +1307,7 @@ hvalue_t value_bag_remove(struct engine *engine, hvalue_t bag, hvalue_t v){
 }
 
 bool value_ctx_push(struct context *ctx, hvalue_t v){
-    if (ctx->sp == MAX_CONTEXT_STACK) {
+    if (ctx->sp == MAX_CONTEXT_STACK - ctx_extent) {
         return false;
     }
     ctx_stack(ctx)[ctx->sp++] = v;
