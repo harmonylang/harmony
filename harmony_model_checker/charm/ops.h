@@ -7,6 +7,8 @@
 #include "value.h"
 #include "global.h"
 
+#define MAX_PRINT       64
+
 void ops_init(struct global_t *global, struct engine *engine);
 struct op_info *ops_get(char *opname, int size);
 
@@ -15,7 +17,7 @@ struct step {
     struct context *ctx;
     struct access_info *ai;
     // TODO hvalue_t *log;
-    hvalue_t log[16];       // TODO
+    hvalue_t log[MAX_PRINT];
     unsigned int nlog;
     struct dfa_trie *dfa_trie;
 };

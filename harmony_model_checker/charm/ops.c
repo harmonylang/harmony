@@ -492,7 +492,10 @@ void op_Print(const void *env, struct state *state, struct step *step, struct gl
         printf("%s\n", s);
         free(s);
     }
-    // TODO step->log = realloc(step->log, (step->nlog + 1) * sizeof(symbol));
+    if (step->nlog == MAX_PRINT) {
+        value_ctx_failure(step->ctx, &step->engine, "Print: too many prints");
+        return;
+    }
     step->log[step->nlog++] = symbol;
     if (global->dfa != NULL) {
         int nstate = dfa_step(global->dfa, state->dfa_state, symbol);
