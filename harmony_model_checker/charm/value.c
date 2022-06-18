@@ -1077,7 +1077,7 @@ bool value_trystore(struct engine *engine, hvalue_t root, hvalue_t key, hvalue_t
             }
             nsize = size;
         }
-        hvalue_t nvals[size / sizeof(hvalue_t)];
+        hvalue_t nvals[nsize / sizeof(hvalue_t)];
         memcpy(nvals, vals, size);
         nvals[index] = value;
         hvalue_t v = value_put_list(engine, nvals, nsize);
