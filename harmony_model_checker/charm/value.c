@@ -1397,32 +1397,30 @@ void context_remove(struct state *state, hvalue_t ctx){
     }
 }
 
-void context_add(struct state *state, hvalue_t ctx){
+bool context_add(struct state *state, hvalue_t ctx){
     unsigned int i;
     for (i = 0; i < state->bagsize; i++) {
         if (state->contexts[i] == ctx) {
             multiplicities(state)[i]++;
-            break;
+            return true;
         }
         if (state->contexts[i] > ctx) {
-            // Move the last multiplicities
-            memmove((char *) &state->contexts[state->bagsize + 1] + i + 1,
-                    (char *) &state->contexts[state->bagsize] + i,
-                    state->bagsize - i);
-            // Move the last contexts plus the first multiplicitkes
-            memmove(&state->contexts[i+1], &state->contexts[i],
-                                (state->bagsize - i) * sizeof(hvalue_t) + i);
-            state->bagsize++;
-            state->contexts[i] = ctx;
-            multiplicities(state)[i] = 1;
             break;
         }
     }
-    if (i == state->bagsize) {
-        // Move the multiplicities
-        memmove(&state->contexts[i+1], &state->contexts[i], i);
-        state->bagsize++;
-        state->contexts[i] = ctx;
-        multiplicities(state)[i] = 1;
+
+    if (state->bagsize >= MAX_CONTEXT_BAG) {
+        return false;
     }
+
+    // Move the last multiplicities
+    memmove((char *) &state->contexts[state->bagsize + 1] + i + 1,
+            (char *) &state->contexts[state->bagsize] + i,
+            state->bagsize - i);
+    // Move the last contexts plus the first multiplicitkes
+    memmove(&state->contexts[i+1], &state->contexts[i], i);
+    state->bagsize++;
+    state->contexts[i] = ctx;
+    multiplicities(state)[i] = 1;
+    return true;
 }

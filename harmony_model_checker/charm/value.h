@@ -5,7 +5,8 @@
 #include "strbuf.h"
 #include <stdbool.h>
 
-#define MAX_CONTEXT_STACK   1000
+#define MAX_CONTEXT_STACK   1000        // maximum size of context stack
+#define MAX_CONTEXT_BAG       32        // maximum number of distinct contexts
 
 typedef struct state {
     hvalue_t vars;        // shared variables
@@ -134,7 +135,7 @@ hvalue_t value_ctx_failure(struct context *ctx, struct engine *engine, char *fmt
 bool value_ctx_all_eternal(hvalue_t ctxbag);
 bool value_state_all_eternal(struct state *state);
 void context_remove(struct state *state, hvalue_t ctx);
-void context_add(struct state *state, hvalue_t ctx);
+bool context_add(struct state *state, hvalue_t ctx);
 void value_grow_prepare(struct values_t *values);
 
 

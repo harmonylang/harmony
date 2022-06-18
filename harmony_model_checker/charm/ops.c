@@ -1417,8 +1417,9 @@ void op_Spawn(
         memcpy(copy, ctx, size);
         spawn_thread(global, state, copy);
     }
-    else {
-        context_add(state, value_put_context(&step->engine, ctx));
+    else if (!context_add(state, value_put_context(&step->engine, ctx))) {
+        value_ctx_failure(step->ctx, &step->engine, "spawn: too many threads");
+        return;
     }
     step->ctx->pc++;
 }

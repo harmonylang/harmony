@@ -237,7 +237,7 @@ static bool onestep(
     bool choosing = false, infinite_loop = false;
     struct dict *infloop = NULL;        // infinite loop detector
     unsigned int instrcnt = 0;
-    char as_state[sizeof(struct state) + 4096];     // TODO;
+    char as_state[sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1)];
     hvalue_t as_context = 0;
     unsigned int as_instrcnt = 0;
     bool rollback = false, failure = false, stopped = false;
@@ -1143,7 +1143,7 @@ hvalue_t twostep(
     unsigned int nsteps
 ){
     // Make a copy of the state
-    struct state *sc = calloc(1, sizeof(struct state) + 4096);      // TODO
+    struct state *sc = calloc(1, sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1));
     memcpy(sc, node->state, state_size(node->state));
     sc->choosing = 0;
 
@@ -1199,7 +1199,6 @@ hvalue_t twostep(
         // Infinite loop detection
         if (!step.ctx->terminated && !step.ctx->failed) {
             if (infloop == NULL) {
-                // TODO.  infloop should be deallocated
                 infloop = dict_new("infloop2", 0, 0, 0, NULL, NULL);
             }
 
