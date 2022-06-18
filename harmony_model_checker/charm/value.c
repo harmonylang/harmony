@@ -1415,13 +1415,16 @@ bool context_add(struct state *state, hvalue_t ctx){
     if (state->bagsize >= MAX_CONTEXT_BAG) {
         return false;
     }
-
+ 
     // Move the last multiplicities
     memmove((char *) &state->contexts[state->bagsize + 1] + i + 1,
             (char *) &state->contexts[state->bagsize] + i,
             state->bagsize - i);
+
     // Move the last contexts plus the first multiplicitkes
-    memmove(&state->contexts[i+1], &state->contexts[i], i);
+    memmove(&state->contexts[i+1], &state->contexts[i],
+                    (state->bagsize - i) * sizeof(hvalue_t) + i);
+
     state->bagsize++;
     state->contexts[i] = ctx;
     multiplicities(state)[i] = 1;

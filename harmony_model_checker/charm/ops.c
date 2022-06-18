@@ -48,7 +48,6 @@ static hvalue_t type_bool, type_int, type_str, type_pc, type_list;
 static hvalue_t type_dict, type_set, type_address, type_context;
 
 static inline void ctx_push(struct context *ctx, hvalue_t v){
-    // TODO.  Check for stack overflow
     ctx_stack(ctx)[ctx->sp++] = v;
 }
 
