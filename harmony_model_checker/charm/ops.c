@@ -42,7 +42,7 @@ struct var_tree {
 
 // These are initialized in ops_init and are immutable.
 static struct dict *ops_map, *f_map;
-static hvalue_t underscore, this_atom;
+static hvalue_t underscore, this_atom, result_atom;
 static hvalue_t alloc_pool_atom, alloc_next_atom;
 static hvalue_t type_bool, type_int, type_str, type_pc, type_list;
 static hvalue_t type_dict, type_set, type_address, type_context;
@@ -177,9 +177,17 @@ struct var_tree *var_parse(struct engine *engine, char *s, int len, int *index){
     return vt;
 }
 
+static inline bool check_stack(struct context *ctx, unsigned int needed) {
+    return ctx->sp < MAX_CONTEXT_STACK - needed;
+}
+
 void interrupt_invoke(struct step *step){
     assert(step->ctx->extended);
     assert(!step->ctx->interruptlevel);
+    if (!check_stack(step->ctx, 2)) {
+        value_ctx_failure(step->ctx, &step->engine, "interrupt: out of stack");
+        return;
+    }
     ctx_push(step->ctx,
         VALUE_TO_INT((step->ctx->pc << CALLTYPE_BITS) | CALLTYPE_INTERRUPT));
     ctx_push(step->ctx, step->ctx->ctx_trap_arg);
@@ -538,13 +546,13 @@ void op_Choose(const void *env, struct state *state, struct step *step, struct g
             printf("--> "); fflush(stdout);
             unsigned int selection;
             if (scanf("%u", &selection) == 1) {
-		selection -= 1;
-		if (selection < size) {
-		    step->ctx->pc++;
-		    ctx_push(step->ctx, vals[selection]);
-		    return;
-		}
-	    }
+                selection -= 1;
+                if (selection < size) {
+                    step->ctx->pc++;
+                    ctx_push(step->ctx, vals[selection]);
+                    return;
+                }
+            }
             printf("Bad selection. Try again\n");
         }
     }
@@ -960,13 +968,12 @@ void op_Dup(const void *env, struct state *state, struct step *step, struct glob
 }
 
 void op_Frame(const void *env, struct state *state, struct step *step, struct global_t *global){
-    static hvalue_t result = 0;
-
-    if (result == 0) {
-        result = value_put_atom(&step->engine, "result", 6);
-    }
-
     const struct env_Frame *ef = env;
+
+    if (!check_stack(step->ctx, 2)) {
+        value_ctx_failure(step->ctx, &step->engine, "op_Frame: out of stack");
+        return;
+    }
 
     // peek at argument
     hvalue_t arg = ctx_pop(step->ctx);
@@ -975,7 +982,7 @@ void op_Frame(const void *env, struct state *state, struct step *step, struct gl
     hvalue_t oldvars = step->ctx->vars;
 
     // Set result to None
-    step->ctx->vars = value_dict_store(&step->engine, VALUE_DICT, result, VALUE_ADDRESS);
+    step->ctx->vars = value_dict_store(&step->engine, VALUE_DICT, result_atom, VALUE_ADDRESS);
 
     // try to match against parameters
     var_match(step->ctx, ef->args, &step->engine, arg);
@@ -1249,7 +1256,7 @@ void op_ReadonlyInc(const void *env, struct state *state, struct step *step, str
 //  - saved argument for stack trace
 //  - call: process, normal, or interrupt plus return address
 void op_Return(const void *env, struct state *state, struct step *step, struct global_t *global){
-    hvalue_t result = value_dict_load(step->ctx->vars, value_put_atom(&step->engine, "result", 6));
+    hvalue_t result = value_dict_load(step->ctx->vars, result_atom);
     hvalue_t fp = ctx_pop(step->ctx);
     if (VALUE_TYPE(fp) != VALUE_INT) {
         printf("XXX %d %d %s\n", step->ctx->pc, step->ctx->sp, value_string(fp));
@@ -3227,6 +3234,7 @@ void ops_init(struct global_t *global, struct engine *engine) {
     f_map = dict_new("functions", sizeof(struct f_info *), 0, 0, NULL, NULL);
 	underscore = value_put_atom(engine, "_", 1);
 	this_atom = value_put_atom(engine, "this", 4);
+	result_atom = value_put_atom(engine, "result", 6);
     type_bool = value_put_atom(engine, "bool", 4);
     type_int = value_put_atom(engine, "int", 3);
     type_str = value_put_atom(engine, "str", 3);

@@ -1306,9 +1306,12 @@ hvalue_t value_bag_remove(struct engine *engine, hvalue_t bag, hvalue_t v){
     }
 }
 
-void value_ctx_push(struct context *ctx, hvalue_t v){
-    // TODO.  Check for stack overflow
+bool value_ctx_push(struct context *ctx, hvalue_t v){
+    if (ctx->sp == MAX_CONTEXT_STACK) {
+        return false;
+    }
     ctx_stack(ctx)[ctx->sp++] = v;
+    return true;
 }
 
 hvalue_t value_ctx_pop(struct context *ctx){
