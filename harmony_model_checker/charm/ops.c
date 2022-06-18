@@ -176,6 +176,7 @@ struct var_tree *var_parse(struct engine *engine, char *s, int len, int *index){
     return vt;
 }
 
+// Check for potential stack overflow
 static inline bool check_stack(struct context *ctx, unsigned int needed) {
     return ctx->sp < MAX_CONTEXT_STACK - needed;
 }
@@ -970,7 +971,7 @@ void op_Frame(const void *env, struct state *state, struct step *step, struct gl
     const struct env_Frame *ef = env;
 
     if (!check_stack(step->ctx, 2)) {
-        value_ctx_failure(step->ctx, &step->engine, "op_Frame: out of stack");
+        value_ctx_failure(step->ctx, &step->engine, "Frame: out of stack");
         return;
     }
 
@@ -1111,6 +1112,10 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
         ctx_push(step->ctx, v);
     }
     else {
+        if (!check_stack(step->ctx, 1)) {
+            value_ctx_failure(step->ctx, &step->engine, "Load: out of stack");
+            return;
+        }
         if (step->ai != NULL) {
             step->ai->indices = el->indices;
             step->ai->n = el->n;
@@ -1154,6 +1159,10 @@ void op_LoadVar(const void *env, struct state *state, struct step *step, struct 
             result = ind_tryload(&step->engine, step->ctx->ctx_this, &indices[1], size - 1, &v);
         }
         else {
+            if (!check_stack(step->ctx, 1)) {
+                value_ctx_failure(step->ctx, &step->engine, "LoadVar: out of stack");
+                return;
+            }
             result = ind_tryload(&step->engine, step->ctx->vars, indices, size, &v);
         }
         if (!result) {
@@ -1225,6 +1234,10 @@ void op_Pop(const void *env, struct state *state, struct step *step, struct glob
 void op_Push(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_Push *ep = env;
 
+    if (!check_stack(step->ctx, 1)) {
+        value_ctx_failure(step->ctx, &step->engine, "Push: out of stack");
+        return;
+    }
     ctx_push(step->ctx, ep->value);
     step->ctx->pc++;
 }
