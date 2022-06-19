@@ -12,7 +12,7 @@ typedef struct state {
     hvalue_t vars;        // shared variables
     hvalue_t seqs;        // sequential variables   TODO. make global
     hvalue_t choosing;    // context that is choosing if non-zero
-    hvalue_t stopbag;     // bag of stopped contexts        // TODO. Do we need this?
+    hvalue_t stopbag;     // bag of stopped contexts
     hvalue_t invariants;  // set of invariants that must hold  TODO: make global
     uint32_t dfa_state;
 
