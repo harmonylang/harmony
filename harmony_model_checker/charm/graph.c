@@ -46,9 +46,22 @@ static void inline swap(struct graph_t *graph, unsigned int x, unsigned int y){
     graph->nodes[y]->id = y;
 }
 
-struct scc *scc_alloc(unsigned int start, unsigned int finish, struct scc *next){
-    // TODO
-    struct scc *scc = new_alloc(struct scc);
+struct scc *scc_alloc(unsigned int start, unsigned int finish, struct scc *next, void **scc_cache){
+    struct scc *scc;
+
+    if (scc_cache == NULL) {
+        scc = new_alloc(struct scc);
+    }
+    else if ((scc = *scc_cache) == NULL) {
+        scc = malloc(256 * sizeof(*scc));
+        for (int i = 1; i < 256; i++) {
+            * (void **) &scc[i] = *scc_cache;
+            *scc_cache = &scc[i];
+        }
+    }
+    else {
+        *scc_cache = * (void **) scc;
+    }
     scc->start = start;
     scc->finish = finish;
     scc->next = next;
@@ -59,7 +72,7 @@ struct scc *scc_alloc(unsigned int start, unsigned int finish, struct scc *next)
 // connected component holding node scc->start, the remaining successors of the node, the remaining
 // nodes minus the predecessors and the successors, and finally the predecessors minus the nodes
 // in the strongly connected component.  Then iteratively visit the last three partitions.
-struct scc *graph_find_scc_one(struct graph_t *graph, struct scc *scc, unsigned int component) {
+struct scc *graph_find_scc_one(struct graph_t *graph, struct scc *scc, unsigned int component, void **scc_cache) {
     unsigned int start = scc->start;
     unsigned int finish = scc->finish;
     assert(start < finish);
@@ -91,11 +104,13 @@ struct scc *graph_find_scc_one(struct graph_t *graph, struct scc *scc, unsigned 
         if (scc->start < scc->finish) {
             return scc;
         }
-        free(scc);  // TODO
+        * (void **) scc = *scc_cache;
+        *scc_cache = scc;
         return next_scc;
     }
 
-    free(scc);  // TODO
+    * (void **) scc = *scc_cache;
+    *scc_cache = scc;
     scc = next_scc;
 
     // Better balancing?
@@ -160,22 +175,22 @@ struct scc *graph_find_scc_one(struct graph_t *graph, struct scc *scc, unsigned 
         if (in_scc) { i++; } else { j--; }
     }
     if (mid < lo) {    // predecessors - scc
-        scc = scc_alloc(mid, lo, scc);
+        scc = scc_alloc(mid, lo, scc, scc_cache);
     }
     if (lo <= hi) {     // rest
-        scc = scc_alloc(lo, hi + 1, scc);
+        scc = scc_alloc(lo, hi + 1, scc, scc_cache);
     }
     if (hi + 1 < finish) {  // successors - scc
-        scc = scc_alloc(hi + 1, finish, scc);
+        scc = scc_alloc(hi + 1, finish, scc, scc_cache);
     }
     return scc;
 }
 
 unsigned int graph_find_scc(struct graph_t *graph) {
-    struct scc *scc = scc_alloc(0, graph->size, NULL);
+    struct scc *scc = scc_alloc(0, graph->size, NULL, NULL);
     unsigned int count = 0;
     while (scc != NULL) {
-        scc = graph_find_scc_one(graph, scc, count);
+        scc = graph_find_scc_one(graph, scc, count, NULL);
         count++;
     }
     return count;

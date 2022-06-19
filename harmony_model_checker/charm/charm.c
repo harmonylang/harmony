@@ -65,6 +65,8 @@ struct worker {
 
     unsigned int *profile;      // one integer for every instruction in the HVM code
 
+    void *scc_cache;            // for SCC alloc/free
+
     // These need to be next to one another
     struct context ctx;
     hvalue_t stack[MAX_CONTEXT_STACK];
@@ -1684,7 +1686,7 @@ static void work_phase2(struct worker *w, struct global_t *global){
         for (;;) {
             // Do the work
             assert(scc->next == NULL);
-            scc = graph_find_scc_one(&global->graph, scc, component);
+            scc = graph_find_scc_one(&global->graph, scc, component, &w->scc_cache);
 
             // Put new work on the list except the last (which we'll do ourselves)
             mutex_acquire(&global->todo_lock);
@@ -2229,11 +2231,6 @@ int main(int argc, char **argv){
  
     printf("Phase 3: analysis\n");
     if (minheap_empty(global->failures)) {
-#ifdef OLD_SCC
-        // find the strongly connected components
-        unsigned int ncomponents = graph_find_scc(&global->graph);
-#endif
-
 #ifdef DUMP_GRAPH
         printf("digraph Harmony {\n");
         for (unsigned int i = 0; i < global->graph.size; i++) {
@@ -2249,13 +2246,14 @@ int main(int argc, char **argv){
         printf("}\n");
 #endif
 
+        double now = gettime();
         global->phase2 = true;
-        global->scc_todo = scc_alloc(0, global->graph.size, NULL);
+        global->scc_todo = scc_alloc(0, global->graph.size, NULL, NULL);
         barrier_wait(&middle_barrier);
         // Workers working on finding SCCs
         barrier_wait(&end_barrier);
 
-        printf("%u components\n", global->ncomponents);
+        printf("%u components (%.3lf seconds)\n", global->ncomponents, gettime() - now);
 
         // mark the components that are "good" because they have a way out
         struct component *components = calloc(global->ncomponents, sizeof(*components));

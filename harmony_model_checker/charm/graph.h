@@ -96,7 +96,7 @@ void graph_check_for_data_race(
 void graph_add(struct graph_t *graph, struct node *node);
 unsigned int graph_add_multiple(struct graph_t *graph, unsigned int n);
 unsigned int graph_find_scc(struct graph_t *graph);
-struct scc *graph_find_scc_one(struct graph_t *graph, struct scc *scc, unsigned int component);
-struct scc *scc_alloc(unsigned int start, unsigned int finish, struct scc *next);
+struct scc *graph_find_scc_one(struct graph_t *graph, struct scc *scc, unsigned int component, void **scc_cache);
+struct scc *scc_alloc(unsigned int start, unsigned int finish, struct scc *next, void **scc_cache);
 
 #endif //SRC_GRAPH_H
