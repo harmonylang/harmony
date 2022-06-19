@@ -1028,24 +1028,29 @@ void op_Go(
     }
 
     hvalue_t result = ctx_pop(step->ctx);
+
+    // Copy the context and reserve an extra hvalue_t
     unsigned int size;
-    // TODO
-    struct context *copy = value_copy_extend(ctx, sizeof(hvalue_t), &size);
+    struct context *orig = value_get(ctx, &size);
+    char buffer[size + sizeof(hvalue_t)];
+    memcpy(buffer, orig, size);
+    struct context *copy = (struct context *) buffer;
+
     ctx_push(copy, result);
     copy->stopped = false;
     context_add(state, value_put_context(&step->engine, copy));
-    free(copy);
     step->ctx->pc++;
 }
 
 void op_Invariant(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_Invariant *ei = env;
 
-    assert(VALUE_TYPE(state->invariants) == VALUE_SET);
+    // TODO workers could race on global->invariants
+    assert(VALUE_TYPE(global->invariants) == VALUE_SET);
     unsigned int size;
-    hvalue_t *vals = value_copy_extend(state->invariants, sizeof(hvalue_t), &size);
+    hvalue_t *vals = value_copy_extend(global->invariants, sizeof(hvalue_t), &size);
     * (hvalue_t *) ((char *) vals + size) = VALUE_TO_PC(step->ctx->pc);
-    state->invariants = value_put_set(&step->engine, vals, size + sizeof(hvalue_t));
+    global->invariants = value_put_set(&step->engine, vals, size + sizeof(hvalue_t));
     free(vals);
     step->ctx->pc = ei->end + 1;
 }
@@ -1328,10 +1333,12 @@ void op_Sequential(const void *env, struct state *state, struct step *step, stru
         return;
     }
 
-    /* Insert in state's set of sequential variables.
+    /* Insert in set of sequential variables.
+     *
+     * TODO.  Could lead to race between workers
      */
     unsigned int size;
-    hvalue_t *seqs = value_copy_extend(state->seqs, sizeof(hvalue_t), &size);
+    hvalue_t *seqs = value_copy_extend(global->seqs, sizeof(hvalue_t), &size);
     size /= sizeof(hvalue_t);
     unsigned int i;
     for (i = 0; i < size; i++) {
@@ -1347,7 +1354,7 @@ void op_Sequential(const void *env, struct state *state, struct step *step, stru
     }
     memmove(&seqs[i + 1], &seqs[i], (size - i) * sizeof(hvalue_t));
     seqs[i] = addr;
-    state->seqs = value_put_set(&step->engine, seqs, (size + 1) * sizeof(hvalue_t));
+    global->seqs = value_put_set(&step->engine, seqs, (size + 1) * sizeof(hvalue_t));
     free(seqs);
     step->ctx->pc++;
 }
@@ -1576,7 +1583,7 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
         if (step->ai != NULL) {
             step->ai->indices = indices;
             step->ai->n = size;
-            step->ai->load = is_sequential(state->seqs, step->ai->indices, step->ai->n);
+            step->ai->load = is_sequential(global->seqs, step->ai->indices, step->ai->n);
         }
 
         if (size == 1 && step->ctx->entry != 0) {
@@ -1600,7 +1607,7 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
         if (step->ai != NULL) {
             step->ai->indices = es->indices;
             step->ai->n = es->n;
-            step->ai->load = is_sequential(state->seqs, step->ai->indices, step->ai->n);
+            step->ai->load = is_sequential(global->seqs, step->ai->indices, step->ai->n);
         }
         if (es->n == 1 && step->ctx->entry != 0) {
             hvalue_t newvars;

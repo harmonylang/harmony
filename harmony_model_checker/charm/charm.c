@@ -65,6 +65,8 @@ struct worker {
 
     unsigned int *profile;      // one integer for every instruction in the HVM code
 
+    void *scc_cache;            // for SCC alloc/free
+
     // These need to be next to one another
     struct context ctx;
     hvalue_t stack[MAX_CONTEXT_STACK];
@@ -175,10 +177,10 @@ bool check_invariants(struct worker *w, struct node *node, struct step *step){
     struct state *state = node->state;
     extern int invariant_cnt(const void *env);
 
-    assert(VALUE_TYPE(state->invariants) == VALUE_SET);
+    assert(VALUE_TYPE(global->invariants) == VALUE_SET);
     assert(step->ctx->sp == 0);
     unsigned int size;
-    hvalue_t *vals = value_get(state->invariants, &size);
+    hvalue_t *vals = value_get(global->invariants, &size);
     size /= sizeof(hvalue_t);
     for (unsigned int i = 0; i < size; i++) {
         assert(VALUE_TYPE(vals[i]) == VALUE_PC);
@@ -549,7 +551,7 @@ static bool onestep(
         f->next = w->failures;
         w->failures = f;
     }
-    else if (sc->choosing == 0 && sc->invariants != VALUE_SET) {
+    else if (sc->choosing == 0 && global->invariants != VALUE_SET) {
         if (!check_invariants(w, next, &w->inv_step)) {
             struct failure *f = new_alloc(struct failure);
             f->type = FAIL_INVARIANT;
@@ -937,9 +939,9 @@ void print_state(
     inv_step.ctx->interruptlevel = false;
 
     fprintf(file, "      \"invfails\": [");
-    assert(VALUE_TYPE(state->invariants) == VALUE_SET);
+    assert(VALUE_TYPE(global->invariants) == VALUE_SET);
     unsigned int size;
-    hvalue_t *vals = value_get(state->invariants, &size);
+    hvalue_t *vals = value_get(global->invariants, &size);
     size /= sizeof(hvalue_t);
     int nfailures = 0;
     for (unsigned int i = 0; i < size; i++) {
@@ -1684,7 +1686,7 @@ static void work_phase2(struct worker *w, struct global_t *global){
         for (;;) {
             // Do the work
             assert(scc->next == NULL);
-            scc = graph_find_scc_one(&global->graph, scc, component);
+            scc = graph_find_scc_one(&global->graph, scc, component, &w->scc_cache);
 
             // Put new work on the list except the last (which we'll do ourselves)
             mutex_acquire(&global->todo_lock);
@@ -1779,13 +1781,9 @@ char *state_string(struct state *state){
     strbuf_printf(&sb, "{");
     v = value_string(state->vars);
     strbuf_printf(&sb, "%s", v); free(v);
-    v = value_string(state->seqs);
-    strbuf_printf(&sb, ",%s", v); free(v);
     v = value_string(state->choosing);
     strbuf_printf(&sb, ",%s", v); free(v);
     v = value_string(state->stopbag);
-    strbuf_printf(&sb, ",%s", v); free(v);
-    v = value_string(state->invariants);
     strbuf_printf(&sb, ",%s}", v); free(v);
     return strbuf_convert(&sb);
 }
@@ -2011,6 +2009,8 @@ int main(int argc, char **argv){
 
     graph_init(&global->graph, 1024*1024);
     global->failures = minheap_create(fail_cmp);
+    global->seqs = VALUE_SET;
+    global->invariants = VALUE_SET;
 
     // First read and parse the DFA if any
     if (dfafile != NULL) {
@@ -2059,13 +2059,11 @@ int main(int argc, char **argv){
 
     struct state *state = calloc(1, sizeof(struct state) + sizeof(hvalue_t) + 1);
     state->vars = VALUE_DICT;
-    state->seqs = VALUE_SET;
     hvalue_t ictx = value_put_context(&engine, init_ctx);
     state->bagsize = 1;
     state->contexts[0] = ictx;
     multiplicities(state)[0] = 1;
     state->stopbag = VALUE_DICT;
-    state->invariants = VALUE_SET;
     state->dfa_state = global->dfa == NULL ? 0 : dfa_initial(global->dfa);
     global->processes = new_alloc(hvalue_t);
     *global->processes = ictx;
@@ -2220,7 +2218,7 @@ int main(int argc, char **argv){
     dict_set_sequential(visited);
 
     // dict_dump(visited);
-    dict_dump(global->values.dicts);
+    // dict_dump(global->values.dicts);
     // dict_dump(global->values.addresses);
     // dict_dump(global->values.atoms);
     // dict_dump(global->values.lists);
@@ -2229,11 +2227,6 @@ int main(int argc, char **argv){
  
     printf("Phase 3: analysis\n");
     if (minheap_empty(global->failures)) {
-#ifdef OLD_SCC
-        // find the strongly connected components
-        unsigned int ncomponents = graph_find_scc(&global->graph);
-#endif
-
 #ifdef DUMP_GRAPH
         printf("digraph Harmony {\n");
         for (unsigned int i = 0; i < global->graph.size; i++) {
@@ -2249,13 +2242,14 @@ int main(int argc, char **argv){
         printf("}\n");
 #endif
 
+        double now = gettime();
         global->phase2 = true;
-        global->scc_todo = scc_alloc(0, global->graph.size, NULL);
+        global->scc_todo = scc_alloc(0, global->graph.size, NULL, NULL);
         barrier_wait(&middle_barrier);
         // Workers working on finding SCCs
         barrier_wait(&end_barrier);
 
-        printf("%u components\n", global->ncomponents);
+        printf("%u components (%.3lf seconds)\n", global->ncomponents, gettime() - now);
 
         // mark the components that are "good" because they have a way out
         struct component *components = calloc(global->ncomponents, sizeof(*components));

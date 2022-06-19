@@ -14,6 +14,8 @@ struct scc {
 struct global_t {
     struct code_t code;
     struct values_t values;
+    hvalue_t seqs;               // sequential variables
+    hvalue_t invariants;         // set of invariants that must hold
     struct graph_t graph;        // the Kripke structure
     unsigned int todo;           // points into graph->nodes
     unsigned int goal;           // points into graph->nodes
