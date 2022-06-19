@@ -1028,13 +1028,17 @@ void op_Go(
     }
 
     hvalue_t result = ctx_pop(step->ctx);
+
+    // Copy the context and reserve an extra hvalue_t
     unsigned int size;
-    // TODO
-    struct context *copy = value_copy_extend(ctx, sizeof(hvalue_t), &size);
+    struct context *orig = value_get(ctx, &size);
+    char buffer[size + sizeof(hvalue_t)];
+    memcpy(buffer, orig, size);
+    struct context *copy = (struct context *) buffer;
+
     ctx_push(copy, result);
     copy->stopped = false;
     context_add(state, value_put_context(&step->engine, copy));
-    free(copy);
     step->ctx->pc++;
 }
 
