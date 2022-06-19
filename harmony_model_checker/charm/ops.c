@@ -42,12 +42,12 @@ struct var_tree {
 
 // These are initialized in ops_init and are immutable.
 static struct dict *ops_map, *f_map;
-static hvalue_t underscore, this_atom;
+static hvalue_t underscore, this_atom, result_atom;
+static hvalue_t alloc_pool_atom, alloc_next_atom;
 static hvalue_t type_bool, type_int, type_str, type_pc, type_list;
 static hvalue_t type_dict, type_set, type_address, type_context;
 
 static inline void ctx_push(struct context *ctx, hvalue_t v){
-    // TODO.  Check for stack overflow
     ctx_stack(ctx)[ctx->sp++] = v;
 }
 
@@ -176,9 +176,18 @@ struct var_tree *var_parse(struct engine *engine, char *s, int len, int *index){
     return vt;
 }
 
+// Check for potential stack overflow
+static inline bool check_stack(struct context *ctx, unsigned int needed) {
+    return ctx->sp < MAX_CONTEXT_STACK - ctx_extent - needed;
+}
+
 void interrupt_invoke(struct step *step){
     assert(step->ctx->extended);
     assert(!step->ctx->interruptlevel);
+    if (!check_stack(step->ctx, 2)) {
+        value_ctx_failure(step->ctx, &step->engine, "interrupt: out of stack");
+        return;
+    }
     ctx_push(step->ctx,
         VALUE_TO_INT((step->ctx->pc << CALLTYPE_BITS) | CALLTYPE_INTERRUPT));
     ctx_push(step->ctx, step->ctx->ctx_trap_arg);
@@ -483,7 +492,10 @@ void op_Print(const void *env, struct state *state, struct step *step, struct gl
         printf("%s\n", s);
         free(s);
     }
-    step->log = realloc(step->log, (step->nlog + 1) * sizeof(symbol));
+    if (step->nlog == MAX_PRINT) {
+        value_ctx_failure(step->ctx, &step->engine, "Print: too many prints");
+        return;
+    }
     step->log[step->nlog++] = symbol;
     if (global->dfa != NULL) {
         int nstate = dfa_step(global->dfa, state->dfa_state, symbol);
@@ -537,13 +549,13 @@ void op_Choose(const void *env, struct state *state, struct step *step, struct g
             printf("--> "); fflush(stdout);
             unsigned int selection;
             if (scanf("%u", &selection) == 1) {
-		selection -= 1;
-		if (selection < size) {
-		    step->ctx->pc++;
-		    ctx_push(step->ctx, vals[selection]);
-		    return;
-		}
-	    }
+                selection -= 1;
+                if (selection < size) {
+                    step->ctx->pc++;
+                    ctx_push(step->ctx, vals[selection]);
+                    return;
+                }
+            }
             printf("Bad selection. Try again\n");
         }
     }
@@ -587,6 +599,28 @@ static void do_return(struct state *state, struct step *step, struct global_t *g
     }
 }
 
+// Built-in alloc.malloc method
+void op_Alloc_Malloc(const void *env, struct state *state, struct step *step, struct global_t *global){
+    hvalue_t arg = ctx_pop(step->ctx);
+    hvalue_t next = value_dict_load(state->vars, alloc_next_atom);
+
+    // Assign arg to alloc$pool[alloc$next]
+    hvalue_t addr[2];
+    addr[0] = alloc_pool_atom;
+    addr[1] = next;
+    if (!ind_trystore(state->vars, addr, 2, arg, &step->engine, &state->vars)) {
+        panic("op_Alloc_Malloc: store value failed");
+    }
+
+    // Increment next
+    next = VALUE_TO_INT(VALUE_FROM_INT(next) + 1);
+    state->vars = value_dict_store(&step->engine, state->vars, alloc_next_atom, next);
+
+    // Return the address
+    hvalue_t result = value_put_address(&step->engine, addr, sizeof(addr));
+    do_return(state, step, global, arg, result);
+}
+
 // Built-in list.tail method
 void op_List_Tail(const void *env, struct state *state, struct step *step, struct global_t *global){
     hvalue_t arg = ctx_pop(step->ctx);
@@ -601,6 +635,148 @@ void op_List_Tail(const void *env, struct state *state, struct step *step, struc
         return;
     }
     hvalue_t result = value_put_list(&step->engine, &list[1], size - sizeof(hvalue_t));
+    do_return(state, step, global, arg, result);
+}
+
+// Built-in bag.add method
+void op_Bag_Add(const void *env, struct state *state, struct step *step, struct global_t *global){
+    hvalue_t arg = ctx_pop(step->ctx);
+    if (VALUE_TYPE(arg) != VALUE_LIST) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.add: not a tuple");
+        return;
+    }
+    unsigned int size;
+    hvalue_t *args = value_get(arg, &size);
+    if (size != 2 * sizeof(hvalue_t)) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.add: requires two arguments");
+        return;
+    }
+    if (VALUE_TYPE(args[0]) != VALUE_DICT) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.add: first argument must be a bag");
+        return;
+    }
+    hvalue_t result = value_bag_add(&step->engine, args[0], args[1], 1);
+    do_return(state, step, global, arg, result);
+}
+
+// Built-in bag.remove method
+void op_Bag_Remove(const void *env, struct state *state, struct step *step, struct global_t *global){
+    hvalue_t arg = ctx_pop(step->ctx);
+    if (VALUE_TYPE(arg) != VALUE_LIST) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.remove: not a tuple");
+        return;
+    }
+    unsigned int size;
+    hvalue_t *args = value_get(arg, &size);
+    if (size != 2 * sizeof(hvalue_t)) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.remove: requires two arguments");
+        return;
+    }
+    if (VALUE_TYPE(args[0]) != VALUE_DICT) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.remove: first argument must be a bag");
+        return;
+    }
+    hvalue_t result = value_bag_remove(&step->engine, args[0], args[1]);
+    do_return(state, step, global, arg, result);
+}
+
+// Built-in bag.multiplicity method
+void op_Bag_Multiplicity(const void *env, struct state *state, struct step *step, struct global_t *global){
+    hvalue_t arg = ctx_pop(step->ctx);
+    if (VALUE_TYPE(arg) != VALUE_LIST) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.multiplicity: not a tuple");
+        return;
+    }
+    unsigned int size;
+    hvalue_t *args = value_get(arg, &size);
+    if (size != 2 * sizeof(hvalue_t)) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.multiplicity: requires two arguments");
+        return;
+    }
+    if (VALUE_TYPE(args[0]) != VALUE_DICT) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.multiplicity: first argument must be a bag");
+        return;
+    }
+    hvalue_t result;
+    if (value_tryload(&step->engine, args[0], args[1], &result)) {
+        if (VALUE_TYPE(result) != VALUE_INT) {
+            value_ctx_failure(step->ctx, &step->engine, "bag.multiplicity: not a good bag");
+        }
+        do_return(state, step, global, arg, result);
+    }
+    else {
+        do_return(state, step, global, arg, VALUE_TO_INT(0));
+    }
+}
+
+// Built-in bag.size method
+void op_Bag_Size(const void *env, struct state *state, struct step *step, struct global_t *global){
+    hvalue_t arg = ctx_pop(step->ctx);
+    if (VALUE_TYPE(arg) != VALUE_DICT) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.size: not a dict");
+        return;
+    }
+    unsigned int size;
+    hvalue_t *list = value_get(arg, &size);
+    size /= sizeof(hvalue_t);
+    unsigned int total = 0;
+    for (unsigned int i = 1; i < size; i += 2) {
+        if (VALUE_TYPE(list[i]) != VALUE_INT) {
+            value_ctx_failure(step->ctx, &step->engine, "bag.size: not a bag");
+            return;
+        }
+        total += VALUE_FROM_INT(list[i]);
+    }
+    do_return(state, step, global, arg, VALUE_TO_INT(total));
+}
+
+// Built-in bag.bmax method
+void op_Bag_Bmax(const void *env, struct state *state, struct step *step, struct global_t *global){
+    hvalue_t arg = ctx_pop(step->ctx);
+    if (arg == VALUE_DICT) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.bmax: empty bag");
+        return;
+    }
+    if (VALUE_TYPE(arg) != VALUE_DICT) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.bmax: not a dict");
+        return;
+    }
+    unsigned int size;
+    hvalue_t *list = value_get(arg, &size);
+    size /= sizeof(hvalue_t);
+    assert(size >= 2);
+    hvalue_t result = list[0];
+    for (unsigned int i = 2; i < size; i += 2) {
+        int cmp = value_cmp(result, list[i]);
+        if (cmp > 0) {
+            result = list[i];
+        }
+    }
+    do_return(state, step, global, arg, result);
+}
+
+// Built-in bag.bmin method
+void op_Bag_Bmin(const void *env, struct state *state, struct step *step, struct global_t *global){
+    hvalue_t arg = ctx_pop(step->ctx);
+    if (arg == VALUE_DICT) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.bmax: empty bag");
+        return;
+    }
+    if (VALUE_TYPE(arg) != VALUE_DICT) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.bmax: not a dict");
+        return;
+    }
+    unsigned int size;
+    hvalue_t *list = value_get(arg, &size);
+    size /= sizeof(hvalue_t);
+    assert(size >= 2);
+    hvalue_t result = list[0];
+    for (unsigned int i = 2; i < size; i += 2) {
+        int cmp = value_cmp(result, list[i]);
+        if (cmp < 0) {
+            result = list[i];
+        }
+    }
     do_return(state, step, global, arg, result);
 }
 
@@ -795,13 +971,12 @@ void op_Dup(const void *env, struct state *state, struct step *step, struct glob
 }
 
 void op_Frame(const void *env, struct state *state, struct step *step, struct global_t *global){
-    static hvalue_t result = 0;
-
-    if (result == 0) {
-        result = value_put_atom(&step->engine, "result", 6);
-    }
-
     const struct env_Frame *ef = env;
+
+    if (!check_stack(step->ctx, 2)) {
+        value_ctx_failure(step->ctx, &step->engine, "Frame: out of stack");
+        return;
+    }
 
     // peek at argument
     hvalue_t arg = ctx_pop(step->ctx);
@@ -810,7 +985,7 @@ void op_Frame(const void *env, struct state *state, struct step *step, struct gl
     hvalue_t oldvars = step->ctx->vars;
 
     // Set result to None
-    step->ctx->vars = value_dict_store(&step->engine, VALUE_DICT, result, VALUE_ADDRESS);
+    step->ctx->vars = value_dict_store(&step->engine, VALUE_DICT, result_atom, VALUE_ADDRESS);
 
     // try to match against parameters
     var_match(step->ctx, ef->args, &step->engine, arg);
@@ -854,12 +1029,12 @@ void op_Go(
 
     hvalue_t result = ctx_pop(step->ctx);
     unsigned int size;
+    // TODO
     struct context *copy = value_copy_extend(ctx, sizeof(hvalue_t), &size);
     ctx_push(copy, result);
     copy->stopped = false;
-    hvalue_t v = value_put_context(&step->engine, copy);
+    context_add(state, value_put_context(&step->engine, copy));
     free(copy);
-    state->ctxbag = value_bag_add(&step->engine, state->ctxbag, v, 1);
     step->ctx->pc++;
 }
 
@@ -940,6 +1115,10 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
         ctx_push(step->ctx, v);
     }
     else {
+        if (!check_stack(step->ctx, 1)) {
+            value_ctx_failure(step->ctx, &step->engine, "Load: out of stack");
+            return;
+        }
         if (step->ai != NULL) {
             step->ai->indices = el->indices;
             step->ai->n = el->n;
@@ -983,6 +1162,10 @@ void op_LoadVar(const void *env, struct state *state, struct step *step, struct 
             result = ind_tryload(&step->engine, step->ctx->ctx_this, &indices[1], size - 1, &v);
         }
         else {
+            if (!check_stack(step->ctx, 1)) {
+                value_ctx_failure(step->ctx, &step->engine, "LoadVar: out of stack");
+                return;
+            }
             result = ind_tryload(&step->engine, step->ctx->vars, indices, size, &v);
         }
         if (!result) {
@@ -1054,6 +1237,10 @@ void op_Pop(const void *env, struct state *state, struct step *step, struct glob
 void op_Push(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_Push *ep = env;
 
+    if (!check_stack(step->ctx, 1)) {
+        value_ctx_failure(step->ctx, &step->engine, "Push: out of stack");
+        return;
+    }
     ctx_push(step->ctx, ep->value);
     step->ctx->pc++;
 }
@@ -1084,7 +1271,7 @@ void op_ReadonlyInc(const void *env, struct state *state, struct step *step, str
 //  - saved argument for stack trace
 //  - call: process, normal, or interrupt plus return address
 void op_Return(const void *env, struct state *state, struct step *step, struct global_t *global){
-    hvalue_t result = value_dict_load(step->ctx->vars, value_put_atom(&step->engine, "result", 6));
+    hvalue_t result = value_dict_load(step->ctx->vars, result_atom);
     hvalue_t fp = ctx_pop(step->ctx);
     if (VALUE_TYPE(fp) != VALUE_INT) {
         printf("XXX %d %d %s\n", step->ctx->pc, step->ctx->sp, value_string(fp));
@@ -1248,13 +1435,13 @@ void op_Spawn(
         if (ctx->extended) {
             size += ctx_extent * sizeof(hvalue_t);
         }
-        struct context *copy = malloc(size + 4096);      // TODO
+        struct context *copy = malloc(size + 4096);      // TODO.  How much
         memcpy(copy, ctx, size);
         spawn_thread(global, state, copy);
     }
-    else {
-        hvalue_t v = value_put_context(&step->engine, ctx);
-        state->ctxbag = value_bag_add(&step->engine, state->ctxbag, v, 1);
+    else if (!context_add(state, value_put_context(&step->engine, ctx))) {
+        value_ctx_failure(step->ctx, &step->engine, "spawn: too many threads");
+        return;
     }
     step->ctx->pc++;
 }
@@ -1881,18 +2068,12 @@ hvalue_t f_countLabel(struct state *state, struct context *ctx, hvalue_t *args, 
     }
     e = VALUE_FROM_PC(e);
 
-    unsigned int size;
-    hvalue_t *vals = value_get(state->ctxbag, &size);
-    size /= sizeof(hvalue_t);
-    assert(size > 0);
-    assert(size % 2 == 0);
-    hvalue_t result = 0;
-    for (unsigned int i = 0; i < size; i += 2) {
-        assert(VALUE_TYPE(vals[i]) == VALUE_CONTEXT);
-        assert(VALUE_TYPE(vals[i+1]) == VALUE_INT);
-        struct context *ctx = value_get(vals[i], NULL);
+    unsigned int result = 0;
+    for (unsigned int i = 0; i < state->bagsize; i++) {
+        assert(VALUE_TYPE(state->contexts[i]) == VALUE_CONTEXT);
+        struct context *ctx = value_get(state->contexts[i], NULL);
         if ((hvalue_t) ctx->pc == e) {
-            result += VALUE_FROM_INT(vals[i+1]);
+            result += multiplicities(state)[i];
         }
     }
     return VALUE_TO_INT(result);
@@ -2687,47 +2868,6 @@ hvalue_t f_set_add(struct state *state, struct context *ctx, hvalue_t *args, int
     return result;
 }
 
-// TODO: is this used??
-hvalue_t f_value_bag_add(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
-    assert(n == 2);
-    int64_t elt = args[0], dict = args[1];
-    assert(VALUE_TYPE(dict) == VALUE_DICT);
-    unsigned int size;
-    hvalue_t *vals = value_get(dict, &size), *v;
-
-    unsigned int i = 0;
-    int cmp = 1;
-    for (v = vals; i < size; i += 2 * sizeof(hvalue_t), v++) {
-        cmp = value_cmp(elt, *v);
-        if (cmp <= 0) {
-            break;
-        }
-    }
-
-    if (cmp == 0) {
-        assert(VALUE_TYPE(v[1]) == VALUE_INT);
-        int cnt = VALUE_FROM_INT(v[1]) + 1;
-        hvalue_t nvals[size / sizeof(hvalue_t)];
-        memcpy(nvals, vals, size);
-        * (hvalue_t *) ((char *) nvals + (i + sizeof(hvalue_t))) =
-                                        VALUE_TO_INT(cnt);
-
-        hvalue_t result = value_put_dict(engine, nvals, size);
-        return result;
-    }
-    else {
-        hvalue_t nvals[size / sizeof(hvalue_t) + 2];
-        memcpy(nvals, vals, i);
-        * (hvalue_t *) ((char *) nvals + i) = elt;
-        * (hvalue_t *) ((char *) nvals + (i + sizeof(hvalue_t))) =
-                                        VALUE_TO_INT(1);
-        memcpy((char *) nvals + i + 2*sizeof(hvalue_t), v, size - i);
-
-        hvalue_t result = value_put_dict(engine, nvals, size + 2*sizeof(hvalue_t));
-        return result;
-    }
-}
-
 hvalue_t f_shiftleft(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     assert(n == 2);
     int64_t e1 = args[0], e2 = args[1];
@@ -3047,6 +3187,13 @@ struct op_info op_table[] = {
 	{ "Trap", init_Trap, op_Trap },
 
     // Built-in methods
+    { "alloc$malloc", NULL, op_Alloc_Malloc },
+    { "bag$add", NULL, op_Bag_Add },
+    { "bag$bmax", NULL, op_Bag_Bmax },
+    { "bag$bmin", NULL, op_Bag_Bmin },
+    { "bag$multiplicity", NULL, op_Bag_Multiplicity },
+    { "bag$remove", NULL, op_Bag_Remove },
+    { "bag$size", NULL, op_Bag_Size },
     { "list$tail", NULL, op_List_Tail },
 
     { NULL, NULL, NULL }
@@ -3076,7 +3223,6 @@ struct f_info f_table[] = {
     { "abs", f_abs },
     { "all", f_all },
     { "any", f_any },
-    { "BagAdd", f_value_bag_add },
     { "countLabel", f_countLabel },
     { "DictAdd", f_dict_add },
     { "in", f_in },
@@ -3103,6 +3249,7 @@ void ops_init(struct global_t *global, struct engine *engine) {
     f_map = dict_new("functions", sizeof(struct f_info *), 0, 0, NULL, NULL);
 	underscore = value_put_atom(engine, "_", 1);
 	this_atom = value_put_atom(engine, "this", 4);
+	result_atom = value_put_atom(engine, "result", 6);
     type_bool = value_put_atom(engine, "bool", 4);
     type_int = value_put_atom(engine, "int", 3);
     type_str = value_put_atom(engine, "str", 3);
@@ -3112,6 +3259,8 @@ void ops_init(struct global_t *global, struct engine *engine) {
     type_set = value_put_atom(engine, "set", 3);
     type_address = value_put_atom(engine, "address", 7);
     type_context = value_put_atom(engine, "context", 7);
+	alloc_pool_atom = value_put_atom(engine, "alloc$pool", 10);
+	alloc_next_atom = value_put_atom(engine, "alloc$next", 10);
 
     for (struct op_info *oi = op_table; oi->name != NULL; oi++) {
         struct op_info **p = dict_insert(ops_map, NULL, oi->name, strlen(oi->name), NULL);

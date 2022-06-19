@@ -157,7 +157,7 @@ def read_hfa(file, dfa, nfa):
         return
 
     if not is_dfa_equivalent(dfa, hfa):
-        print("behavior warning: not equivalent to specified behavior")
+        print("behavior warning: subset of specified behavior")
         diff = hfa - dfa
         behavior_show_diagram(diff, "diff.png")
 

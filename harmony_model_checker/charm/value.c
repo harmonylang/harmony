@@ -680,6 +680,7 @@ void strbuf_value_json(struct strbuf *sb, hvalue_t v){
         value_json_context(sb, v & ~VALUE_MASK);
         break;
     default:
+        printf("bad value type: %p\n", (void *) v);
         panic("strbuf_value_json: bad value type");
     }
 }
@@ -1076,7 +1077,7 @@ bool value_trystore(struct engine *engine, hvalue_t root, hvalue_t key, hvalue_t
             }
             nsize = size;
         }
-        hvalue_t nvals[size / sizeof(hvalue_t)];
+        hvalue_t nvals[nsize / sizeof(hvalue_t)];
         memcpy(nvals, vals, size);
         nvals[index] = value;
         hvalue_t v = value_put_list(engine, nvals, nsize);
@@ -1305,9 +1306,12 @@ hvalue_t value_bag_remove(struct engine *engine, hvalue_t bag, hvalue_t v){
     }
 }
 
-void value_ctx_push(struct context *ctx, hvalue_t v){
-    // TODO.  Check for stack overflow
+bool value_ctx_push(struct context *ctx, hvalue_t v){
+    if (ctx->sp == MAX_CONTEXT_STACK - ctx_extent) {
+        return false;
+    }
     ctx_stack(ctx)[ctx->sp++] = v;
+    return true;
 }
 
 hvalue_t value_ctx_pop(struct context *ctx){
@@ -1344,6 +1348,20 @@ hvalue_t value_ctx_failure(struct context *ctx, struct engine *engine, char *fmt
     return 0;
 }
 
+bool value_state_all_eternal(struct state *state) {
+    if (state->bagsize == 0) {
+        return true;
+    }
+    for (unsigned int i = 0; i < state->bagsize; i++) {
+        assert(VALUE_TYPE(state->contexts[i]) == VALUE_CONTEXT);
+        struct context *ctx = value_get(state->contexts[i], NULL);
+        if (!ctx->eternal) {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool value_ctx_all_eternal(hvalue_t ctxbag) {
     if (ctxbag == VALUE_DICT) {     // optimization
         return true;
@@ -1351,16 +1369,64 @@ bool value_ctx_all_eternal(hvalue_t ctxbag) {
     unsigned int size;
     hvalue_t *vals = value_get(ctxbag, &size);
     size /= sizeof(hvalue_t);
-    bool all = true;
     for (unsigned int i = 0; i < size; i += 2) {
         assert(VALUE_TYPE(vals[i]) == VALUE_CONTEXT);
         assert(VALUE_TYPE(vals[i + 1]) == VALUE_INT);
         struct context *ctx = value_get(vals[i], NULL);
         assert(ctx != NULL);
         if (!ctx->eternal) {
-            all = false;
+            return false;
+        }
+    }
+    return true;
+}
+
+void context_remove(struct state *state, hvalue_t ctx){
+    for (unsigned int i = 0; i < state->bagsize; i++) {
+        if (state->contexts[i] == ctx) {
+            if (multiplicities(state)[i] > 1) {
+                multiplicities(state)[i]--;
+            }
+            else {
+                state->bagsize--;
+                memmove(&state->contexts[i], &state->contexts[i+1],
+                        (state->bagsize - i) * sizeof(hvalue_t) + i);
+                memmove((char *) &state->contexts[state->bagsize] + i,
+                        (char *) &state->contexts[state->bagsize + 1] + i + 1,
+                        state->bagsize - i);
+            }
             break;
         }
     }
-    return all;
+}
+
+bool context_add(struct state *state, hvalue_t ctx){
+    unsigned int i;
+    for (i = 0; i < state->bagsize; i++) {
+        if (state->contexts[i] == ctx) {
+            multiplicities(state)[i]++;
+            return true;
+        }
+        if (state->contexts[i] > ctx) {
+            break;
+        }
+    }
+
+    if (state->bagsize >= MAX_CONTEXT_BAG) {
+        return false;
+    }
+ 
+    // Move the last multiplicities
+    memmove((char *) &state->contexts[state->bagsize + 1] + i + 1,
+            (char *) &state->contexts[state->bagsize] + i,
+            state->bagsize - i);
+
+    // Move the last contexts plus the first multiplicitkes
+    memmove(&state->contexts[i+1], &state->contexts[i],
+                    (state->bagsize - i) * sizeof(hvalue_t) + i);
+
+    state->bagsize++;
+    state->contexts[i] = ctx;
+    multiplicities(state)[i] = 1;
+    return true;
 }

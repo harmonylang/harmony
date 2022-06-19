@@ -175,6 +175,10 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
         return AddressAST(endtoken, tkn, expr)
 
+    # Visit a parse tree produced by HarmonyParser#assign_op.
+    def visitAssign_op(self, ctx: HarmonyParser.Assign_opContext):
+        return self.get_token(ctx.start, ctx.getText())
+
     # Visit a parse tree produced by HarmonyParser#aug_assign_op.
     def visitAug_assign_op(self, ctx: HarmonyParser.Aug_assign_opContext):
         return self.get_token(ctx.start, ctx.getText())
@@ -188,20 +192,21 @@ class HarmonyVisitorImpl(HarmonyVisitor):
 
     # Visit a parse tree produced by HarmonyParser#assign_stmt.
     def visitAssign_stmt(self, ctx: HarmonyParser.Assign_stmtContext):
+        ops = [self.visit(e) for e in ctx.assign_op()]
         expr = [self.visit(e) for e in ctx.tuple_rule()]
         tkn = self.get_token(ctx.start, ctx.start.text)
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
-        return AssignmentAST(endtoken, tkn, expr[:-1], expr[-1], self.get_token(ctx.start, '='), False)
+        return AssignmentAST(endtoken, tkn, expr[:-1], expr[-1], ops, False)
 
     # Visit a parse tree produced by HarmonyParser#aug_assign_stmt.
     def visitAug_assign_stmt(self, ctx: HarmonyParser.Aug_assign_stmtContext):
         op = self.visit(ctx.aug_assign_op())
         expressions = [self.visit(e) for e in ctx.tuple_rule()]
-        lhs = expressions[:-1]
-        rhs = expressions[-1]
+        lhs = expressions[0]
+        rhs = expressions[1]
         tkn = self.get_token(ctx.start, ctx.start.text)
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
-        return AssignmentAST(endtoken, tkn, lhs, rhs, op, False)
+        return AuxAssignmentAST(endtoken, tkn, lhs, rhs, op, False)
 
     # Visit a parse tree produced by HarmonyParser#const_assign_stmt.
     def visitConst_assign_stmt(self, ctx: HarmonyParser.Const_assign_stmtContext):
@@ -403,12 +408,12 @@ class HarmonyVisitorImpl(HarmonyVisitor):
 
     # Visit a parse tree produced by HarmonyParser#if_block.
     def visitIf_block(self, ctx: HarmonyParser.If_blockContext):
-        cond = self.visit(ctx.expr())
-        if_block = self.visit(ctx.block())
-        alts = [(cond, if_block, self.file, ctx.start.line)]
-        else_block = None
         tkn = self.get_token(ctx.start, ctx.start.text)
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
+        cond = self.visit(ctx.expr())
+        if_block = self.visit(ctx.block())
+        alts = [(cond, if_block, tkn, endtoken)]
+        else_block = None
         if ctx.elif_block() is not None:
             for c in ctx.elif_block():
                 alts.append(self.visit(c))
@@ -418,9 +423,11 @@ class HarmonyVisitorImpl(HarmonyVisitor):
 
     # Visit a parse tree produced by HarmonyParser#elif_block.
     def visitElif_block(self, ctx: HarmonyParser.Elif_blockContext):
+        tkn = self.get_token(ctx.start, ctx.start.text)
+        endtoken = self.get_token(ctx.stop, ctx.stop.text)
         cond = self.visit(ctx.expr())
         stmts = self.visit(ctx.block())
-        return cond, stmts, self.file, ctx.start.line
+        return cond, stmts, tkn, endtoken
 
     # Visit a parse tree produced by HarmonyParser#else_block.
     def visitElse_block(self, ctx: HarmonyParser.Else_blockContext):

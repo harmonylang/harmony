@@ -170,6 +170,10 @@ application
 
 expr: nary_expr;
 
+assign_op
+    : EQ
+    ;
+
 aug_assign_op
     : 'and='
     | 'or='
@@ -189,7 +193,7 @@ aug_assign_op
     ;
 
 expr_stmt: tuple_rule;
-assign_stmt: (tuple_rule EQ)+ tuple_rule;
+assign_stmt: (tuple_rule assign_op)+ tuple_rule;
 aug_assign_stmt: tuple_rule aug_assign_op tuple_rule;
 const_assign_stmt: CONST bound EQ expr;
 assert_stmt: ASSERT expr (COMMA expr)?;

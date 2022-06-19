@@ -63,6 +63,8 @@ struct worker {
 
     struct allocator allocator; // mostly for hashdict
 
+    unsigned int *profile;      // one integer for every instruction in the HVM code
+
     // These need to be next to one another
     struct context ctx;
     hvalue_t stack[MAX_CONTEXT_STACK];
@@ -218,6 +220,7 @@ static bool onestep(
 ) {
     assert(!step->ctx->terminated);
     assert(!step->ctx->failed);
+    assert(step->engine.allocator == &w->allocator);
 
     struct global_t *global = w->global;
 
@@ -234,7 +237,7 @@ static bool onestep(
     bool choosing = false, infinite_loop = false;
     struct dict *infloop = NULL;        // infinite loop detector
     unsigned int instrcnt = 0;
-    struct state as_state;
+    char as_state[sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1)];
     hvalue_t as_context = 0;
     unsigned int as_instrcnt = 0;
     bool rollback = false, failure = false, stopped = false;
@@ -256,8 +259,9 @@ static bool onestep(
                         enqueued += w2->enqueued;
                         dequeued += w2->dequeued;
                     }
-                    fprintf(stderr, "%s pc=%d states=%u diameter=%u queue=%d\n",
-                            p, step->ctx->pc, enqueued, global->diameter, enqueued - dequeued);
+                    fprintf(stderr, "%s pc=%d states=%u diam=%u q=%d rate=%d\n",
+                            p, step->ctx->pc, enqueued, global->diameter, enqueued - dequeued, (unsigned int) ((enqueued - global->last_nstates) / (now - global->lasttime)));
+                    global->last_nstates = enqueued;
                     free(p);
                 }
                 global->lasttime = now;
@@ -269,6 +273,7 @@ static bool onestep(
             w->timecnt = 100;
         }
 
+        w->profile[pc]++;       // for profiling
         struct instr_t *instrs = global->code.instrs;
         struct op_info *oi = instrs[pc].oi;
         if (instrs[pc].choose) {
@@ -283,7 +288,7 @@ static bool onestep(
             }
             else if (step->ctx->atomic == 0) {
                 // Save the current state in case it needs restoring
-                as_state = *sc;
+                memcpy(as_state, sc, state_size(sc));
                 as_context = value_put_context(&step->engine, step->ctx);
                 as_instrcnt = instrcnt;
             }
@@ -303,7 +308,9 @@ static bool onestep(
                 ai->next = step->ai;
                 step->ai = ai;
             }
+            assert(step->engine.allocator == &w->allocator);
             (*oi->op)(instrs[pc].env, sc, step, global);
+            assert(step->engine.allocator == &w->allocator);
         }
 		assert(step->ctx->pc >= 0);
 		assert(step->ctx->pc < global->code.len);
@@ -328,14 +335,14 @@ static bool onestep(
                 infloop = dict_new("infloop1", 0, 0, 0, NULL, NULL);
             }
 
-            int stacksize = step->ctx->sp * sizeof(hvalue_t);
+            int ctxsize = sizeof(struct context) + step->ctx->sp * sizeof(hvalue_t);
             if (step->ctx->extended) {
-                stacksize += ctx_extent * sizeof(hvalue_t);
+                ctxsize += ctx_extent * sizeof(hvalue_t);
             }
-            int combosize = sizeof(struct combined) + stacksize;
-            struct combined *combo = calloc(1, combosize);
-            combo->state = *sc;
-            memcpy(&combo->context, step->ctx, sizeof(*step->ctx) + stacksize);
+            int combosize = ctxsize + state_size(sc);
+            char *combo = calloc(1, combosize);
+            memcpy(combo, step->ctx, ctxsize);
+            memcpy(combo + ctxsize, sc, state_size(sc));
             bool new;
             dict_insert(infloop, NULL, combo, combosize, &new);
             free(combo);
@@ -448,7 +455,8 @@ static bool onestep(
 
     hvalue_t after;
     if (rollback) {
-        *sc = as_state;
+        struct state *state = (struct state *) as_state;
+        memcpy(sc, state, state_size(state));
         after = as_context;
         instrcnt = as_instrcnt;
     }
@@ -458,7 +466,7 @@ static bool onestep(
     }
 
     // Remove old context from the bag
-    sc->ctxbag = value_bag_remove(&step->engine, sc->ctxbag, ctx);
+    context_remove(sc, ctx);
 
     // If choosing, save in state
     if (choosing) {
@@ -470,41 +478,38 @@ static bool onestep(
         sc->stopbag = value_bag_add(&step->engine, sc->stopbag, after, 1);
     }
     else if (!terminated) {
-        sc->ctxbag = value_bag_add(&step->engine, sc->ctxbag, after, 1);
+        context_add(sc, after);
     }
 
     // Weight of this step
     int weight = (node->to_parent != NULL && ctx == node->to_parent->after) ? 0 : 1;
 
     // Allocate edge now
-    struct edge *edge = walloc(w, sizeof(struct edge), false);
+    struct edge *edge = walloc(w, sizeof(struct edge) + step->nlog * sizeof(hvalue_t), false);
     edge->src = node;
     edge->ctx = ctx;
     edge->choice = choice_copy;
     edge->interrupt = interrupt;
     edge->after = after;
     edge->ai = step->ai;
-    edge->log = step->log;
+    memcpy(edge->log, step->log, step->nlog * sizeof(hvalue_t));
     edge->nlog = step->nlog;
     edge->nsteps = instrcnt;
 
     // See if this state has been computed before
     bool new;
     mutex_t *lock;
+    unsigned int size = state_size(sc);
     struct dict_assoc *da = dict_find_lock(w->visited, &w->allocator,
-                sc, sizeof(struct state), &new, &lock);
+                sc, size, &new, &lock);
     struct state *state = (struct state *) &da[1];
-    struct node *next = (struct node *) &state[1];
+    struct node *next = (struct node *) ((char *) state + size);
     if (new) {
         memset(next, 0, sizeof(*next));
         next->len = node->len + weight;
         next->steps = node->steps + instrcnt;
         next->to_parent = edge;
         next->state = state;
-        next->next = w->results;
-        w->results = next;
-        w->count++;
-        w->enqueued++;
     }
     else {
         unsigned int len = node->len + weight;
@@ -515,7 +520,6 @@ static bool onestep(
             next->to_parent = edge;
         }
     }
-    edge->dst = next;
 
     // Backward edge from node to parent.
     edge->bwdnext = next->bwd;
@@ -529,6 +533,14 @@ static bool onestep(
     struct edge **pe = &w->edges[node->id % w->nworkers];
     edge->fwdnext = *pe;
     *pe = edge;
+    edge->dst = next;
+
+    if (new) {
+        next->next = w->results;
+        w->results = next;
+        w->count++;
+        w->enqueued++;
+    }
 
     if (failure) {
         struct failure *f = new_alloc(struct failure);
@@ -549,7 +561,7 @@ static bool onestep(
 
     // We stole the access info and log
     step->ai = NULL;
-    step->log = NULL;
+    // TODO step->log = NULL;
     step->nlog = 0;
 
     return true;
@@ -568,29 +580,46 @@ static void make_step(
     step.engine.values = &w->global->values;
 
     // Make a copy of the state
-    struct state sc = *node->state;
+    unsigned int statesz = state_size(node->state);
+    // Room to grown in copy for op_Spawn
+    char copy[statesz + 64*sizeof(hvalue_t)];
+    struct state *sc = (struct state *) copy;
+    memcpy(sc, node->state, statesz);
+    assert(step.engine.allocator == &w->allocator);
 
     // Make a copy of the context
     unsigned int size;
     struct context *cc = value_get(ctx, &size);
     memcpy(&w->ctx, cc, size);
+    assert(step.engine.allocator == &w->allocator);
     step.ctx = &w->ctx;
 
     // See if we need to interrupt
-    if (sc.choosing == 0 && cc->extended && cc->ctx_trap_pc != 0 && !cc->interruptlevel) {
-        bool succ = onestep(w, node, &sc, ctx, &step, choice, true, false, multiplicity);
+    if (sc->choosing == 0 && cc->extended && cc->ctx_trap_pc != 0 && !cc->interruptlevel) {
+        bool succ = onestep(w, node, sc, ctx, &step, choice, true, false, multiplicity);
+        assert(step.engine.allocator == &w->allocator);
         if (!succ) {        // ran into an infinite loop
-            (void) onestep(w, node, &sc, ctx, &step, choice, true, true, multiplicity);
+            memcpy(sc, node->state, statesz);
+            memcpy(&w->ctx, cc, size);
+            assert(step.engine.allocator == &w->allocator);
+            (void) onestep(w, node, sc, ctx, &step, choice, true, true, multiplicity);
+            assert(step.engine.allocator == &w->allocator);
         }
 
-        sc = *node->state;
+        memcpy(sc, node->state, statesz);
         memcpy(&w->ctx, cc, size);
+        assert(step.engine.allocator == &w->allocator);
     }
 
-    sc.choosing = 0;
-    bool succ = onestep(w, node, &sc, ctx, &step, choice, false, false, multiplicity);
+    sc->choosing = 0;
+    bool succ = onestep(w, node, sc, ctx, &step, choice, false, false, multiplicity);
+    assert(step.engine.allocator == &w->allocator);
     if (!succ) {        // ran into an infinite loop
-        (void) onestep(w, node, &sc, ctx, &step, choice, false, true, multiplicity);
+        memcpy(sc, node->state, statesz);
+        memcpy(&w->ctx, cc, size);
+        assert(step.engine.allocator == &w->allocator);
+        (void) onestep(w, node, sc, ctx, &step, choice, false, true, multiplicity);
+        assert(step.engine.allocator == &w->allocator);
     }
 }
 
@@ -946,16 +975,13 @@ void print_state(
     free(inv_step.ctx);
 
     fprintf(file, "      \"ctxbag\": {\n");
-    unsigned int nctxs;
-    hvalue_t *ctxs = value_get(node->state->ctxbag, &nctxs);
-    nctxs /= sizeof(hvalue_t);
-    for (unsigned int i = 0; i < nctxs; i += 2) {
+    for (unsigned int i = 0; i < node->state->bagsize; i++) {
         if (i > 0) {
             fprintf(file, ",\n");
         }
-        assert(VALUE_TYPE(ctxs[i]) == VALUE_CONTEXT);
-        assert(VALUE_TYPE(ctxs[i+1]) == VALUE_INT);
-        fprintf(file, "          \"%"PRIx64"\": \"%u\"", ctxs[i], (unsigned int) VALUE_FROM_INT(ctxs[i+1]));
+        assert(VALUE_TYPE(node->state->contexts[i]) == VALUE_CONTEXT);
+        fprintf(file, "          \"%"PRIx64"\": \"%u\"", node->state->contexts[i],
+                multiplicities(node->state)[i]);
     }
     fprintf(file, "\n      },\n");
 
@@ -1117,8 +1143,8 @@ hvalue_t twostep(
     unsigned int nsteps
 ){
     // Make a copy of the state
-    struct state *sc = new_alloc(struct state);
-    *sc = *node->state;
+    struct state *sc = calloc(1, sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1));
+    memcpy(sc, node->state, state_size(node->state));
     sc->choosing = 0;
 
     struct step step;
@@ -1173,18 +1199,17 @@ hvalue_t twostep(
         // Infinite loop detection
         if (!step.ctx->terminated && !step.ctx->failed) {
             if (infloop == NULL) {
-                // TODO.  infloop should be deallocated
                 infloop = dict_new("infloop2", 0, 0, 0, NULL, NULL);
             }
 
-            int stacksize = step.ctx->sp * sizeof(hvalue_t);
-            int combosize = sizeof(struct combined) + stacksize;
+            int ctxsize = sizeof(struct context) + step.ctx->sp * sizeof(hvalue_t);
             if (step.ctx->extended) {
-                stacksize += ctx_extent * sizeof(hvalue_t);
+                ctxsize += ctx_extent * sizeof(hvalue_t);
             }
-            struct combined *combo = calloc(1, combosize);
-            combo->state = *sc;
-            memcpy(&combo->context, step.ctx, sizeof(*step.ctx) + stacksize);
+            int combosize = ctxsize + state_size(sc);
+            char *combo = calloc(1, combosize);
+            memcpy(combo, step.ctx, ctxsize);
+            memcpy(combo + ctxsize, sc, state_size(sc));
             bool new;
             dict_insert(infloop, NULL, combo, combosize, &new);
             free(combo);
@@ -1244,7 +1269,7 @@ hvalue_t twostep(
     }
 
     // Remove old context from the bag
-    sc->ctxbag = value_bag_remove(&step.engine, sc->ctxbag, ctx);
+    context_remove(sc, ctx);
 
     hvalue_t after = value_put_context(&step.engine, step.ctx);
 
@@ -1253,7 +1278,7 @@ hvalue_t twostep(
         sc->stopbag = value_bag_add(&step.engine, sc->stopbag, after, 1);
     }
     else if (!step.ctx->terminated) {
-        sc->ctxbag = value_bag_add(&step.engine, sc->ctxbag, after, 1);
+        context_add(sc, after);
     }
 
     // assert(sc->vars == nextvars);
@@ -1264,7 +1289,7 @@ hvalue_t twostep(
 
     free(sc);
     free(step.ctx);
-    free(step.log);
+    // TODO free(step.log);
 
     return after;
 }
@@ -1351,17 +1376,12 @@ void path_dump(
     /* Match each context to a process.
      */
     bool *matched = calloc(global->nprocesses, sizeof(bool));
-    unsigned int nctxs;
-    hvalue_t *ctxs = value_get(node->state->ctxbag, &nctxs);
-    nctxs /= sizeof(hvalue_t);
-    for (unsigned int i = 0; i < nctxs; i += 2) {
-        assert(VALUE_TYPE(ctxs[i]) == VALUE_CONTEXT);
-        assert(VALUE_TYPE(ctxs[i+1]) == VALUE_INT);
-        int cnt = VALUE_FROM_INT(ctxs[i+1]);
-        for (int j = 0; j < cnt; j++) {
+    for (unsigned int i = 0; i < node->state->bagsize; i++) {
+        assert(VALUE_TYPE(node->state->contexts[i]) == VALUE_CONTEXT);
+        for (unsigned int j = 0; j < multiplicities(node->state)[i]; j++) {
             unsigned int k;
             for (k = 0; k < global->nprocesses; k++) {
-                if (!matched[k] && global->processes[k] == ctxs[i]) {
+                if (!matched[k] && global->processes[k] == node->state->contexts[i]) {
                     matched[k] = true;
                     break;
                 }
@@ -1369,7 +1389,7 @@ void path_dump(
             if (k == global->nprocesses) {
                 global->processes = realloc(global->processes, (global->nprocesses + 1) * sizeof(hvalue_t));
                 matched = realloc(matched, (global->nprocesses + 1) * sizeof(bool));
-                global->processes[global->nprocesses] = ctxs[i];
+                global->processes[global->nprocesses] = node->state->contexts[i];
                 matched[global->nprocesses] = true;
                 global->nprocesses++;
             }
@@ -1530,13 +1550,8 @@ static enum busywait is_stuck(
 }
 
 static void detect_busywait(struct minheap *failures, struct node *node){
-	// Get the contexts
-	unsigned int size;
-	hvalue_t *ctxs = value_get(node->state->ctxbag, &size);
-	size /= sizeof(hvalue_t);
-
-	for (unsigned int i = 0; i < size; i += 2) {
-		if (is_stuck(node, node, ctxs[i], false) == BW_RETURN) {
+	for (unsigned int i = 0; i < node->state->bagsize; i++) {
+		if (is_stuck(node, node, node->state->contexts[i], false) == BW_RETURN) {
 			struct failure *f = new_alloc(struct failure);
 			f->type = FAIL_BUSYWAIT;
 			f->edge = node->to_parent;
@@ -1569,8 +1584,9 @@ static void do_work(struct worker *w){
 
     for (;;) {
         mutex_acquire(&global->todo_lock);
+        assert(global->goal >= global->todo);
         unsigned int start = global->todo;
-        unsigned int nleft = global->graph.size - start;
+        unsigned int nleft = global->goal - start;
         if (nleft == 0) {
             mutex_release(&global->todo_lock);
             break;
@@ -1584,6 +1600,8 @@ static void do_work(struct worker *w){
             take = nleft;
         }
         global->todo = start + take;
+        assert(global->todo <= global->graph.size);
+        assert(global->goal >= global->todo);
         mutex_release(&global->todo_lock);
 
         while (take > 0) {
@@ -1614,19 +1632,14 @@ static void do_work(struct worker *w){
                 }
             }
             else {
-                unsigned int size;
-                hvalue_t *ctxs = value_get(state->ctxbag, &size);
-                size /= sizeof(hvalue_t);
-                assert(size >= 0);
-                for (unsigned int i = 0; i < size; i += 2) {
-                    assert(VALUE_TYPE(ctxs[i]) == VALUE_CONTEXT);
-                    assert(VALUE_TYPE(ctxs[i+1]) == VALUE_INT);
+                for (unsigned int i = 0; i < state->bagsize; i++) {
+                    assert(VALUE_TYPE(state->contexts[i]) == VALUE_CONTEXT);
                     make_step(
                         w,
                         node,
-                        ctxs[i],
+                        state->contexts[i],
                         0,
-                        VALUE_FROM_INT(ctxs[i+1])
+                        multiplicities(state)[i]
                     );
                 }
             }
@@ -1736,15 +1749,17 @@ static void worker(void *arg){
         value_make_stable(&global->values, w->index);
         dict_make_stable(w->visited, w->index);
 
-        // Fill the graph table
-        for (unsigned int i = 0; w->count != 0; i++) {
-            struct node *node = w->results;
-			node->id = w->node_id;
-            global->graph.nodes[w->node_id++] = node;
-            w->results = node->next;
-            w->count--;
+        if (global->layer_done) {
+            // Fill the graph table
+            for (unsigned int i = 0; w->count != 0; i++) {
+                struct node *node = w->results;
+                node->id = w->node_id;
+                global->graph.nodes[w->node_id++] = node;
+                w->results = node->next;
+                w->count--;
+            }
+            assert(w->results == NULL);
         }
-        assert(w->results == NULL);
     }
 }
 
@@ -1767,8 +1782,6 @@ char *state_string(struct state *state){
     v = value_string(state->seqs);
     strbuf_printf(&sb, ",%s", v); free(v);
     v = value_string(state->choosing);
-    strbuf_printf(&sb, ",%s", v); free(v);
-    v = value_string(state->ctxbag);
     strbuf_printf(&sb, ",%s", v); free(v);
     v = value_string(state->stopbag);
     strbuf_printf(&sb, ",%s", v); free(v);
@@ -2043,11 +2056,14 @@ int main(int argc, char **argv){
     init_ctx->atomicFlag = true;
     value_ctx_push(init_ctx, VALUE_TO_INT(CALLTYPE_PROCESS));
     value_ctx_push(init_ctx, VALUE_LIST);
-    struct state *state = new_alloc(struct state);
+
+    struct state *state = calloc(1, sizeof(struct state) + sizeof(hvalue_t) + 1);
     state->vars = VALUE_DICT;
     state->seqs = VALUE_SET;
     hvalue_t ictx = value_put_context(&engine, init_ctx);
-    state->ctxbag = value_dict_store(&engine, VALUE_DICT, ictx, VALUE_TO_INT(1));
+    state->bagsize = 1;
+    state->contexts[0] = ictx;
+    multiplicities(state)[0] = 1;
     state->stopbag = VALUE_DICT;
     state->invariants = VALUE_SET;
     state->dfa_state = global->dfa == NULL ? 0 : dfa_initial(global->dfa);
@@ -2079,15 +2095,17 @@ int main(int argc, char **argv){
 
     // Put the initial state in the visited map
     struct dict *visited = dict_new("visited", sizeof(struct node), 0, global->nworkers, NULL, NULL);
-    struct node *node = dict_insert(visited, NULL, state, sizeof(*state), NULL);
+    struct node *node = dict_insert(visited, NULL, state, state_size(state), NULL);
     memset(node, 0, sizeof(*node));
     node->state = state;
     graph_add(&global->graph, node);
+    global->goal = 1;
 
     // Allocate space for worker info
     struct worker *workers = calloc(global->nworkers, sizeof(*workers));
     for (unsigned int i = 0; i < global->nworkers; i++) {
         struct worker *w = &workers[i];
+        w->visited = visited;
         w->global = global;
         w->timeout = timeout;
         w->start_barrier = &start_barrier;
@@ -2096,8 +2114,8 @@ int main(int argc, char **argv){
         w->index = i;
         w->workers = workers;
         w->nworkers = global->nworkers;
-        w->visited = visited;
         w->edges = calloc(global->nworkers, sizeof(struct edge *));
+        w->profile = calloc(global->code.len, sizeof(*w->profile));
 
         // Create a context for evaluating invariants
         w->inv_step.ctx = calloc(1, sizeof(struct context) +
@@ -2135,42 +2153,54 @@ int main(int argc, char **argv){
 
         barrier_wait(&middle_barrier);
 
-        double before_postproc = gettime();
-
         // Back to sequential mode
-        assert(global->todo == global->graph.size);
 
-        global->diameter++;
-        // printf("Diameter %d\n", global->diameter);
-
-        // The threads completed producing the next layer of nodes in the graph.
-        // Grow the graph table.
-        unsigned int total = 0;
-        for (unsigned int i = 0; i < global->nworkers; i++) {
-            struct worker *w = &workers[i];
-            w->node_id = global->todo + total;
-            total += w->count;
-        }
-        graph_add_multiple(&global->graph, total);
-
-        // Prepare the grow the hash tables as well (but the actual work of
+        // Prepare the grow the hash tables (but the actual work of
         // rehashing is distributed among the threads in the next phase
+        double before_postproc = gettime();
         dict_grow_prepare(visited);
         value_grow_prepare(&global->values);
-
-        // Collect the failures of all the workers
-        for (unsigned int i = 0; i < global->nworkers; i++) {
-			process_results(global, &workers[i]);
-        }
-
         postproc += gettime() - before_postproc;
 
-        if (!minheap_empty(global->failures)) {
-            global->todo = global->graph.size;
+        // End of a layer in the Kripke structure?
+        global->layer_done = global->todo == global->graph.size;
+        if (global->layer_done) {
+            global->diameter++;
+            // printf("Diameter %d\n", global->diameter);
+
+            // The threads completed producing the next layer of nodes in the graph.
+            // Grow the graph table.
+            unsigned int total = 0;
+            for (unsigned int i = 0; i < global->nworkers; i++) {
+                struct worker *w = &workers[i];
+                w->node_id = global->todo + total;
+                total += w->count;
+            }
+            graph_add_multiple(&global->graph, total);
+
+            // Collect the failures of all the workers
+            for (unsigned int i = 0; i < global->nworkers; i++) {
+                process_results(global, &workers[i]);
+            }
+
+            if (!minheap_empty(global->failures)) {
+                // Pretend we're done
+                global->todo = global->goal = global->graph.size;
+            }
+            if (global->todo == global->graph.size) { // no new nodes added
+                break;
+            }
         }
-        if (global->todo == global->graph.size) {
-            break;
+
+        // Determine the new goal
+        unsigned int nleft = global->graph.size - global->todo;
+        if (nleft > 1024 * global->nworkers) {
+            global->goal = global->todo + 1024 * global->nworkers;
         }
+        else {
+            global->goal = global->graph.size;
+        }
+        assert(global->goal >= global->todo);
 
         // printf("Coordinator back to workers (%d)\n", global->diameter);
 
@@ -2186,8 +2216,16 @@ int main(int argc, char **argv){
 
     printf("#states %d (time %.3lf+%.3lf=%.3lf)\n", global->graph.size, gettime() - before - postproc, postproc, gettime() - before);
 
-    dict_set_sequential(visited);
     value_set_sequential(&global->values);
+    dict_set_sequential(visited);
+
+    // dict_dump(visited);
+    dict_dump(global->values.dicts);
+    // dict_dump(global->values.addresses);
+    // dict_dump(global->values.atoms);
+    // dict_dump(global->values.lists);
+    // dict_dump(global->values.sets);
+    // dict_dump(global->values.contexts);
  
     printf("Phase 3: analysis\n");
     if (minheap_empty(global->failures)) {
@@ -2227,11 +2265,11 @@ int main(int argc, char **argv){
             struct component *comp = &components[node->component];
             if (comp->size == 0) {
                 comp->rep = node;
-                comp->all_same = value_ctx_all_eternal(node->state->ctxbag)
+                comp->all_same = value_state_all_eternal(node->state)
                     && value_ctx_all_eternal(node->state->stopbag);
             }
             else if (node->state->vars != comp->rep->state->vars ||
-                        !value_ctx_all_eternal(node->state->ctxbag) ||
+                        !value_state_all_eternal(node->state) ||
                         !value_ctx_all_eternal(node->state->stopbag)) {
                 comp->all_same = false;
             }
@@ -2413,53 +2451,14 @@ int main(int argc, char **argv){
         fprintf(out, "\n");
         fprintf(out, "  },\n");
 
-        fprintf(out, "  \"nodes\": [\n");
-        bool first = true;
-        for (unsigned int i = 0; i < global->graph.size; i++) {
-            struct node *node = global->graph.nodes[i];
-            assert(node->id == i);
-            if (node->reachable) {
-                if (first) {
-                    first = false;
-                }
-                else {
-                    fprintf(out, ",\n");
-                }
-                fprintf(out, "    {\n");
-                fprintf(out, "      \"idx\": %d,\n", node->id);
-                fprintf(out, "      \"component\": %d,\n", node->component);
-#ifdef notdef
-                if (node->parent != NULL) {
-                    fprintf(out, "      \"parent\": %d,\n", node->parent->id);
-                }
-                char *val = json_escape_value(node->state->vars);
-                fprintf(out, "      \"value\": \"%s:%d\",\n", val, node->state->choosing != 0);
-                free(val);
-#endif
-                print_transitions(out, symbols, node->fwd);
-                if (i == 0) {
-                    fprintf(out, "      \"type\": \"initial\"\n");
-                }
-                else if (node->final) {
-                    fprintf(out, "      \"type\": \"terminal\"\n");
-                }
-                else {
-                    fprintf(out, "      \"type\": \"normal\"\n");
-                }
-                fprintf(out, "    }");
-            }
-        }
-        fprintf(out, "\n");
-        fprintf(out, "  ],\n");
-#ifdef notdef
-        fprintf(out, "  \"edges\": [\n");
-        first = true;
-        bool first_log;
-        for (unsigned int i = 0; i < global->graph.size; i++) {
-            struct node *node = global->graph.nodes[i];
-            if (node->reachable) {
-                for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
-                    assert(edge->dst->reachable);
+        // Only output nodes if there are symbols
+        if (!se.first) {
+            fprintf(out, "  \"nodes\": [\n");
+            bool first = true;
+            for (unsigned int i = 0; i < global->graph.size; i++) {
+                struct node *node = global->graph.nodes[i];
+                assert(node->id == i);
+                if (node->reachable) {
                     if (first) {
                         first = false;
                     }
@@ -2467,31 +2466,46 @@ int main(int argc, char **argv){
                         fprintf(out, ",\n");
                     }
                     fprintf(out, "    {\n");
-                    fprintf(out, "      \"src\": %d,\n", node->id);
-                    fprintf(out, "      \"dst\": %d,\n", edge->dst->id);
-                    fprintf(out, "      \"print\": [");
-                    first_log = true;
-                    for (int j = 0; j < edge->nlog; j++) {
-                        if (first_log) {
-                            first_log = false;
-                            fprintf(out, "\n");
-                        }
-                        else {
-                            fprintf(out, ",\n");
-                        }
-                        char *p = value_json(edge->log[j]);
-                        fprintf(out, "        %s", p);
-                        free(p);
+                    fprintf(out, "      \"idx\": %d,\n", node->id);
+                    fprintf(out, "      \"component\": %d,\n", node->component);
+#ifdef notdef
+                    if (node->parent != NULL) {
+                        fprintf(out, "      \"parent\": %d,\n", node->parent->id);
                     }
-                    fprintf(out, "\n");
-                    fprintf(out, "      ]\n");
+                    char *val = json_escape_value(node->state->vars);
+                    fprintf(out, "      \"value\": \"%s:%d\",\n", val, node->state->choosing != 0);
+                    free(val);
+#endif
+                    print_transitions(out, symbols, node->fwd);
+                    if (i == 0) {
+                        fprintf(out, "      \"type\": \"initial\"\n");
+                    }
+                    else if (node->final) {
+                        fprintf(out, "      \"type\": \"terminal\"\n");
+                    }
+                    else {
+                        fprintf(out, "      \"type\": \"normal\"\n");
+                    }
                     fprintf(out, "    }");
                 }
             }
+            fprintf(out, "\n");
+            fprintf(out, "  ],\n");
+        }
+        fprintf(out, "  \"profile\": [\n");
+        for (unsigned int pc = 0; pc < global->code.len; pc++) {
+            unsigned int count = 0;
+            for (unsigned int i = 0; i < global->nworkers; i++) {
+                struct worker *w = &workers[i];
+                count += w->profile[pc];
+            }
+            if (pc > 0) {
+                fprintf(out, ",\n");
+            }
+            fprintf(out, "    %u", count);
         }
         fprintf(out, "\n");
         fprintf(out, "  ],\n");
-#endif // notdef
     }
     else {
         // Find shortest "bad" path
@@ -2538,11 +2552,10 @@ int main(int argc, char **argv){
         }
 
         fprintf(out, "  \"macrosteps\": [");
-        struct state oldstate;
-        memset(&oldstate, 0, sizeof(oldstate));
-        struct context *oldctx = calloc(1, sizeof(*oldctx));
+        struct state *oldstate = new_alloc(struct state);
+        struct context *oldctx = new_alloc(struct context);
         global->dumpfirst = true;
-        path_dump(global, out, bad->edge, &oldstate, &oldctx);
+        path_dump(global, out, bad->edge, oldstate, /* TODO */ &oldctx);
         fprintf(out, "\n");
         free(oldctx);
         fprintf(out, "  ],\n");

@@ -47,6 +47,7 @@ static void inline swap(struct graph_t *graph, unsigned int x, unsigned int y){
 }
 
 struct scc *scc_alloc(unsigned int start, unsigned int finish, struct scc *next){
+    // TODO
     struct scc *scc = new_alloc(struct scc);
     scc->start = start;
     scc->finish = finish;
@@ -63,7 +64,38 @@ struct scc *graph_find_scc_one(struct graph_t *graph, struct scc *scc, unsigned 
     unsigned int finish = scc->finish;
     assert(start < finish);
     struct scc *next_scc = scc->next;
-    free(scc);
+
+    // Optimization. See if this node has either no incoming or
+    // no outgoing edges.  If so, it's a component in its own right
+    bool optim = true;
+    struct node *node = graph->nodes[start];
+    for (struct edge *e = node->fwd; e != NULL; e = e->fwdnext) {
+        struct node *next = e->dst;
+        if (next->id >= start && next->id < finish) {
+            optim = false;
+            break;
+        }
+    }
+    if (!optim) {
+        optim = true;
+        for (struct edge *e = node->bwd; e != NULL; e = e->bwdnext) {
+            struct node *next = e->dst;
+            if (next->id >= start && next->id < finish) {
+                optim = false;
+            }
+        }
+    }
+    if (optim) {
+        node->component = component;
+        scc->start++;
+        if (scc->start < scc->finish) {
+            return scc;
+        }
+        free(scc);  // TODO
+        return next_scc;
+    }
+
+    free(scc);  // TODO
     scc = next_scc;
 
     // Better balancing?
