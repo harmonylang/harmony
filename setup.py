@@ -105,8 +105,8 @@ setuptools.setup(
     long_description_content_type='text/markdown',
     packages=setuptools.find_packages(),
     install_requires=[
-        'antlr-denter; python_version >= "1.3.1"',
-        'antlr4-python3-runtime; python_version == "4.9.3"',
+        'antlr-denter>=1.3.1',
+        'antlr4-python3-runtime==4.9.3',
         'automata-lib',
         'pydot',
         'requests',
