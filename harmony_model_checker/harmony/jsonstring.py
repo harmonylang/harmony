@@ -32,5 +32,5 @@ def json_string(js):
             return "None"
         return "?" + v[0]["value"] + "".join([ json_idx(kv) for kv in v[1:] ])
     if type == "context":
-        return "CONTEXT(" + json_string(v["name"]) + ")"
+        return "CONTEXT(" + str(v["entry"]) + ")"
     assert False

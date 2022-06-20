@@ -112,10 +112,9 @@ function json_string_address(obj) {
 }
 
 function json_string_context(obj) {
-  var name = json_string(obj.name);
-  var arg = json_string(obj.arg);
+  var entry = json_string(obj.entry);
   var pc = json_string(obj.pc);
-  return "CTX(" + name + "(" + arg + "):" + pc + ")";
+  return "CTX(" + entry + ", " + pc + ")";
 }
 
 function json_string(obj) {
@@ -157,31 +156,19 @@ function stringify_vars(obj) {
 }
 
 function convert_var(obj) {
-  if (obj.type != "dict" && obj.type != "list") {
+  if (obj.type != "dict") {
     return json_string(obj);
   }
-  if (obj.type == "dict") {
-    if (obj.value.length == 0) {
-      return "";
-    }
-    var result = {};
-    for (var i = 0; i < obj.value.length; i++) {
-      var kv = obj.value[i];
-      var k = json_string(kv.key);      // TODO.  convert_var???
-      result[k] = convert_var(kv.value);
-    }
-    return result;
+  if (obj.value.length == 0) {
+    return "";
   }
-  if (obj.type == "list") {
-    if (obj.value.length == 0) {
-      return "[]";
-    }
-    var result = {};
-    for (var i = 0; i < obj.value.length; i++) {
-      result[i] = convert_var(obj.value[i]);
-    }
-    return result;
+  var result = {};
+  for (var i = 0; i < obj.value.length; i++) {
+    var kv = obj.value[i];
+    var k = json_string(kv.key);      // TODO.  convert_var???
+    result[k] = convert_var(kv.value);
   }
+  return result;
 }
 
 function convert_vars(obj) {

@@ -81,7 +81,7 @@ struct node_vec_t *find_one_step_children(struct node *n) {
 
         hashset_insert(visited, &node, sizeof(struct node *));
 
-        struct context *ctx = value_get(node->after, NULL);
+        struct context *ctx = value_get(node->to_parent->after, NULL);
         if (node != n && (ctx->atomic == 0 || ctx->terminated)) {
             node_vec_push(result, node);
         } else {
@@ -109,7 +109,7 @@ struct node_vec_t *find_all_children(struct node *n) {
 
 uint64_t iface_evaluate(struct global_t *global, struct state *state, struct step *step) {
     step->ctx->terminated = false;
-    step->ctx->failure = 0;
+    step->ctx->failed = false;
     step->ctx->sp = 0;
     step->ctx->pc++;
 
@@ -121,14 +121,14 @@ uint64_t iface_evaluate(struct global_t *global, struct state *state, struct ste
 
         int oldpc = step->ctx->pc;
         (*oi->op)(global->code.instrs[oldpc].env, state, step, global);
-        if (step->ctx->failure != 0) {
+        if (step->ctx->failed) {
             step->ctx->sp = 0;
             return 0;
         }
         assert(step->ctx->pc != oldpc);
     }
 
-    return value_dict_load(step->ctx->vars, value_put_atom(&global->values, "result", 6));
+    return value_dict_load(step->ctx->vars, value_put_atom(&step->engine, "result", 6));
 }
 
 int iface_find_pc(struct code_t *code) {
@@ -158,10 +158,11 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
     // Create a context for evaluating iface
     struct step iface_step;
     memset(&iface_step, 0, sizeof(iface_step));
+    iface_step.engine.values = &global->values;
     iface_step.ctx = new_alloc(struct context);
-    iface_step.ctx->name = value_put_atom(&global->values, "__iface__", 8);
-    iface_step.ctx->arg = VALUE_DICT;
-    iface_step.ctx->this = VALUE_DICT;
+    // iface_step.ctx->name = value_put_atom(&iface_step.engine, "__iface__", 8);
+    // iface_step.ctx->arg = VALUE_DICT;
+    // iface_step.ctx->this = VALUE_DICT;
     iface_step.ctx->vars = VALUE_DICT;
     iface_step.ctx->atomic = iface_step.ctx->readonly = 1;
     iface_step.ctx->interruptlevel = false;
@@ -171,7 +172,7 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
     struct iface_graph_t *iface_graph = iface_graph_init(global->graph.size / 2);
 
     // dict from (struct node *) to (struct iface_node_t *)
-    struct dict *node_to_iface_node = dict_new(global->graph.size / 2, NULL, NULL);
+    struct dict *node_to_iface_node = dict_new("iface", sizeof(struct iface_node_t *), global->graph.size / 2, 0, NULL, NULL);
 
     struct hashset_t visited = hashset_new(0);
 
@@ -182,7 +183,7 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
         struct node *initial_node = global->graph.nodes[0];
         node_vec_push(worklist, initial_node);
         struct iface_node_t **iface_node = (struct iface_node_t **)
-                dict_insert(node_to_iface_node, &initial_node, sizeof(struct node *));
+                dict_insert(node_to_iface_node, NULL, &initial_node, sizeof(struct node *), NULL);
         *iface_node = iface_graph_add_node(iface_graph);
 
         // Give initial node the None value, though it's displayed as "__init__"
@@ -197,10 +198,11 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
         for (int i = 0; i < children->len; i++) {
             struct node *child = children->arr[i];
 
+            bool new;
             struct iface_node_t **child_iface_node = (struct iface_node_t **)
-                    dict_insert(node_to_iface_node, &child, sizeof(struct node *));
+                    dict_insert(node_to_iface_node, NULL, &child, sizeof(struct node *), &new);
 
-            if (*child_iface_node == NULL) {
+            if (new) {
                 *child_iface_node = iface_graph_add_node(iface_graph);
             }
 
@@ -225,14 +227,11 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
         iface_step.ctx->pc = iface_pc;
         iface_node->value = iface_evaluate(global, node->state, &iface_step);
         iface_node->initial = false;
-        iface_node->terminated = value_ctx_all_eternal(node->state->ctxbag);
+        iface_node->terminated = value_state_all_eternal(node->state);
         iface_node->choosing = node->state->choosing != 0;
         iface_node->state = node->state;
-        if (iface_step.ctx->failure != 0) {
+        if (iface_step.ctx->failed) {
             iface_node->value = VALUE_ADDRESS;
-#ifndef NDEBUG
-            printf("Iface Failure: %s\n", value_string(iface_step.ctx->failure));
-#endif
         }
 
         struct node_vec_t *children = find_all_children(node);
@@ -240,10 +239,11 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
         for (int i = 0; i < children->len; i++) {
             struct node *child = children->arr[i];
 
+            bool new;
             struct iface_node_t **child_iface_node = (struct iface_node_t **)
-                    dict_insert(node_to_iface_node, &child, sizeof(struct node *));
+                    dict_insert(node_to_iface_node, NULL, &child, sizeof(struct node *), &new);
 
-            if (*child_iface_node == NULL) {
+            if (new) {
                 *child_iface_node = iface_graph_add_node(iface_graph);
             }
 
@@ -255,7 +255,7 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
     }
 
     free(iface_step.ctx);
-    free(iface_step.log);
+    // TODO free(iface_step.log);
 
     node_vec_deinit(worklist);
 

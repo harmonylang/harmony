@@ -1,6 +1,7 @@
 pool = {:}
 next = 0
 
+builtin malloc "alloc$malloc"
 def malloc(v):
     atomically:
         pool[next] = v

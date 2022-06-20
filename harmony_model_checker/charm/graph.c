@@ -3,8 +3,10 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #ifndef HARMONY_COMBINE
+#include "charm.h"
 #include "graph.h"
 #endif
 
@@ -26,70 +28,171 @@ void graph_add(struct graph_t *graph, struct node *node) {
     graph->nodes[graph->size++] = node;
 }
 
-static struct stack {
-    struct stack *next;
-    struct node *node;
-} *stack;
-
-static void kosaraju_visit(struct node *node) {
-    if (node->visited) {
-        return;
+unsigned int graph_add_multiple(struct graph_t *graph, unsigned int n) {
+    unsigned int node_id = graph->size;
+    graph->size += n;
+    if (graph->size > graph->alloc_size) {
+        graph->alloc_size = (graph->alloc_size + 1) * 2;
+        graph->nodes = realloc(graph->nodes, (graph->alloc_size * sizeof(struct node *)));
     }
-    node->visited = true;
-
-    for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
-        kosaraju_visit(edge->dst);
-    }
-
-    // Push node
-    struct stack *s = new_alloc(struct stack);
-    s->node = node;
-    s->next = stack;
-    stack = s;
+    return node_id;
 }
 
-static void kosaraju_assign(struct node *node, int component) {
-    if (node->visited) {
-        return;
-    }
-    node->visited = true;
-    node->component = component;
-    for (struct edge *edge = node->bwd; edge != NULL; edge = edge->bwdnext) {
-        kosaraju_assign(edge->src, component);
-    }
+static void inline swap(struct graph_t *graph, unsigned int x, unsigned int y){
+    struct node *tmp = graph->nodes[x];
+    graph->nodes[x] = graph->nodes[y];
+    graph->nodes[y] = tmp;
+    graph->nodes[x]->id = x;
+    graph->nodes[y]->id = y;
 }
 
-int graph_find_scc(struct graph_t *graph) {
-    for (unsigned int i = 0; i < graph->size; i++) {
-        kosaraju_visit(graph->nodes[i]);
+struct scc *scc_alloc(unsigned int start, unsigned int finish, struct scc *next, void **scc_cache){
+    struct scc *scc;
+
+    if (scc_cache == NULL) {
+        scc = new_alloc(struct scc);
     }
-
-    // make sure all nodes are marked and on the stack
-    // while at it clear all the visited flags
-    unsigned int count = 0;
-    for (struct stack *s = stack; s != NULL; s = s->next) {
-        assert(s->node->visited);
-        s->node->visited = false;
-        count++;
-    }
-    assert(count == graph->size);
-
-    count = 0;
-    while (stack != NULL) {
-        // Pop
-        struct stack *top = stack;
-        stack = top->next;
-        struct node *next = top->node;
-        free(top);
-
-        if (!next->visited) {
-            kosaraju_assign(next, count++);
+    else if ((scc = *scc_cache) == NULL) {
+        scc = malloc(256 * sizeof(*scc));
+        for (int i = 1; i < 256; i++) {
+            * (void **) &scc[i] = *scc_cache;
+            *scc_cache = &scc[i];
         }
     }
-    for (unsigned int i = 0; i < graph->size; i++) {
-        assert(graph->nodes[i]->visited);
+    else {
+        *scc_cache = * (void **) scc;
+    }
+    scc->start = start;
+    scc->finish = finish;
+    scc->next = next;
+    return scc;
+}
+
+// Partition the range scc->start to scc->finish up into four chunks: the nodes in the strongly
+// connected component holding node scc->start, the remaining successors of the node, the remaining
+// nodes minus the predecessors and the successors, and finally the predecessors minus the nodes
+// in the strongly connected component.  Then iteratively visit the last three partitions.
+struct scc *graph_find_scc_one(struct graph_t *graph, struct scc *scc, unsigned int component, void **scc_cache) {
+    unsigned int start = scc->start;
+    unsigned int finish = scc->finish;
+    assert(start < finish);
+    struct scc *next_scc = scc->next;
+
+    // Optimization. See if this node has either no incoming or
+    // no outgoing edges.  If so, it's a component in its own right
+    bool optim = true;
+    struct node *node = graph->nodes[start];
+    for (struct edge *e = node->fwd; e != NULL; e = e->fwdnext) {
+        struct node *next = e->dst;
+        if (next->id >= start && next->id < finish) {
+            optim = false;
+            break;
+        }
+    }
+    if (!optim) {
+        optim = true;
+        for (struct edge *e = node->bwd; e != NULL; e = e->bwdnext) {
+            struct node *next = e->dst;
+            if (next->id >= start && next->id < finish) {
+                optim = false;
+            }
+        }
+    }
+    if (optim) {
+        node->component = component;
+        scc->start++;
+        if (scc->start < scc->finish) {
+            return scc;
+        }
+        * (void **) scc = *scc_cache;
+        *scc_cache = scc;
+        return next_scc;
     }
 
+    * (void **) scc = *scc_cache;
+    *scc_cache = scc;
+    scc = next_scc;
+
+    // Better balancing?
+    if (finish - start > 100) {
+        swap(graph, start, (finish + start) / 2);
+    }
+
+    graph->nodes[start]->component = component;
+
+    // Phase 1: move all successors of nodes[0] to the bottom
+    unsigned int lo = start + 1;
+    for (unsigned int i = start; i < lo; i++) {
+        struct node *node = graph->nodes[i];
+        for (struct edge *e = node->fwd; e != NULL; e = e->fwdnext) {
+            struct node *next = e->dst;
+            if (next->id < start || next->id >= finish) {
+                continue;
+            }
+            if (next->id < lo) {
+                continue;
+            }
+            if (next->id > lo) {
+                swap(graph, lo, next->id);
+            }
+            lo++;
+            assert(lo <= finish);
+        }
+    }
+
+    unsigned int hi = finish - 1;
+    unsigned int mid = start + 1;
+
+    // Phase 2: move all precedessors
+    for (unsigned int i = start, j = hi; i < mid || j > hi;) {
+        bool in_scc = i < mid;
+        struct node *node = in_scc ? graph->nodes[i] : graph->nodes[j];
+        for (struct edge *e = node->bwd; e != NULL; e = e->bwdnext) {
+            struct node *next = e->src;
+            if (next->id < start || next->id >= finish) {
+                continue;
+            }
+            if (next->id < lo) {        // in SCC
+                if (next->id >= mid) {
+                    next->component = component;
+                    if (next->id > mid) {
+                        swap(graph, mid, next->id);
+                    }
+                    mid++;
+                    assert(mid <= lo);
+                }
+            }
+            else {
+                if (next->id <= hi) {
+                    if (next->id < hi) {
+                        swap(graph, hi, next->id);
+                    }
+                    hi--;
+                    assert(hi >= start);
+                }
+            }
+        }
+        if (in_scc) { i++; } else { j--; }
+    }
+    if (mid < lo) {    // predecessors - scc
+        scc = scc_alloc(mid, lo, scc, scc_cache);
+    }
+    if (lo <= hi) {     // rest
+        scc = scc_alloc(lo, hi + 1, scc, scc_cache);
+    }
+    if (hi + 1 < finish) {  // successors - scc
+        scc = scc_alloc(hi + 1, finish, scc, scc_cache);
+    }
+    return scc;
+}
+
+unsigned int graph_find_scc(struct graph_t *graph) {
+    struct scc *scc = scc_alloc(0, graph->size, NULL, NULL);
+    unsigned int count = 0;
+    while (scc != NULL) {
+        scc = graph_find_scc_one(graph, scc, count, NULL);
+        count++;
+    }
     return count;
 }
 
@@ -105,7 +208,7 @@ struct access_info *graph_ai_alloc(int multiplicity, int atomic, int pc) {
 void graph_check_for_data_race(
     struct node *node,
     struct minheap *warnings,
-    struct values_t *values
+    struct engine *engine
 ) {
     // TODO.  We're checking both if x and y conflict and y and x conflict for any two x and y, which is redundant
     for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
@@ -115,9 +218,8 @@ void graph_check_for_data_race(
                 if (ai->multiplicity > 1 && !ai->load && ai->atomic == 0) {
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_RACE;
-                    f->choice = node->choice;
-                    f->node = node;
-                    f->address = value_put_address(values, ai->indices, ai->n * sizeof(hvalue_t));
+                    f->edge = node->to_parent;
+                    f->address = value_put_address(engine, ai->indices, ai->n * sizeof(hvalue_t));
                     minheap_insert(warnings, f);
                 }
                 else {
@@ -131,9 +233,8 @@ void graph_check_for_data_race(
                                            min * sizeof(hvalue_t)) == 0) {
                                     struct failure *f = new_alloc(struct failure);
                                     f->type = FAIL_RACE;
-                                    f->choice = node->choice;
-                                    f->node = node;
-                                    f->address = value_put_address(values, ai->indices, min * sizeof(hvalue_t));
+                                    f->edge = node->to_parent;
+                                    f->address = value_put_address(engine, ai->indices, min * sizeof(hvalue_t));
                                     minheap_insert(warnings, f);
                                 }
                             }

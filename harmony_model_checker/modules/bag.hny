@@ -12,26 +12,33 @@ def fromList(a):
         else:
             result[v] = 1
 
+builtin multiplicity "bag$multiplicity"
 def multiplicity(bg, elt):
     if elt in bg:
         result = bg[elt]
     else:
         result = 0
 
+builtin size "bag$size"
 def size(bg):
     result = 0
     for _:c in bg:
         result += c
 
+builtin bmin "bag$bmin"
 def bmin(bg):
+    assert bg != {:}
     result = min(keys(bg))
 
+builtin bmax "bag$bmax"
 def bmax(bg):
+    assert bg != {:}
     result = max(keys(bg))
 
 def bchoose(bg):
     result = choose(keys(bg))
 
+builtin add "bag$add"
 def add(bg, elt):
     result = bg
     if elt in result:
@@ -39,6 +46,7 @@ def add(bg, elt):
     else:
         result[elt] = 1
 
+builtin remove "bag$remove"
 def remove(bg, elt):
     result = bg
     if elt in result:
@@ -49,7 +57,7 @@ def remove(bg, elt):
 # Return set of all subbags of bg of size k
 def combinations(bg, k):
     if k == 0:
-        result = { empty() }
+        result = { {:} }
     else:
         let n = size(bg):
             if k > n:

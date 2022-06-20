@@ -49,7 +49,7 @@ def transfer(self, b1, b2, amt):
                 send({ .dst: m.src, .src: self, .request: "abort" })
 
 def check(self, total):
-    let allbanks = { (.bank, i) for i in { 1 .. NBANKS } }:
+    let allbanks = { (.bank, i) for i in { 0 .. NBANKS - 1} }:
         for bank in allbanks:
             send({ .dst: bank, .src: self, .request: "withdraw", .amount: 0 })
         atomically let msgs = { m for m in network where m.dst == self }
@@ -59,13 +59,13 @@ def check(self, total):
             for m in msgs where m.response == "yes":
                 send({ .dst: m.src, .src: self, .request: "abort" })
 
-let balances = { i:choose({ 0 .. MAX_BALANCE }) for i in { 1 .. NBANKS } }:
-    for i in { 1 .. NBANKS }:
+let balances = [ choose({ 0 .. MAX_BALANCE }) for _ in { 0 .. NBANKS - 1} ]:
+    for i in { 0 .. NBANKS - 1 }:
         spawn eternal bank((.bank, i), balances[i])
     for i in { 1 .. NCOORDS }:
         if choose({ "transfer", "check" }) == .transfer:
-            let b1 = choose({ (.bank, j) for j in { 1 .. NBANKS }})
-            let b2 = choose({ (.bank, j) for j in { 1 .. NBANKS }} - { b1 }):
+            let b1 = choose({ (.bank, j) for j in { 0 .. NBANKS - 1}})
+            let b2 = choose({ (.bank, j) for j in { 0 .. NBANKS - 1}} - { b1 }):
                 spawn transfer((.coord, i), b1, b2, 1)
         else:
             spawn check((.coord, i), list.sum(balances))

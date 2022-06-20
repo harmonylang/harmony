@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <stdbool.h>
 
+#include "global.h"
 #include "hashdict.h"
 #include "json.h"
 #include "strbuf.h"
@@ -16,7 +17,9 @@
 #define buf_adv(b)		do { assert((b)->len > 0); (b)->base++; (b)->len--; } while (false)
 
 static void json_map_cleanup(void *env, const void *key, unsigned int keylen, void *val){
-	json_value_free(val);
+    struct json_value **pjv = val;
+
+	json_value_free(*pjv);
 }
 
 void json_value_free(struct json_value *jv){
@@ -78,12 +81,12 @@ static void json_parse_atom(json_buf_t *buf, json_buf_t *atom){
 
 void json_map_append(struct json_value *map, json_buf_t key, struct json_value *jv){
 	assert(map->type == JV_MAP);
-	void **p = dict_insert(map->u.map, key.base, key.len);
-	if (*p != 0) {
+    bool new;
+	struct json_value **p = dict_insert(map->u.map, NULL, key.base, key.len, &new);
+	if (!new) {
 		fprintf(stderr, "json_map_append: duplicate key: '%.*s'\n",
 							(int) key.len, key.base);
 	}
-	assert(*p == 0);
 	*p = jv;
 }
 
@@ -94,7 +97,7 @@ static struct json_value *json_parse_struct(json_buf_t *buf){
 
 	struct json_value *jv = new_alloc(struct json_value);
 	jv->type = JV_MAP;
-	jv->u.map = dict_new(0, NULL, NULL);
+	jv->u.map = dict_new("json", sizeof(struct json_value *), 0, 0, NULL, NULL);
 	for (;;) {
 		json_skip_blanks(buf);
 		assert(buf->len > 0);
@@ -265,7 +268,8 @@ static void json_dump_map(void *env, const void *key, unsigned int keylen, void 
 	unsigned int ind = (size_t) env;
 	json_indent(ind);
 	printf("%.*s: ", keylen, (char *) key);
-	json_dump_ind(val, ind + 2);
+    struct json_value **pjv = val;
+	json_dump_ind(*pjv, ind + 2);
 }
 
 static void json_dump_string(json_buf_t buf){

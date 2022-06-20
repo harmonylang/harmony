@@ -170,6 +170,10 @@ application
 
 expr: nary_expr;
 
+assign_op
+    : EQ
+    ;
+
 aug_assign_op
     : 'and='
     | 'or='
@@ -189,7 +193,7 @@ aug_assign_op
     ;
 
 expr_stmt: tuple_rule;
-assign_stmt: (tuple_rule EQ)+ tuple_rule;
+assign_stmt: (tuple_rule assign_op)+ tuple_rule;
 aug_assign_stmt: tuple_rule aug_assign_op tuple_rule;
 const_assign_stmt: CONST bound EQ expr;
 assert_stmt: ASSERT expr (COMMA expr)?;
@@ -203,6 +207,7 @@ spawn_stmt: SPAWN ETERNAL? expr;
 go_stmt: GO expr expr;
 print_stmt: PRINT expr;
 sequential_stmt: SEQUENTIAL expr (COMMA expr)*;
+builtin_stmt: BUILTIN NAME STRING;
 
 // Block-able statements
 atomic_block: ATOMICALLY COLON block;
@@ -246,6 +251,7 @@ simple_stmt
     | print_stmt
     | pass_stmt
     | sequential_stmt
+    | builtin_stmt
     | assert_stmt
     | aug_assign_stmt
     | expr_stmt
@@ -303,6 +309,7 @@ DEL      : 'del';
 SPAWN    : 'spawn';
 INVARIANT: 'invariant';
 GO     : 'go';
+BUILTIN: 'builtin';
 SEQUENTIAL: 'sequential';
 WHEN    : 'when';
 LET     : 'let';

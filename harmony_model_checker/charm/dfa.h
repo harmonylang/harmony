@@ -3,7 +3,7 @@
 
 #include "global.h"
 
-struct dfa *dfa_read(struct values_t *values, char *fname);
+struct dfa *dfa_read(struct engine *engine, char *fname);
 int dfa_initial(struct dfa *dfa);
 bool dfa_is_final(struct dfa *dfa, int state);
 int dfa_step(struct dfa *dfa, int current, hvalue_t symbol);

@@ -590,6 +590,25 @@ class StopOp(Op):
             # Save the context
             state.stop(lv, context)
 
+class BuiltinOp(Op):
+    def __init__(self, value):
+        self.value = value
+
+    def __repr__(self):
+        return "Builtin(%s)"%self.value
+
+    def jdump(self):
+        return '{ "op": "Builtin", "value": "%s" }'%self.value
+
+    def tladump(self):
+        pass
+
+    def explain(self):
+        return "top of stack is a built-in operation called %s"%self.value
+
+    def eval(self, state, context):
+        context.pop()
+
 class SequentialOp(Op):
     def __init__(self):
         pass

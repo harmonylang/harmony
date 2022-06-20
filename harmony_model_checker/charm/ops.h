@@ -7,21 +7,29 @@
 #include "value.h"
 #include "global.h"
 
-void ops_init(struct global_t* global);
+#define MAX_PRINT       64
+
+void ops_init(struct global_t *global, struct engine *engine);
 struct op_info *ops_get(char *opname, int size);
 
 struct step {
+    struct engine engine;
     struct context *ctx;
     struct access_info *ai;
-    hvalue_t *log;
+    // TODO hvalue_t *log;
+    hvalue_t log[MAX_PRINT];
     unsigned int nlog;
     struct dfa_trie *dfa_trie;
 };
 
 struct op_info {
     const char *name;
-    void *(*init)(struct dict *, struct values_t *values);
+    void *(*init)(struct dict *, struct engine *engine);
     void (*op)(const void *env, struct state *state, struct step *step, struct global_t *global);
+};
+
+struct env_Builtin {
+    hvalue_t method;
 };
 
 struct env_Cut {

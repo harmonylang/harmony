@@ -16,7 +16,7 @@ struct dfa_transition {
 
 struct dfa_state {
     struct dfa_state *next;      // linked list maintenance
-    int idx;                     // name of state
+    unsigned int idx;                     // name of state
     bool final;                  // terminal state
     struct dfa_transition *transitions;     // transition map
 
@@ -24,9 +24,11 @@ struct dfa_state {
 };
 
 struct dfa {
-    int nstates;
-    int initial;
+    unsigned int nstates;        // number of states
+    unsigned int initial;        // initial state
     struct dfa_state *states;
+    unsigned int nsymbols;       // number of symbols
+    hvalue_t *symbols;  // list of symbols
 };
 
 static int int_parse(char *p, int len){
@@ -39,7 +41,7 @@ static int int_parse(char *p, int len){
 }
 
 // read a DFA from a json file
-struct dfa *dfa_read(struct values_t *values, char *fname){
+struct dfa *dfa_read(struct engine *engine, char *fname){
     // open the HFA file
     FILE *fp = fopen(fname, "r");
     if (fp == NULL) {
@@ -73,7 +75,7 @@ struct dfa *dfa_read(struct values_t *values, char *fname){
     // read the list of states
     struct json_value *nodes = dict_lookup(jv->u.map, "nodes", 5);
     assert(nodes->type == JV_LIST);
-    int max_idx = 0;
+    unsigned int max_idx = 0;
     struct dfa_state *states = NULL;
     for (unsigned int i = 0; i < nodes->u.list.nvals; i++) {
         struct json_value *node = nodes->u.list.vals[i];
@@ -100,13 +102,28 @@ struct dfa *dfa_read(struct values_t *values, char *fname){
 
     dfa->nstates = max_idx + 1;
     dfa->states = calloc(sizeof(dfa->states[0]), dfa->nstates);
-    for (int i = 0; i < dfa->nstates; i++) {
+    for (unsigned int i = 0; i < dfa->nstates; i++) {
         dfa->states[i].idx = -1;            // some may not be used
     }
     struct dfa_state *ds;
     while ((ds = states) != NULL) {
         states = ds->next;
         dfa->states[ds->idx] = *ds;
+    }
+
+    // read the list of symbols
+    struct json_value *symbols = dict_lookup(jv->u.map, "symbols", 7);
+    assert(symbols->type == JV_LIST);
+    unsigned int symalloc = 100;     // allocated size of symbol list
+    dfa->symbols = malloc(symalloc * sizeof(hvalue_t));
+    for (unsigned int i = 0; i < symbols->u.list.nvals; i++) {
+        struct json_value *symbol = symbols->u.list.vals[i];
+        assert(symbol->type == JV_MAP);
+        if (dfa->nsymbols == symalloc) {
+            symalloc *= 2;
+            dfa->symbols = realloc(dfa->symbols, symalloc * sizeof(hvalue_t));
+        }
+        dfa->symbols[dfa->nsymbols++] = value_from_json(engine, symbol->u.map);
     }
 
     // read the list of edges
@@ -128,9 +145,11 @@ struct dfa *dfa_read(struct values_t *values, char *fname){
         dt->dst = int_parse(dst->u.atom.base, dst->u.atom.len);
         assert(dt->dst < dfa->nstates);
 
-        struct json_value *symbol = dict_lookup(edge->u.map, "symbol", 6);
+        struct json_value *symbol = dict_lookup(edge->u.map, "sym", 3);
         assert(symbol->type == JV_MAP);
-        dt->symbol = value_from_json(values, symbol->u.map);
+        int sym = int_parse(symbol->u.atom.base, symbol->u.atom.len);
+        assert((unsigned int) sym < dfa->nsymbols);
+        dt->symbol = dfa->symbols[sym];
 
         dt->next = dfa->states[src_state].transitions;
         dfa->states[src_state].transitions = dt;

@@ -123,8 +123,8 @@ def read_hfa(file, dfa, nfa):
         final = set()
         symbols = set()
         for e in js["edges"]:
-            symbol = json_string(e["symbol"])
-            symbols.add(symbol)
+            symbol = e["sym"]
+            symbols.add(json_string(js["symbols"][symbol]))
         transitions = { "{}": { s: "{}" for s in symbols } }
         for n in js["nodes"]:
             idx = n["idx"]
@@ -133,8 +133,8 @@ def read_hfa(file, dfa, nfa):
                 final.add(idx)
             transitions[idx] = { s: "{}" for s in symbols }
         for e in js["edges"]:
-            symbol = json_string(e["symbol"])
-            transitions[e["src"]][symbol] = e["dst"]
+            symbol = e["sym"]
+            transitions[e["src"]][json_string(js["symbols"][symbol])] = e["dst"]
 
     hfa = DFA(
         states=states,
@@ -157,7 +157,7 @@ def read_hfa(file, dfa, nfa):
         return
 
     if not is_dfa_equivalent(dfa, hfa):
-        print("behavior warning: not equivalent to specified behavior")
+        print("behavior warning: subset of specified behavior")
         diff = hfa - dfa
         behavior_show_diagram(diff, "diff.png")
 
@@ -229,6 +229,7 @@ def eps_closure(states, transitions, current):
 def behavior_parse(js, minify, outputfiles, behavior):
     if outputfiles["hfa"] == None and outputfiles["png"] == None and outputfiles["gv"] == None and behavior == None:
         return
+    minify = outputfiles["png"] != None or outputfiles["gv"] != None
 
     states = set()
     initial_state = None;
@@ -352,14 +353,32 @@ def behavior_parse(js, minify, outputfiles, behavior):
                     first = False
                 else:
                     print(",", file=fd)
-                print("    {", file=fd)
-                print("      \"idx\": \"%s\","%names[s], file=fd)
+                print("    {", file=fd, end="")
+                print(" \"idx\": \"%s\","%names[s], file=fd, end="")
                 if s in dfa_final_states:
                     t = "final"
                 else:
                     t = "normal"
-                print("      \"type\": \"%s\""%t, file=fd)
-                print("    }", end="", file=fd)
+                print(" \"type\": \"%s\""%t, file=fd, end="")
+                print(" }", end="", file=fd)
+            print(file=fd)
+            print("  ],", file=fd)
+
+            # Assign a small integer to each symbol
+            sym2index = {}
+            index2sym = {}
+            for i, v in enumerate(labels):
+                sym2index[v] = i
+                index2sym[i] = v
+
+            first = True
+            print("  \"symbols\": [", file=fd)
+            for i in range(len(index2sym)):
+                if first:
+                    first = False
+                else:
+                    print(",", file=fd)
+                print("    %s"%json.dumps(labels[index2sym[i]], ensure_ascii=False), file=fd, end="")
             print(file=fd)
             print("  ],", file=fd)
 
@@ -372,11 +391,11 @@ def behavior_parse(js, minify, outputfiles, behavior):
                             first = False
                         else:
                             print(",", file=fd)
-                        print("    {", file=fd)
-                        print("      \"src\": \"%s\","%names[src], file=fd)
-                        print("      \"dst\": \"%s\","%names[dst], file=fd)
-                        print("      \"symbol\": %s"%json.dumps(labels[input], ensure_ascii=False), file=fd)
-                        print("    }", end="", file=fd)
+                        print("    {", file=fd, end="")
+                        print(" \"src\": \"%s\","%names[src], file=fd, end="")
+                        print(" \"dst\": \"%s\","%names[dst], file=fd, end="")
+                        print(" \"sym\": %d"%sym2index[input], file=fd, end="")
+                        print(" }", end="", file=fd)
             print(file=fd)
             print("  ]", file=fd)
 

@@ -26,7 +26,7 @@ struct val_info {
 
 struct f_info {
     char *name;
-    hvalue_t (*f)(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values);
+    hvalue_t (*f)(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine);
 };
 
 struct var_tree {
@@ -42,9 +42,19 @@ struct var_tree {
 
 // These are initialized in ops_init and are immutable.
 static struct dict *ops_map, *f_map;
-static hvalue_t underscore, this_atom;
+static hvalue_t underscore, this_atom, result_atom;
+static hvalue_t alloc_pool_atom, alloc_next_atom;
 static hvalue_t type_bool, type_int, type_str, type_pc, type_list;
 static hvalue_t type_dict, type_set, type_address, type_context;
+
+static inline void ctx_push(struct context *ctx, hvalue_t v){
+    ctx_stack(ctx)[ctx->sp++] = v;
+}
+
+static inline hvalue_t ctx_pop(struct context *ctx){
+    assert(ctx->sp > 0);
+    return ctx_stack(ctx)[--ctx->sp];
+}
 
 static bool is_sequential(hvalue_t seqvars, hvalue_t *indices, unsigned int n){
     assert(VALUE_TYPE(seqvars) == VALUE_SET);
@@ -64,42 +74,42 @@ static bool is_sequential(hvalue_t seqvars, hvalue_t *indices, unsigned int n){
     return false;
 }
 
-hvalue_t var_match_rec(struct context *ctx, struct var_tree *vt, struct values_t *values,
+hvalue_t var_match_rec(struct context *ctx, struct var_tree *vt, struct engine *engine,
                             hvalue_t arg, hvalue_t vars){
     switch (vt->type) {
     case VT_NAME:
         if (vt->u.name == underscore) {
             return vars;
         }
-        return value_dict_store(values, vars, vt->u.name, arg);
+        return value_dict_store(engine, vars, vt->u.name, arg);
     case VT_TUPLE:
         if (VALUE_TYPE(arg) != VALUE_LIST) {
             if (vt->u.tuple.n == 0) {
-                return value_ctx_failure(ctx, values, "match: expected ()");
+                return value_ctx_failure(ctx, engine, "match: expected ()");
             }
             else {
                 char *v = value_string(arg);
-                return value_ctx_failure(ctx, values, "match: expected a tuple instead of %s", v);
+                return value_ctx_failure(ctx, engine, "match: expected a tuple instead of %s", v);
             }
         }
         if (arg == VALUE_LIST) {
             if (vt->u.tuple.n != 0) {
-                return value_ctx_failure(ctx, values, "match: expected a %d-tuple",
+                return value_ctx_failure(ctx, engine, "match: expected a %d-tuple",
                                                 vt->u.tuple.n);
             }
             return vars;
         }
         if (vt->u.tuple.n == 0) {
-            return value_ctx_failure(ctx, values, "match: expected an empty tuple");
+            return value_ctx_failure(ctx, engine, "match: expected an empty tuple");
         }
         unsigned int size;
         hvalue_t *vals = value_get(arg, &size);
         size /= sizeof(hvalue_t);
         if (vt->u.tuple.n != size) {
-            return value_ctx_failure(ctx, values, "match: tuple size mismatch");
+            return value_ctx_failure(ctx, engine, "match: tuple size mismatch");
         }
         for (unsigned int i = 0; i < size; i++) {
-            vars = var_match_rec(ctx, vt->u.tuple.elements[i], values, vals[i], vars);
+            vars = var_match_rec(ctx, vt->u.tuple.elements[i], engine, vals[i], vars);
         }
         return vars;
     default:
@@ -108,9 +118,9 @@ hvalue_t var_match_rec(struct context *ctx, struct var_tree *vt, struct values_t
     }
 }
 
-void var_match(struct context *ctx, struct var_tree *vt, struct values_t *values, hvalue_t arg){
-    hvalue_t vars = var_match_rec(ctx, vt, values, arg, ctx->vars);
-    if (ctx->failure == 0) {
+void var_match(struct context *ctx, struct var_tree *vt, struct engine *engine, hvalue_t arg){
+    hvalue_t vars = var_match_rec(ctx, vt, engine, arg, ctx->vars);
+    if (!ctx->failed) {
         ctx->vars = vars;
     }
 }
@@ -121,7 +131,7 @@ static void skip_blanks(char *s, int len, int *index){
     }
 }
 
-struct var_tree *var_parse(struct values_t *values, char *s, int len, int *index){
+struct var_tree *var_parse(struct engine *engine, char *s, int len, int *index){
     assert(*index < len);
     struct var_tree *vt = new_alloc(struct var_tree);
 
@@ -137,7 +147,7 @@ struct var_tree *var_parse(struct values_t *values, char *s, int len, int *index
         }
         else {
             while (true) {
-                struct var_tree *elt = var_parse(values, s, len, index);
+                struct var_tree *elt = var_parse(engine, s, len, index);
                 vt->u.tuple.elements = realloc(vt->u.tuple.elements,
                         (vt->u.tuple.n + 1) * sizeof(elt));
                 vt->u.tuple.elements[vt->u.tuple.n++] = elt;
@@ -160,27 +170,36 @@ struct var_tree *var_parse(struct values_t *values, char *s, int len, int *index
         while (i < len && (isalpha(s[i]) || s[i] == '_' || isdigit(s[i]))) {
             i++;
         }
-        vt->u.name = value_put_atom(values, &s[*index], i - *index);
+        vt->u.name = value_put_atom(engine, &s[*index], i - *index);
         *index = i;
     }
     return vt;
 }
 
+// Check for potential stack overflow
+static inline bool check_stack(struct context *ctx, unsigned int needed) {
+    return ctx->sp < MAX_CONTEXT_STACK - ctx_extent - needed;
+}
+
 void interrupt_invoke(struct step *step){
+    assert(step->ctx->extended);
     assert(!step->ctx->interruptlevel);
-	assert(VALUE_TYPE(step->ctx->trap_pc) == VALUE_PC);
-    value_ctx_push(&step->ctx, VALUE_TO_PC(step->ctx->pc));
-    value_ctx_push(&step->ctx, VALUE_TO_INT(CALLTYPE_INTERRUPT));
-    value_ctx_push(&step->ctx, step->ctx->trap_arg);
-    step->ctx->pc = VALUE_FROM_PC(step->ctx->trap_pc);
-    step->ctx->trap_pc = 0;
+    if (!check_stack(step->ctx, 2)) {
+        value_ctx_failure(step->ctx, &step->engine, "interrupt: out of stack");
+        return;
+    }
+    ctx_push(step->ctx,
+        VALUE_TO_INT((step->ctx->pc << CALLTYPE_BITS) | CALLTYPE_INTERRUPT));
+    ctx_push(step->ctx, step->ctx->ctx_trap_arg);
+    step->ctx->pc = VALUE_FROM_PC(step->ctx->ctx_trap_pc);
+    step->ctx->ctx_trap_pc = 0;
     step->ctx->interruptlevel = true;
 }
 
-bool ind_tryload(struct values_t *values, hvalue_t dict, hvalue_t *indices, int n, hvalue_t *result){
+bool ind_tryload(struct engine *engine, hvalue_t dict, hvalue_t *indices, int n, hvalue_t *result){
     hvalue_t d = dict;
     for (int i = 0; i < n; i++) {
-        if (!value_tryload(values, d, indices[i], &d)) {
+        if (!value_tryload(engine, d, indices[i], &d)) {
             return false;
         }
     }
@@ -188,12 +207,12 @@ bool ind_tryload(struct values_t *values, hvalue_t dict, hvalue_t *indices, int 
     return true;
 }
 
-static bool ind_trystore(hvalue_t root, hvalue_t *indices, int n, hvalue_t value, struct values_t *values, hvalue_t *result){
+static bool ind_trystore(hvalue_t root, hvalue_t *indices, int n, hvalue_t value, struct engine *engine, hvalue_t *result){
     assert(VALUE_TYPE(root) == VALUE_DICT || VALUE_TYPE(root) == VALUE_LIST);
     assert(n > 0);
 
     if (n == 1) {
-        return value_trystore(values, root, indices[0], value, true, result);
+        return value_trystore(engine, root, indices[0], value, true, result);
     }
     unsigned int size;
     hvalue_t *vals = value_get(root, &size);
@@ -209,7 +228,7 @@ static bool ind_trystore(hvalue_t root, hvalue_t *indices, int n, hvalue_t value
                     return false;
                 }
                 hvalue_t nd;
-                if (!ind_trystore(d, indices + 1, n - 1, value, values, &nd)) {
+                if (!ind_trystore(d, indices + 1, n - 1, value, engine, &nd)) {
                     return false;
                 }
                 if (d == nd) {
@@ -217,11 +236,10 @@ static bool ind_trystore(hvalue_t root, hvalue_t *indices, int n, hvalue_t value
                     return true;
                 }
                 int n = size * sizeof(hvalue_t);
-                hvalue_t *copy = malloc(n);
+                hvalue_t copy[n];
                 memcpy(copy, vals, n);
                 copy[i + 1] = nd;
-                hvalue_t v = value_put_dict(values, copy, n);
-                free(copy);
+                hvalue_t v = value_put_dict(engine, copy, n);
                 *result = v;
                 return true;
             }
@@ -248,7 +266,7 @@ static bool ind_trystore(hvalue_t root, hvalue_t *indices, int n, hvalue_t value
             return false;
         }
         hvalue_t nd;
-        if (!ind_trystore(d, indices + 1, n - 1, value, values, &nd)) {
+        if (!ind_trystore(d, indices + 1, n - 1, value, engine, &nd)) {
             return false;
         }
         if (d == nd) {
@@ -256,23 +274,22 @@ static bool ind_trystore(hvalue_t root, hvalue_t *indices, int n, hvalue_t value
             return true;
         }
         int nsize = size * sizeof(hvalue_t);
-        hvalue_t *copy = malloc(nsize);
+        hvalue_t copy[nsize];
         memcpy(copy, vals, nsize);
         copy[index] = nd;
-        hvalue_t v = value_put_list(values, copy, nsize);
-        free(copy);
+        hvalue_t v = value_put_list(engine, copy, nsize);
         *result = v;
         return true;
     }
 }
 
-bool ind_remove(hvalue_t root, hvalue_t *indices, int n, struct values_t *values,
+bool ind_remove(hvalue_t root, hvalue_t *indices, int n, struct engine *engine,
                                         hvalue_t *result) {
     assert(VALUE_TYPE(root) == VALUE_DICT || VALUE_TYPE(root) == VALUE_LIST);
     assert(n > 0);
 
     if (n == 1) {
-        *result = value_remove(values, root, indices[0]);
+        *result = value_remove(engine, root, indices[0]);
         return true;
     }
 
@@ -290,7 +307,7 @@ bool ind_remove(hvalue_t root, hvalue_t *indices, int n, struct values_t *values
                     return false;
                 }
                 hvalue_t nd;
-                if (!ind_remove(d, indices + 1, n - 1, values, &nd)) {
+                if (!ind_remove(d, indices + 1, n - 1, engine, &nd)) {
                     return false;
                 }
                 if (d == nd) {
@@ -298,11 +315,10 @@ bool ind_remove(hvalue_t root, hvalue_t *indices, int n, struct values_t *values
                     return true;
                 }
                 int n = size * sizeof(hvalue_t);
-                hvalue_t *copy = malloc(n);
+                hvalue_t copy[n];
                 memcpy(copy, vals, n);
                 copy[i + 1] = nd;
-                hvalue_t v = value_put_dict(values, copy, n);
-                free(copy);
+                hvalue_t v = value_put_dict(engine, copy, n);
                 *result = v;
                 return true;
             }
@@ -328,7 +344,7 @@ bool ind_remove(hvalue_t root, hvalue_t *indices, int n, struct values_t *values
             return false;
         }
         hvalue_t nd;
-        if (!ind_remove(d, indices + 1, n - 1, values, &nd)) {
+        if (!ind_remove(d, indices + 1, n - 1, engine, &nd)) {
             return false;
         }
         if (d == nd) {
@@ -336,11 +352,10 @@ bool ind_remove(hvalue_t root, hvalue_t *indices, int n, struct values_t *values
             return true;
         }
         int n = size * sizeof(hvalue_t);
-        hvalue_t *copy = malloc(n);
+        hvalue_t copy[n];
         memcpy(copy, vals, n);
         copy[index] = nd;
-        hvalue_t v = value_put_list(values, copy, n);
-        free(copy);
+        hvalue_t v = value_put_list(engine, copy, n);
         *result = v;
         return true;
     }
@@ -348,107 +363,106 @@ bool ind_remove(hvalue_t root, hvalue_t *indices, int n, struct values_t *values
 }
 
 void op_Address(const void *env, struct state *state, struct step *step, struct global_t *global){
-    hvalue_t index = value_ctx_pop(&step->ctx);
-    hvalue_t av = value_ctx_pop(&step->ctx);
+    hvalue_t index = ctx_pop(step->ctx);
+    hvalue_t av = ctx_pop(step->ctx);
     if (VALUE_TYPE(av) != VALUE_ADDRESS) {
         char *p = value_string(av);
-        value_ctx_failure(step->ctx, &global->values, "%s: not an address", p);
+        value_ctx_failure(step->ctx, &step->engine, "%s: not an address", p);
         free(p);
         return;
     }
     if (av == VALUE_ADDRESS) {
-        value_ctx_failure(step->ctx, &global->values, "None unexpected");
+        value_ctx_failure(step->ctx, &step->engine, "None unexpected");
         return;
     }
 
     unsigned int size;
-    hvalue_t *indices = value_copy(av, &size);
-    indices = realloc(indices, size + sizeof(index));
+    hvalue_t *indices_orig = value_get(av, &size);
+    hvalue_t indices[size / sizeof(hvalue_t) + 1];
+    memcpy(indices, indices_orig, size);
     indices[size / sizeof(hvalue_t)] = index;
-    value_ctx_push(&step->ctx, value_put_address(&global->values, indices, size + sizeof(index)));
-    free(indices);
+    ctx_push(step->ctx, value_put_address(&step->engine, indices, size + sizeof(index)));
     step->ctx->pc++;
 }
 
 void op_Apply(const void *env, struct state *state, struct step *step, struct global_t *global){
-    hvalue_t e = value_ctx_pop(&step->ctx);
-    hvalue_t method = value_ctx_pop(&step->ctx);
+    hvalue_t e = ctx_pop(step->ctx);
+    hvalue_t method = ctx_pop(step->ctx);
 
     hvalue_t type = VALUE_TYPE(method);
     switch (type) {
     case VALUE_DICT:
         {
             hvalue_t v;
-            if (!value_tryload(&global->values, method, e, &v)) {
+            if (!value_tryload(&step->engine, method, e, &v)) {
                 char *m = value_string(method);
                 char *x = value_string(e);
-                value_ctx_failure(step->ctx, &global->values, "Bad index %s: not in %s", x, m);
+                value_ctx_failure(step->ctx, &step->engine, "Bad index %s: not in %s", x, m);
                 free(m);
                 free(x);
                 return;
             }
-            value_ctx_push(&step->ctx, v);
+            ctx_push(step->ctx, v);
             step->ctx->pc++;
         }
         return;
     case VALUE_LIST:
         {
             if (VALUE_TYPE(e) != VALUE_INT) {
-                value_ctx_failure(step->ctx, &global->values, "Bad index type for list");
+                value_ctx_failure(step->ctx, &step->engine, "Bad index type for list");
                 return;
             }
             e = VALUE_FROM_INT(e);
             unsigned int size;
             hvalue_t *vals = value_get(method, &size);
             if (e >= (hvalue_t) size) {
-                value_ctx_failure(step->ctx, &global->values, "Index out of range");
+                value_ctx_failure(step->ctx, &step->engine, "Index out of range");
                 return;
             }
-            value_ctx_push(&step->ctx, vals[e]);
+            ctx_push(step->ctx, vals[e]);
             step->ctx->pc++;
         }
         return;
     case VALUE_ATOM:
         {
             if (VALUE_TYPE(e) != VALUE_INT) {
-                value_ctx_failure(step->ctx, &global->values, "Bad index type for string");
+                value_ctx_failure(step->ctx, &step->engine, "Bad index type for string");
                 return;
             }
             e = VALUE_FROM_INT(e);
             unsigned int size;
             char *chars = value_get(method, &size);
             if (e >= (hvalue_t) size) {
-                value_ctx_failure(step->ctx, &global->values, "Index out of range");
+                value_ctx_failure(step->ctx, &step->engine, "Index out of range");
                 return;
             }
-            hvalue_t v = value_put_atom(&global->values, &chars[e], 1);
-            value_ctx_push(&step->ctx, v);
+            hvalue_t v = value_put_atom(&step->engine, &chars[e], 1);
+            ctx_push(step->ctx, v);
             step->ctx->pc++;
         }
         return;
     case VALUE_PC:
-        value_ctx_push(&step->ctx, VALUE_TO_PC(step->ctx->pc + 1));
-        value_ctx_push(&step->ctx, VALUE_TO_INT(CALLTYPE_NORMAL));
-        value_ctx_push(&step->ctx, e);
+        ctx_push(step->ctx, VALUE_TO_INT(((step->ctx->pc + 1) << CALLTYPE_BITS) | CALLTYPE_NORMAL));
+        ctx_push(step->ctx, e);
         assert(VALUE_FROM_PC(method) != step->ctx->pc);
         step->ctx->pc = VALUE_FROM_PC(method);
         return;
     default:
         {
             char *x = value_string(method);
-            value_ctx_failure(step->ctx, &global->values, "Can only apply to methods or dictionaries, not to: %s", x);
+            value_ctx_failure(step->ctx, &step->engine, "Can only apply to methods or dictionaries, not to: %s", x);
             free(x);
         }
     }
 }
 
 void op_Assert(const void *env, struct state *state, struct step *step, struct global_t *global){
-    hvalue_t v = value_ctx_pop(&step->ctx);
+    hvalue_t v = ctx_pop(step->ctx);
     if (VALUE_TYPE(v) != VALUE_BOOL) {
-        value_ctx_failure(step->ctx, &global->values, "assert can only be applied to bool values");
+        value_ctx_failure(step->ctx, &step->engine, "assert can only be applied to bool engine");
     }
     if (v == VALUE_FALSE) {
-        value_ctx_failure(step->ctx, &global->values, "Harmony assertion failed");
+        value_ctx_failure(step->ctx, &step->engine, "Harmony assertion failed");
     }
     else {
         step->ctx->pc++;
@@ -456,14 +470,14 @@ void op_Assert(const void *env, struct state *state, struct step *step, struct g
 }
 
 void op_Assert2(const void *env, struct state *state, struct step *step, struct global_t *global){
-    hvalue_t e = value_ctx_pop(&step->ctx);
-    hvalue_t v = value_ctx_pop(&step->ctx);
+    hvalue_t e = ctx_pop(step->ctx);
+    hvalue_t v = ctx_pop(step->ctx);
     if (VALUE_TYPE(v) != VALUE_BOOL) {
-        value_ctx_failure(step->ctx, &global->values, "assert2 can only be applied to bool values");
+        value_ctx_failure(step->ctx, &step->engine, "assert2 can only be applied to bool engine");
     }
     if (v == VALUE_FALSE) {
         char *p = value_string(e);
-        value_ctx_failure(step->ctx, &global->values, "Harmony assertion failed: %s", p);
+        value_ctx_failure(step->ctx, &step->engine, "Harmony assertion failed: %s", p);
         free(p);
     }
     else {
@@ -472,19 +486,22 @@ void op_Assert2(const void *env, struct state *state, struct step *step, struct 
 }
 
 void op_Print(const void *env, struct state *state, struct step *step, struct global_t *global){
-    hvalue_t symbol = value_ctx_pop(&step->ctx);
+    hvalue_t symbol = ctx_pop(step->ctx);
     if (global->run_direct) {
         char *s = value_string(symbol);
         printf("%s\n", s);
         free(s);
     }
-    step->log = realloc(step->log, (step->nlog + 1) * sizeof(symbol));
+    if (step->nlog == MAX_PRINT) {
+        value_ctx_failure(step->ctx, &step->engine, "Print: too many prints");
+        return;
+    }
     step->log[step->nlog++] = symbol;
     if (global->dfa != NULL) {
         int nstate = dfa_step(global->dfa, state->dfa_state, symbol);
         if (nstate < 0) {
             char *p = value_string(symbol);
-            value_ctx_failure(step->ctx, &global->values, "Behavior failure on %s", p);
+            value_ctx_failure(step->ctx, &step->engine, "Behavior failure on %s", p);
             free(p);
             return;
         }
@@ -508,12 +525,17 @@ void op_AtomicInc(const void *env, struct state *state, struct step *step, struc
     struct context *ctx = step->ctx;
 
     ctx->atomic++;
-    ctx->pc++;
+    if (ctx->atomic == 0) {
+        value_ctx_failure(step->ctx, &step->engine, "AtomicInc overflow");
+    }
+    else {
+        ctx->pc++;
+    }
 }
 
 void op_Choose(const void *env, struct state *state, struct step *step, struct global_t *global){
     if (global->run_direct) {
-        hvalue_t choices = value_ctx_pop(&step->ctx);
+        hvalue_t choices = ctx_pop(step->ctx);
         unsigned int size;
         hvalue_t *vals = value_get(choices, &size);
         size /= sizeof(hvalue_t);
@@ -526,12 +548,13 @@ void op_Choose(const void *env, struct state *state, struct step *step, struct g
         for (;;) {
             printf("--> "); fflush(stdout);
             unsigned int selection;
-            scanf("%u", &selection);
-            selection -= 1;
-            if (selection < size) {
-                step->ctx->pc++;
-                value_ctx_push(&step->ctx, vals[selection]);
-                return;
+            if (scanf("%u", &selection) == 1) {
+                selection -= 1;
+                if (selection < size) {
+                    step->ctx->pc++;
+                    ctx_push(step->ctx, vals[selection]);
+                    return;
+                }
             }
             printf("Bad selection. Try again\n");
         }
@@ -545,23 +568,235 @@ void op_Continue(const void *env, struct state *state, struct step *step, struct
     step->ctx->pc++;
 }
 
+// TODO.  Get rid of arg
+static void do_return(struct state *state, struct step *step, struct global_t *global, hvalue_t arg, hvalue_t result){
+    hvalue_t callval = ctx_pop(step->ctx);
+    assert(VALUE_TYPE(callval) == VALUE_INT);
+    unsigned int call = VALUE_FROM_INT(callval);
+    switch (call & CALLTYPE_MASK) {
+    case CALLTYPE_PROCESS:
+        step->ctx->terminated = true;
+        // Restore stack so arg can be printed for identifying context
+        ctx_push(step->ctx, callval);
+        ctx_push(step->ctx, arg);
+        break;
+    case CALLTYPE_NORMAL:
+        {
+            unsigned int pc = call >> CALLTYPE_BITS;
+            assert(pc != step->ctx->pc);
+            ctx_push(step->ctx, result);
+            step->ctx->pc = pc;
+        }
+        break;
+    case CALLTYPE_INTERRUPT:
+        step->ctx->interruptlevel = false;
+        unsigned int pc = call >> CALLTYPE_BITS;
+        assert(pc != step->ctx->pc);
+        step->ctx->pc = pc;
+        break;
+    default:
+        panic("Return: bad call type");
+    }
+}
+
+// Built-in alloc.malloc method
+void op_Alloc_Malloc(const void *env, struct state *state, struct step *step, struct global_t *global){
+    hvalue_t arg = ctx_pop(step->ctx);
+    hvalue_t next = value_dict_load(state->vars, alloc_next_atom);
+
+    // Assign arg to alloc$pool[alloc$next]
+    hvalue_t addr[2];
+    addr[0] = alloc_pool_atom;
+    addr[1] = next;
+    if (!ind_trystore(state->vars, addr, 2, arg, &step->engine, &state->vars)) {
+        panic("op_Alloc_Malloc: store value failed");
+    }
+
+    // Increment next
+    next = VALUE_TO_INT(VALUE_FROM_INT(next) + 1);
+    state->vars = value_dict_store(&step->engine, state->vars, alloc_next_atom, next);
+
+    // Return the address
+    hvalue_t result = value_put_address(&step->engine, addr, sizeof(addr));
+    do_return(state, step, global, arg, result);
+}
+
+// Built-in list.tail method
+void op_List_Tail(const void *env, struct state *state, struct step *step, struct global_t *global){
+    hvalue_t arg = ctx_pop(step->ctx);
+    if (VALUE_TYPE(arg) != VALUE_LIST) {
+        value_ctx_failure(step->ctx, &step->engine, "list.tail: not a list");
+        return;
+    }
+    unsigned int size;
+    hvalue_t *list = value_get(arg, &size);
+    if (size == 0) {
+        value_ctx_failure(step->ctx, &step->engine, "list.tail: empty list");
+        return;
+    }
+    hvalue_t result = value_put_list(&step->engine, &list[1], size - sizeof(hvalue_t));
+    do_return(state, step, global, arg, result);
+}
+
+// Built-in bag.add method
+void op_Bag_Add(const void *env, struct state *state, struct step *step, struct global_t *global){
+    hvalue_t arg = ctx_pop(step->ctx);
+    if (VALUE_TYPE(arg) != VALUE_LIST) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.add: not a tuple");
+        return;
+    }
+    unsigned int size;
+    hvalue_t *args = value_get(arg, &size);
+    if (size != 2 * sizeof(hvalue_t)) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.add: requires two arguments");
+        return;
+    }
+    if (VALUE_TYPE(args[0]) != VALUE_DICT) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.add: first argument must be a bag");
+        return;
+    }
+    hvalue_t result = value_bag_add(&step->engine, args[0], args[1], 1);
+    do_return(state, step, global, arg, result);
+}
+
+// Built-in bag.remove method
+void op_Bag_Remove(const void *env, struct state *state, struct step *step, struct global_t *global){
+    hvalue_t arg = ctx_pop(step->ctx);
+    if (VALUE_TYPE(arg) != VALUE_LIST) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.remove: not a tuple");
+        return;
+    }
+    unsigned int size;
+    hvalue_t *args = value_get(arg, &size);
+    if (size != 2 * sizeof(hvalue_t)) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.remove: requires two arguments");
+        return;
+    }
+    if (VALUE_TYPE(args[0]) != VALUE_DICT) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.remove: first argument must be a bag");
+        return;
+    }
+    hvalue_t result = value_bag_remove(&step->engine, args[0], args[1]);
+    do_return(state, step, global, arg, result);
+}
+
+// Built-in bag.multiplicity method
+void op_Bag_Multiplicity(const void *env, struct state *state, struct step *step, struct global_t *global){
+    hvalue_t arg = ctx_pop(step->ctx);
+    if (VALUE_TYPE(arg) != VALUE_LIST) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.multiplicity: not a tuple");
+        return;
+    }
+    unsigned int size;
+    hvalue_t *args = value_get(arg, &size);
+    if (size != 2 * sizeof(hvalue_t)) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.multiplicity: requires two arguments");
+        return;
+    }
+    if (VALUE_TYPE(args[0]) != VALUE_DICT) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.multiplicity: first argument must be a bag");
+        return;
+    }
+    hvalue_t result;
+    if (value_tryload(&step->engine, args[0], args[1], &result)) {
+        if (VALUE_TYPE(result) != VALUE_INT) {
+            value_ctx_failure(step->ctx, &step->engine, "bag.multiplicity: not a good bag");
+        }
+        do_return(state, step, global, arg, result);
+    }
+    else {
+        do_return(state, step, global, arg, VALUE_TO_INT(0));
+    }
+}
+
+// Built-in bag.size method
+void op_Bag_Size(const void *env, struct state *state, struct step *step, struct global_t *global){
+    hvalue_t arg = ctx_pop(step->ctx);
+    if (VALUE_TYPE(arg) != VALUE_DICT) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.size: not a dict");
+        return;
+    }
+    unsigned int size;
+    hvalue_t *list = value_get(arg, &size);
+    size /= sizeof(hvalue_t);
+    unsigned int total = 0;
+    for (unsigned int i = 1; i < size; i += 2) {
+        if (VALUE_TYPE(list[i]) != VALUE_INT) {
+            value_ctx_failure(step->ctx, &step->engine, "bag.size: not a bag");
+            return;
+        }
+        total += VALUE_FROM_INT(list[i]);
+    }
+    do_return(state, step, global, arg, VALUE_TO_INT(total));
+}
+
+// Built-in bag.bmax method
+void op_Bag_Bmax(const void *env, struct state *state, struct step *step, struct global_t *global){
+    hvalue_t arg = ctx_pop(step->ctx);
+    if (arg == VALUE_DICT) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.bmax: empty bag");
+        return;
+    }
+    if (VALUE_TYPE(arg) != VALUE_DICT) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.bmax: not a dict");
+        return;
+    }
+    unsigned int size;
+    hvalue_t *list = value_get(arg, &size);
+    size /= sizeof(hvalue_t);
+    assert(size >= 2);
+    hvalue_t result = list[0];
+    for (unsigned int i = 2; i < size; i += 2) {
+        int cmp = value_cmp(result, list[i]);
+        if (cmp > 0) {
+            result = list[i];
+        }
+    }
+    do_return(state, step, global, arg, result);
+}
+
+// Built-in bag.bmin method
+void op_Bag_Bmin(const void *env, struct state *state, struct step *step, struct global_t *global){
+    hvalue_t arg = ctx_pop(step->ctx);
+    if (arg == VALUE_DICT) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.bmax: empty bag");
+        return;
+    }
+    if (VALUE_TYPE(arg) != VALUE_DICT) {
+        value_ctx_failure(step->ctx, &step->engine, "bag.bmax: not a dict");
+        return;
+    }
+    unsigned int size;
+    hvalue_t *list = value_get(arg, &size);
+    size /= sizeof(hvalue_t);
+    assert(size >= 2);
+    hvalue_t result = list[0];
+    for (unsigned int i = 2; i < size; i += 2) {
+        int cmp = value_cmp(result, list[i]);
+        if (cmp < 0) {
+            result = list[i];
+        }
+    }
+    do_return(state, step, global, arg, result);
+}
+
 // This operation expects on the top of the stack the set to iterate over
 // and an integer index.  If the index is valid (not the size of the
 // collection), then it assigns the given element to key and value and
-// pushes True.  Otherwise it pops the two values from the stack and
+// pushes True.  Otherwise it pops the two engine from the stack and
 // pushes False.
 void op_Cut(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_Cut *ec = env;
     struct context *ctx = step->ctx;
 
     // Get the index
-    hvalue_t index = value_ctx_pop(&step->ctx);
+    hvalue_t index = ctx_pop(step->ctx);
     assert(VALUE_TYPE(index) == VALUE_INT);
     unsigned int idx = (unsigned int) VALUE_FROM_INT(index);
 
     // Peek at the collection
     assert(ctx->sp > 0);
-    hvalue_t v = ctx->stack[ctx->sp - 1];        // the collection
+    hvalue_t v = ctx_stack(ctx)[ctx->sp - 1];        // the collection
 
     if (VALUE_TYPE(v) == VALUE_SET || VALUE_TYPE(v) == VALUE_LIST) {
         // Get the collection
@@ -569,15 +804,15 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
         hvalue_t *vals = value_get(v, &size);
         size /= sizeof(hvalue_t);
         if (idx >= size) {
-            ctx->stack[ctx->sp - 1] = VALUE_FALSE;
+            ctx_stack(ctx)[ctx->sp - 1] = VALUE_FALSE;
         }
         else {
-            var_match(step->ctx, ec->value, &global->values, vals[idx]);
+            var_match(step->ctx, ec->value, &step->engine, vals[idx]);
             if (ec->key != NULL) {
-                var_match(step->ctx, ec->key, &global->values, index);
+                var_match(step->ctx, ec->key, &step->engine, index);
             }
-            value_ctx_push(&step->ctx, VALUE_TO_INT(idx + 1));
-            value_ctx_push(&step->ctx, VALUE_TRUE);
+            ctx_push(step->ctx, VALUE_TO_INT(idx + 1));
+            ctx_push(step->ctx, VALUE_TRUE);
         }
         step->ctx->pc++;
         return;
@@ -587,18 +822,18 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
         hvalue_t *vals = value_get(v, &size);
         size /= 2 * sizeof(hvalue_t);
         if (idx >= size) {
-            ctx->stack[ctx->sp - 1] = VALUE_FALSE;
+            ctx_stack(ctx)[ctx->sp - 1] = VALUE_FALSE;
         }
         else {
             if (ec->key == NULL) {
-                var_match(step->ctx, ec->value, &global->values, vals[2*idx]);
+                var_match(step->ctx, ec->value, &step->engine, vals[2*idx]);
             }
             else {
-                var_match(step->ctx, ec->key, &global->values, vals[2*idx]);
-                var_match(step->ctx, ec->value, &global->values, vals[2*idx + 1]);
+                var_match(step->ctx, ec->key, &step->engine, vals[2*idx]);
+                var_match(step->ctx, ec->value, &step->engine, vals[2*idx + 1]);
             }
-            value_ctx_push(&step->ctx, VALUE_TO_INT(idx + 1));
-            value_ctx_push(&step->ctx, VALUE_TRUE);
+            ctx_push(step->ctx, VALUE_TO_INT(idx + 1));
+            ctx_push(step->ctx, VALUE_TRUE);
         }
         step->ctx->pc++;
         return;
@@ -607,21 +842,21 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
         unsigned int size;
         char *chars = value_get(v, &size);
         if (idx >= size) {
-            ctx->stack[ctx->sp - 1] = VALUE_FALSE;
+            ctx_stack(ctx)[ctx->sp - 1] = VALUE_FALSE;
         }
         else {
-            hvalue_t e = value_put_atom(&global->values, &chars[idx], 1);
-            var_match(step->ctx, ec->value, &global->values, e);
+            hvalue_t e = value_put_atom(&step->engine, &chars[idx], 1);
+            var_match(step->ctx, ec->value, &step->engine, e);
             if (ec->key != NULL) {
-                var_match(step->ctx, ec->key, &global->values, index);
+                var_match(step->ctx, ec->key, &step->engine, index);
             }
-            value_ctx_push(&step->ctx, VALUE_TO_INT(idx + 1));
-            value_ctx_push(&step->ctx, VALUE_TRUE);
+            ctx_push(step->ctx, VALUE_TO_INT(idx + 1));
+            ctx_push(step->ctx, VALUE_TRUE);
         }
         step->ctx->pc++;
         return;
     }
-    value_ctx_failure(step->ctx, &global->values, "op_Cut: not an iterable type");
+    value_ctx_failure(step->ctx, &step->engine, "op_Cut: not an iterable type");
 }
 
 void op_Del(const void *env, struct state *state, struct step *step, struct global_t *global){
@@ -630,20 +865,20 @@ void op_Del(const void *env, struct state *state, struct step *step, struct glob
     assert(VALUE_TYPE(state->vars) == VALUE_DICT);
 
     if (step->ctx->readonly > 0) {
-        value_ctx_failure(step->ctx, &global->values, "Can't update state in assert or invariant");
+        value_ctx_failure(step->ctx, &step->engine, "Can't update state in assert or invariant");
         return;
     }
 
     if (ed == 0) {
-        hvalue_t av = value_ctx_pop(&step->ctx);
+        hvalue_t av = ctx_pop(step->ctx);
         if (VALUE_TYPE(av) != VALUE_ADDRESS) {
             char *p = value_string(av);
-            value_ctx_failure(step->ctx, &global->values, "Del %s: not an address", p);
+            value_ctx_failure(step->ctx, &step->engine, "Del %s: not an address", p);
             free(p);
             return;
         }
         if (av == VALUE_ADDRESS) {
-            value_ctx_failure(step->ctx, &global->values, "Del: address is None");
+            value_ctx_failure(step->ctx, &step->engine, "Del: address is None");
             return;
         }
 
@@ -656,8 +891,8 @@ void op_Del(const void *env, struct state *state, struct step *step, struct glob
             step->ai->load = false;
         }
         hvalue_t nd;
-        if (!ind_remove(state->vars, indices, size, &global->values, &nd)) {
-            value_ctx_failure(step->ctx, &global->values, "Del: no such variable");
+        if (!ind_remove(state->vars, indices, size, &step->engine, &nd)) {
+            value_ctx_failure(step->ctx, &step->engine, "Del: no such variable");
         }
         else {
             state->vars = nd;
@@ -671,8 +906,8 @@ void op_Del(const void *env, struct state *state, struct step *step, struct glob
             step->ai->load = false;
         }
         hvalue_t nd;
-        if (!ind_remove(state->vars, ed->indices, ed->n, &global->values, &nd)) {
-            value_ctx_failure(step->ctx, &global->values, "Del: bad variable");
+        if (!ind_remove(state->vars, ed->indices, ed->n, &step->engine, &nd)) {
+            value_ctx_failure(step->ctx, &step->engine, "Del: bad variable");
         }
         else {
             state->vars = nd;
@@ -686,7 +921,7 @@ void op_DelVar(const void *env, struct state *state, struct step *step, struct g
 
     assert(VALUE_TYPE(step->ctx->vars) == VALUE_DICT);
     if (ed == NULL) {
-        hvalue_t av = value_ctx_pop(&step->ctx);
+        hvalue_t av = ctx_pop(step->ctx);
         assert(VALUE_TYPE(av) == VALUE_ADDRESS);
         assert(av != VALUE_ADDRESS);
 
@@ -696,67 +931,70 @@ void op_DelVar(const void *env, struct state *state, struct step *step, struct g
 
         bool result;
         if (indices[0] == this_atom) {
-            if (VALUE_TYPE(step->ctx->this) != VALUE_DICT) {
-                value_ctx_failure(step->ctx, &global->values, "DelVar: 'this' is not a dictionary");
+            if (!step->ctx->extended) {
+                value_ctx_failure(step->ctx, &step->engine, "DelVar: context does not have 'this'");
                 return;
             }
-		    result = ind_remove(step->ctx->this, &indices[1], size - 1, &global->values, &step->ctx->this);
+            if (VALUE_TYPE(step->ctx->ctx_this) != VALUE_DICT) {
+                value_ctx_failure(step->ctx, &step->engine, "DelVar: 'this' is not a dictionary");
+                return;
+            }
+		    result = ind_remove(step->ctx->ctx_this, &indices[1], size - 1, &step->engine, &step->ctx->ctx_this);
         }
         else {
-		    result = ind_remove(step->ctx->vars, indices, size, &global->values, &step->ctx->vars);
+		    result = ind_remove(step->ctx->vars, indices, size, &step->engine, &step->ctx->vars);
         }
         if (!result) {
             char *x = indices_string(indices, size);
-            value_ctx_failure(step->ctx, &global->values, "DelVar: bad address: %s", x);
+            value_ctx_failure(step->ctx, &step->engine, "DelVar: bad address: %s", x);
             free(x);
 			return;
 		}
     }
 	else {
         if (ed->name == this_atom) {
-            value_ctx_failure(step->ctx, &global->values, "DelVar: can't del 'this'");
+            value_ctx_failure(step->ctx, &step->engine, "DelVar: can't del 'this'");
             return;
         }
         else {
-            step->ctx->vars = value_dict_remove(&global->values, step->ctx->vars, ed->name);
+            step->ctx->vars = value_dict_remove(&step->engine, step->ctx->vars, ed->name);
         }
 	}
 	step->ctx->pc++;
 }
 
 void op_Dup(const void *env, struct state *state, struct step *step, struct global_t *global){
-    hvalue_t v = value_ctx_pop(&step->ctx);
-    value_ctx_push(&step->ctx, v);
-    value_ctx_push(&step->ctx, v);
+    hvalue_t v = ctx_pop(step->ctx);
+    ctx_push(step->ctx, v);
+    ctx_push(step->ctx, v);
     step->ctx->pc++;
 }
 
 void op_Frame(const void *env, struct state *state, struct step *step, struct global_t *global){
-    static hvalue_t result = 0;
-
-    if (result == 0) {
-        result = value_put_atom(&global->values, "result", 6);
-    }
-
     const struct env_Frame *ef = env;
 
+    if (!check_stack(step->ctx, 2)) {
+        value_ctx_failure(step->ctx, &step->engine, "Frame: out of stack");
+        return;
+    }
+
     // peek at argument
-    hvalue_t arg = value_ctx_pop(&step->ctx);
-    value_ctx_push(&step->ctx, arg);
+    hvalue_t arg = ctx_pop(step->ctx);
+    ctx_push(step->ctx, arg);
 
     hvalue_t oldvars = step->ctx->vars;
 
     // Set result to None
-    step->ctx->vars = value_dict_store(&global->values, VALUE_DICT, result, VALUE_ADDRESS);
+    step->ctx->vars = value_dict_store(&step->engine, VALUE_DICT, result_atom, VALUE_ADDRESS);
 
     // try to match against parameters
-    var_match(step->ctx, ef->args, &global->values, arg);
-    if (step->ctx->failure != 0) {
+    var_match(step->ctx, ef->args, &step->engine, arg);
+    if (step->ctx->failed) {
         return;
     }
  
-    value_ctx_push(&step->ctx, oldvars);
-    value_ctx_push(&step->ctx, VALUE_TO_INT(step->ctx->fp));
+    ctx_push(step->ctx, oldvars);
+    ctx_push(step->ctx, VALUE_TO_INT(step->ctx->fp));
 
     struct context *ctx = step->ctx;
     ctx->fp = ctx->sp;
@@ -769,52 +1007,51 @@ void op_Go(
     struct step *step,
     struct global_t *global
 ){
-    hvalue_t ctx = value_ctx_pop(&step->ctx);
+    hvalue_t ctx = ctx_pop(step->ctx);
     if (VALUE_TYPE(ctx) != VALUE_CONTEXT) {
-        value_ctx_failure(step->ctx, &global->values, "Go: not a context");
+        value_ctx_failure(step->ctx, &step->engine, "Go: not a context");
         return;
     }
 
     // Remove from stopbag if it's there
     hvalue_t count;
-    if (value_tryload(&global->values, state->stopbag, ctx, &count)) {
+    if (value_tryload(&step->engine, state->stopbag, ctx, &count)) {
         assert(VALUE_TYPE(count) == VALUE_INT);
         assert(count != VALUE_INT);
         count -= 1 << VALUE_BITS;
         if (count != VALUE_INT) {
-            state->stopbag = value_dict_store(&global->values, state->stopbag, ctx, count);
+            state->stopbag = value_dict_store(&step->engine, state->stopbag, ctx, count);
         }
         else {
-            state->stopbag = value_dict_remove(&global->values, state->stopbag, ctx);
+            state->stopbag = value_dict_remove(&step->engine, state->stopbag, ctx);
         }
     }
 
-    hvalue_t result = value_ctx_pop(&step->ctx);
-    struct context *copy = value_copy(ctx, NULL);
-    value_ctx_push(&copy, result);
+    hvalue_t result = ctx_pop(step->ctx);
+
+    // Copy the context and reserve an extra hvalue_t
+    unsigned int size;
+    struct context *orig = value_get(ctx, &size);
+    char buffer[size + sizeof(hvalue_t)];
+    memcpy(buffer, orig, size);
+    struct context *copy = (struct context *) buffer;
+
+    ctx_push(copy, result);
     copy->stopped = false;
-    hvalue_t v = value_put_context(&global->values, copy);
-    free(copy);
-    state->ctxbag = value_bag_add(&global->values, state->ctxbag, v, 1);
+    context_add(state, value_put_context(&step->engine, copy));
     step->ctx->pc++;
 }
 
 void op_Invariant(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_Invariant *ei = env;
 
-    assert(VALUE_TYPE(state->invariants) == VALUE_SET);
+    // TODO workers could race on global->invariants
+    assert(VALUE_TYPE(global->invariants) == VALUE_SET);
     unsigned int size;
-    hvalue_t *vals;
-    if (state->invariants == VALUE_SET) {
-        size = 0;
-        vals = NULL;
-    }
-    else {
-        vals = value_get(state->invariants, &size);
-    }
-    vals = realloc(vals, size + sizeof(hvalue_t));
+    hvalue_t *vals = value_copy_extend(global->invariants, sizeof(hvalue_t), &size);
     * (hvalue_t *) ((char *) vals + size) = VALUE_TO_PC(step->ctx->pc);
-    state->invariants = value_put_set(&global->values, vals, size + sizeof(hvalue_t));
+    global->invariants = value_put_set(&step->engine, vals, size + sizeof(hvalue_t));
+    free(vals);
     step->ctx->pc = ei->end + 1;
 }
 
@@ -832,10 +1069,10 @@ void op_Jump(const void *env, struct state *state, struct step *step, struct glo
 void op_JumpCond(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_JumpCond *ej = env;
 
-    hvalue_t v = value_ctx_pop(&step->ctx);
+    hvalue_t v = ctx_pop(step->ctx);
     if ((ej->cond == VALUE_FALSE || ej->cond == VALUE_TRUE) &&
                             !(v == VALUE_FALSE || v == VALUE_TRUE)) {
-        value_ctx_failure(step->ctx, &global->values, "JumpCond: not an boolean");
+        value_ctx_failure(step->ctx, &step->engine, "JumpCond: not an boolean");
     }
     else if (v == ej->cond) {
         assert(step->ctx->pc != ej->pc);
@@ -853,15 +1090,15 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
 
     hvalue_t v;
     if (el == 0) {
-        hvalue_t av = value_ctx_pop(&step->ctx);
+        hvalue_t av = ctx_pop(step->ctx);
         if (VALUE_TYPE(av) != VALUE_ADDRESS) {
             char *p = value_string(av);
-            value_ctx_failure(step->ctx, &global->values, "Load %s: not an address", p);
+            value_ctx_failure(step->ctx, &step->engine, "Load %s: not an address", p);
             free(p);
             return;
         }
         if (av == VALUE_ADDRESS) {
-            value_ctx_failure(step->ctx, &global->values, "Load: can't load from None");
+            value_ctx_failure(step->ctx, &step->engine, "Load: can't load from None");
             return;
         }
 
@@ -874,27 +1111,31 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
             step->ai->load = true;
         }
 
-        if (!ind_tryload(&global->values, state->vars, indices, size, &v)) {
+        if (!ind_tryload(&step->engine, state->vars, indices, size, &v)) {
             char *x = indices_string(indices, size);
-            value_ctx_failure(step->ctx, &global->values, "Load: unknown address %s", x);
+            value_ctx_failure(step->ctx, &step->engine, "Load: unknown address %s", x);
             free(x);
             return;
         }
-        value_ctx_push(&step->ctx, v);
+        ctx_push(step->ctx, v);
     }
     else {
+        if (!check_stack(step->ctx, 1)) {
+            value_ctx_failure(step->ctx, &step->engine, "Load: out of stack");
+            return;
+        }
         if (step->ai != NULL) {
             step->ai->indices = el->indices;
             step->ai->n = el->n;
             step->ai->load = true;
         }
-        if (!ind_tryload(&global->values, state->vars, el->indices, el->n, &v)) {
+        if (!ind_tryload(&step->engine, state->vars, el->indices, el->n, &v)) {
             char *x = indices_string(el->indices, el->n);
-            value_ctx_failure(step->ctx, &global->values, "Load: unknown variable %s", x);
+            value_ctx_failure(step->ctx, &step->engine, "Load: unknown variable %s", x);
             free(x);
             return;
         }
-        value_ctx_push(&step->ctx, v);
+        ctx_push(step->ctx, v);
     }
     step->ctx->pc++;
 }
@@ -905,7 +1146,7 @@ void op_LoadVar(const void *env, struct state *state, struct step *step, struct 
 
     hvalue_t v;
     if (el == NULL) {
-        hvalue_t av = value_ctx_pop(&step->ctx);
+        hvalue_t av = ctx_pop(step->ctx);
         assert(VALUE_TYPE(av) == VALUE_ADDRESS);
         assert(av != VALUE_ADDRESS);
 
@@ -915,33 +1156,49 @@ void op_LoadVar(const void *env, struct state *state, struct step *step, struct 
 
         bool result;
         if (indices[0] == this_atom) {
-            if (VALUE_TYPE(step->ctx->this) != VALUE_DICT) {
-                value_ctx_failure(step->ctx, &global->values, "LoadVar: 'this' is not a dictionary");
+            if (!step->ctx->extended) {
+                value_ctx_failure(step->ctx, &step->engine, "LoadVar: context does not have 'this'");
                 return;
             }
-            result = ind_tryload(&global->values, step->ctx->this, &indices[1], size - 1, &v);
+            if (VALUE_TYPE(step->ctx->ctx_this) != VALUE_DICT) {
+                value_ctx_failure(step->ctx, &step->engine, "LoadVar: 'this' is not a dictionary");
+                return;
+            }
+            result = ind_tryload(&step->engine, step->ctx->ctx_this, &indices[1], size - 1, &v);
         }
         else {
-            result = ind_tryload(&global->values, step->ctx->vars, indices, size, &v);
+            if (!check_stack(step->ctx, 1)) {
+                value_ctx_failure(step->ctx, &step->engine, "LoadVar: out of stack");
+                return;
+            }
+            result = ind_tryload(&step->engine, step->ctx->vars, indices, size, &v);
         }
         if (!result) {
             char *x = indices_string(indices, size);
-            value_ctx_failure(step->ctx, &global->values, "LoadVar: bad address: %s", x);
+            value_ctx_failure(step->ctx, &step->engine, "LoadVar: bad address: %s", x);
             free(x);
             return;
         }
-        value_ctx_push(&step->ctx, v);
+        ctx_push(step->ctx, v);
     }
     else {
         if (el->name == this_atom) {
-            value_ctx_push(&step->ctx, step->ctx->this);
+            if (!step->ctx->extended) {
+                value_ctx_failure(step->ctx, &step->engine, "LoadVar: context does not have 'this'");
+                return;
+            }
+            if (VALUE_TYPE(step->ctx->ctx_this) != VALUE_DICT) {
+                value_ctx_failure(step->ctx, &step->engine, "LoadVar: 'this' is not a dictionary");
+                return;
+            }
+            ctx_push(step->ctx, step->ctx->ctx_this);
         }
-        else if (value_tryload(&global->values, step->ctx->vars, el->name, &v)) {
-            value_ctx_push(&step->ctx, v);
+        else if (value_tryload(&step->engine, step->ctx->vars, el->name, &v)) {
+            ctx_push(step->ctx, v);
         }
         else {
             char *p = value_string(el->name);
-            value_ctx_failure(step->ctx, &global->values, "LoadVar: unknown variable %s", p);
+            value_ctx_failure(step->ctx, &step->engine, "LoadVar: unknown variable %s", p);
             free(p);
             return;
         }
@@ -953,11 +1210,12 @@ void op_Move(const void *env, struct state *state, struct step *step, struct glo
     const struct env_Move *em = env;
     struct context *ctx = step->ctx;
     int offset = ctx->sp - em->offset;
+    hvalue_t *stack = ctx_stack(ctx);
 
-    hvalue_t v = ctx->stack[offset];
-    memmove(&ctx->stack[offset], &ctx->stack[offset + 1],
+    hvalue_t v = stack[offset];
+    memmove(&stack[offset], &stack[offset + 1],
                 (em->offset - 1) * sizeof(hvalue_t));
-    ctx->stack[ctx->sp - 1] = v;
+    stack[ctx->sp - 1] = v;
     ctx->pc++;
 }
 
@@ -966,11 +1224,11 @@ void op_Nary(const void *env, struct state *state, struct step *step, struct glo
     hvalue_t args[MAX_ARITY];
 
     for (unsigned int i = 0; i < en->arity; i++) {
-        args[i] = value_ctx_pop(&step->ctx);
+        args[i] = ctx_pop(step->ctx);
     }
-    hvalue_t result = (*en->fi->f)(state, step->ctx, args, en->arity, &global->values);
-    if (step->ctx->failure == 0) {
-        value_ctx_push(&step->ctx, result);
+    hvalue_t result = (*en->fi->f)(state, step->ctx, args, en->arity, &step->engine);
+    if (!step->ctx->failed) {
+        ctx_push(step->ctx, result);
         step->ctx->pc++;
     }
 }
@@ -984,7 +1242,11 @@ void op_Pop(const void *env, struct state *state, struct step *step, struct glob
 void op_Push(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_Push *ep = env;
 
-    value_ctx_push(&step->ctx, ep->value);
+    if (!check_stack(step->ctx, 1)) {
+        value_ctx_failure(step->ctx, &step->engine, "Push: out of stack");
+        return;
+    }
+    ctx_push(step->ctx, ep->value);
     step->ctx->pc++;
 }
 
@@ -1000,76 +1262,83 @@ void op_ReadonlyInc(const void *env, struct state *state, struct step *step, str
     struct context *ctx = step->ctx;
 
     ctx->readonly++;
-    ctx->pc++;
+    if (ctx->readonly == 0) {
+        value_ctx_failure(step->ctx, &step->engine, "ReadonlyInc overflow");
+    }
+    else {
+        ctx->pc++;
+    }
 }
 
 // On the stack are:
 //  - frame pointer
 //  - saved variables
 //  - saved argument for stack trace
-//  - process, normal, or interrupt
-//  - return address if normal or interrupt
+//  - call: process, normal, or interrupt plus return address
 void op_Return(const void *env, struct state *state, struct step *step, struct global_t *global){
-    hvalue_t result = value_dict_load(step->ctx->vars, value_put_atom(&global->values, "result", 6));
-    hvalue_t fp = value_ctx_pop(&step->ctx);
+    hvalue_t result = value_dict_load(step->ctx->vars, result_atom);
+    hvalue_t fp = ctx_pop(step->ctx);
     if (VALUE_TYPE(fp) != VALUE_INT) {
         printf("XXX %d %d %s\n", step->ctx->pc, step->ctx->sp, value_string(fp));
-        value_ctx_failure(step->ctx, &global->values, "XXX");
+        value_ctx_failure(step->ctx, &step->engine, "XXX");
         return;
         // exit(1);
     }
     assert(VALUE_TYPE(fp) == VALUE_INT);
     step->ctx->fp = VALUE_FROM_INT(fp);
-    hvalue_t oldvars = value_ctx_pop(&step->ctx);
+    hvalue_t oldvars = ctx_pop(step->ctx);
     assert(VALUE_TYPE(oldvars) == VALUE_DICT);
     step->ctx->vars = oldvars;
-    (void) value_ctx_pop(&step->ctx);   // argument saved for stack trace
-    if (step->ctx->sp == 0) {     // __init__
-        step->ctx->terminated = true;
+    hvalue_t arg = ctx_pop(step->ctx);   // argument saved for stack trace
+    do_return(state, step, global, arg, result);
+}
+
+void op_Builtin(const void *env, struct state *state, struct step *step, struct global_t *global){
+    const struct env_Builtin *eb = env;
+    hvalue_t pc = ctx_pop(step->ctx);
+    if (VALUE_TYPE(pc) != VALUE_PC) {
+        char *p = value_string(pc);
+        value_ctx_failure(step->ctx, &step->engine, "Builtin %s: not a PC value", p);
+        free(p);
         return;
     }
-    hvalue_t calltype = value_ctx_pop(&step->ctx);
-    assert(VALUE_TYPE(calltype) == VALUE_INT);
-    switch (VALUE_FROM_INT(calltype)) {
-    case CALLTYPE_PROCESS:
-        step->ctx->terminated = true;
-        break;
-    case CALLTYPE_NORMAL:
-        {
-            hvalue_t pc = value_ctx_pop(&step->ctx);
-            assert(VALUE_TYPE(pc) == VALUE_PC);
-            pc = VALUE_FROM_PC(pc);
-            assert(pc != (hvalue_t) step->ctx->pc);
-            value_ctx_push(&step->ctx, result);
-            step->ctx->pc = pc;
-        }
-        break;
-    case CALLTYPE_INTERRUPT:
-        step->ctx->interruptlevel = false;
-        hvalue_t pc = value_ctx_pop(&step->ctx);
-        assert(VALUE_TYPE(pc) == VALUE_PC);
-        pc = VALUE_FROM_PC(pc);
-        assert(pc != (hvalue_t) step->ctx->pc);
-        step->ctx->pc = pc;
-        break;
-    default:
-        panic("op_Return: bad call type");
+    if (VALUE_FROM_PC(pc) >= global->code.len) {
+        value_ctx_failure(step->ctx, &step->engine, "Builtin %u: not a valid pc", (unsigned) VALUE_FROM_PC(pc));
+        return;
     }
+    struct op_info *oi = global->code.instrs[VALUE_FROM_PC(pc)].oi;
+//    if (strcmp(oi->name, "Frame") != 0) {
+//        value_ctx_failure(step->ctx, &step->engine, "Builtin %u: not a Frame instruction", (unsigned) VALUE_FROM_PC(pc));
+//        return;
+//    }
+
+    unsigned int len;
+    char *p = value_get(eb->method, &len);
+    oi = dict_lookup(ops_map, p, len);
+    if (oi == NULL) {
+        value_ctx_failure(step->ctx, &step->engine, "Builtin: no method %.*s", len, p);
+        return;
+    }
+
+    global->code.instrs[VALUE_FROM_PC(pc)].oi = oi;
+    step->ctx->pc++;
 }
 
 void op_Sequential(const void *env, struct state *state, struct step *step, struct global_t *global){
-    hvalue_t addr = value_ctx_pop(&step->ctx);
+    hvalue_t addr = ctx_pop(step->ctx);
     if (VALUE_TYPE(addr) != VALUE_ADDRESS) {
         char *p = value_string(addr);
-        value_ctx_failure(step->ctx, &global->values, "Sequential %s: not an address", p);
+        value_ctx_failure(step->ctx, &step->engine, "Sequential %s: not an address", p);
         free(p);
         return;
     }
 
-    /* Insert in state's set of sequential variables.
+    /* Insert in set of sequential variables.
+     *
+     * TODO.  Could lead to race between workers
      */
     unsigned int size;
-    hvalue_t *seqs = value_copy(state->seqs, &size);
+    hvalue_t *seqs = value_copy_extend(global->seqs, sizeof(hvalue_t), &size);
     size /= sizeof(hvalue_t);
     unsigned int i;
     for (i = 0; i < size; i++) {
@@ -1083,10 +1352,9 @@ void op_Sequential(const void *env, struct state *state, struct step *step, stru
             break;
         }
     }
-    seqs = realloc(seqs, (size + 1) * sizeof(hvalue_t));
     memmove(&seqs[i + 1], &seqs[i], (size - i) * sizeof(hvalue_t));
     seqs[i] = addr;
-    state->seqs = value_put_set(&global->values, seqs, (size + 1) * sizeof(hvalue_t));
+    global->seqs = value_put_set(&step->engine, seqs, (size + 1) * sizeof(hvalue_t));
     free(seqs);
     step->ctx->pc++;
 }
@@ -1123,13 +1391,13 @@ static int sort(hvalue_t *vals, int n){
 
 void op_SetIntLevel(const void *env, struct state *state, struct step *step, struct global_t *global){
 	bool oldlevel = step->ctx->interruptlevel;
-	hvalue_t newlevel =  value_ctx_pop(&step->ctx);
+	hvalue_t newlevel =  ctx_pop(step->ctx);
     if (VALUE_TYPE(newlevel) != VALUE_BOOL) {
-        value_ctx_failure(step->ctx, &global->values, "setintlevel can only be set to a boolean");
+        value_ctx_failure(step->ctx, &step->engine, "setintlevel can only be set to a boolean");
         return;
     }
     step->ctx->interruptlevel = VALUE_FROM_BOOL(newlevel);
-	value_ctx_push(&step->ctx, VALUE_TO_BOOL(oldlevel));
+	ctx_push(step->ctx, VALUE_TO_BOOL(oldlevel));
     step->ctx->pc++;
 }
 
@@ -1141,12 +1409,12 @@ void op_Spawn(
 ) {
     const struct env_Spawn *se = env;
 
-    hvalue_t thisval = value_ctx_pop(&step->ctx);
-    hvalue_t arg = value_ctx_pop(&step->ctx);
+    hvalue_t thisval = ctx_pop(step->ctx);
+    hvalue_t arg = ctx_pop(step->ctx);
 
-    hvalue_t pc = value_ctx_pop(&step->ctx);
+    hvalue_t pc = ctx_pop(step->ctx);
     if (VALUE_TYPE(pc) != VALUE_PC) {
-        value_ctx_failure(step->ctx, &global->values, "spawn: not a method");
+        value_ctx_failure(step->ctx, &step->engine, "spawn: not a method");
         return;
     }
     pc = VALUE_FROM_PC(pc);
@@ -1154,26 +1422,33 @@ void op_Spawn(
     assert(pc < (hvalue_t) global->code.len);
     assert(strcmp(global->code.instrs[pc].oi->name, "Frame") == 0);
 
-    struct context *ctx = new_alloc(struct context);
+    char context[sizeof(struct context) +
+                        (ctx_extent + 2) * sizeof(hvalue_t)];
+    struct context *ctx = (struct context *) context;
+    memset(ctx, 0, sizeof(*ctx));
 
-    const struct env_Frame *ef = global->code.instrs[pc].env;
-    ctx->name = ef->name;
-    ctx->arg = arg;
-    ctx->this = thisval;
-    ctx->entry = VALUE_TO_PC(pc);
-    ctx->pc = pc;
+    if (thisval != VALUE_DICT) {
+        value_ctx_extend(ctx);
+        ctx->ctx_this = thisval;
+    }
+    ctx->entry = ctx->pc = pc;
     ctx->vars = VALUE_DICT;
     ctx->interruptlevel = false;
     ctx->eternal = se->eternal;
-    value_ctx_push(&ctx, VALUE_TO_INT(CALLTYPE_PROCESS));
-    value_ctx_push(&ctx, arg);
+    ctx_push(ctx, VALUE_TO_INT(CALLTYPE_PROCESS));
+    ctx_push(ctx, arg);
     if (global->run_direct) {
-        spawn_thread(global, state, ctx);
+        unsigned int size = sizeof(*ctx) + (ctx->sp * sizeof(hvalue_t));
+        if (ctx->extended) {
+            size += ctx_extent * sizeof(hvalue_t);
+        }
+        struct context *copy = malloc(size + 4096);      // TODO.  How much
+        memcpy(copy, ctx, size);
+        spawn_thread(global, state, copy);
     }
-    else {
-        hvalue_t v = value_put_context(&global->values, ctx);
-        free(ctx);
-        state->ctxbag = value_bag_add(&global->values, state->ctxbag, v, 1);
+    else if (!context_add(state, value_put_context(&step->engine, ctx))) {
+        value_ctx_failure(step->ctx, &step->engine, "spawn: too many threads");
+        return;
     }
     step->ctx->pc++;
 }
@@ -1181,15 +1456,15 @@ void op_Spawn(
 void op_Split(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_Split *es = env;
 
-    hvalue_t v = value_ctx_pop(&step->ctx);
+    hvalue_t v = ctx_pop(step->ctx);
     hvalue_t type = VALUE_TYPE(v);
     if (type != VALUE_SET && type != VALUE_LIST) {
-        value_ctx_failure(step->ctx, &global->values, "Can only split tuples or sets");
+        value_ctx_failure(step->ctx, &step->engine, "Can only split tuples or sets");
         return;
     }
     if (v == VALUE_SET || v == VALUE_LIST) {
         if (es->count != 0) {
-            value_ctx_failure(step->ctx, &global->values, "Split: empty set or tuple");
+            value_ctx_failure(step->ctx, &step->engine, "Split: empty set or tuple");
         }
         else {
             step->ctx->pc++;
@@ -1201,23 +1476,23 @@ void op_Split(const void *env, struct state *state, struct step *step, struct gl
     hvalue_t *vals = value_get(v, &size);
     size /= sizeof(hvalue_t);
     if (size != es->count) {
-        value_ctx_failure(step->ctx, &global->values, "Split: wrong size");
+        value_ctx_failure(step->ctx, &step->engine, "Split: wrong size");
         return;
     }
     for (unsigned int i = 0; i < size; i++) {
-        value_ctx_push(&step->ctx, vals[i]);
+        ctx_push(step->ctx, vals[i]);
     }
     step->ctx->pc++;
 }
 
 void op_Save(const void *env, struct state *state, struct step *step, struct global_t *global){
     assert(VALUE_TYPE(state->vars) == VALUE_DICT);
-    hvalue_t e = value_ctx_pop(&step->ctx);
+    hvalue_t e = ctx_pop(step->ctx);
 
     // Save the context
     step->ctx->stopped = true;
     step->ctx->pc++;
-    hvalue_t v = value_put_context(&global->values, step->ctx);
+    hvalue_t v = value_put_context(&step->engine, step->ctx);
 
     // Restore the stopped mode to false
     step->ctx->stopped = false;
@@ -1226,8 +1501,8 @@ void op_Save(const void *env, struct state *state, struct step *step, struct glo
     hvalue_t d[2];
     d[0] = e;
     d[1] = v;
-    hvalue_t result = value_put_list(&global->values, d, sizeof(d));
-    value_ctx_push(&step->ctx, result);
+    hvalue_t result = value_put_list(&step->engine, d, sizeof(d));
+    ctx_push(step->ctx, result);
 }
 
 void op_Stop(const void *env, struct state *state, struct step *step, struct global_t *global){
@@ -1236,12 +1511,12 @@ void op_Stop(const void *env, struct state *state, struct step *step, struct glo
     assert(VALUE_TYPE(state->vars) == VALUE_DICT);
 
     if (step->ctx->readonly > 0) {
-        value_ctx_failure(step->ctx, &global->values, "Stop: in read-only mode");
+        value_ctx_failure(step->ctx, &step->engine, "Stop: in read-only mode");
         return;
     }
 
     if (es == 0) {
-        hvalue_t av = value_ctx_pop(&step->ctx);
+        hvalue_t av = ctx_pop(step->ctx);
         if (av == VALUE_ADDRESS || av == VALUE_LIST) {
             step->ctx->pc++;
             step->ctx->terminated = true;
@@ -1250,29 +1525,29 @@ void op_Stop(const void *env, struct state *state, struct step *step, struct glo
 
         if (VALUE_TYPE(av) != VALUE_ADDRESS) {
             char *p = value_string(av);
-            value_ctx_failure(step->ctx, &global->values, "Stop %s: not an address", p);
+            value_ctx_failure(step->ctx, &step->engine, "Stop %s: not an address", p);
             free(p);
             return;
         }
         step->ctx->pc++;
 
         step->ctx->stopped = true;
-        hvalue_t v = value_put_context(&global->values, step->ctx);
+        hvalue_t v = value_put_context(&step->engine, step->ctx);
         unsigned int size;
         hvalue_t *indices = value_get(av, &size);
         size /= sizeof(hvalue_t);
-        if (!ind_trystore(state->vars, indices, size, v, &global->values, &state->vars)) {
+        if (!ind_trystore(state->vars, indices, size, v, &step->engine, &state->vars)) {
             char *x = indices_string(indices, size);
-            value_ctx_failure(step->ctx, &global->values, "Stop: bad address: %s", x);
+            value_ctx_failure(step->ctx, &step->engine, "Stop: bad address: %s", x);
             free(x);
         }
     }
     else {
         step->ctx->stopped = true;
         step->ctx->pc++;
-        hvalue_t v = value_put_context(&global->values, step->ctx);
-        if (!ind_trystore(state->vars, es->indices, es->n, v, &global->values, &state->vars)) {
-            value_ctx_failure(step->ctx, &global->values, "Store: bad variable");
+        hvalue_t v = value_put_context(&step->engine, step->ctx);
+        if (!ind_trystore(state->vars, es->indices, es->n, v, &step->engine, &state->vars)) {
+            value_ctx_failure(step->ctx, &step->engine, "Store: bad variable");
         }
     }
 }
@@ -1283,22 +1558,22 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
     assert(VALUE_TYPE(state->vars) == VALUE_DICT);
 
     if (step->ctx->readonly > 0) {
-        value_ctx_failure(step->ctx, &global->values, "Can't update state in assert or invariant (including acquiring locks)");
+        value_ctx_failure(step->ctx, &step->engine, "Can't update state in assert or invariant (including acquiring locks)");
         return;
     }
 
-    hvalue_t v = value_ctx_pop(&step->ctx);
+    hvalue_t v = ctx_pop(step->ctx);
 
     if (es == 0) {
-        hvalue_t av = value_ctx_pop(&step->ctx);
+        hvalue_t av = ctx_pop(step->ctx);
         if (VALUE_TYPE(av) != VALUE_ADDRESS) {
             char *p = value_string(av);
-            value_ctx_failure(step->ctx, &global->values, "Store %s: not an address", p);
+            value_ctx_failure(step->ctx, &step->engine, "Store %s: not an address", p);
             free(p);
             return;
         }
         if (av == VALUE_ADDRESS) {
-            value_ctx_failure(step->ctx, &global->values, "Store: address is None");
+            value_ctx_failure(step->ctx, &step->engine, "Store: address is None");
             return;
         }
 
@@ -1308,22 +1583,22 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
         if (step->ai != NULL) {
             step->ai->indices = indices;
             step->ai->n = size;
-            step->ai->load = is_sequential(state->seqs, step->ai->indices, step->ai->n);
+            step->ai->load = is_sequential(global->seqs, step->ai->indices, step->ai->n);
         }
 
-        if (size == 1 && step->ctx->name != global->init_name) {
+        if (size == 1 && step->ctx->entry != 0) {
             hvalue_t newvars;
-            if (!value_dict_trystore(&global->values, state->vars, indices[0], v, step->ctx->name == global->init_name, &newvars)){
+            if (!value_dict_trystore(&step->engine, state->vars, indices[0], v, step->ctx->entry == 0, &newvars)){
                 char *x = indices_string(indices, size);
-                value_ctx_failure(step->ctx, &global->values, "Store: declare a local variable %s (or set during initialization)", x);
+                value_ctx_failure(step->ctx, &step->engine, "Store: declare a local variable %s (or set during initialization)", x);
                 free(x);
                 return;
             }
             state->vars = newvars;
         }
-        else if (!ind_trystore(state->vars, indices, size, v, &global->values, &state->vars)) {
+        else if (!ind_trystore(state->vars, indices, size, v, &step->engine, &state->vars)) {
             char *x = indices_string(indices, size);
-            value_ctx_failure(step->ctx, &global->values, "Store: bad address: %s", x);
+            value_ctx_failure(step->ctx, &step->engine, "Store: bad address: %s", x);
             free(x);
             return;
         }
@@ -1332,21 +1607,21 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
         if (step->ai != NULL) {
             step->ai->indices = es->indices;
             step->ai->n = es->n;
-            step->ai->load = is_sequential(state->seqs, step->ai->indices, step->ai->n);
+            step->ai->load = is_sequential(global->seqs, step->ai->indices, step->ai->n);
         }
-        if (es->n == 1 && step->ctx->name != global->init_name) {
+        if (es->n == 1 && step->ctx->entry != 0) {
             hvalue_t newvars;
-            if (!value_dict_trystore(&global->values, state->vars, es->indices[0], v, step->ctx->name == global->init_name, &newvars)){
+            if (!value_dict_trystore(&step->engine, state->vars, es->indices[0], v, step->ctx->entry == 0, &newvars)){
                 char *x = indices_string(es->indices, es->n);
-                value_ctx_failure(step->ctx, &global->values, "Store: declare a local variable %s (or set during initialization)", x);
+                value_ctx_failure(step->ctx, &step->engine, "Store: declare a local variable %s (or set during initialization)", x);
                 free(x);
                 return;
             }
             state->vars = newvars;
         }
-        else if (!ind_trystore(state->vars, es->indices, es->n, v, &global->values, &state->vars)) {
+        else if (!ind_trystore(state->vars, es->indices, es->n, v, &step->engine, &state->vars)) {
             char *x = indices_string(es->indices, es->n);
-            value_ctx_failure(step->ctx, &global->values, "Store: bad variable %s", x);
+            value_ctx_failure(step->ctx, &step->engine, "Store: bad variable %s", x);
             free(x);
             return;
         }
@@ -1356,11 +1631,11 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
 
 void op_StoreVar(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_StoreVar *es = env;
-    hvalue_t v = value_ctx_pop(&step->ctx);
+    hvalue_t v = ctx_pop(step->ctx);
 
     assert(VALUE_TYPE(step->ctx->vars) == VALUE_DICT);
     if (es == NULL) {
-        hvalue_t av = value_ctx_pop(&step->ctx);
+        hvalue_t av = ctx_pop(step->ctx);
         assert(VALUE_TYPE(av) == VALUE_ADDRESS);
         assert(av != VALUE_ADDRESS);
 
@@ -1370,19 +1645,22 @@ void op_StoreVar(const void *env, struct state *state, struct step *step, struct
 
         bool result;
         if (indices[0] == this_atom) {
-            if (VALUE_TYPE(step->ctx->this) != VALUE_DICT) {
-                value_ctx_failure(step->ctx, &global->values, "StoreVar: 'this' is not a dictionary");
+            if (!step->ctx->extended) {
+                value_ctx_extend(step->ctx);
+            }
+            if (VALUE_TYPE(step->ctx->ctx_this) != VALUE_DICT) {
+                value_ctx_failure(step->ctx, &step->engine, "StoreVar: 'this' is not a dictionary");
                 return;
             }
-            result = ind_trystore(step->ctx->this, &indices[1], size - 1, v, &global->values, &step->ctx->this);
+            result = ind_trystore(step->ctx->ctx_this, &indices[1], size - 1, v, &step->engine, &step->ctx->ctx_this);
         }
 
         else {
-            result = ind_trystore(step->ctx->vars, indices, size, v, &global->values, &step->ctx->vars);
+            result = ind_trystore(step->ctx->vars, indices, size, v, &step->engine, &step->ctx->vars);
         }
         if (!result) {
             char *x = indices_string(indices, size);
-            value_ctx_failure(step->ctx, &global->values, "StoreVar: bad address: %s", x);
+            value_ctx_failure(step->ctx, &step->engine, "StoreVar: bad address: %s", x);
             free(x);
             return;
         }
@@ -1390,12 +1668,19 @@ void op_StoreVar(const void *env, struct state *state, struct step *step, struct
     }
     else {
         if (es->args->type == VT_NAME && es->args->u.name == this_atom) {
-            step->ctx->this = v;
+            if (!step->ctx->extended) {
+                value_ctx_extend(step->ctx);
+            }
+            if (VALUE_TYPE(step->ctx->ctx_this) != VALUE_DICT) {
+                value_ctx_failure(step->ctx, &step->engine, "StoreVar: 'this' is not a dictionary");
+                return;
+            }
+            step->ctx->ctx_this = v;
             step->ctx->pc++;
         }
         else {
-            var_match(step->ctx, es->args, &global->values, v);
-            if (step->ctx->failure == 0) {
+            var_match(step->ctx, es->args, &step->engine, v);
+            if (!step->ctx->failed) {
                 step->ctx->pc++;
             }
         }
@@ -1403,54 +1688,64 @@ void op_StoreVar(const void *env, struct state *state, struct step *step, struct
 }
 
 void op_Trap(const void *env, struct state *state, struct step *step, struct global_t *global){
-    step->ctx->trap_pc = value_ctx_pop(&step->ctx);
-    if (VALUE_TYPE(step->ctx->trap_pc) != VALUE_PC) {
-        value_ctx_failure(step->ctx, &global->values, "trap: not a method");
+    hvalue_t trap_pc = ctx_pop(step->ctx);
+    if (VALUE_TYPE(trap_pc) != VALUE_PC) {
+        value_ctx_failure(step->ctx, &step->engine, "trap: not a method");
         return;
     }
-    assert(VALUE_FROM_PC(step->ctx->trap_pc) < (hvalue_t) global->code.len);
-    assert(strcmp(global->code.instrs[VALUE_FROM_PC(step->ctx->trap_pc)].oi->name, "Frame") == 0);
-    step->ctx->trap_arg = value_ctx_pop(&step->ctx);
+    value_ctx_extend(step->ctx);
+    step->ctx->ctx_trap_pc = trap_pc;
+    assert(VALUE_FROM_PC(trap_pc) < (hvalue_t) global->code.len);
+    assert(strcmp(global->code.instrs[VALUE_FROM_PC(trap_pc)].oi->name, "Frame") == 0);
+    step->ctx->ctx_trap_arg = ctx_pop(step->ctx);
     step->ctx->pc++;
 }
 
-void *init_Address(struct dict *map, struct values_t *values){ return NULL; }
-void *init_Apply(struct dict *map, struct values_t *values){ return NULL; }
-void *init_Assert(struct dict *map, struct values_t *values){ return NULL; }
-void *init_Assert2(struct dict *map, struct values_t *values){ return NULL; }
-void *init_AtomicDec(struct dict *map, struct values_t *values){ return NULL; }
-void *init_Choose(struct dict *map, struct values_t *values){ return NULL; }
-void *init_Continue(struct dict *map, struct values_t *values){ return NULL; }
-void *init_Dup(struct dict *map, struct values_t *values){ return NULL; }
-void *init_Go(struct dict *map, struct values_t *values){ return NULL; }
-void *init_Print(struct dict *map, struct values_t *values){ return NULL; }
-void *init_Pop(struct dict *map, struct values_t *values){ return NULL; }
-void *init_ReadonlyDec(struct dict *map, struct values_t *values){ return NULL; }
-void *init_ReadonlyInc(struct dict *map, struct values_t *values){ return NULL; }
-void *init_Return(struct dict *map, struct values_t *values){ return NULL; }
-void *init_Save(struct dict *map, struct values_t *values){ return NULL; }
-void *init_Sequential(struct dict *map, struct values_t *values){ return NULL; }
-void *init_SetIntLevel(struct dict *map, struct values_t *values){ return NULL; }
-void *init_Trap(struct dict *map, struct values_t *values){ return NULL; }
+void *init_Address(struct dict *map, struct engine *engine){ return NULL; }
+void *init_Apply(struct dict *map, struct engine *engine){ return NULL; }
+void *init_Assert(struct dict *map, struct engine *engine){ return NULL; }
+void *init_Assert2(struct dict *map, struct engine *engine){ return NULL; }
+void *init_AtomicDec(struct dict *map, struct engine *engine){ return NULL; }
+void *init_Choose(struct dict *map, struct engine *engine){ return NULL; }
+void *init_Continue(struct dict *map, struct engine *engine){ return NULL; }
+void *init_Dup(struct dict *map, struct engine *engine){ return NULL; }
+void *init_Go(struct dict *map, struct engine *engine){ return NULL; }
+void *init_Print(struct dict *map, struct engine *engine){ return NULL; }
+void *init_Pop(struct dict *map, struct engine *engine){ return NULL; }
+void *init_ReadonlyDec(struct dict *map, struct engine *engine){ return NULL; }
+void *init_ReadonlyInc(struct dict *map, struct engine *engine){ return NULL; }
+void *init_Return(struct dict *map, struct engine *engine){ return NULL; }
+void *init_Save(struct dict *map, struct engine *engine){ return NULL; }
+void *init_Sequential(struct dict *map, struct engine *engine){ return NULL; }
+void *init_SetIntLevel(struct dict *map, struct engine *engine){ return NULL; }
+void *init_Trap(struct dict *map, struct engine *engine){ return NULL; }
 
-void *init_Cut(struct dict *map, struct values_t *values){
+void *init_Builtin(struct dict *map, struct engine *engine){
+    struct env_Builtin *env = new_alloc(struct env_Builtin);
+    struct json_value *value = dict_lookup(map, "value", 5);
+    assert(value->type == JV_ATOM);
+    env->method = value_put_atom(engine, value->u.atom.base, value->u.atom.len);
+    return env;
+}
+
+void *init_Cut(struct dict *map, struct engine *engine){
     struct env_Cut *env = new_alloc(struct env_Cut);
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_ATOM);
     int index = 0;
-    env->value = var_parse(values, value->u.atom.base, value->u.atom.len, &index);
+    env->value = var_parse(engine, value->u.atom.base, value->u.atom.len, &index);
 
     struct json_value *key = dict_lookup(map, "key", 3);
     if (key != NULL) {
         assert(key->type == JV_ATOM);
         index = 0;
-        env->key = var_parse(values, key->u.atom.base, key->u.atom.len, &index);
+        env->key = var_parse(engine, key->u.atom.base, key->u.atom.len, &index);
     }
 
     return env;
 }
 
-void *init_AtomicInc(struct dict *map, struct values_t *values){
+void *init_AtomicInc(struct dict *map, struct engine *engine){
     struct env_AtomicInc *env = new_alloc(struct env_AtomicInc);
     struct json_value *lazy = dict_lookup(map, "lazy", 4);
     if (lazy == NULL) {
@@ -1469,7 +1764,7 @@ void *init_AtomicInc(struct dict *map, struct values_t *values){
     return env;
 }
 
-void *init_Del(struct dict *map, struct values_t *values){
+void *init_Del(struct dict *map, struct engine *engine){
     struct json_value *jv = dict_lookup(map, "value", 5);
     if (jv == NULL) {
         return NULL;
@@ -1481,12 +1776,12 @@ void *init_Del(struct dict *map, struct values_t *values){
     for (unsigned int i = 0; i < env->n; i++) {
         struct json_value *index = jv->u.list.vals[i];
         assert(index->type == JV_MAP);
-        env->indices[i] = value_from_json(values, index->u.map);
+        env->indices[i] = value_from_json(engine, index->u.map);
     }
     return env;
 }
 
-void *init_DelVar(struct dict *map, struct values_t *values){
+void *init_DelVar(struct dict *map, struct engine *engine){
     struct json_value *name = dict_lookup(map, "value", 5);
 	if (name == NULL) {
 		return NULL;
@@ -1494,27 +1789,27 @@ void *init_DelVar(struct dict *map, struct values_t *values){
 	else {
 		struct env_DelVar *env = new_alloc(struct env_DelVar);
 		assert(name->type == JV_ATOM);
-		env->name = value_put_atom(values, name->u.atom.base, name->u.atom.len);
+		env->name = value_put_atom(engine, name->u.atom.base, name->u.atom.len);
 		return env;
 	}
 }
 
-void *init_Frame(struct dict *map, struct values_t *values){
+void *init_Frame(struct dict *map, struct engine *engine){
     struct env_Frame *env = new_alloc(struct env_Frame);
 
     struct json_value *name = dict_lookup(map, "name", 4);
     assert(name->type == JV_ATOM);
-    env->name = value_put_atom(values, name->u.atom.base, name->u.atom.len);
+    env->name = value_put_atom(engine, name->u.atom.base, name->u.atom.len);
 
     struct json_value *args = dict_lookup(map, "args", 4);
     assert(args->type == JV_ATOM);
     int index = 0;
-    env->args = var_parse(values, args->u.atom.base, args->u.atom.len, &index);
+    env->args = var_parse(engine, args->u.atom.base, args->u.atom.len, &index);
 
     return env;
 }
 
-void *init_Load(struct dict *map, struct values_t *values){
+void *init_Load(struct dict *map, struct engine *engine){
     struct json_value *jv = dict_lookup(map, "value", 5);
     if (jv == NULL) {
         return NULL;
@@ -1526,12 +1821,12 @@ void *init_Load(struct dict *map, struct values_t *values){
     for (unsigned int i = 0; i < env->n; i++) {
         struct json_value *index = jv->u.list.vals[i];
         assert(index->type == JV_MAP);
-        env->indices[i] = value_from_json(values, index->u.map);
+        env->indices[i] = value_from_json(engine, index->u.map);
     }
     return env;
 }
 
-void *init_LoadVar(struct dict *map, struct values_t *values){
+void *init_LoadVar(struct dict *map, struct engine *engine){
     struct json_value *value = dict_lookup(map, "value", 5);
     if (value == NULL) {
         return NULL;
@@ -1539,12 +1834,12 @@ void *init_LoadVar(struct dict *map, struct values_t *values){
     else {
         struct env_LoadVar *env = new_alloc(struct env_LoadVar);
         assert(value->type == JV_ATOM);
-        env->name = value_put_atom(values, value->u.atom.base, value->u.atom.len);
+        env->name = value_put_atom(engine, value->u.atom.base, value->u.atom.len);
         return env;
     }
 }
 
-void *init_Move(struct dict *map, struct values_t *values){
+void *init_Move(struct dict *map, struct engine *engine){
     struct env_Move *env = new_alloc(struct env_Move);
 
     struct json_value *offset = dict_lookup(map, "offset", 6);
@@ -1558,7 +1853,7 @@ void *init_Move(struct dict *map, struct values_t *values){
     return env;
 }
 
-void *init_Nary(struct dict *map, struct values_t *values){
+void *init_Nary(struct dict *map, struct engine *engine){
     struct env_Nary *env = new_alloc(struct env_Nary);
 
     struct json_value *arity = dict_lookup(map, "arity", 5);
@@ -1581,7 +1876,7 @@ void *init_Nary(struct dict *map, struct values_t *values){
     return env;
 }
 
-void *init_Invariant(struct dict *map, struct values_t *values){
+void *init_Invariant(struct dict *map, struct engine *engine){
     struct env_Invariant *env = new_alloc(struct env_Invariant);
 
     struct json_value *end = dict_lookup(map, "end", 3);
@@ -1594,7 +1889,7 @@ void *init_Invariant(struct dict *map, struct values_t *values){
     return env;
 }
 
-void *init_Jump(struct dict *map, struct values_t *values){
+void *init_Jump(struct dict *map, struct engine *engine){
     struct env_Jump *env = new_alloc(struct env_Jump);
 
     struct json_value *pc = dict_lookup(map, "pc", 2);
@@ -1607,7 +1902,7 @@ void *init_Jump(struct dict *map, struct values_t *values){
     return env;
 }
 
-void *init_JumpCond(struct dict *map, struct values_t *values){
+void *init_JumpCond(struct dict *map, struct engine *engine){
     struct env_JumpCond *env = new_alloc(struct env_JumpCond);
 
     struct json_value *pc = dict_lookup(map, "pc", 2);
@@ -1620,20 +1915,20 @@ void *init_JumpCond(struct dict *map, struct values_t *values){
 
     struct json_value *cond = dict_lookup(map, "cond", 4);
     assert(cond->type == JV_MAP);
-    env->cond = value_from_json(values, cond->u.map);
+    env->cond = value_from_json(engine, cond->u.map);
 
     return env;
 }
 
-void *init_Push(struct dict *map, struct values_t *values) {
+void *init_Push(struct dict *map, struct engine *engine) {
     struct json_value *jv = dict_lookup(map, "value", 5);
     assert(jv->type == JV_MAP);
     struct env_Push *env = new_alloc(struct env_Push);
-    env->value = value_from_json(values, jv->u.map);
+    env->value = value_from_json(engine, jv->u.map);
     return env;
 }
 
-void *init_Spawn(struct dict *map, struct values_t *values){
+void *init_Spawn(struct dict *map, struct engine *engine){
     struct env_Spawn *env = new_alloc(struct env_Spawn);
     struct json_value *eternal = dict_lookup(map, "eternal", 7);
     if (eternal == NULL) {
@@ -1652,7 +1947,7 @@ void *init_Spawn(struct dict *map, struct values_t *values){
     return env;
 }
 
-void *init_Split(struct dict *map, struct values_t *values){
+void *init_Split(struct dict *map, struct engine *engine){
     struct env_Split *env = new_alloc(struct env_Split);
 
     struct json_value *count = dict_lookup(map, "count", 5);
@@ -1665,7 +1960,7 @@ void *init_Split(struct dict *map, struct values_t *values){
     return env;
 }
 
-void *init_Stop(struct dict *map, struct values_t *values){
+void *init_Stop(struct dict *map, struct engine *engine){
     struct json_value *jv = dict_lookup(map, "value", 5);
     if (jv == NULL) {
         return NULL;
@@ -1677,12 +1972,12 @@ void *init_Stop(struct dict *map, struct values_t *values){
     for (unsigned int i = 0; i < env->n; i++) {
         struct json_value *index = jv->u.list.vals[i];
         assert(index->type == JV_MAP);
-        env->indices[i] = value_from_json(values, index->u.map);
+        env->indices[i] = value_from_json(engine, index->u.map);
     }
     return env;
 }
 
-void *init_Store(struct dict *map, struct values_t *values){
+void *init_Store(struct dict *map, struct engine *engine){
     struct json_value *jv = dict_lookup(map, "value", 5);
     if (jv == NULL) {
         return NULL;
@@ -1694,12 +1989,12 @@ void *init_Store(struct dict *map, struct values_t *values){
     for (unsigned int i = 0; i < env->n; i++) {
         struct json_value *index = jv->u.list.vals[i];
         assert(index->type == JV_MAP);
-        env->indices[i] = value_from_json(values, index->u.map);
+        env->indices[i] = value_from_json(engine, index->u.map);
     }
     return env;
 }
 
-void *init_StoreVar(struct dict *map, struct values_t *values){
+void *init_StoreVar(struct dict *map, struct engine *engine){
     struct json_value *jv = dict_lookup(map, "value", 5);
     if (jv == NULL) {
         return NULL;
@@ -1708,22 +2003,22 @@ void *init_StoreVar(struct dict *map, struct values_t *values){
         assert(jv->type == JV_ATOM);
         struct env_StoreVar *env = new_alloc(struct env_StoreVar);
         int index = 0;
-        env->args = var_parse(values, jv->u.atom.base, jv->u.atom.len, &index);
+        env->args = var_parse(engine, jv->u.atom.base, jv->u.atom.len, &index);
         return env;
     }
 }
 
-hvalue_t f_abs(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+hvalue_t f_abs(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     assert(n == 1);
     hvalue_t e = args[0];
     if (VALUE_TYPE(e) != VALUE_INT) {
-        return value_ctx_failure(ctx, values, "abs() can only be applied to integers");
+        return value_ctx_failure(ctx, engine, "abs() can only be applied to integers");
     }
     e = VALUE_FROM_INT(e);
     return e >= 0 ? args[0] : VALUE_TO_INT(-e);
 }
 
-hvalue_t f_all(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+hvalue_t f_all(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     assert(n == 1);
     hvalue_t e = args[0];
 	if (e == VALUE_SET || e == VALUE_LIST) {
@@ -1735,7 +2030,7 @@ hvalue_t f_all(struct state *state, struct context *ctx, hvalue_t *args, int n, 
         size /= sizeof(hvalue_t);
         for (unsigned int i = 0; i < size; i++) {
             if (VALUE_TYPE(v[i]) != VALUE_BOOL) {
-                return value_ctx_failure(ctx, values, "all() can only be applied to booleans");
+                return value_ctx_failure(ctx, engine, "all() can only be applied to booleans");
             }
             if (v[i] == VALUE_FALSE) {
                 return VALUE_FALSE;
@@ -1743,10 +2038,10 @@ hvalue_t f_all(struct state *state, struct context *ctx, hvalue_t *args, int n, 
         }
 		return VALUE_TRUE;
     }
-    return value_ctx_failure(ctx, values, "all() can only be applied to sets or lists");
+    return value_ctx_failure(ctx, engine, "all() can only be applied to sets or lists");
 }
 
-hvalue_t f_any(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+hvalue_t f_any(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     assert(n == 1);
     hvalue_t e = args[0];
 	if (e == VALUE_SET || e == VALUE_LIST) {
@@ -1758,7 +2053,7 @@ hvalue_t f_any(struct state *state, struct context *ctx, hvalue_t *args, int n, 
         size /= sizeof(hvalue_t);
         for (unsigned int i = 0; i < size; i++) {
             if (VALUE_TYPE(v[i]) != VALUE_BOOL) {
-                return value_ctx_failure(ctx, values, "any() can only be applied to booleans");
+                return value_ctx_failure(ctx, engine, "any() can only be applied to booleans");
             }
             if (v[i] != VALUE_FALSE) {
                 return VALUE_TRUE;
@@ -1766,111 +2061,70 @@ hvalue_t f_any(struct state *state, struct context *ctx, hvalue_t *args, int n, 
         }
 		return VALUE_FALSE;
     }
-    return value_ctx_failure(ctx, values, "any() can only be applied to sets or dictionaries");
+    return value_ctx_failure(ctx, engine, "any() can only be applied to sets or dictionaries");
 }
 
-hvalue_t nametag(struct context *ctx, struct values_t *values){
-    hvalue_t nt = value_dict_store(values, VALUE_DICT,
-            VALUE_TO_INT(0), ctx->entry);
-    return value_dict_store(values, nt, VALUE_TO_INT(1), ctx->arg);
-}
-
-hvalue_t f_atLabel(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+hvalue_t f_countLabel(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     assert(n == 1);
     if (ctx->atomic == 0) {
-        return value_ctx_failure(ctx, values, "atLabel: can only be called in atomic mode");
+        return value_ctx_failure(ctx, engine, "countLabel: can only be called in atomic mode");
     }
     hvalue_t e = args[0];
     if (VALUE_TYPE(e) != VALUE_PC) {
-        return value_ctx_failure(ctx, values, "atLabel: not a label");
+        return value_ctx_failure(ctx, engine, "countLabel: not a label");
     }
     e = VALUE_FROM_PC(e);
 
-    unsigned int size;
-    hvalue_t *vals = value_get(state->ctxbag, &size);
-    size /= sizeof(hvalue_t);
-    assert(size > 0);
-    assert(size % 2 == 0);
-    hvalue_t bag = VALUE_DICT;
-    for (unsigned int i = 0; i < size; i += 2) {
-        assert(VALUE_TYPE(vals[i]) == VALUE_CONTEXT);
-        assert(VALUE_TYPE(vals[i+1]) == VALUE_INT);
-        struct context *ctx = value_get(vals[i], NULL);
+    unsigned int result = 0;
+    for (unsigned int i = 0; i < state->bagsize; i++) {
+        assert(VALUE_TYPE(state->contexts[i]) == VALUE_CONTEXT);
+        struct context *ctx = value_get(state->contexts[i], NULL);
         if ((hvalue_t) ctx->pc == e) {
-            bag = value_bag_add(values, bag, nametag(ctx, values),
-                (int) VALUE_FROM_INT(vals[i+1]));
-        }
-    }
-    return bag;
-}
-
-hvalue_t f_countLabel(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
-    assert(n == 1);
-    if (ctx->atomic == 0) {
-        return value_ctx_failure(ctx, values, "countLabel: can only be called in atomic mode");
-    }
-    hvalue_t e = args[0];
-    if (VALUE_TYPE(e) != VALUE_PC) {
-        return value_ctx_failure(ctx, values, "countLabel: not a label");
-    }
-    e = VALUE_FROM_PC(e);
-
-    unsigned int size;
-    hvalue_t *vals = value_get(state->ctxbag, &size);
-    size /= sizeof(hvalue_t);
-    assert(size > 0);
-    assert(size % 2 == 0);
-    hvalue_t result = 0;
-    for (unsigned int i = 0; i < size; i += 2) {
-        assert(VALUE_TYPE(vals[i]) == VALUE_CONTEXT);
-        assert(VALUE_TYPE(vals[i+1]) == VALUE_INT);
-        struct context *ctx = value_get(vals[i], NULL);
-        if ((hvalue_t) ctx->pc == e) {
-            result += VALUE_FROM_INT(vals[i+1]);
+            result += multiplicities(state)[i];
         }
     }
     return VALUE_TO_INT(result);
 }
 
-hvalue_t f_div(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+hvalue_t f_div(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     int64_t e1 = args[0], e2 = args[1];
     if (VALUE_TYPE(e1) != VALUE_INT) {
-        return value_ctx_failure(ctx, values, "right argument to / not an integer");
+        return value_ctx_failure(ctx, engine, "right argument to / not an integer");
     }
     if (VALUE_TYPE(e2) != VALUE_INT) {
-        return value_ctx_failure(ctx, values, "left argument to / not an integer");
+        return value_ctx_failure(ctx, engine, "left argument to / not an integer");
     }
     e1 = VALUE_FROM_INT(e1);
     if (e1 == 0) {
-        return value_ctx_failure(ctx, values, "divide by zero");
+        return value_ctx_failure(ctx, engine, "divide by zero");
     }
     int64_t result = VALUE_FROM_INT(e2) / e1;
     return VALUE_TO_INT(result);
 }
 
-hvalue_t f_eq(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+hvalue_t f_eq(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     assert(n == 2);
     return VALUE_TO_BOOL(args[0] == args[1]);
 }
 
-hvalue_t f_ge(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+hvalue_t f_ge(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     assert(n == 2);
     int cmp = value_cmp(args[1], args[0]);
     return VALUE_TO_BOOL(cmp >= 0);
 }
 
-hvalue_t f_gt(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+hvalue_t f_gt(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     assert(n == 2);
     int cmp = value_cmp(args[1], args[0]);
     return VALUE_TO_BOOL(cmp > 0);
 }
 
-hvalue_t f_ne(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+hvalue_t f_ne(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     assert(n == 2);
     return VALUE_TO_BOOL(args[0] != args[1]);
 }
 
-hvalue_t f_in(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+hvalue_t f_in(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     assert(n == 2);
     hvalue_t s = args[0], e = args[1];
 	if (s == VALUE_SET || s == VALUE_DICT || s == VALUE_LIST) {
@@ -1878,7 +2132,7 @@ hvalue_t f_in(struct state *state, struct context *ctx, hvalue_t *args, int n, s
 	}
     if (VALUE_TYPE(s) == VALUE_ATOM) {
         if (VALUE_TYPE(e) != VALUE_ATOM) {
-            return value_ctx_failure(ctx, values, "'in <string>' can only be applied to another string");
+            return value_ctx_failure(ctx, engine, "'in <string>' can only be applied to another string");
         }
         if (s == VALUE_ATOM) {
             return VALUE_TO_BOOL(e == VALUE_ATOM);
@@ -1920,7 +2174,7 @@ hvalue_t f_in(struct state *state, struct context *ctx, hvalue_t *args, int n, s
         }
         return VALUE_FALSE;
     }
-    return value_ctx_failure(ctx, values, "'in' can only be applied to sets or dictionaries");
+    return value_ctx_failure(ctx, engine, "'in' can only be applied to sets or dictionaries");
 }
 
 hvalue_t f_intersection(
@@ -1928,7 +2182,7 @@ hvalue_t f_intersection(
     struct context *ctx,
     hvalue_t *args,
     int n,
-    struct values_t *values
+    struct engine *engine
 ) {
     hvalue_t e1 = args[0];
 
@@ -1936,7 +2190,7 @@ hvalue_t f_intersection(
         for (int i = 1; i < n; i++) {
             hvalue_t e2 = args[i];
             if (VALUE_TYPE(e2) != VALUE_INT) {
-                return value_ctx_failure(ctx, values, "'&' applied to mix of ints and other types");
+                return value_ctx_failure(ctx, engine, "'&' applied to mix of ints and other types");
             }
             e1 &= e2;
         }
@@ -1948,14 +2202,14 @@ hvalue_t f_intersection(
     if (VALUE_TYPE(e1) == VALUE_SET) {
         // get all the sets
 		assert(n > 0);
-        struct val_info *vi = malloc(n * sizeof(*vi));
+        struct val_info vi[n];
 		vi[0].vals = value_get(args[0], &vi[0].size); 
 		vi[0].index = 0;
         unsigned int min_size = vi[0].size;     // minimum set size
         hvalue_t max_val = vi[0].vals[0];       // maximum value over the minima of all sets
         for (int i = 1; i < n; i++) {
             if (VALUE_TYPE(args[i]) != VALUE_SET) {
-                return value_ctx_failure(ctx, values, "'&' applied to mix of sets and other types");
+                return value_ctx_failure(ctx, engine, "'&' applied to mix of sets and other types");
             }
             if (args[i] == VALUE_SET) {
                 min_size = 0;
@@ -1978,7 +2232,7 @@ hvalue_t f_intersection(
         }
 
         // Allocate sufficient memory.
-        hvalue_t *vals = malloc((size_t) min_size), *v = vals;
+        hvalue_t vals[min_size / sizeof(hvalue_t)], *v = vals;
 
         bool done = false;
         for (unsigned int i = 0; i < min_size; i++) {
@@ -2024,9 +2278,7 @@ hvalue_t f_intersection(
             }
         }
 
-        hvalue_t result = value_put_set(values, vals, (char *) v - (char *) vals);
-        free(vi);
-        free(vals);
+        hvalue_t result = value_put_set(engine, vals, (char *) v - (char *) vals);
         return result;
     }
 
@@ -2034,14 +2286,14 @@ hvalue_t f_intersection(
 		return VALUE_DICT;
 	}
     if (VALUE_TYPE(e1) != VALUE_DICT) {
-        return value_ctx_failure(ctx, values, "'&' can only be applied to ints and dicts");
+        return value_ctx_failure(ctx, engine, "'&' can only be applied to ints and dicts");
     }
     // get all the dictionaries
-    struct val_info *vi = malloc(n * sizeof(*vi));
+    struct val_info vi[n];
     int total = 0;
     for (int i = 0; i < n; i++) {
         if (VALUE_TYPE(args[i]) != VALUE_DICT) {
-            return value_ctx_failure(ctx, values, "'&' applied to mix of dictionaries and other types");
+            return value_ctx_failure(ctx, engine, "'&' applied to mix of dictionaries and other types");
         }
         if (args[i] == VALUE_DICT) {
             vi[i].vals = NULL;
@@ -2059,7 +2311,7 @@ hvalue_t f_intersection(
     }
 
     // Concatenate the dictionaries
-    hvalue_t *vals = malloc(total);
+    hvalue_t vals[total / sizeof(hvalue_t)];
     total = 0;
     for (int i = 0; i < n; i++) {
         memcpy((char *) vals + total, vi[i].vals, vi[i].size);
@@ -2092,24 +2344,22 @@ hvalue_t f_intersection(
         in = i;
     }
 
-    hvalue_t result = value_put_dict(values, vals, 2 * out * sizeof(hvalue_t));
-    free(vi);
-    free(vals);
+    hvalue_t result = value_put_dict(engine, vals, 2 * out * sizeof(hvalue_t));
     return result;
 }
 
-hvalue_t f_invert(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+hvalue_t f_invert(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     assert(n == 1);
     int64_t e = args[0];
     if (VALUE_TYPE(e) != VALUE_INT) {
-        return value_ctx_failure(ctx, values, "~ can only be applied to ints");
+        return value_ctx_failure(ctx, engine, "~ can only be applied to ints");
     }
     e = VALUE_FROM_INT(e);
     return VALUE_TO_INT(~e);
 }
 
 // TODO: obsolete
-hvalue_t f_isEmpty(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+hvalue_t f_isEmpty(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     assert(n == 1);
     hvalue_t e = args[0];
     if (VALUE_TYPE(e) == VALUE_DICT) {
@@ -2124,14 +2374,14 @@ hvalue_t f_isEmpty(struct state *state, struct context *ctx, hvalue_t *args, int
     if (VALUE_TYPE(e) == VALUE_LIST) {
         return VALUE_TO_BOOL(e == VALUE_LIST);
     }
-    return value_ctx_failure(ctx, values, "loops can only iterate over dictionaries, lists, and sets");
+    return value_ctx_failure(ctx, engine, "loops can only iterate over dictionaries, lists, and sets");
 }
 
-hvalue_t f_keys(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+hvalue_t f_keys(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     assert(n == 1);
     hvalue_t v = args[0];
     if (VALUE_TYPE(v) != VALUE_DICT) {
-        return value_ctx_failure(ctx, values, "keys() can only be applied to dictionaries");
+        return value_ctx_failure(ctx, engine, "keys() can only be applied to dictionaries");
     }
     if (v == VALUE_DICT) {
         return VALUE_SET;
@@ -2139,26 +2389,25 @@ hvalue_t f_keys(struct state *state, struct context *ctx, hvalue_t *args, int n,
 
     unsigned int size;
     hvalue_t *vals = value_get(v, &size);
-    hvalue_t *keys = malloc(size / 2);
+    hvalue_t keys[size / 2 / sizeof(hvalue_t)];
     size /= 2 * sizeof(hvalue_t);
     for (unsigned int i = 0; i < size; i++) {
         keys[i] = vals[2*i];
     }
-    hvalue_t result = value_put_set(values, keys, size * sizeof(hvalue_t));
-    free(keys);
+    hvalue_t result = value_put_set(engine, keys, size * sizeof(hvalue_t));
     return result;
 }
 
-hvalue_t f_str(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+hvalue_t f_str(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     assert(n == 1);
     hvalue_t e = args[0];
     char *s = value_string(e);
-    hvalue_t v = value_put_atom(values, s, strlen(s));
+    hvalue_t v = value_put_atom(engine, s, strlen(s));
     free(s);
     return v;
 }
 
-hvalue_t f_len(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+hvalue_t f_len(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     assert(n == 1);
     hvalue_t e = args[0];
 	if (e == VALUE_SET || e == VALUE_DICT || e == VALUE_LIST || e == VALUE_ATOM) {
@@ -2187,10 +2436,10 @@ hvalue_t f_len(struct state *state, struct context *ctx, hvalue_t *args, int n, 
         (void) value_get(e, &size);
         return VALUE_TO_INT(size);
     }
-    return value_ctx_failure(ctx, values, "len() can only be applied to sets, dictionaries, lists, or strings");
+    return value_ctx_failure(ctx, engine, "len() can only be applied to sets, dictionaries, lists, or strings");
 }
 
-hvalue_t f_type(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+hvalue_t f_type(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     assert(n == 1);
     hvalue_t e = args[0];
     switch (VALUE_TYPE(e)) {
@@ -2215,29 +2464,29 @@ hvalue_t f_type(struct state *state, struct context *ctx, hvalue_t *args, int n,
     default:
         assert(false);
     }
-    return value_ctx_failure(ctx, values, "unknown type???");
+    return value_ctx_failure(ctx, engine, "unknown type???");
 }
 
-hvalue_t f_le(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+hvalue_t f_le(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     assert(n == 2);
     int cmp = value_cmp(args[1], args[0]);
     return VALUE_TO_BOOL(cmp <= 0);
 }
 
-hvalue_t f_lt(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+hvalue_t f_lt(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     assert(n == 2);
     int cmp = value_cmp(args[1], args[0]);
     return VALUE_TO_BOOL(cmp < 0);
 }
 
-hvalue_t f_max(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+hvalue_t f_max(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     assert(n == 1);
     hvalue_t e = args[0];
 	if (e == VALUE_SET) {
-        return value_ctx_failure(ctx, values, "can't apply max() to empty set");
+        return value_ctx_failure(ctx, engine, "can't apply max() to empty set");
     }
     if (e == VALUE_LIST) {
-        return value_ctx_failure(ctx, values, "can't apply max() to empty list");
+        return value_ctx_failure(ctx, engine, "can't apply max() to empty list");
     }
     if (VALUE_TYPE(e) == VALUE_SET) {
         unsigned int size;
@@ -2257,17 +2506,17 @@ hvalue_t f_max(struct state *state, struct context *ctx, hvalue_t *args, int n, 
         }
 		return max;
     }
-    return value_ctx_failure(ctx, values, "max() can only be applied to sets or lists");
+    return value_ctx_failure(ctx, engine, "max() can only be applied to sets or lists");
 }
 
-hvalue_t f_min(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+hvalue_t f_min(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     assert(n == 1);
     hvalue_t e = args[0];
 	if (e == VALUE_SET) {
-        return value_ctx_failure(ctx, values, "can't apply min() to empty set");
+        return value_ctx_failure(ctx, engine, "can't apply min() to empty set");
     }
     if (e == VALUE_LIST) {
-        return value_ctx_failure(ctx, values, "can't apply min() to empty list");
+        return value_ctx_failure(ctx, engine, "can't apply min() to empty list");
     }
     if (VALUE_TYPE(e) == VALUE_SET) {
         unsigned int size;
@@ -2286,7 +2535,7 @@ hvalue_t f_min(struct state *state, struct context *ctx, hvalue_t *args, int n, 
         }
 		return min;
     }
-    return value_ctx_failure(ctx, values, "min() can only be applied to sets or lists");
+    return value_ctx_failure(ctx, engine, "min() can only be applied to sets or lists");
 }
 
 hvalue_t f_minus(
@@ -2294,13 +2543,13 @@ hvalue_t f_minus(
     struct context *ctx,
     hvalue_t *args,
     int n,
-    struct values_t *values
+    struct engine *engine
 ) {
     assert(n == 1 || n == 2);
     if (n == 1) {
         int64_t e = args[0];
         if (VALUE_TYPE(e) != VALUE_INT) {
-            return value_ctx_failure(ctx, values, "unary minus can only be applied to ints");
+            return value_ctx_failure(ctx, engine, "unary minus can only be applied to ints");
         }
         e = VALUE_FROM_INT(e);
         if (e == VALUE_MAX) {
@@ -2310,7 +2559,7 @@ hvalue_t f_minus(
             return VALUE_TO_INT(VALUE_MAX);
         }
         if (-e <= VALUE_MIN || -e >= VALUE_MAX) {
-            return value_ctx_failure(ctx, values, "unary minus overflow (model too large)");
+            return value_ctx_failure(ctx, engine, "unary minus overflow (model too large)");
         }
         return VALUE_TO_INT(-e);
     }
@@ -2318,20 +2567,20 @@ hvalue_t f_minus(
         if (VALUE_TYPE(args[0]) == VALUE_INT) {
             int64_t e1 = args[0], e2 = args[1];
             if (VALUE_TYPE(e2) != VALUE_INT) {
-                return value_ctx_failure(ctx, values, "minus applied to int and non-int");
+                return value_ctx_failure(ctx, engine, "minus applied to int and non-int");
             }
             e1 = VALUE_FROM_INT(e1);
             e2 = VALUE_FROM_INT(e2);
             int64_t result = e2 - e1;
             if (result <= VALUE_MIN || result >= VALUE_MAX) {
-                return value_ctx_failure(ctx, values, "minus overflow (model too large)");
+                return value_ctx_failure(ctx, engine, "minus overflow (model too large)");
             }
             return VALUE_TO_INT(result);
         }
 
         hvalue_t e1 = args[0], e2 = args[1];
         if (VALUE_TYPE(e1) != VALUE_SET || VALUE_TYPE(e2) != VALUE_SET) {
-            return value_ctx_failure(ctx, values, "minus can only be applied to ints or sets");
+            return value_ctx_failure(ctx, engine, "minus can only be applied to ints or sets");
         }
         unsigned int size1, size2;
         hvalue_t *vals1, *vals2;
@@ -2349,7 +2598,7 @@ hvalue_t f_minus(
         else {
             vals2 = value_get(e2, &size2);
         }
-        hvalue_t *vals = malloc(size2);
+        hvalue_t vals[size2 / sizeof(hvalue_t)];
         size1 /= sizeof(hvalue_t);
         size2 /= sizeof(hvalue_t);
 
@@ -2373,19 +2622,18 @@ hvalue_t f_minus(
         while (size2 > 0) {
             *q++ = *p2++; size2--;
         }
-        hvalue_t result = value_put_set(values, vals, (char *) q - (char *) vals);
-        free(vals);
+        hvalue_t result = value_put_set(engine, vals, (char *) q - (char *) vals);
         return result;
     }
 }
 
-hvalue_t f_mod(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+hvalue_t f_mod(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     int64_t e1 = args[0], e2 = args[1];
     if (VALUE_TYPE(e1) != VALUE_INT) {
-        return value_ctx_failure(ctx, values, "right argument to mod not an integer");
+        return value_ctx_failure(ctx, engine, "right argument to mod not an integer");
     }
     if (VALUE_TYPE(e2) != VALUE_INT) {
-        return value_ctx_failure(ctx, values, "left argument to mod not an integer");
+        return value_ctx_failure(ctx, engine, "left argument to mod not an integer");
     }
     int64_t mod = VALUE_FROM_INT(e1);
     int64_t result = VALUE_FROM_INT(e2) % mod;
@@ -2395,29 +2643,29 @@ hvalue_t f_mod(struct state *state, struct context *ctx, hvalue_t *args, int n, 
     return VALUE_TO_INT(result);
 }
 
-hvalue_t f_not(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+hvalue_t f_not(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     assert(n == 1);
     hvalue_t e = args[0];
     if (VALUE_TYPE(e) != VALUE_BOOL) {
-        return value_ctx_failure(ctx, values, "not can only be applied to booleans");
+        return value_ctx_failure(ctx, engine, "not can only be applied to booleans");
     }
     return e ^ (1 << VALUE_BITS);
 }
 
-hvalue_t f_plus(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+hvalue_t f_plus(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     int64_t e1 = args[0];
     if (VALUE_TYPE(e1) == VALUE_INT) {
         e1 = VALUE_FROM_INT(e1);
         for (int i = 1; i < n; i++) {
             int64_t e2 = args[i];
             if (VALUE_TYPE(e2) != VALUE_INT) {
-                return value_ctx_failure(ctx, values,
-                    "+: applied to mix of integers and other values");
+                return value_ctx_failure(ctx, engine,
+                    "+: applied to mix of integers and other engine");
             }
             e2 = VALUE_FROM_INT(e2);
             int64_t sum = e1 + e2;
             if (sum <= VALUE_MIN || sum >= VALUE_MAX) {
-                return value_ctx_failure(ctx, values,
+                return value_ctx_failure(ctx, engine,
                     "+: integer overflow (model too large)");
             }
             e1 = sum;
@@ -2430,26 +2678,25 @@ hvalue_t f_plus(struct state *state, struct context *ctx, hvalue_t *args, int n,
         strbuf_init(&sb);
         for (int i = n; --i >= 0;) {
             if (VALUE_TYPE(args[i]) != VALUE_ATOM) {
-                return value_ctx_failure(ctx, values,
-                    "+: applied to mix of strings and other values");
+                return value_ctx_failure(ctx, engine,
+                    "+: applied to mix of strings and other engine");
             }
             unsigned int size;
             char *chars = value_get(args[i], &size);
             strbuf_append(&sb, chars, size);
         }
         char *result = strbuf_convert(&sb);
-        hvalue_t v = value_put_atom(values, result, strbuf_getlen(&sb));
+        hvalue_t v = value_put_atom(engine, result, strbuf_getlen(&sb));
         return v;
     }
 
     if (VALUE_TYPE(e1) == VALUE_LIST) {
         // get all the lists
-        struct val_info *vi = malloc(n * sizeof(*vi));
+        struct val_info vi[n];
         int total = 0;
         for (int i = 0; i < n; i++) {
             if (VALUE_TYPE(args[i]) != VALUE_LIST) {
-                value_ctx_failure(ctx, values, "+: applied to mix of value types");
-                free(vi);
+                value_ctx_failure(ctx, engine, "+: applied to mix of value types");
                 return 0;
             }
             if (args[i] == VALUE_LIST) {
@@ -2468,33 +2715,30 @@ hvalue_t f_plus(struct state *state, struct context *ctx, hvalue_t *args, int n,
         }
 
         // Concatenate the lists
-        hvalue_t *vals = malloc(total);
+        hvalue_t vals[total / sizeof(hvalue_t)];
         total = 0;
         for (int i = n; --i >= 0;) {
             memcpy((char *) vals + total, vi[i].vals, vi[i].size);
             total += vi[i].size;
         }
 
-        hvalue_t result = value_put_list(values, vals, total);
-
-        free(vi);
-        free(vals);
+        hvalue_t result = value_put_list(engine, vals, total);
         return result;
     }
 
-    value_ctx_failure(ctx, values, "+: can only apply to ints, strings, or lists");
+    value_ctx_failure(ctx, engine, "+: can only apply to ints, strings, or lists");
     return 0;
 }
 
-hvalue_t f_power(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+hvalue_t f_power(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     assert(n == 2);
     int64_t e1 = args[0], e2 = args[1];
 
     if (VALUE_TYPE(e1) != VALUE_INT) {
-        return value_ctx_failure(ctx, values, "right argument to ** not an integer");
+        return value_ctx_failure(ctx, engine, "right argument to ** not an integer");
     }
     if (VALUE_TYPE(e2) != VALUE_INT) {
-        return value_ctx_failure(ctx, values, "left argument to ** not an integer");
+        return value_ctx_failure(ctx, engine, "left argument to ** not an integer");
     }
     int64_t base = VALUE_FROM_INT(e2);
     int64_t exp = VALUE_FROM_INT(e1);
@@ -2502,7 +2746,7 @@ hvalue_t f_power(struct state *state, struct context *ctx, hvalue_t *args, int n
         return VALUE_TO_INT(1);
     }
     if (exp < 0) {
-        return value_ctx_failure(ctx, values, "**: negative exponent");
+        return value_ctx_failure(ctx, engine, "**: negative exponent");
     }
 
     int64_t result = 1, orig = base;
@@ -2518,21 +2762,21 @@ hvalue_t f_power(struct state *state, struct context *ctx, hvalue_t *args, int n
     }
     if (result < orig) {
         // TODO.  Improve overflow detection
-        return value_ctx_failure(ctx, values, "**: overflow (model too large)");
+        return value_ctx_failure(ctx, engine, "**: overflow (model too large)");
     }
 
     return VALUE_TO_INT(result);
 }
 
-hvalue_t f_range(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+hvalue_t f_range(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     assert(n == 2);
     int64_t e1 = args[0], e2 = args[1];
 
     if (VALUE_TYPE(e1) != VALUE_INT) {
-        return value_ctx_failure(ctx, values, "right argument to .. not an integer");
+        return value_ctx_failure(ctx, engine, "right argument to .. not an integer");
     }
     if (VALUE_TYPE(e2) != VALUE_INT) {
-        return value_ctx_failure(ctx, values, "left argument to .. not an integer");
+        return value_ctx_failure(ctx, engine, "left argument to .. not an integer");
     }
     int64_t start = VALUE_FROM_INT(e2);
     int64_t finish = VALUE_FROM_INT(e1);
@@ -2542,30 +2786,28 @@ hvalue_t f_range(struct state *state, struct context *ctx, hvalue_t *args, int n
     int cnt = (finish - start) + 1;
 	assert(cnt > 0);
 	assert(cnt < 1000);		// seems unlikely...
-    hvalue_t *v = malloc(cnt * sizeof(hvalue_t));
+    hvalue_t v[cnt];
     for (int i = 0; i < cnt; i++) {
         v[i] = VALUE_TO_INT(start + i);
     }
-    hvalue_t result = value_put_set(values, v, cnt * sizeof(hvalue_t));
-    free(v);
+    hvalue_t result = value_put_set(engine, v, cnt * sizeof(hvalue_t));
     return result;
 }
 
-hvalue_t f_list_add(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+hvalue_t f_list_add(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     assert(n == 2);
     hvalue_t list = args[1];
     assert(VALUE_TYPE(list) == VALUE_LIST);
     unsigned int size;
     hvalue_t *vals = value_get(list, &size);
-    hvalue_t *nvals = malloc(size + sizeof(hvalue_t));
+    hvalue_t nvals[size / sizeof(hvalue_t) + 1];
     memcpy(nvals, vals, size);
     memcpy((char *) nvals + size, &args[0], sizeof(hvalue_t));
-    hvalue_t result = value_put_list(values, nvals, size + sizeof(hvalue_t));
-    free(nvals);
+    hvalue_t result = value_put_list(engine, nvals, size + sizeof(hvalue_t));
     return result;
 }
 
-hvalue_t f_dict_add(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+hvalue_t f_dict_add(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     assert(n == 3);
     int64_t value = args[0], key = args[1], dict = args[2];
     assert(VALUE_TYPE(dict) == VALUE_DICT);
@@ -2587,28 +2829,26 @@ hvalue_t f_dict_add(struct state *state, struct context *ctx, hvalue_t *args, in
         if (cmp <= 0) {
             return dict;
         }
-        hvalue_t *nvals = malloc(size);
+        hvalue_t nvals[size / sizeof(hvalue_t)];
         memcpy(nvals, vals, size);
         * (hvalue_t *) ((char *) nvals + (i + sizeof(hvalue_t))) = value;
 
-        hvalue_t result = value_put_dict(values, nvals, size);
-        free(nvals);
+        hvalue_t result = value_put_dict(engine, nvals, size);
         return result;
     }
     else {
-        hvalue_t *nvals = malloc(size + 2*sizeof(hvalue_t));
+        hvalue_t nvals[size / sizeof(hvalue_t) + 2];
         memcpy(nvals, vals, i);
         * (hvalue_t *) ((char *) nvals + i) = key;
         * (hvalue_t *) ((char *) nvals + (i + sizeof(hvalue_t))) = value;
         memcpy((char *) nvals + i + 2*sizeof(hvalue_t), v, size - i);
 
-        hvalue_t result = value_put_dict(values, nvals, size + 2*sizeof(hvalue_t));
-        free(nvals);
+        hvalue_t result = value_put_dict(engine, nvals, size + 2*sizeof(hvalue_t));
         return result;
     }
 }
 
-hvalue_t f_set_add(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+hvalue_t f_set_add(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     assert(n == 2);
     int64_t elt = args[0], set = args[1];
     assert(VALUE_TYPE(set) == VALUE_SET);
@@ -2626,116 +2866,72 @@ hvalue_t f_set_add(struct state *state, struct context *ctx, hvalue_t *args, int
         }
     }
 
-    hvalue_t *nvals = malloc(size + sizeof(hvalue_t));
+    hvalue_t nvals[size / sizeof(hvalue_t) + 1];
     memcpy(nvals, vals, i);
     * (hvalue_t *) ((char *) nvals + i) = elt;
     memcpy((char *) nvals + i + sizeof(hvalue_t), v, size - i);
 
-    hvalue_t result = value_put_set(values, nvals, size + sizeof(hvalue_t));
-    free(nvals);
+    hvalue_t result = value_put_set(engine, nvals, size + sizeof(hvalue_t));
     return result;
 }
 
-// TODO: is this used??
-hvalue_t f_value_bag_add(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
-    assert(n == 2);
-    int64_t elt = args[0], dict = args[1];
-    assert(VALUE_TYPE(dict) == VALUE_DICT);
-    unsigned int size;
-    hvalue_t *vals = value_get(dict, &size), *v;
-
-    unsigned int i = 0;
-    int cmp = 1;
-    for (v = vals; i < size; i += 2 * sizeof(hvalue_t), v++) {
-        cmp = value_cmp(elt, *v);
-        if (cmp <= 0) {
-            break;
-        }
-    }
-
-    if (cmp == 0) {
-        assert(VALUE_TYPE(v[1]) == VALUE_INT);
-        int cnt = VALUE_FROM_INT(v[1]) + 1;
-        hvalue_t *nvals = malloc(size);
-        memcpy(nvals, vals, size);
-        * (hvalue_t *) ((char *) nvals + (i + sizeof(hvalue_t))) =
-                                        VALUE_TO_INT(cnt);
-
-        hvalue_t result = value_put_dict(values, nvals, size);
-        free(nvals);
-        return result;
-    }
-    else {
-        hvalue_t *nvals = malloc(size + 2*sizeof(hvalue_t));
-        memcpy(nvals, vals, i);
-        * (hvalue_t *) ((char *) nvals + i) = elt;
-        * (hvalue_t *) ((char *) nvals + (i + sizeof(hvalue_t))) =
-                                        VALUE_TO_INT(1);
-        memcpy((char *) nvals + i + 2*sizeof(hvalue_t), v, size - i);
-
-        hvalue_t result = value_put_dict(values, nvals, size + 2*sizeof(hvalue_t));
-        free(nvals);
-        return result;
-    }
-}
-
-hvalue_t f_shiftleft(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+hvalue_t f_shiftleft(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     assert(n == 2);
     int64_t e1 = args[0], e2 = args[1];
 
     if (VALUE_TYPE(e1) != VALUE_INT) {
-        return value_ctx_failure(ctx, values, "right argument to << not an integer");
+        return value_ctx_failure(ctx, engine, "right argument to << not an integer");
     }
     if (VALUE_TYPE(e2) != VALUE_INT) {
-        return value_ctx_failure(ctx, values, "left argument to << not an integer");
+        return value_ctx_failure(ctx, engine, "left argument to << not an integer");
     }
     e1 = VALUE_FROM_INT(e1);
     if (e1 < 0) {
-        return value_ctx_failure(ctx, values, "<<: negative shift count");
+        return value_ctx_failure(ctx, engine, "<<: negative shift count");
     }
     e2 = VALUE_FROM_INT(e2);
     int64_t result = e2 << e1;
     if (((result << VALUE_BITS) >> VALUE_BITS) != result) {
-        return value_ctx_failure(ctx, values, "<<: overflow (model too large)");
+        return value_ctx_failure(ctx, engine, "<<: overflow (model too large)");
     }
     if (result <= VALUE_MIN || result >= VALUE_MAX) {
-        return value_ctx_failure(ctx, values, "<<: overflow (model too large)");
+        return value_ctx_failure(ctx, engine, "<<: overflow (model too large)");
     }
     return VALUE_TO_INT(result);
 }
 
-hvalue_t f_shiftright(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+hvalue_t f_shiftright(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     assert(n == 2);
     int64_t e1 = args[0], e2 = args[1];
 
     if (VALUE_TYPE(e1) != VALUE_INT) {
-        return value_ctx_failure(ctx, values, "right argument to >> not an integer");
+        return value_ctx_failure(ctx, engine, "right argument to >> not an integer");
     }
     if (VALUE_TYPE(e2) != VALUE_INT) {
-        return value_ctx_failure(ctx, values, "left argument to >> not an integer");
+        return value_ctx_failure(ctx, engine, "left argument to >> not an integer");
     }
     if (e1 < 0) {
-        return value_ctx_failure(ctx, values, ">>: negative shift count");
+        return value_ctx_failure(ctx, engine, ">>: negative shift count");
     }
     e1 = VALUE_FROM_INT(e1);
     e2 = VALUE_FROM_INT(e2);
     return VALUE_TO_INT(e2 >> e1);
 }
 
-hvalue_t f_times(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+hvalue_t f_times(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     int64_t result = 1;
     int list = -1;
     for (int i = 0; i < n; i++) {
         int64_t e = args[i];
         if (VALUE_TYPE(e) == VALUE_ATOM || VALUE_TYPE(e) == VALUE_LIST) {
             if (list >= 0) {
-                return value_ctx_failure(ctx, values, "* can only have at most one list or string");
+                return value_ctx_failure(ctx, engine, "* can only have at most one list or string");
             }
             list = i;
         }
         else {
             if (VALUE_TYPE(e) != VALUE_INT) {
-                return value_ctx_failure(ctx, values,
+                return value_ctx_failure(ctx, engine,
                     "* can only be applied to integers and at most one list or string");
             }
             e = VALUE_FROM_INT(e);
@@ -2745,14 +2941,14 @@ hvalue_t f_times(struct state *state, struct context *ctx, hvalue_t *args, int n
             else {
                 int64_t product = result * e;
                 if (product / result != e) {
-                    return value_ctx_failure(ctx, values, "*: overflow (model too large)");
+                    return value_ctx_failure(ctx, engine, "*: overflow (model too large)");
                 }
                 result = product;
             }
         }
     }
     if (result != (result << VALUE_BITS) >> VALUE_BITS) {
-        return value_ctx_failure(ctx, values, "*: overflow (model too large)");
+        return value_ctx_failure(ctx, engine, "*: overflow (model too large)");
     }
     if (list < 0) {
         return VALUE_TO_INT(result);
@@ -2768,12 +2964,11 @@ hvalue_t f_times(struct state *state, struct context *ctx, hvalue_t *args, int n
             return VALUE_DICT;
         }
         unsigned int n = size / sizeof(hvalue_t);
-        hvalue_t *r = malloc(result * size);
+        hvalue_t r[result * size / sizeof(hvalue_t)];
         for (unsigned int i = 0; i < result; i++) {
             memcpy(&r[i * n], vals, size);
         }
-        hvalue_t v = value_put_list(values, r, result * size);
-        free(r);
+        hvalue_t v = value_put_list(engine, r, result * size);
         return v;
     }
     assert(VALUE_TYPE(args[list]) == VALUE_ATOM);
@@ -2788,19 +2983,19 @@ hvalue_t f_times(struct state *state, struct context *ctx, hvalue_t *args, int n
 		strbuf_append(&sb, chars, size);
 	}
 	char *s = strbuf_getstr(&sb);
-	hvalue_t v = value_put_atom(values, s, result * size);
+	hvalue_t v = value_put_atom(engine, s, result * size);
 	free(s);
 	return v;
 }
 
-hvalue_t f_union(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+hvalue_t f_union(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     hvalue_t e1 = args[0];
 
     if (VALUE_TYPE(e1) == VALUE_INT) {
         for (int i = 1; i < n; i++) {
             hvalue_t e2 = args[i];
             if (VALUE_TYPE(e2) != VALUE_INT) {
-                return value_ctx_failure(ctx, values, "'|' applied to mix of ints and other types");
+                return value_ctx_failure(ctx, engine, "'|' applied to mix of ints and other types");
             }
             e1 |= e2;
         }
@@ -2809,11 +3004,11 @@ hvalue_t f_union(struct state *state, struct context *ctx, hvalue_t *args, int n
 
     if (VALUE_TYPE(e1) == VALUE_SET) {
         // get all the sets
-        struct val_info *vi = malloc(n * sizeof(*vi));
+        struct val_info vi[n];
         int total = 0;
         for (int i = 0; i < n; i++) {
             if (VALUE_TYPE(args[i]) != VALUE_SET) {
-                return value_ctx_failure(ctx, values, "'|' applied to mix of sets and other types");
+                return value_ctx_failure(ctx, engine, "'|' applied to mix of sets and other types");
             }
             if (args[i] == VALUE_SET) {
                 vi[i].vals = NULL;
@@ -2831,7 +3026,7 @@ hvalue_t f_union(struct state *state, struct context *ctx, hvalue_t *args, int n
         }
 
         // Concatenate the sets
-        hvalue_t *vals = malloc(total);
+        hvalue_t vals[total / sizeof(hvalue_t)];
         total = 0;
         for (int i = 0; i < n; i++) {
             memcpy((char *) vals + total, vi[i].vals, vi[i].size);
@@ -2839,21 +3034,19 @@ hvalue_t f_union(struct state *state, struct context *ctx, hvalue_t *args, int n
         }
 
         n = sort(vals, total / sizeof(hvalue_t));
-        hvalue_t result = value_put_set(values, vals, n * sizeof(hvalue_t));
-        free(vi);
-        free(vals);
+        hvalue_t result = value_put_set(engine, vals, n * sizeof(hvalue_t));
         return result;
     }
 
     if (VALUE_TYPE(e1) != VALUE_DICT) {
-        return value_ctx_failure(ctx, values, "'|' can only be applied to ints, sets, and dicts");
+        return value_ctx_failure(ctx, engine, "'|' can only be applied to ints, sets, and dicts");
     }
     // get all the dictionaries
-    struct val_info *vi = malloc(n * sizeof(*vi));
+    struct val_info vi[n];
     int total = 0;
     for (int i = 0; i < n; i++) {
         if (VALUE_TYPE(args[i]) != VALUE_DICT) {
-            return value_ctx_failure(ctx, values, "'|' applied to mix of dictionaries and other types");
+            return value_ctx_failure(ctx, engine, "'|' applied to mix of dictionaries and other types");
         }
         if (args[i] == VALUE_DICT) {
             vi[i].vals = NULL;
@@ -2871,7 +3064,7 @@ hvalue_t f_union(struct state *state, struct context *ctx, hvalue_t *args, int n
     }
 
     // Concatenate the dictionaries
-    hvalue_t *vals = malloc(total);
+    hvalue_t vals[total / sizeof(hvalue_t)];
     total = 0;
     for (int i = 0; i < n; i++) {
         memcpy((char *) vals + total, vi[i].vals, vi[i].size);
@@ -2893,20 +3086,18 @@ hvalue_t f_union(struct state *state, struct context *ctx, hvalue_t *args, int n
     }
     n++;
 
-    hvalue_t result = value_put_dict(values, vals, 2 * n * sizeof(hvalue_t));
-    free(vi);
-    free(vals);
+    hvalue_t result = value_put_dict(engine, vals, 2 * n * sizeof(hvalue_t));
     return result;
 }
 
-hvalue_t f_xor(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+hvalue_t f_xor(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
     hvalue_t e1 = args[0];
 
     if (VALUE_TYPE(e1) == VALUE_INT) {
         for (int i = 1; i < n; i++) {
             hvalue_t e2 = args[i];
             if (VALUE_TYPE(e2) != VALUE_INT) {
-                return value_ctx_failure(ctx, values, "'^' applied to mix of ints and other types");
+                return value_ctx_failure(ctx, engine, "'^' applied to mix of ints and other types");
             }
             e1 ^= e2;
         }
@@ -2914,11 +3105,11 @@ hvalue_t f_xor(struct state *state, struct context *ctx, hvalue_t *args, int n, 
     }
 
     // get all the sets
-    struct val_info *vi = malloc(n * sizeof(*vi));
+    struct val_info vi[n];
     int total = 0;
     for (int i = 0; i < n; i++) {
         if (VALUE_TYPE(args[i]) != VALUE_SET) {
-            return value_ctx_failure(ctx, values, "'^' applied to mix of value types");
+            return value_ctx_failure(ctx, engine, "'^' applied to mix of value types");
         }
         if (args[i] == VALUE_SET) {
             vi[i].vals = NULL;
@@ -2936,18 +3127,18 @@ hvalue_t f_xor(struct state *state, struct context *ctx, hvalue_t *args, int n, 
     }
 
     // Concatenate the sets
-    hvalue_t *vals = malloc(total);
+    hvalue_t vals[total / sizeof(hvalue_t)];
     total = 0;
     for (int i = 0; i < n; i++) {
         memcpy((char *) vals + total, vi[i].vals, vi[i].size);
         total += vi[i].size;
     }
 
-    // sort the values, but retain duplicates
+    // sort the engine, but retain duplicates
     int cnt = total / sizeof(hvalue_t);
     qsort(vals, cnt, sizeof(hvalue_t), q_value_cmp);
 
-    // Now remove the values that have an even number
+    // Now remove the engine that have an even number
     int i = 0, j = 0, k = 0;
     while (i < cnt) {
         while (i < cnt && vals[i] == vals[j]) {
@@ -2959,9 +3150,7 @@ hvalue_t f_xor(struct state *state, struct context *ctx, hvalue_t *args, int n, 
         j = i;
     }
 
-    hvalue_t result = value_put_set(values, vals, k * sizeof(hvalue_t));
-    free(vi);
-    free(vals);
+    hvalue_t result = value_put_set(engine, vals, k * sizeof(hvalue_t));
     return result;
 }
 
@@ -2972,6 +3161,7 @@ struct op_info op_table[] = {
 	{ "Assert2", init_Assert2, op_Assert2 },
 	{ "AtomicDec", init_AtomicDec, op_AtomicDec },
 	{ "AtomicInc", init_AtomicInc, op_AtomicInc },
+	{ "Builtin", init_Builtin, op_Builtin },
 	{ "Choose", init_Choose, op_Choose },
 	{ "Continue", init_Continue, op_Continue },
 	{ "Cut", init_Cut, op_Cut },
@@ -3002,6 +3192,17 @@ struct op_info op_table[] = {
 	{ "Store", init_Store, op_Store },
 	{ "StoreVar", init_StoreVar, op_StoreVar },
 	{ "Trap", init_Trap, op_Trap },
+
+    // Built-in methods
+    { "alloc$malloc", NULL, op_Alloc_Malloc },
+    { "bag$add", NULL, op_Bag_Add },
+    { "bag$bmax", NULL, op_Bag_Bmax },
+    { "bag$bmin", NULL, op_Bag_Bmin },
+    { "bag$multiplicity", NULL, op_Bag_Multiplicity },
+    { "bag$remove", NULL, op_Bag_Remove },
+    { "bag$size", NULL, op_Bag_Size },
+    { "list$tail", NULL, op_List_Tail },
+
     { NULL, NULL, NULL }
 };
 
@@ -3029,8 +3230,6 @@ struct f_info f_table[] = {
     { "abs", f_abs },
     { "all", f_all },
     { "any", f_any },
-    { "atLabel", f_atLabel },
-    { "BagAdd", f_value_bag_add },
     { "countLabel", f_countLabel },
     { "DictAdd", f_dict_add },
     { "in", f_in },
@@ -3052,27 +3251,30 @@ struct op_info *ops_get(char *opname, int size){
     return dict_lookup(ops_map, opname, size);
 }
 
-void ops_init(struct global_t *global) {
-    ops_map = dict_new(0, NULL, NULL);
-    f_map = dict_new(0, NULL, NULL);
-	underscore = value_put_atom(&global->values, "_", 1);
-	this_atom = value_put_atom(&global->values, "this", 4);
-    type_bool = value_put_atom(&global->values, "bool", 4);
-    type_int = value_put_atom(&global->values, "int", 3);
-    type_str = value_put_atom(&global->values, "str", 3);
-    type_pc = value_put_atom(&global->values, "pc", 2);
-    type_list = value_put_atom(&global->values, "list", 4);
-    type_dict = value_put_atom(&global->values, "dict", 4);
-    type_set = value_put_atom(&global->values, "set", 3);
-    type_address = value_put_atom(&global->values, "address", 7);
-    type_context = value_put_atom(&global->values, "context", 7);
+void ops_init(struct global_t *global, struct engine *engine) {
+    ops_map = dict_new("ops", sizeof(struct op_info *), 0, 0, NULL, NULL);
+    f_map = dict_new("functions", sizeof(struct f_info *), 0, 0, NULL, NULL);
+	underscore = value_put_atom(engine, "_", 1);
+	this_atom = value_put_atom(engine, "this", 4);
+	result_atom = value_put_atom(engine, "result", 6);
+    type_bool = value_put_atom(engine, "bool", 4);
+    type_int = value_put_atom(engine, "int", 3);
+    type_str = value_put_atom(engine, "str", 3);
+    type_pc = value_put_atom(engine, "pc", 2);
+    type_list = value_put_atom(engine, "list", 4);
+    type_dict = value_put_atom(engine, "dict", 4);
+    type_set = value_put_atom(engine, "set", 3);
+    type_address = value_put_atom(engine, "address", 7);
+    type_context = value_put_atom(engine, "context", 7);
+	alloc_pool_atom = value_put_atom(engine, "alloc$pool", 10);
+	alloc_next_atom = value_put_atom(engine, "alloc$next", 10);
 
     for (struct op_info *oi = op_table; oi->name != NULL; oi++) {
-        void **p = dict_insert(ops_map, oi->name, strlen(oi->name));
+        struct op_info **p = dict_insert(ops_map, NULL, oi->name, strlen(oi->name), NULL);
         *p = oi;
     }
     for (struct f_info *fi = f_table; fi->name != NULL; fi++) {
-        void **p = dict_insert(f_map, fi->name, strlen(fi->name));
+        struct f_info **p = dict_insert(f_map, NULL, fi->name, strlen(fi->name), NULL);
         *p = fi;
     }
 }

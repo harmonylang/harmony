@@ -15,27 +15,27 @@ struct component {
 };
 
 struct access_info {
-    struct access_info *next; // linked list maintenance
-    hvalue_t *indices;        // address of load/store
-    unsigned int n;           // length of address
-    bool load;                // store or del if false
-    int pc;                   // for debugging
-    int multiplicity;         // #identical contexts
-    int atomic;               // atomic counter
+    struct access_info *next;        // linked list maintenance
+    hvalue_t *indices;               // address of load/store
+    uint8_t n;                       // length of address
+    uint8_t atomic;                  // atomic counter
+    uint16_t pc;                     // for debugging
+    unsigned int multiplicity : 15;  // #identical contexts
+    bool load : 1;                   // store or del if false
 };
 
 struct edge {
     struct edge *fwdnext;    // forward linked list maintenance
     struct edge *bwdnext;    // backward linked list maintenance
     hvalue_t ctx, choice;    // ctx that made the microstep, choice if any
-    bool interrupt;          // set if state change is an interrupt
     struct node *src;        // source node
     struct node *dst;        // destination node
     hvalue_t after;          // resulting context
-    int weight;              // 1 if context switch; 0 otherwise
     struct access_info *ai;  // to detect data races
-    hvalue_t *log;           // print history
-    unsigned int nlog;       // size of print history
+    uint16_t nsteps;         // # microsteps
+    bool interrupt : 1;      // set if state change is an interrupt
+    uint16_t nlog : 15;      // size of print history
+    hvalue_t log[0];         // print history (immediately follows edge)
 };
 
 enum fail_type {
@@ -48,42 +48,33 @@ enum fail_type {
     FAIL_RACE
 };
 
+// TODO: node->state should be equivalent to ((struct state *) node) - 1
+//       This would save a little more memory.
 struct node {
 	struct node *next;		// for linked list
-    mutex_t lock;
-    bool initialized;
 
     // Information about state
     struct state *state;    // state corresponding to this node
-    unsigned int id;        // nodes are numbered starting from 0
     struct edge *fwd;       // forward edges
     struct edge *bwd;       // backward edges
 
-    // How to get here from parent node
-    struct node *parent;    // shortest path to initial state
-    int len;                // length of path to initial state
-    int steps;              // #microsteps from root
-    hvalue_t before;        // context before state change
-    hvalue_t after;         // context after state change (current context)
-    hvalue_t choice;        // choice made if any
-    bool interrupt;         // set if gotten here by interrupt
-    bool final;             // only eternal threads left
+    struct edge *to_parent; // pointer towards initial state
+    uint32_t id;            // nodes are numbered starting from 0
+    uint32_t component;     // strongly connected component id
+    uint16_t len;           // length of path to initial state
+    uint16_t steps;         // #microsteps from root
+    bool final : 1;         // only eternal threads left (TODO: need this?)
+    bool visited : 1;       // for busy wait detection
 
-    // SCC
-    bool visited;           // for Kosaraju algorithm
-    unsigned int component; // strongly connected component id
-
+    // TODO.  Allocate the rest after model checking, or use union?
     // NFA compression
-    bool reachable;
+    bool reachable : 1;
 };
 
 struct failure {
     struct failure *next;   // for linked list maintenance
-    enum fail_type type;
-    struct node *node;      // failed state
-    struct node *parent;    // if NULL, use node->parent
-    hvalue_t choice;        // choice if any
-    bool interrupt;         // interrupt transition
+    enum fail_type type;    // failure type
+    struct edge *edge;      // edge->dst is the faulty state
     hvalue_t address;       // in case of data race
 };
 
@@ -100,9 +91,12 @@ struct access_info *graph_ai_alloc(int multiplicity, int atomic, int pc);
 void graph_check_for_data_race(
     struct node *node,
     struct minheap *warnings,
-    struct values_t *values
+    struct engine *engine
 );
 void graph_add(struct graph_t *graph, struct node *node);
-int graph_find_scc(struct graph_t *graph);
+unsigned int graph_add_multiple(struct graph_t *graph, unsigned int n);
+unsigned int graph_find_scc(struct graph_t *graph);
+struct scc *graph_find_scc_one(struct graph_t *graph, struct scc *scc, unsigned int component, void **scc_cache);
+struct scc *scc_alloc(unsigned int start, unsigned int finish, struct scc *next, void **scc_cache);
 
 #endif //SRC_GRAPH_H

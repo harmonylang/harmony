@@ -1226,14 +1226,17 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
         firstTime = True
         for pc in range(len(code.labeled_ops)):
             lop = code.labeled_ops[pc]
-            file, line = lop.file, lop.line
+            (_, file, line, column) = lop.start
+            (endlexeme, _, endline, endcolumn) = lop.stop
             if file != None:
                 if firstTime:
                     firstTime = False
                     print(file=f)
                 else:
                     print(",", file=f)
-                print("    \"%d\": { \"file\": %s, \"line\": \"%d\", \"code\": %s }"%(pc, json.dumps(file, ensure_ascii=False), line, json.dumps(files[file][line-1], ensure_ascii=False)), file=f, end="")
+                if endlexeme in { "indent", "dedent" }:     # Hack...
+                    endlexeme = endlexeme[0]
+                print("    \"%d\": { \"file\": %s, \"line\": %d, \"column\": %d, \"endline\": %d, \"endcolumn\": %d, \"code\": %s }"%(pc, json.dumps(file, ensure_ascii=False), line, column, endline, endcolumn + len(endlexeme) - 1, json.dumps(files[file][line-1], ensure_ascii=False)), file=f, end="")
         print(file=f)
         print("  }", file=f)
         print("}", file=f)

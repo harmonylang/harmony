@@ -6,20 +6,35 @@
 #include "value.h"
 #include "graph.h"
 
+struct scc {
+    struct scc *next;
+    unsigned int start, finish;
+};
+
 struct global_t {
     struct code_t code;
     struct values_t values;
-    struct graph_t graph;
+    hvalue_t seqs;               // sequential variables
+    hvalue_t invariants;         // set of invariants that must hold
+    struct graph_t graph;        // the Kripke structure
+    unsigned int todo;           // points into graph->nodes
+    unsigned int goal;           // points into graph->nodes
+    bool layer_done;             // all states in a layer completed
+    mutex_t todo_lock;           // to access the todo list
+    mutex_t todo_wait;           // to wait for SCC tasks
+    unsigned int nworkers;       // total number of threads
+    unsigned int scc_nwaiting;   // # workers waiting for SCC work
+    unsigned int ncomponents;    // to generate component identifiers
     struct minheap *failures;    // queue of "struct failure"  (TODO: make part of struct node "issues")
     hvalue_t *processes;         // list of contexts of processes
-    int nprocesses;              // the number of processes in the list
+    unsigned int nprocesses;     // the number of processes in the list
     double lasttime;             // since last report printed
-    int enqueued;                // #states enqueued
-    int dequeued;                // #states dequeued
+    unsigned int last_nstates;   // to measure #states / second
     bool dumpfirst;              // for json dumping
     struct dfa *dfa;             // for tracking correct behaviors
-    hvalue_t init_name;          // "__init__" atom
     unsigned int diameter;       // graph diameter
+    bool phase2;                 // when model checking is done and graph analysis starts
+    struct scc *scc_todo;        // SCC search
     bool run_direct;             // non-model-checked mode
 };
 

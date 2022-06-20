@@ -11,8 +11,8 @@
 #include <ctype.h>
 #include <assert.h>
 
-#include "hashdict.h"
 #include "global.h"
+#include "hashdict.h"
 #include "value.h"
 #include "strbuf.h"
 #include "json.h"
@@ -26,6 +26,7 @@ void *value_get(hvalue_t v, unsigned int *psize){
     return dict_retrieve((void *) v, psize);
 }
 
+// Like value_get, but allocate dynamic memory for it
 void *value_copy(hvalue_t v, unsigned int *psize){
     v &= ~VALUE_MASK;
     if (v == 0) {
@@ -42,50 +43,70 @@ void *value_copy(hvalue_t v, unsigned int *psize){
     return r;
 }
 
-hvalue_t value_put_atom(struct values_t *values, const void *p, int size){
+// Like value_copy, but extend with given size and return old size
+void *value_copy_extend(hvalue_t v, unsigned int inc, unsigned int *psize){
+    v &= ~VALUE_MASK;
+    if (v == 0) {
+        *psize = 0;
+        return inc == 0 ? NULL : malloc(inc);
+    }
+    unsigned int size;
+    void *p = dict_retrieve((void *) v, &size);
+    void *r = malloc(size + inc);
+    memcpy(r, p, size);
+    if (psize != NULL) {
+        *psize = size;
+    }
+    return r;
+}
+
+hvalue_t value_put_atom(struct engine *engine, const void *p, int size){
     if (size == 0) {
         return VALUE_ATOM;
     }
-    void *q = dict_find(values->atoms, p, size);
+    void *q = dict_find(engine->values->atoms, engine->allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_ATOM;
 }
 
-hvalue_t value_put_set(struct values_t *values, void *p, int size){
+hvalue_t value_put_set(struct engine *engine, void *p, int size){
     if (size == 0) {
         return VALUE_SET;
     }
-    void *q = dict_find(values->sets, p, size);
+    void *q = dict_find(engine->values->sets, engine->allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_SET;
 }
 
-hvalue_t value_put_dict(struct values_t *values, void *p, int size){
+hvalue_t value_put_dict(struct engine *engine, void *p, int size){
     if (size == 0) {
         return VALUE_DICT;
     }
-    void *q = dict_find(values->dicts, p, size);
+    void *q = dict_find(engine->values->dicts, engine->allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_DICT;
 }
 
-hvalue_t value_put_list(struct values_t *values, void *p, int size){
+hvalue_t value_put_list(struct engine *engine, void *p, int size){
     if (size == 0) {
         return VALUE_LIST;
     }
-    void *q = dict_find(values->lists, p, size);
+    void *q = dict_find(engine->values->lists, engine->allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_LIST;
 }
 
-hvalue_t value_put_address(struct values_t *values, void *p, int size){
+hvalue_t value_put_address(struct engine *engine, void *p, int size){
     if (size == 0) {
         return VALUE_ADDRESS;
     }
-    void *q = dict_find(values->addresses, p, size);
+    void *q = dict_find(engine->values->addresses, engine->allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_ADDRESS;
 }
 
-hvalue_t value_put_context(struct values_t *values, struct context *ctx){
+hvalue_t value_put_context(struct engine *engine, struct context *ctx){
 	assert(ctx->pc >= 0);
     unsigned int size = sizeof(*ctx) + (ctx->sp * sizeof(hvalue_t));
-    void *q = dict_find(values->contexts, ctx, size);
+    if (ctx->extended) {
+        size += ctx_extent * sizeof(hvalue_t);
+    }
+    void *q = dict_find(engine->values->contexts, engine->allocator, ctx, size, NULL);
     return (hvalue_t) q | VALUE_CONTEXT;
 }
 
@@ -530,22 +551,27 @@ static void value_string_context(struct strbuf *sb, hvalue_t v) {
     strbuf_printf(sb, ", %d)", ctx->pc);
     free(name);
 #else
-    strbuf_printf(sb, "name=");
-    strbuf_value_string(sb, ctx->name);
-    strbuf_printf(sb, ",entry=");
-    strbuf_value_string(sb, ctx->entry);
-    strbuf_printf(sb, ",arg=");
-    strbuf_value_string(sb, ctx->arg);
-    strbuf_printf(sb, ",this=");
-    strbuf_value_string(sb, ctx->this);
+    // strbuf_printf(sb, "name=");
+    // strbuf_value_string(sb, ctx->name);
+    strbuf_printf(sb, ",entry=%u", ctx->entry);
+    // strbuf_printf(sb, ",arg=");
+    // strbuf_value_string(sb, ctx->arg);
     strbuf_printf(sb, ",vars=");
     strbuf_value_string(sb, ctx->vars);
-    strbuf_printf(sb, ",trap_pc=");
-    strbuf_value_string(sb, ctx->trap_pc);
-    strbuf_printf(sb, ",trap_arg=");
-    strbuf_value_string(sb, ctx->trap_arg);
-    strbuf_printf(sb, ",failure=");
-    strbuf_value_string(sb, ctx->failure);
+    if (ctx->extended) {
+        strbuf_printf(sb, ",this=");
+        strbuf_value_string(sb, ctx->ctx_this);
+        if (ctx->ctx_trap_pc != 0) {
+            strbuf_printf(sb, ",trap_pc=");
+            strbuf_value_string(sb, ctx->ctx_trap_pc);
+            strbuf_printf(sb, ",trap_arg=");
+            strbuf_value_string(sb, ctx->ctx_trap_arg);
+        }
+        if (ctx->ctx_failure != 0) {
+            strbuf_printf(sb, ",failure=");
+            strbuf_value_string(sb, ctx->ctx_failure);
+        }
+    }
 
     strbuf_printf(sb, ",pc=%d", ctx->pc);
     strbuf_printf(sb, ",fp=%d", ctx->fp);
@@ -563,7 +589,7 @@ static void value_string_context(struct strbuf *sb, hvalue_t v) {
         if (i != 0) {
             strbuf_printf(sb, ",");
         }
-        strbuf_value_string(sb, ctx->stack[i]);
+        strbuf_value_string(sb, ctx_stack(ctx)[i]);
     }
 
     strbuf_printf(sb, "])");
@@ -574,10 +600,9 @@ static void value_json_context(struct strbuf *sb, hvalue_t v) {
     struct context *ctx = value_get(v, NULL);
     
     strbuf_printf(sb, "{ \"type\": \"context\", \"value\": {");
-    strbuf_printf(sb, "\"name\": ");
-    strbuf_value_json(sb, ctx->name);
-    strbuf_printf(sb, ", \"arg\": ");
-    strbuf_value_json(sb, ctx->arg);
+    strbuf_printf(sb, "\"entry\": %u", ctx->entry);
+    // strbuf_printf(sb, ", \"arg\": ");
+    // strbuf_value_json(sb, ctx->arg);
     strbuf_printf(sb, ", \"pc\": { \"type\": \"pc\", \"value\": \"%d\" }", ctx->pc);
 
     strbuf_printf(sb, " } }");
@@ -655,6 +680,7 @@ void strbuf_value_json(struct strbuf *sb, hvalue_t v){
         value_json_context(sb, v & ~VALUE_MASK);
         break;
     default:
+        printf("bad value type: %p\n", (void *) v);
         panic("strbuf_value_json: bad value type");
     }
 }
@@ -718,17 +744,17 @@ hvalue_t value_pc(struct dict *map){
     return VALUE_TO_PC(v);
 }
 
-hvalue_t value_atom(struct values_t *values, struct dict *map){
+hvalue_t value_atom(struct engine *engine, struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_ATOM);
     if (value->u.atom.len == 0) {
         return VALUE_ATOM;
     }
-    void *p = dict_find(values->atoms, value->u.atom.base, value->u.atom.len);
+    void *p = dict_find(engine->values->atoms, engine->allocator, value->u.atom.base, value->u.atom.len, NULL);
     return (hvalue_t) p | VALUE_ATOM;
 }
 
-hvalue_t value_dict(struct values_t *values, struct dict *map){
+hvalue_t value_dict(struct engine *engine, struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_LIST);
     if (value->u.list.nvals == 0) {
@@ -742,18 +768,18 @@ hvalue_t value_dict(struct values_t *values, struct dict *map){
         assert(k->type == JV_MAP);
         struct json_value *v = dict_lookup(jv->u.map, "value", 5);
         assert(v->type == JV_MAP);
-        vals[2*i] = value_from_json(values, k->u.map);
-        vals[2*i+1] = value_from_json(values, v->u.map);
+        vals[2*i] = value_from_json(engine, k->u.map);
+        vals[2*i+1] = value_from_json(engine, v->u.map);
     }
 
     // vals is sorted already by harmony compiler
-    void *p = dict_find(values->dicts, vals,
-                    value->u.list.nvals * sizeof(hvalue_t) * 2);
+    void *p = dict_find(engine->values->dicts, engine->allocator, vals,
+                    value->u.list.nvals * sizeof(hvalue_t) * 2, NULL);
     free(vals);
     return (hvalue_t) p | VALUE_DICT;
 }
 
-hvalue_t value_set(struct values_t *values, struct dict *map){
+hvalue_t value_set(struct engine *engine, struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_LIST);
     if (value->u.list.nvals == 0) {
@@ -763,16 +789,16 @@ hvalue_t value_set(struct values_t *values, struct dict *map){
     for (unsigned int i = 0; i < value->u.list.nvals; i++) {
         struct json_value *jv = value->u.list.vals[i];
         assert(jv->type == JV_MAP);
-        vals[i] = value_from_json(values, jv->u.map);
+        vals[i] = value_from_json(engine, jv->u.map);
     }
 
     // vals is sorted already by harmony compiler
-    void *p = dict_find(values->sets, vals, value->u.list.nvals * sizeof(hvalue_t));
+    void *p = dict_find(engine->values->sets, engine->allocator, vals, value->u.list.nvals * sizeof(hvalue_t), NULL);
     free(vals);
     return (hvalue_t) p | VALUE_SET;
 }
 
-hvalue_t value_list(struct values_t *values, struct dict *map){
+hvalue_t value_list(struct engine *engine, struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_LIST);
     if (value->u.list.nvals == 0) {
@@ -782,14 +808,14 @@ hvalue_t value_list(struct values_t *values, struct dict *map){
     for (unsigned int i = 0; i < value->u.list.nvals; i++) {
         struct json_value *jv = value->u.list.vals[i];
         assert(jv->type == JV_MAP);
-        vals[i] = value_from_json(values, jv->u.map);
+        vals[i] = value_from_json(engine, jv->u.map);
     }
-    void *p = dict_find(values->lists, vals, value->u.list.nvals * sizeof(hvalue_t));
+    void *p = dict_find(engine->values->lists, engine->allocator, vals, value->u.list.nvals * sizeof(hvalue_t), NULL);
     free(vals);
     return (hvalue_t) p | VALUE_LIST;
 }
 
-hvalue_t value_address(struct values_t *values, struct dict *map){
+hvalue_t value_address(struct engine *engine, struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_LIST);
     if (value->u.list.nvals == 0) {
@@ -799,15 +825,15 @@ hvalue_t value_address(struct values_t *values, struct dict *map){
     for (unsigned int i = 0; i < value->u.list.nvals; i++) {
         struct json_value *jv = value->u.list.vals[i];
         assert(jv->type == JV_MAP);
-        vals[i] = value_from_json(values, jv->u.map);
+        vals[i] = value_from_json(engine, jv->u.map);
     }
-    void *p = dict_find(values->addresses, vals,
-                            value->u.list.nvals * sizeof(hvalue_t));
+    void *p = dict_find(engine->values->addresses, engine->allocator, vals,
+                            value->u.list.nvals * sizeof(hvalue_t), NULL);
     free(vals);
     return (hvalue_t) p | VALUE_ADDRESS;
 }
 
-hvalue_t value_from_json(struct values_t *values, struct dict *map){
+hvalue_t value_from_json(struct engine *engine, struct dict *map){
     struct json_value *type = dict_lookup(map, "type", 4);
     assert(type != 0);
     assert(type->type == JV_ATOM);
@@ -818,22 +844,22 @@ hvalue_t value_from_json(struct values_t *values, struct dict *map){
         return value_int(map);
     }
     else if (atom_cmp(type->u.atom, "atom")) {
-        return value_atom(values, map);
+        return value_atom(engine, map);
     }
     else if (atom_cmp(type->u.atom, "list")) {
-        return value_list(values, map);
+        return value_list(engine, map);
     }
     else if (atom_cmp(type->u.atom, "dict")) {
-        return value_dict(values, map);
+        return value_dict(engine, map);
     }
     else if (atom_cmp(type->u.atom, "set")) {
-        return value_set(values, map);
+        return value_set(engine, map);
     }
     else if (atom_cmp(type->u.atom, "pc")) {
         return value_pc(map);
     }
     else if (atom_cmp(type->u.atom, "address")) {
-        return value_address(values, map);
+        return value_address(engine, map);
     }
     else {
         panic("value_from_json: bad type");
@@ -868,23 +894,23 @@ static bool align_test(){
     return true;
 }
 
-void value_init(struct values_t *values){
+void value_init(struct values_t *values, unsigned int nworkers){
     if (align_test()) {
         // printf("malloc appears aligned to %d bytes\n", 1 << VALUE_BITS);
-        values->atoms = dict_new(0, NULL, NULL);
-        values->dicts = dict_new(0, NULL, NULL);
-        values->sets = dict_new(0, NULL, NULL);
-        values->lists = dict_new(0, NULL, NULL);
-        values->addresses = dict_new(0, NULL, NULL);
-        values->contexts = dict_new(0, NULL, NULL);
+        values->atoms = dict_new("atoms", 0, 0, nworkers, NULL, NULL);
+        values->dicts = dict_new("dicts", 0, 0, nworkers, NULL, NULL);
+        values->sets = dict_new("sets", 0, 0, nworkers, NULL, NULL);
+        values->lists = dict_new("lists", 0, 0, nworkers, NULL, NULL);
+        values->addresses = dict_new("addresses", 0, 0, nworkers, NULL, NULL);
+        values->contexts = dict_new("contexts", 0, 0, nworkers, NULL, NULL);
     }
     else {
-        values->atoms = dict_new(0, align_alloc, align_free);
-        values->dicts = dict_new(0, align_alloc, align_free);
-        values->sets = dict_new(0, align_alloc, align_free);
-        values->lists = dict_new(0, align_alloc, align_free);
-        values->addresses = dict_new(0, align_alloc, align_free);
-        values->contexts = dict_new(0, align_alloc, align_free);
+        values->atoms = dict_new("atoms", 0, 0, nworkers, align_alloc, align_free);
+        values->dicts = dict_new("dicts", 0, 0, nworkers, align_alloc, align_free);
+        values->sets = dict_new("sets", 0, 0, nworkers, align_alloc, align_free);
+        values->lists = dict_new("lists", 0, 0, nworkers, align_alloc, align_free);
+        values->addresses = dict_new("addresses", 0, 0, nworkers, align_alloc, align_free);
+        values->contexts = dict_new("contexts", 0, 0, nworkers, align_alloc, align_free);
     }
 }
 
@@ -897,37 +923,36 @@ void value_set_concurrent(struct values_t *values){
     dict_set_concurrent(values->contexts);
 }
 
-void value_make_stable(struct values_t *values,
-            int nworkers, int worker, struct value_stable *vs){
-    vs->atom = dict_make_stable(values->atoms, nworkers, worker);
-    vs->dict = dict_make_stable(values->dicts, nworkers, worker);
-    vs->set = dict_make_stable(values->sets, nworkers, worker);
-    vs->list = dict_make_stable(values->lists, nworkers, worker);
-    vs->address = dict_make_stable(values->addresses, nworkers, worker);
-    vs->context = dict_make_stable(values->contexts, nworkers, worker);
+void value_make_stable(struct values_t *values, unsigned int worker){
+    dict_make_stable(values->atoms, worker);
+    dict_make_stable(values->dicts, worker);
+    dict_make_stable(values->sets, worker);
+    dict_make_stable(values->lists, worker);
+    dict_make_stable(values->addresses, worker);
+    dict_make_stable(values->contexts, worker);
 }
 
-void value_stable_add(struct value_stable *vs, struct value_stable *vs2){
-    vs->atom += vs2->atom;
-    vs->dict += vs2->dict;
-    vs->set += vs2->set;
-    vs->list += vs2->list;
-    vs->address += vs2->address;
-    vs->context += vs2->context;
+void value_grow_prepare(struct values_t *values) {
+    dict_grow_prepare(values->atoms);
+    dict_grow_prepare(values->dicts);
+    dict_grow_prepare(values->sets);
+    dict_grow_prepare(values->lists);
+    dict_grow_prepare(values->addresses);
+    dict_grow_prepare(values->contexts);
 }
 
-void value_set_sequential(struct values_t *values, struct value_stable *vs){
-    dict_set_sequential(values->atoms, vs->atom);
-    dict_set_sequential(values->dicts, vs->dict);
-    dict_set_sequential(values->sets, vs->set);
-    dict_set_sequential(values->lists, vs->list);
-    dict_set_sequential(values->addresses, vs->address);
-    dict_set_sequential(values->contexts, vs->context);
+void value_set_sequential(struct values_t *values){
+    dict_set_sequential(values->atoms);
+    dict_set_sequential(values->dicts);
+    dict_set_sequential(values->sets);
+    dict_set_sequential(values->lists);
+    dict_set_sequential(values->addresses);
+    dict_set_sequential(values->contexts);
 }
 
 // Store key:value in the given dictionary and returns its value code
 // in *result.  May fail if allow_inserts is false and key does not exist
-bool value_dict_trystore(struct values_t *values, hvalue_t dict, hvalue_t key, hvalue_t value, bool allow_inserts, hvalue_t *result){
+bool value_dict_trystore(struct engine *engine, hvalue_t dict, hvalue_t key, hvalue_t value, bool allow_inserts, hvalue_t *result){
     assert(VALUE_TYPE(dict) == VALUE_DICT);
 
     hvalue_t *vals;
@@ -950,11 +975,10 @@ bool value_dict_trystore(struct values_t *values, hvalue_t dict, hvalue_t key, h
                 return true;
             }
             int n = size * sizeof(hvalue_t);
-            hvalue_t *copy = malloc(n);
+            hvalue_t copy[size];
             memcpy(copy, vals, n);
             copy[i + 1] = value;
-            hvalue_t v = value_put_dict(values, copy, n);
-            free(copy);
+            hvalue_t v = value_put_dict(engine, copy, n);
             *result = v;
             return true;
         }
@@ -968,20 +992,19 @@ bool value_dict_trystore(struct values_t *values, hvalue_t dict, hvalue_t key, h
     }
 
     int n = (size + 2) * sizeof(hvalue_t);
-    hvalue_t *nvals = malloc(n);
+    hvalue_t nvals[size + 2];
     memcpy(nvals, vals, i * sizeof(hvalue_t));
     nvals[i] = key;
     nvals[i+1] = value;
     memcpy(&nvals[i+2], &vals[i], (size - i) * sizeof(hvalue_t));
-    hvalue_t v = value_put_dict(values, nvals, n);
-    free(nvals);
+    hvalue_t v = value_put_dict(engine, nvals, n);
     *result = v;
     return true;
 }
 
-hvalue_t value_dict_store(struct values_t *values, hvalue_t dict, hvalue_t key, hvalue_t value){
+hvalue_t value_dict_store(struct engine *engine, hvalue_t dict, hvalue_t key, hvalue_t value){
     hvalue_t result;
-    bool r = value_dict_trystore(values, dict, key, value, true, &result);
+    bool r = value_dict_trystore(engine, dict, key, value, true, &result);
     if (!r) {
         fprintf(stderr, "value_dict_store: failed\n");
         exit(1);
@@ -989,7 +1012,7 @@ hvalue_t value_dict_store(struct values_t *values, hvalue_t dict, hvalue_t key, 
     return result;
 }
 
-bool value_trystore(struct values_t *values, hvalue_t root, hvalue_t key, hvalue_t value, bool allow_inserts, hvalue_t *result){
+bool value_trystore(struct engine *engine, hvalue_t root, hvalue_t key, hvalue_t value, bool allow_inserts, hvalue_t *result){
     assert(VALUE_TYPE(root) == VALUE_DICT || VALUE_TYPE(root) == VALUE_LIST);
 
     unsigned int size;
@@ -1005,11 +1028,10 @@ bool value_trystore(struct values_t *values, hvalue_t root, hvalue_t key, hvalue
                     *result = root;
                     return true;
                 }
-                hvalue_t *nvals = malloc(size);
+                hvalue_t nvals[n];
                 memcpy(nvals, vals, size);
                 nvals[i + 1] = value;
-                hvalue_t v = value_put_dict(values, nvals, size);
-                free(nvals);
+                hvalue_t v = value_put_dict(engine, nvals, size);
                 *result = v;
                 return true;
             }
@@ -1023,13 +1045,12 @@ bool value_trystore(struct values_t *values, hvalue_t root, hvalue_t key, hvalue
         }
 
         size += 2 * sizeof(hvalue_t);
-        hvalue_t *nvals = malloc(size);
+        hvalue_t nvals[n + 2];
         memcpy(nvals, vals, i * sizeof(hvalue_t));
         nvals[i] = key;
         nvals[i+1] = value;
         memcpy(&nvals[i+2], &vals[i], (n - i) * sizeof(hvalue_t));
-        hvalue_t v = value_put_dict(values, nvals, size);
-        free(nvals);
+        hvalue_t v = value_put_dict(engine, nvals, size);
         *result = v;
         return true;
     }
@@ -1056,19 +1077,18 @@ bool value_trystore(struct values_t *values, hvalue_t root, hvalue_t key, hvalue
             }
             nsize = size;
         }
-        hvalue_t *nvals = malloc(nsize);
+        hvalue_t nvals[nsize / sizeof(hvalue_t)];
         memcpy(nvals, vals, size);
         nvals[index] = value;
-        hvalue_t v = value_put_list(values, nvals, nsize);
-        free(nvals);
+        hvalue_t v = value_put_list(engine, nvals, nsize);
         *result = v;
         return true;
     }
 }
 
-hvalue_t value_store(struct values_t *values, hvalue_t root, hvalue_t key, hvalue_t value){
+hvalue_t value_store(struct engine *engine, hvalue_t root, hvalue_t key, hvalue_t value){
     hvalue_t result;
-    bool r = value_trystore(values, root, key, value, true, &result);
+    bool r = value_trystore(engine, root, key, value, true, &result);
     if (!r) {
         fprintf(stderr, "value_store: failed\n");
         exit(1);
@@ -1108,7 +1128,7 @@ hvalue_t value_dict_load(hvalue_t dict, hvalue_t key){
     return 0;
 }
 
-hvalue_t value_dict_remove(struct values_t *values, hvalue_t dict, hvalue_t key){
+hvalue_t value_dict_remove(struct engine *engine, hvalue_t dict, hvalue_t key){
     assert(VALUE_TYPE(dict) == VALUE_DICT);
 
     hvalue_t *vals;
@@ -1127,12 +1147,11 @@ hvalue_t value_dict_remove(struct values_t *values, hvalue_t dict, hvalue_t key)
     for (unsigned int i = 0; i < size; i += 2) {
         if (vals[i] == key) {
             int n = (size - 2) * sizeof(hvalue_t);
-            hvalue_t *copy = malloc(n);
+            hvalue_t copy[size - 2];
             memcpy(copy, vals, i * sizeof(hvalue_t));
             memcpy(&copy[i], &vals[i+2],
                    (size - i - 2) * sizeof(hvalue_t));
-            hvalue_t v = value_put_dict(values, copy, n);
-            free(copy);
+            hvalue_t v = value_put_dict(engine, copy, n);
             return v;
         }
         /*
@@ -1145,7 +1164,7 @@ hvalue_t value_dict_remove(struct values_t *values, hvalue_t dict, hvalue_t key)
     return dict;
 }
 
-hvalue_t value_remove(struct values_t *values, hvalue_t root, hvalue_t key){
+hvalue_t value_remove(struct engine *engine, hvalue_t root, hvalue_t key){
     assert(VALUE_TYPE(root) == VALUE_DICT || VALUE_TYPE(root) == VALUE_LIST);
 
     unsigned int size;
@@ -1165,12 +1184,11 @@ hvalue_t value_remove(struct values_t *values, hvalue_t root, hvalue_t key){
         for (unsigned i = 0; i < n; i += 2) {
             if (vals[i] == key) {
                 size -= 2 * sizeof(hvalue_t);
-                hvalue_t *copy = malloc(size);
+                hvalue_t copy[size / sizeof(hvalue_t)];
                 memcpy(copy, vals, i * sizeof(hvalue_t));
                 memcpy(&copy[i], &vals[i+2],
                        (n - i - 2) * sizeof(hvalue_t));
-                hvalue_t v = value_put_dict(values, copy, size);
-                free(copy);
+                hvalue_t v = value_put_dict(engine, copy, size);
                 return v;
             }
             /* Not worth it
@@ -1191,12 +1209,11 @@ hvalue_t value_remove(struct values_t *values, hvalue_t root, hvalue_t key){
             return root;
         }
         size -= sizeof(hvalue_t);
-        hvalue_t *copy = malloc(size);
+        hvalue_t copy[size / sizeof(hvalue_t)];
         memcpy(copy, vals, index * sizeof(hvalue_t));
         memcpy(&copy[index], &vals[index+1],
                (n - index - 1) * sizeof(hvalue_t));
-        hvalue_t v = value_put_list(values, copy, size);
-        free(copy);
+        hvalue_t v = value_put_list(engine, copy, size);
         return v;
     }
 
@@ -1205,7 +1222,7 @@ hvalue_t value_remove(struct values_t *values, hvalue_t root, hvalue_t key){
 
 // Try to load from either a dict (by key) or a string or list (by index).
 bool value_tryload(
-    struct values_t *values,
+    struct engine *engine,
     hvalue_t root,
     hvalue_t key,
     hvalue_t *result
@@ -1220,7 +1237,7 @@ bool value_tryload(
         if (key >= (unsigned int) size) {
             return false;
         }
-        *result = value_put_atom(values, chars + key, 1);
+        *result = value_put_atom(engine, chars + key, 1);
         return true;
     }
 
@@ -1262,50 +1279,87 @@ bool value_tryload(
     return false;
 }
 
-hvalue_t value_bag_add(struct values_t *values, hvalue_t bag, hvalue_t v, int multiplicity){
+hvalue_t value_bag_add(struct engine *engine, hvalue_t bag, hvalue_t v, int multiplicity){
     hvalue_t count;
     assert(VALUE_TYPE(bag) == VALUE_DICT);
-    if (value_tryload(values, bag, v, &count)) {
+    if (value_tryload(engine, bag, v, &count)) {
         assert(VALUE_TYPE(count) == VALUE_INT);
         assert(count != VALUE_INT);
         count += multiplicity << VALUE_BITS;
-        return value_dict_store(values, bag, v, count);
+        return value_dict_store(engine, bag, v, count);
     }
     else {
-        return value_dict_store(values, bag, v, VALUE_TO_INT(1));
+        return value_dict_store(engine, bag, v, VALUE_TO_INT(1));
     }
 }
 
-void value_ctx_push(struct context **pctx, hvalue_t v){
-    assert(*pctx != NULL);
-    struct context *ctx = realloc(*pctx, sizeof(struct context) +
-                                         ((*pctx)->sp + 1) * sizeof(hvalue_t));
-
-    ctx->stack[ctx->sp++] = v;
-    *pctx = ctx;
+hvalue_t value_bag_remove(struct engine *engine, hvalue_t bag, hvalue_t v){
+    assert(VALUE_TYPE(bag) == VALUE_DICT);
+    hvalue_t count = value_dict_load(bag, v);
+    assert(VALUE_TYPE(count) == VALUE_INT);
+    count -= 1 << VALUE_BITS;
+    if (count == VALUE_INT) {
+        return value_dict_remove(engine, bag, v);
+    }
+    else {
+        return value_dict_store(engine, bag, v, count);
+    }
 }
 
-hvalue_t value_ctx_pop(struct context **pctx){
-    struct context *ctx = *pctx;
+bool value_ctx_push(struct context *ctx, hvalue_t v){
+    if (ctx->sp == MAX_CONTEXT_STACK - ctx_extent) {
+        return false;
+    }
+    ctx_stack(ctx)[ctx->sp++] = v;
+    return true;
+}
 
+hvalue_t value_ctx_pop(struct context *ctx){
     assert(ctx->sp > 0);
-    return ctx->stack[--ctx->sp];
+    return ctx_stack(ctx)[--ctx->sp];
 }
 
-hvalue_t value_ctx_failure(struct context *ctx, struct values_t *values, char *fmt, ...){
+void value_ctx_extend(struct context *ctx){
+    if (ctx->extended) {
+        return;
+    }
+    memmove(&ctx->thestack[ctx_extent], ctx->thestack, ctx->sp * sizeof(hvalue_t));
+    memset(ctx->thestack, 0, ctx_extent * sizeof(hvalue_t));
+    ctx->ctx_this = VALUE_DICT;
+    ctx->extended = true;
+}
+
+hvalue_t value_ctx_failure(struct context *ctx, struct engine *engine, char *fmt, ...){
     va_list args;
 
-    assert(ctx->failure == 0);
+    assert(!ctx->failed);
+    value_ctx_extend(ctx);
+    assert(ctx->ctx_failure == 0);
 
     struct strbuf sb;
     strbuf_init(&sb);
     va_start(args, fmt);
     strbuf_vprintf(&sb, fmt, args);
     va_end(args);
-    ctx->failure = value_put_atom(values, strbuf_getstr(&sb), strbuf_getlen(&sb));
+    ctx->ctx_failure = value_put_atom(engine, strbuf_getstr(&sb), strbuf_getlen(&sb));
+    ctx->failed = true;
     strbuf_deinit(&sb);
 
     return 0;
+}
+
+bool value_state_all_eternal(struct state *state) {
+    if (state->bagsize == 0) {
+        return true;
+    }
+    for (unsigned int i = 0; i < state->bagsize; i++) {
+        assert(VALUE_TYPE(state->contexts[i]) == VALUE_CONTEXT);
+        struct context *ctx = value_get(state->contexts[i], NULL);
+        if (!ctx->eternal) {
+            return false;
+        }
+    }
+    return true;
 }
 
 bool value_ctx_all_eternal(hvalue_t ctxbag) {
@@ -1315,16 +1369,64 @@ bool value_ctx_all_eternal(hvalue_t ctxbag) {
     unsigned int size;
     hvalue_t *vals = value_get(ctxbag, &size);
     size /= sizeof(hvalue_t);
-    bool all = true;
     for (unsigned int i = 0; i < size; i += 2) {
         assert(VALUE_TYPE(vals[i]) == VALUE_CONTEXT);
         assert(VALUE_TYPE(vals[i + 1]) == VALUE_INT);
         struct context *ctx = value_get(vals[i], NULL);
         assert(ctx != NULL);
         if (!ctx->eternal) {
-            all = false;
+            return false;
+        }
+    }
+    return true;
+}
+
+void context_remove(struct state *state, hvalue_t ctx){
+    for (unsigned int i = 0; i < state->bagsize; i++) {
+        if (state->contexts[i] == ctx) {
+            if (multiplicities(state)[i] > 1) {
+                multiplicities(state)[i]--;
+            }
+            else {
+                state->bagsize--;
+                memmove(&state->contexts[i], &state->contexts[i+1],
+                        (state->bagsize - i) * sizeof(hvalue_t) + i);
+                memmove((char *) &state->contexts[state->bagsize] + i,
+                        (char *) &state->contexts[state->bagsize + 1] + i + 1,
+                        state->bagsize - i);
+            }
             break;
         }
     }
-    return all;
+}
+
+bool context_add(struct state *state, hvalue_t ctx){
+    unsigned int i;
+    for (i = 0; i < state->bagsize; i++) {
+        if (state->contexts[i] == ctx) {
+            multiplicities(state)[i]++;
+            return true;
+        }
+        if (state->contexts[i] > ctx) {
+            break;
+        }
+    }
+
+    if (state->bagsize >= MAX_CONTEXT_BAG) {
+        return false;
+    }
+ 
+    // Move the last multiplicities
+    memmove((char *) &state->contexts[state->bagsize + 1] + i + 1,
+            (char *) &state->contexts[state->bagsize] + i,
+            state->bagsize - i);
+
+    // Move the last contexts plus the first multiplicitkes
+    memmove(&state->contexts[i+1], &state->contexts[i],
+                    (state->bagsize - i) * sizeof(hvalue_t) + i);
+
+    state->bagsize++;
+    state->contexts[i] = ctx;
+    multiplicities(state)[i] = 1;
+    return true;
 }
