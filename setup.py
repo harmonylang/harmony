@@ -23,7 +23,7 @@ def get_version(rel_path: str) -> str:
             return line.split(delim)[1]
     raise RuntimeError("Unable to find version string.")
 
-PACKAGE_NAME = 'harmony_model_checker'
+PACKAGE_NAME = 'harmony'
 PACKAGE_VERSION = get_version(f"{PACKAGE_NAME}/__init__.py")
 
 this_directory = Path(__file__).parent
