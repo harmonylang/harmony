@@ -36,12 +36,16 @@ class CompilerArgs(NamedTuple):
     linker_args: List[str]
 
 
-EXTRA_COMPILE_ARGS = ["-pthread", "-m64", "-O3", "-DNDEBUG", "-fPIC"] # the -fPIC flag is required to create a shared object file.
+# the -fPIC flag is required to create a shared object file.
+EXTRA_COMPILE_ARGS = ["-pthread", "-m64", "-O3", "-DNDEBUG", "-fPIC"]
 
 # Extra link args used by gcc in Linux.
 # Tested flags with cc and clang
-EXTRA_LINK_ARGS = ['-pthread', '-shared', '-Wl,-O1', '-Wl,-Bsymbolic-functions', '-Wl,-Bsymbolic-functions', '-Wl,-z,relro', '-g', '-fwrapv', '-O2', '-Wl,-Bsymbolic-functions',
-                   '-Wl,-z,relro', '-g', '-fwrapv', '-O2', '-g', '-fstack-protector-strong', '-Wformat', '-Werror=format-security', '-Wdate-time', '-D_FORTIFY_SOURCE=2']
+EXTRA_LINK_ARGS = ['-pthread', '-shared', '-Wl,-O1', '-Wl,-Bsymbolic-functions',
+                   '-Wl,-Bsymbolic-functions', '-Wl,-z,relro', '-g', '-fwrapv', '-O2',
+                   '-Wl,-Bsymbolic-functions', '-Wl,-z,relro', '-g', '-fwrapv', '-O2',
+                   '-g', '-fstack-protector-strong', '-Wformat',
+                   '-Werror=format-security', '-Wdate-time', '-D_FORTIFY_SOURCE=2']
 
 compiler_and_args = [
     CompilerArgs(
