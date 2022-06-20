@@ -1,5 +1,6 @@
 import os.path
 from pathlib import Path
+import sys
 from typing import List, NamedTuple
 
 import setuptools
@@ -13,7 +14,7 @@ def read(rel_path: str) -> str:
     here = os.path.abspath(os.path.dirname(__file__))
     # intentionally *not* adding an encoding option to open, See:
     #   https://github.com/pypa/virtualenv/issues/201#issuecomment-3145690
-    with open(os.path.join(here, rel_path)) as fp:
+    with open(os.path.join(here, rel_path), encoding='utf-8') as fp:
         return fp.read()
 
 def get_version(rel_path: str) -> str:
@@ -24,7 +25,15 @@ def get_version(rel_path: str) -> str:
     raise RuntimeError("Unable to find version string.")
 
 PACKAGE_NAME = 'harmony'
-PACKAGE_VERSION = get_version(f"{PACKAGE_NAME}/__init__.py")
+PROJECT_DIR_NAME = 'harmony_model_checker'
+
+python_version = sys.version_info[:2]
+if python_version < (3, 6):
+    print("{} requires Python version 3.6 or later".format(PACKAGE_NAME))
+    print("(Version {}.{} detected)".format(*python_version))
+    sys.exit(1)
+
+PACKAGE_VERSION = get_version(f"{PROJECT_DIR_NAME}/__init__.py")
 
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
@@ -95,8 +104,8 @@ class BuildExtCommand(build_ext):
 
 
 module = Extension(
-    f"{PACKAGE_NAME}.charm",
-    sources=[f"{PACKAGE_NAME}/charm.c"]
+    f"{PROJECT_DIR_NAME}.charm",
+    sources=[f"{PROJECT_DIR_NAME}/charm.c"]
 )
 
 setuptools.setup(
