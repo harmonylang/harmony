@@ -39,7 +39,7 @@ class CompilationTestCase(unittest.TestCase):
         for param in params:
             f = str(param.filename)
             self.run_before_tests()
-            with self.subTest(f"Success compilation test: {f}"):
+            with self.subTest(f"Failure compilation test: {f}"):
                 start_time = time.perf_counter_ns()
                 self.assertRaises(
                     (HarmonyCompilerErrorCollection, HarmonyCompilerError),

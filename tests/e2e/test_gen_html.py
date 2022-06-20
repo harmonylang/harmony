@@ -62,5 +62,5 @@ class GenHtmlTestCase(unittest.TestCase):
                     self.assertEqual(r.returncode, 0)
                 except subprocess.TimeoutExpired:
                     logger.warning("TimeoutExpired for file %s.", str(param.filename))
-                    return
+                    continue
                 handle_hco(mock_ns, output_files)
