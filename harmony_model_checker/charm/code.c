@@ -10,7 +10,7 @@
 #include "ops.h"
 #endif
 
-static struct instr_t code_instr_parse(struct engine *engine, struct json_value *jv) {
+static struct instr code_instr_parse(struct engine *engine, struct json_value *jv) {
     assert(jv->type == JV_MAP);
     struct json_value *op = dict_lookup(jv->u.map, "op", 2);
     assert(op->type == JV_ATOM);
@@ -19,7 +19,7 @@ static struct instr_t code_instr_parse(struct engine *engine, struct json_value 
         fprintf(stderr, "Unknown HVM instruction: %.*s\n", op->u.atom.len, op->u.atom.base);
         exit(1);
     }
-    struct instr_t i;
+    struct instr i;
     i.oi = oi;
     i.env = (*oi->init)(jv->u.map, engine);
     i.choose = strcmp(oi->name, "Choose") == 0;
@@ -41,12 +41,12 @@ static struct instr_t code_instr_parse(struct engine *engine, struct json_value 
     return i;
 }
 
-struct code_t code_init_parse(struct engine *engine, struct json_value *json_code) {
+struct code code_init_parse(struct engine *engine, struct json_value *json_code) {
     assert(json_code->type == JV_LIST);
 
-    struct code_t code;
+    struct code code;
     code.len = json_code->u.list.nvals;
-    code.instrs = malloc(code.len * sizeof(struct instr_t));
+    code.instrs = malloc(code.len * sizeof(struct instr));
 
     for (unsigned int i = 0; i < json_code->u.list.nvals; i++) {
         code.instrs[i] = code_instr_parse(engine, json_code->u.list.vals[i]);

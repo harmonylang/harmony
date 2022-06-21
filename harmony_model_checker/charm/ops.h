@@ -9,7 +9,7 @@
 
 #define MAX_PRINT       64
 
-void ops_init(struct global_t *global, struct engine *engine);
+void ops_init(struct global *global, struct engine *engine);
 struct op_info *ops_get(char *opname, int size);
 
 struct step {
@@ -25,7 +25,7 @@ struct step {
 struct op_info {
     const char *name;
     void *(*init)(struct dict *, struct engine *engine);
-    void (*op)(const void *env, struct state *state, struct step *step, struct global_t *global);
+    void (*op)(const void *env, struct state *state, struct step *step, struct global *global);
 };
 
 struct env_Builtin {

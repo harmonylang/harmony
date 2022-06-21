@@ -37,7 +37,7 @@ mutex_t run_waiting;     // for main thread to wait on
 
 // One of these per worker thread
 struct worker {
-    struct global_t *global;     // global state
+    struct global *global;     // global state
     double timeout;
     barrier_t *start_barrier, *middle_barrier, *end_barrier;
 
@@ -92,7 +92,7 @@ static void *walloc(void *ctx, unsigned int size, bool zero){
     return result;
 }
 
-static void run_thread(struct global_t *global, struct state *state, struct context *ctx){
+static void run_thread(struct global *global, struct state *state, struct context *ctx){
     struct step step;
     memset(&step, 0, sizeof(step));
     step.ctx = ctx;
@@ -100,7 +100,7 @@ static void run_thread(struct global_t *global, struct state *state, struct cont
 
     for (;;) {
         int pc = step.ctx->pc;
-        struct instr_t *instrs = global->code.instrs;
+        struct instr *instrs = global->code.instrs;
         struct op_info *oi = instrs[pc].oi;
         (*oi->op)(instrs[pc].env, state, &step, global);
         if (step.ctx->terminated) {
@@ -137,7 +137,7 @@ static void wrap_thread(void *arg){
     run_thread(si->global, si->state, si->ctx);
 }
 
-void spawn_thread(struct global_t *global, struct state *state, struct context *ctx){
+void spawn_thread(struct global *global, struct state *state, struct context *ctx){
     mutex_acquire(&run_mutex);
     run_count++;
     mutex_release(&run_mutex);
@@ -149,7 +149,7 @@ void spawn_thread(struct global_t *global, struct state *state, struct context *
     thread_create(wrap_thread, si);
 }
 
-bool invariant_check(struct global_t *global, struct state *state, struct step *step, int end){
+bool invariant_check(struct global *global, struct state *state, struct step *step, int end){
     assert(step->ctx->sp == 0);
     assert(!step->ctx->failed);
     step->ctx->pc++;
@@ -173,7 +173,7 @@ bool invariant_check(struct global_t *global, struct state *state, struct step *
 }
 
 bool check_invariants(struct worker *w, struct node *node, struct step *step){
-    struct global_t *global = w->global;
+    struct global *global = w->global;
     struct state *state = node->state;
     extern int invariant_cnt(const void *env);
 
@@ -224,7 +224,7 @@ static bool onestep(
     assert(!step->ctx->failed);
     assert(step->engine.allocator == &w->allocator);
 
-    struct global_t *global = w->global;
+    struct global *global = w->global;
 
     // See if we should also try an interrupt.
     if (interrupt) {
@@ -276,7 +276,7 @@ static bool onestep(
         }
 
         w->profile[pc]++;       // for profiling
-        struct instr_t *instrs = global->code.instrs;
+        struct instr *instrs = global->code.instrs;
         struct op_info *oi = instrs[pc].oi;
         if (instrs[pc].choose) {
             assert(step->ctx->sp > 0);
@@ -370,7 +370,7 @@ static bool onestep(
 
         /* Peek at the next instruction.
          */
-        struct instr_t *next_instr = &global->code.instrs[step->ctx->pc];
+        struct instr *next_instr = &global->code.instrs[step->ctx->pc];
         if (next_instr->choose) {
             assert(step->ctx->sp > 0);
 #ifdef TODO
@@ -658,7 +658,7 @@ char *json_escape_value(hvalue_t v){
 }
 
 static bool print_trace(
-    struct global_t *global,
+    struct global *global,
     FILE *file,
     struct context *ctx,
     int pc,
@@ -788,7 +788,7 @@ char *ctx_status(struct node *node, hvalue_t ctx) {
 }
 
 void print_context(
-    struct global_t *global,
+    struct global *global,
     FILE *file,
     hvalue_t ctx,
     int tid,
@@ -912,7 +912,7 @@ void print_context(
 }
 
 void print_state(
-    struct global_t *global,
+    struct global *global,
     FILE *file,
     struct node *node
 ) {
@@ -999,7 +999,7 @@ void print_state(
 }
 
 void diff_state(
-    struct global_t *global,
+    struct global *global,
     FILE *file,
     struct state *oldstate,
     struct state *newstate,
@@ -1104,7 +1104,7 @@ void diff_state(
 }
 
 void diff_dump(
-    struct global_t *global,
+    struct global *global,
     FILE *file,
     struct state *oldstate,
     struct state *newstate,
@@ -1133,7 +1133,7 @@ void diff_dump(
 
 // similar to onestep.
 hvalue_t twostep(
-    struct global_t *global,
+    struct global *global,
     FILE *file,
     struct node *node,
     hvalue_t ctx,
@@ -1177,7 +1177,7 @@ hvalue_t twostep(
         int pc = step.ctx->pc;
 
         char *print = NULL;
-        struct instr_t *instrs = global->code.instrs;
+        struct instr *instrs = global->code.instrs;
         struct op_info *oi = instrs[pc].oi;
         if (instrs[pc].choose) {
             assert(choice != 0);
@@ -1297,7 +1297,7 @@ hvalue_t twostep(
 }
 
 void path_dump(
-    struct global_t *global,
+    struct global *global,
     FILE *file,
     struct edge *e,
     struct state *oldstate,
@@ -1582,7 +1582,7 @@ static int fail_cmp(void *f1, void *f2){
 }
 
 static void do_work(struct worker *w){
-    struct global_t *global = w->global;
+    struct global *global = w->global;
 
     for (;;) {
         mutex_acquire(&global->todo_lock);
@@ -1650,7 +1650,7 @@ static void do_work(struct worker *w){
     }
 }
 
-static void work_phase2(struct worker *w, struct global_t *global){
+static void work_phase2(struct worker *w, struct global *global){
     mutex_acquire(&global->todo_lock);
     for (;;) {
         if (global->scc_todo == NULL) {
@@ -1714,7 +1714,7 @@ static void work_phase2(struct worker *w, struct global_t *global){
 
 static void worker(void *arg){
     struct worker *w = arg;
-    struct global_t *global = w->global;
+    struct global *global = w->global;
 
     for (int epoch = 0;; epoch++) {
         barrier_wait(w->start_barrier);
@@ -1765,7 +1765,7 @@ static void worker(void *arg){
     }
 }
 
-void process_results(struct global_t *global, struct worker *w){
+void process_results(struct global *global, struct worker *w){
     struct failure *f;
     while ((f = w->failures) != NULL) {
         w->failures = f->next;
@@ -1791,7 +1791,7 @@ char *state_string(struct state *state){
 // This routine removes all node that have a single incoming edge and it's
 // an "epsilon" edge (empty print log).  These are essentially useless nodes.
 // Typically about half of the nodes can be removed this way.
-static void destutter1(struct graph_t *graph){
+static void destutter1(struct graph *graph){
     for (unsigned int i = 0; i < graph->size; i++) {
         struct node *n = graph->nodes[i];
 
@@ -1836,7 +1836,7 @@ static void destutter1(struct graph_t *graph){
     }
 }
 
-static struct dict *collect_symbols(struct graph_t *graph){
+static struct dict *collect_symbols(struct graph *graph){
     struct dict *symbols = dict_new("symbols", sizeof(unsigned int), 0, 0, NULL, NULL);
     unsigned int symbol_id = 0;
 
@@ -1936,7 +1936,7 @@ static void print_transitions(FILE *out, struct dict *symbols, struct edge *edge
 }
 
 #ifdef OBSOLETE
-static void pr_state(struct global_t *global, FILE *fp, struct state *state, int index){
+static void pr_state(struct global *global, FILE *fp, struct state *state, int index){
     char *v = state_string(state);
     fprintf(fp, "%s\n", v);
     free(v);
@@ -1987,7 +1987,7 @@ int main(int argc, char **argv){
     double timeout = gettime() + maxtime;
 
     // Determine how many worker threads to use
-    struct global_t *global = new_alloc(struct global_t);
+    struct global *global = new_alloc(struct global);
     global->nworkers = getNumCores();
 	printf("nworkers = %d\n", global->nworkers);
 

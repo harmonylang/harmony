@@ -52,24 +52,24 @@ typedef struct context {   // context value
 
 #define ctx_stack(c)    ((c)->extended ? &(c)->thestack[ctx_extent] : (c)->thestack)
 
-typedef struct values_t {
+struct values {
     struct dict *atoms;
     struct dict *dicts;
     struct dict *sets;
     struct dict *lists;
     struct dict *addresses;
     struct dict *contexts;
-} values_t;
+};
 
 struct engine {
     struct allocator *allocator;
-    struct values_t *values;
+    struct values *values;
 };
 
-void value_init(struct values_t *values, unsigned int nworkers);
-void value_set_concurrent(struct values_t *values);
-void value_make_stable(struct values_t *values, unsigned int worker);
-void value_set_sequential(struct values_t *values);
+void value_init(struct values *values, unsigned int nworkers);
+void value_set_concurrent(struct values *values);
+void value_make_stable(struct values *values, unsigned int worker);
+void value_set_sequential(struct values *values);
 hvalue_t value_from_json(struct engine *engine, struct dict *map);
 int value_cmp(hvalue_t v1, hvalue_t v2);
 void *value_get(hvalue_t v, unsigned int *size);
@@ -134,7 +134,7 @@ bool value_ctx_all_eternal(hvalue_t ctxbag);
 bool value_state_all_eternal(struct state *state);
 void context_remove(struct state *state, hvalue_t ctx);
 bool context_add(struct state *state, hvalue_t ctx);
-void value_grow_prepare(struct values_t *values);
+void value_grow_prepare(struct values *values);
 
 
 #endif //SRC_VALUE_H

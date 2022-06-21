@@ -107,7 +107,7 @@ struct node_vec_t *find_all_children(struct node *n) {
     return result;
 }
 
-uint64_t iface_evaluate(struct global_t *global, struct state *state, struct step *step) {
+uint64_t iface_evaluate(struct global *global, struct state *state, struct step *step) {
     step->ctx->terminated = false;
     step->ctx->failed = false;
     step->ctx->sp = 0;
@@ -131,10 +131,10 @@ uint64_t iface_evaluate(struct global_t *global, struct state *state, struct ste
     return value_dict_load(step->ctx->vars, value_put_atom(&step->engine, "result", 6));
 }
 
-int iface_find_pc(struct code_t *code) {
+int iface_find_pc(struct code *code) {
     const int len = code->len;
     for (int i = 0; i < len; i++) {
-        struct instr_t instr = code->instrs[i];
+        struct instr instr = code->instrs[i];
         struct op_info *oi = instr.oi;
         if (strcmp(oi->name, "Frame") == 0) {
             const struct env_Frame *envFrame = instr.env;
@@ -154,7 +154,7 @@ int iface_find_pc(struct code_t *code) {
  * @param iface_pc - pc of the instr that starts the iface function
  * @return
  */
-struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int iface_pc) {
+struct iface_graph_t *iface_evaluate_spec_graph(struct global *global, int iface_pc) {
     // Create a context for evaluating iface
     struct step iface_step;
     memset(&iface_step, 0, sizeof(iface_step));
@@ -285,7 +285,7 @@ struct dot_graph_t *iface_convert_to_dot(struct iface_graph_t *graph) {
     return dot;
 }
 
-struct dot_graph_t *iface_generate_dot_graph(struct global_t *global) {
+struct dot_graph_t *iface_generate_dot_graph(struct global *global) {
     int iface_pc = iface_find_pc(&global->code);
     if (iface_pc < 0) {
         return NULL;
@@ -305,7 +305,7 @@ struct dot_graph_t *iface_generate_dot_graph(struct global_t *global) {
     return dot;
 }
 
-void iface_write_spec_graph_to_file(struct global_t *global, const char* filename) {
+void iface_write_spec_graph_to_file(struct global *global, const char* filename) {
     struct dot_graph_t *dot = iface_generate_dot_graph(global);
     if (dot == NULL) {
         return;
@@ -322,7 +322,7 @@ void iface_write_spec_graph_to_file(struct global_t *global, const char* filenam
     fclose(iface_file);
 }
 
-void iface_write_spec_graph_to_json_file(struct global_t *global, const char* filename) {
+void iface_write_spec_graph_to_json_file(struct global *global, const char* filename) {
     int iface_pc = iface_find_pc(&global->code);
     if (iface_pc < 0) {
         return;

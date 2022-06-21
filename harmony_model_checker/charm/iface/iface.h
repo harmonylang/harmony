@@ -8,7 +8,7 @@
 #include "dot.h"
 #endif
 
-void iface_write_spec_graph_to_file(struct global_t *global, const char* filename);
-void iface_write_spec_graph_to_json_file(struct global_t *global, const char* filename);
+void iface_write_spec_graph_to_file(struct global *global, const char* filename);
+void iface_write_spec_graph_to_json_file(struct global *global, const char* filename);
 
 #endif //SRC_IFACE_H

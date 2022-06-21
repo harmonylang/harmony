@@ -894,7 +894,7 @@ static bool align_test(){
     return true;
 }
 
-void value_init(struct values_t *values, unsigned int nworkers){
+void value_init(struct values *values, unsigned int nworkers){
     if (align_test()) {
         // printf("malloc appears aligned to %d bytes\n", 1 << VALUE_BITS);
         values->atoms = dict_new("atoms", 0, 0, nworkers, NULL, NULL);
@@ -914,7 +914,7 @@ void value_init(struct values_t *values, unsigned int nworkers){
     }
 }
 
-void value_set_concurrent(struct values_t *values){
+void value_set_concurrent(struct values *values){
     dict_set_concurrent(values->atoms);
     dict_set_concurrent(values->dicts);
     dict_set_concurrent(values->sets);
@@ -923,7 +923,7 @@ void value_set_concurrent(struct values_t *values){
     dict_set_concurrent(values->contexts);
 }
 
-void value_make_stable(struct values_t *values, unsigned int worker){
+void value_make_stable(struct values *values, unsigned int worker){
     dict_make_stable(values->atoms, worker);
     dict_make_stable(values->dicts, worker);
     dict_make_stable(values->sets, worker);
@@ -932,7 +932,7 @@ void value_make_stable(struct values_t *values, unsigned int worker){
     dict_make_stable(values->contexts, worker);
 }
 
-void value_grow_prepare(struct values_t *values) {
+void value_grow_prepare(struct values *values) {
     dict_grow_prepare(values->atoms);
     dict_grow_prepare(values->dicts);
     dict_grow_prepare(values->sets);
@@ -941,7 +941,7 @@ void value_grow_prepare(struct values_t *values) {
     dict_grow_prepare(values->contexts);
 }
 
-void value_set_sequential(struct values_t *values){
+void value_set_sequential(struct values *values){
     dict_set_sequential(values->atoms);
     dict_set_sequential(values->dicts);
     dict_set_sequential(values->sets);

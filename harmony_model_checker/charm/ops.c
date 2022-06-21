@@ -362,7 +362,7 @@ bool ind_remove(hvalue_t root, hvalue_t *indices, int n, struct engine *engine,
     return false;
 }
 
-void op_Address(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Address(const void *env, struct state *state, struct step *step, struct global *global){
     hvalue_t index = ctx_pop(step->ctx);
     hvalue_t av = ctx_pop(step->ctx);
     if (VALUE_TYPE(av) != VALUE_ADDRESS) {
@@ -385,7 +385,7 @@ void op_Address(const void *env, struct state *state, struct step *step, struct 
     step->ctx->pc++;
 }
 
-void op_Apply(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Apply(const void *env, struct state *state, struct step *step, struct global *global){
     hvalue_t e = ctx_pop(step->ctx);
     hvalue_t method = ctx_pop(step->ctx);
 
@@ -456,7 +456,7 @@ void op_Apply(const void *env, struct state *state, struct step *step, struct gl
     }
 }
 
-void op_Assert(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Assert(const void *env, struct state *state, struct step *step, struct global *global){
     hvalue_t v = ctx_pop(step->ctx);
     if (VALUE_TYPE(v) != VALUE_BOOL) {
         value_ctx_failure(step->ctx, &step->engine, "assert can only be applied to bool engine");
@@ -469,7 +469,7 @@ void op_Assert(const void *env, struct state *state, struct step *step, struct g
     }
 }
 
-void op_Assert2(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Assert2(const void *env, struct state *state, struct step *step, struct global *global){
     hvalue_t e = ctx_pop(step->ctx);
     hvalue_t v = ctx_pop(step->ctx);
     if (VALUE_TYPE(v) != VALUE_BOOL) {
@@ -485,7 +485,7 @@ void op_Assert2(const void *env, struct state *state, struct step *step, struct 
     }
 }
 
-void op_Print(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Print(const void *env, struct state *state, struct step *step, struct global *global){
     hvalue_t symbol = ctx_pop(step->ctx);
     if (global->run_direct) {
         char *s = value_string(symbol);
@@ -511,7 +511,7 @@ void op_Print(const void *env, struct state *state, struct step *step, struct gl
     step->ctx->pc++;
 }
 
-void op_AtomicDec(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_AtomicDec(const void *env, struct state *state, struct step *step, struct global *global){
     struct context *ctx = step->ctx;
 
     assert(ctx->atomic > 0);
@@ -521,7 +521,7 @@ void op_AtomicDec(const void *env, struct state *state, struct step *step, struc
     ctx->pc++;
 }
 
-void op_AtomicInc(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_AtomicInc(const void *env, struct state *state, struct step *step, struct global *global){
     struct context *ctx = step->ctx;
 
     ctx->atomic++;
@@ -533,7 +533,7 @@ void op_AtomicInc(const void *env, struct state *state, struct step *step, struc
     }
 }
 
-void op_Choose(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Choose(const void *env, struct state *state, struct step *step, struct global *global){
     if (global->run_direct) {
         hvalue_t choices = ctx_pop(step->ctx);
         unsigned int size;
@@ -564,12 +564,12 @@ void op_Choose(const void *env, struct state *state, struct step *step, struct g
     }
 }
 
-void op_Continue(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Continue(const void *env, struct state *state, struct step *step, struct global *global){
     step->ctx->pc++;
 }
 
 // TODO.  Get rid of arg
-static void do_return(struct state *state, struct step *step, struct global_t *global, hvalue_t arg, hvalue_t result){
+static void do_return(struct state *state, struct step *step, struct global *global, hvalue_t arg, hvalue_t result){
     hvalue_t callval = ctx_pop(step->ctx);
     assert(VALUE_TYPE(callval) == VALUE_INT);
     unsigned int call = VALUE_FROM_INT(callval);
@@ -600,7 +600,7 @@ static void do_return(struct state *state, struct step *step, struct global_t *g
 }
 
 // Built-in alloc.malloc method
-void op_Alloc_Malloc(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Alloc_Malloc(const void *env, struct state *state, struct step *step, struct global *global){
     hvalue_t arg = ctx_pop(step->ctx);
     hvalue_t next = value_dict_load(state->vars, alloc_next_atom);
 
@@ -622,7 +622,7 @@ void op_Alloc_Malloc(const void *env, struct state *state, struct step *step, st
 }
 
 // Built-in list.tail method
-void op_List_Tail(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_List_Tail(const void *env, struct state *state, struct step *step, struct global *global){
     hvalue_t arg = ctx_pop(step->ctx);
     if (VALUE_TYPE(arg) != VALUE_LIST) {
         value_ctx_failure(step->ctx, &step->engine, "list.tail: not a list");
@@ -639,7 +639,7 @@ void op_List_Tail(const void *env, struct state *state, struct step *step, struc
 }
 
 // Built-in bag.add method
-void op_Bag_Add(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Bag_Add(const void *env, struct state *state, struct step *step, struct global *global){
     hvalue_t arg = ctx_pop(step->ctx);
     if (VALUE_TYPE(arg) != VALUE_LIST) {
         value_ctx_failure(step->ctx, &step->engine, "bag.add: not a tuple");
@@ -660,7 +660,7 @@ void op_Bag_Add(const void *env, struct state *state, struct step *step, struct 
 }
 
 // Built-in bag.remove method
-void op_Bag_Remove(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Bag_Remove(const void *env, struct state *state, struct step *step, struct global *global){
     hvalue_t arg = ctx_pop(step->ctx);
     if (VALUE_TYPE(arg) != VALUE_LIST) {
         value_ctx_failure(step->ctx, &step->engine, "bag.remove: not a tuple");
@@ -681,7 +681,7 @@ void op_Bag_Remove(const void *env, struct state *state, struct step *step, stru
 }
 
 // Built-in bag.multiplicity method
-void op_Bag_Multiplicity(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Bag_Multiplicity(const void *env, struct state *state, struct step *step, struct global *global){
     hvalue_t arg = ctx_pop(step->ctx);
     if (VALUE_TYPE(arg) != VALUE_LIST) {
         value_ctx_failure(step->ctx, &step->engine, "bag.multiplicity: not a tuple");
@@ -710,7 +710,7 @@ void op_Bag_Multiplicity(const void *env, struct state *state, struct step *step
 }
 
 // Built-in bag.size method
-void op_Bag_Size(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Bag_Size(const void *env, struct state *state, struct step *step, struct global *global){
     hvalue_t arg = ctx_pop(step->ctx);
     if (VALUE_TYPE(arg) != VALUE_DICT) {
         value_ctx_failure(step->ctx, &step->engine, "bag.size: not a dict");
@@ -731,7 +731,7 @@ void op_Bag_Size(const void *env, struct state *state, struct step *step, struct
 }
 
 // Built-in bag.bmax method
-void op_Bag_Bmax(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Bag_Bmax(const void *env, struct state *state, struct step *step, struct global *global){
     hvalue_t arg = ctx_pop(step->ctx);
     if (arg == VALUE_DICT) {
         value_ctx_failure(step->ctx, &step->engine, "bag.bmax: empty bag");
@@ -756,7 +756,7 @@ void op_Bag_Bmax(const void *env, struct state *state, struct step *step, struct
 }
 
 // Built-in bag.bmin method
-void op_Bag_Bmin(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Bag_Bmin(const void *env, struct state *state, struct step *step, struct global *global){
     hvalue_t arg = ctx_pop(step->ctx);
     if (arg == VALUE_DICT) {
         value_ctx_failure(step->ctx, &step->engine, "bag.bmax: empty bag");
@@ -785,7 +785,7 @@ void op_Bag_Bmin(const void *env, struct state *state, struct step *step, struct
 // collection), then it assigns the given element to key and value and
 // pushes True.  Otherwise it pops the two engine from the stack and
 // pushes False.
-void op_Cut(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Cut(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_Cut *ec = env;
     struct context *ctx = step->ctx;
 
@@ -859,7 +859,7 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
     value_ctx_failure(step->ctx, &step->engine, "op_Cut: not an iterable type");
 }
 
-void op_Del(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Del(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_Del *ed = env;
 
     assert(VALUE_TYPE(state->vars) == VALUE_DICT);
@@ -916,7 +916,7 @@ void op_Del(const void *env, struct state *state, struct step *step, struct glob
     }
 }
 
-void op_DelVar(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_DelVar(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_DelVar *ed = env;
 
     assert(VALUE_TYPE(step->ctx->vars) == VALUE_DICT);
@@ -963,14 +963,14 @@ void op_DelVar(const void *env, struct state *state, struct step *step, struct g
 	step->ctx->pc++;
 }
 
-void op_Dup(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Dup(const void *env, struct state *state, struct step *step, struct global *global){
     hvalue_t v = ctx_pop(step->ctx);
     ctx_push(step->ctx, v);
     ctx_push(step->ctx, v);
     step->ctx->pc++;
 }
 
-void op_Frame(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Frame(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_Frame *ef = env;
 
     if (!check_stack(step->ctx, 2)) {
@@ -1005,7 +1005,7 @@ void op_Go(
     const void *env,
     struct state *state,
     struct step *step,
-    struct global_t *global
+    struct global *global
 ){
     hvalue_t ctx = ctx_pop(step->ctx);
     if (VALUE_TYPE(ctx) != VALUE_CONTEXT) {
@@ -1042,7 +1042,7 @@ void op_Go(
     step->ctx->pc++;
 }
 
-void op_Invariant(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Invariant(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_Invariant *ei = env;
 
     // TODO workers could race on global->invariants
@@ -1061,12 +1061,12 @@ int invariant_cnt(const void *env){
     return ei->end;
 }
 
-void op_Jump(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Jump(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_Jump *ej = env;
     step->ctx->pc = ej->pc;
 }
 
-void op_JumpCond(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_JumpCond(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_JumpCond *ej = env;
 
     hvalue_t v = ctx_pop(step->ctx);
@@ -1083,7 +1083,7 @@ void op_JumpCond(const void *env, struct state *state, struct step *step, struct
     }
 }
 
-void op_Load(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Load(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_Load *el = env;
 
     assert(VALUE_TYPE(state->vars) == VALUE_DICT);
@@ -1140,7 +1140,7 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
     step->ctx->pc++;
 }
 
-void op_LoadVar(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_LoadVar(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_LoadVar *el = env;
     assert(VALUE_TYPE(step->ctx->vars) == VALUE_DICT);
 
@@ -1206,7 +1206,7 @@ void op_LoadVar(const void *env, struct state *state, struct step *step, struct 
     step->ctx->pc++;
 }
 
-void op_Move(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Move(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_Move *em = env;
     struct context *ctx = step->ctx;
     int offset = ctx->sp - em->offset;
@@ -1219,7 +1219,7 @@ void op_Move(const void *env, struct state *state, struct step *step, struct glo
     ctx->pc++;
 }
 
-void op_Nary(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Nary(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_Nary *en = env;
     hvalue_t args[MAX_ARITY];
 
@@ -1233,13 +1233,13 @@ void op_Nary(const void *env, struct state *state, struct step *step, struct glo
     }
 }
 
-void op_Pop(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Pop(const void *env, struct state *state, struct step *step, struct global *global){
     assert(step->ctx->sp > 0);
     step->ctx->sp--;
     step->ctx->pc++;
 }
 
-void op_Push(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Push(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_Push *ep = env;
 
     if (!check_stack(step->ctx, 1)) {
@@ -1250,7 +1250,7 @@ void op_Push(const void *env, struct state *state, struct step *step, struct glo
     step->ctx->pc++;
 }
 
-void op_ReadonlyDec(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_ReadonlyDec(const void *env, struct state *state, struct step *step, struct global *global){
     struct context *ctx = step->ctx;
 
     assert(ctx->readonly > 0);
@@ -1258,7 +1258,7 @@ void op_ReadonlyDec(const void *env, struct state *state, struct step *step, str
     ctx->pc++;
 }
 
-void op_ReadonlyInc(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_ReadonlyInc(const void *env, struct state *state, struct step *step, struct global *global){
     struct context *ctx = step->ctx;
 
     ctx->readonly++;
@@ -1275,7 +1275,7 @@ void op_ReadonlyInc(const void *env, struct state *state, struct step *step, str
 //  - saved variables
 //  - saved argument for stack trace
 //  - call: process, normal, or interrupt plus return address
-void op_Return(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Return(const void *env, struct state *state, struct step *step, struct global *global){
     hvalue_t result = value_dict_load(step->ctx->vars, result_atom);
     hvalue_t fp = ctx_pop(step->ctx);
     if (VALUE_TYPE(fp) != VALUE_INT) {
@@ -1293,7 +1293,7 @@ void op_Return(const void *env, struct state *state, struct step *step, struct g
     do_return(state, step, global, arg, result);
 }
 
-void op_Builtin(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Builtin(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_Builtin *eb = env;
     hvalue_t pc = ctx_pop(step->ctx);
     if (VALUE_TYPE(pc) != VALUE_PC) {
@@ -1324,7 +1324,7 @@ void op_Builtin(const void *env, struct state *state, struct step *step, struct 
     step->ctx->pc++;
 }
 
-void op_Sequential(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Sequential(const void *env, struct state *state, struct step *step, struct global *global){
     hvalue_t addr = ctx_pop(step->ctx);
     if (VALUE_TYPE(addr) != VALUE_ADDRESS) {
         char *p = value_string(addr);
@@ -1389,7 +1389,7 @@ static int sort(hvalue_t *vals, int n){
     return p - vals;
 }
 
-void op_SetIntLevel(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_SetIntLevel(const void *env, struct state *state, struct step *step, struct global *global){
 	bool oldlevel = step->ctx->interruptlevel;
 	hvalue_t newlevel =  ctx_pop(step->ctx);
     if (VALUE_TYPE(newlevel) != VALUE_BOOL) {
@@ -1405,7 +1405,7 @@ void op_Spawn(
     const void *env,
     struct state *state,
     struct step *step,
-    struct global_t *global
+    struct global *global
 ) {
     const struct env_Spawn *se = env;
 
@@ -1453,7 +1453,7 @@ void op_Spawn(
     step->ctx->pc++;
 }
 
-void op_Split(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Split(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_Split *es = env;
 
     hvalue_t v = ctx_pop(step->ctx);
@@ -1485,7 +1485,7 @@ void op_Split(const void *env, struct state *state, struct step *step, struct gl
     step->ctx->pc++;
 }
 
-void op_Save(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Save(const void *env, struct state *state, struct step *step, struct global *global){
     assert(VALUE_TYPE(state->vars) == VALUE_DICT);
     hvalue_t e = ctx_pop(step->ctx);
 
@@ -1505,7 +1505,7 @@ void op_Save(const void *env, struct state *state, struct step *step, struct glo
     ctx_push(step->ctx, result);
 }
 
-void op_Stop(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Stop(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_Stop *es = env;
 
     assert(VALUE_TYPE(state->vars) == VALUE_DICT);
@@ -1552,7 +1552,7 @@ void op_Stop(const void *env, struct state *state, struct step *step, struct glo
     }
 }
 
-void op_Store(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Store(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_Store *es = env;
 
     assert(VALUE_TYPE(state->vars) == VALUE_DICT);
@@ -1629,7 +1629,7 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
     step->ctx->pc++;
 }
 
-void op_StoreVar(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_StoreVar(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_StoreVar *es = env;
     hvalue_t v = ctx_pop(step->ctx);
 
@@ -1687,7 +1687,7 @@ void op_StoreVar(const void *env, struct state *state, struct step *step, struct
     }
 }
 
-void op_Trap(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Trap(const void *env, struct state *state, struct step *step, struct global *global){
     hvalue_t trap_pc = ctx_pop(step->ctx);
     if (VALUE_TYPE(trap_pc) != VALUE_PC) {
         value_ctx_failure(step->ctx, &step->engine, "trap: not a method");
@@ -3251,7 +3251,7 @@ struct op_info *ops_get(char *opname, int size){
     return dict_lookup(ops_map, opname, size);
 }
 
-void ops_init(struct global_t *global, struct engine *engine) {
+void ops_init(struct global *global, struct engine *engine) {
     ops_map = dict_new("ops", sizeof(struct op_info *), 0, 0, NULL, NULL);
     f_map = dict_new("functions", sizeof(struct f_info *), 0, 0, NULL, NULL);
 	underscore = value_put_atom(engine, "_", 1);
