@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'v2.4.ui'
+# Form implementation generated from reading ui file 'v2.6.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.4
 #
@@ -22,64 +22,51 @@ import subprocess
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.setFixedSize(800, 700)
+        MainWindow.resize(800, 600)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
-        self.sourceCode = CodeEditor(self.centralwidget)
-        self.sourceCode.setGeometry(QtCore.QRect(20, 40, 461, 451))
-        self.sourceCode.setMinimumSize(QtCore.QSize(0, 0))
-        font = QtGui.QFont()
-        font.setFamily("Monaco")
-        self.sourceCode.setFont(font)
-        self.sourceCode.setAutoFillBackground(False)
-        self.sourceCode.setReadOnly(True)
-        self.sourceCode.setTextInteractionFlags(QtCore.Qt.NoTextInteraction)
-        self.sourceCode.setObjectName("sourceCode")
-        self.byteCode = CodeEditor(self.centralwidget)
-        self.byteCode.setGeometry(QtCore.QRect(520, 40, 231, 461))
+        self.verticalLayout_7 = QtWidgets.QVBoxLayout(self.centralwidget)
+        self.verticalLayout_7.setObjectName("verticalLayout_7")
+        self.verticalLayout_3 = QtWidgets.QVBoxLayout()
+        self.verticalLayout_3.setObjectName("verticalLayout_3")
+        self.horizontalLayout_5 = QtWidgets.QHBoxLayout()
+        self.horizontalLayout_5.setObjectName("horizontalLayout_5")
+        self.filePathText = QtWidgets.QLineEdit(self.centralwidget)
+        self.filePathText.setReadOnly(True)
+        self.filePathText.setObjectName("filePathText")
+        self.horizontalLayout_5.addWidget(self.filePathText)
+        self.browse = QtWidgets.QPushButton(self.centralwidget)
+        self.browse.setObjectName("browse")
+        self.horizontalLayout_5.addWidget(self.browse)
+        self.verticalLayout_3.addLayout(self.horizontalLayout_5)
+        self.horizontalLayout_3 = QtWidgets.QHBoxLayout()
+        self.horizontalLayout_3.setObjectName("horizontalLayout_3")
+        self.verticalLayout_2 = QtWidgets.QVBoxLayout()
+        self.verticalLayout_2.setSizeConstraint(QtWidgets.QLayout.SetDefaultConstraint)
+        self.verticalLayout_2.setObjectName("verticalLayout_2")
+        self.horizontalLayout = QtWidgets.QHBoxLayout()
+        self.horizontalLayout.setObjectName("horizontalLayout")
+        self.byteCode = QtWidgets.QPlainTextEdit(self.centralwidget)
         font = QtGui.QFont()
         font.setFamily("Monaco")
         font.setPointSize(12)
         self.byteCode.setFont(font)
-        self.byteCode.setReadOnly(True)
         self.byteCode.setTextInteractionFlags(QtCore.Qt.NoTextInteraction)
         self.byteCode.setObjectName("byteCode")
-        self.filePathText = QtWidgets.QLineEdit(self.centralwidget)
-        self.filePathText.setGeometry(QtCore.QRect(20, 10, 461, 21))
-        self.filePathText.setMinimumSize(QtCore.QSize(300, 0))
-        self.filePathText.setObjectName("filePathText")
-        self.horizontalSlider = QtWidgets.QSlider(self.centralwidget)
-        self.horizontalSlider.setGeometry(QtCore.QRect(53, 530, 700, 22))
-        self.horizontalSlider.setMaximum(5000)
-        self.horizontalSlider.setOrientation(QtCore.Qt.Horizontal)
-        self.horizontalSlider.setTickPosition(QtWidgets.QSlider.NoTicks)
-        self.horizontalSlider.setObjectName("horizontalSlider")
-        self.browse = QtWidgets.QPushButton(self.centralwidget)
-        self.browse.setGeometry(QtCore.QRect(490, 10, 70, 32))
-        self.browse.setMaximumSize(QtCore.QSize(70, 16777215))
-        self.browse.setObjectName("browse")
-        self.prevIns = QtWidgets.QPushButton(self.centralwidget)
-        self.prevIns.setGeometry(QtCore.QRect(520, 500, 72, 32))
-        self.prevIns.setObjectName("prevIns")
-        self.nextIns = QtWidgets.QPushButton(self.centralwidget)
-        self.nextIns.setGeometry(QtCore.QRect(680, 500, 70, 32))
-        self.nextIns.setObjectName("nextIns")
-        self.microstepsLabel = QtWidgets.QLabel(self.centralwidget)
-        self.microstepsLabel.setGeometry(QtCore.QRect(580, 10, 171, 20))
-        self.microstepsLabel.setLayoutDirection(QtCore.Qt.LeftToRight)
-        self.microstepsLabel.setText("")
-        self.microstepsLabel.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
-        self.microstepsLabel.setObjectName("microstepsLabel")
-        self.threadBrowser = QtWidgets.QTextEdit(self.centralwidget)
-        self.threadBrowser.setGeometry(QtCore.QRect(20, 550, 741, 101))
+        self.horizontalLayout.addWidget(self.byteCode)
+        self.sourceCode = CodeEditor(self.centralwidget)
         font = QtGui.QFont()
         font.setFamily("Monaco")
-        self.threadBrowser.setFont(font)
-        self.threadBrowser.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
-        self.threadBrowser.setReadOnly(True)
-        self.threadBrowser.setObjectName("threadBrowser")
+        self.sourceCode.setFont(font)
+        self.sourceCode.setTextInteractionFlags(QtCore.Qt.NoTextInteraction)
+        self.sourceCode.setObjectName("sourceCode")
+        self.horizontalLayout.addWidget(self.sourceCode)
+        self.horizontalLayout.setStretch(0, 1)
+        self.horizontalLayout.setStretch(1, 2)
+        self.verticalLayout_2.addLayout(self.horizontalLayout)
         self.microstepExplain = QtWidgets.QPlainTextEdit(self.centralwidget)
-        self.microstepExplain.setGeometry(QtCore.QRect(20, 490, 461, 41))
+        self.microstepExplain.setMinimumSize(QtCore.QSize(0, 0))
+        self.microstepExplain.setMaximumSize(QtCore.QSize(16777215, 60))
         font = QtGui.QFont()
         font.setFamily("Monaco")
         font.setPointSize(12)
@@ -87,6 +74,103 @@ class Ui_MainWindow(object):
         self.microstepExplain.setReadOnly(True)
         self.microstepExplain.setPlainText("")
         self.microstepExplain.setObjectName("microstepExplain")
+        self.verticalLayout_2.addWidget(self.microstepExplain)
+        self.verticalLayout_2.setStretch(0, 10)
+        self.verticalLayout_2.setStretch(1, 1)
+        self.horizontalLayout_3.addLayout(self.verticalLayout_2)
+        self.verticalLayout = QtWidgets.QVBoxLayout()
+        self.verticalLayout.setObjectName("verticalLayout")
+        self.microstepsLabel = QtWidgets.QLabel(self.centralwidget)
+        self.microstepsLabel.setText("")
+        self.microstepsLabel.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
+        self.microstepsLabel.setObjectName("microstepsLabel")
+        self.verticalLayout.addWidget(self.microstepsLabel)
+        self.sharedVariables = QtWidgets.QTreeWidget(self.centralwidget)
+        font = QtGui.QFont()
+        font.setFamily("Monaco")
+        self.sharedVariables.setFont(font)
+        self.sharedVariables.setObjectName("sharedVariables")
+        self.verticalLayout.addWidget(self.sharedVariables)
+        self.localVariables = QtWidgets.QTreeWidget(self.centralwidget)
+        font = QtGui.QFont()
+        font.setFamily("Monaco")
+        self.localVariables.setFont(font)
+        self.localVariables.setObjectName("localVariables")
+        self.verticalLayout.addWidget(self.localVariables)
+        self.stackTop = QtWidgets.QTreeWidget(self.centralwidget)
+        font = QtGui.QFont()
+        font.setFamily("Monaco")
+        self.stackTop.setFont(font)
+        self.stackTop.setObjectName("stackTop")
+        self.verticalLayout.addWidget(self.stackTop)
+        self.horizontalLayout_7 = QtWidgets.QHBoxLayout()
+        self.horizontalLayout_7.setObjectName("horizontalLayout_7")
+        spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.horizontalLayout_7.addItem(spacerItem)
+        self.prevIns = QtWidgets.QPushButton(self.centralwidget)
+        self.prevIns.setObjectName("prevIns")
+        self.horizontalLayout_7.addWidget(self.prevIns)
+        self.nextIns = QtWidgets.QPushButton(self.centralwidget)
+        self.nextIns.setObjectName("nextIns")
+        self.horizontalLayout_7.addWidget(self.nextIns)
+        self.verticalLayout.addLayout(self.horizontalLayout_7)
+        self.horizontalLayout_3.addLayout(self.verticalLayout)
+        self.horizontalLayout_3.setStretch(0, 5)
+        self.horizontalLayout_3.setStretch(1, 2)
+        self.verticalLayout_3.addLayout(self.horizontalLayout_3)
+        self.gridLayout_2 = QtWidgets.QGridLayout()
+        self.gridLayout_2.setObjectName("gridLayout_2")
+        self.horizontalLayout_6 = QtWidgets.QHBoxLayout()
+        self.horizontalLayout_6.setObjectName("horizontalLayout_6")
+        self.threadOffsetLabel = QtWidgets.QLabel(self.centralwidget)
+        font = QtGui.QFont()
+        font.setFamily("Monaco")
+        font.setPointSize(12)
+        self.threadOffsetLabel.setFont(font)
+        self.threadOffsetLabel.setObjectName("threadOffsetLabel")
+        self.horizontalLayout_6.addWidget(self.threadOffsetLabel)
+        self.horizontalSlider = QtWidgets.QSlider(self.centralwidget)
+        self.horizontalSlider.setMinimumSize(QtCore.QSize(605, 0))
+        self.horizontalSlider.setMaximumSize(QtCore.QSize(605, 16777215))
+        self.horizontalSlider.setOrientation(QtCore.Qt.Horizontal)
+        self.horizontalSlider.setObjectName("horizontalSlider")
+        self.horizontalLayout_6.addWidget(self.horizontalSlider)
+        spacerItem1 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.horizontalLayout_6.addItem(spacerItem1)
+        self.gridLayout_2.addLayout(self.horizontalLayout_6, 0, 0, 1, 1)
+        self.stackTraceLabel = QtWidgets.QLabel(self.centralwidget)
+        font = QtGui.QFont()
+        font.setFamily("Monaco")
+        font.setPointSize(12)
+        self.stackTraceLabel.setFont(font)
+        self.stackTraceLabel.setAlignment(QtCore.Qt.AlignBottom|QtCore.Qt.AlignHCenter)
+        self.stackTraceLabel.setObjectName("stackTraceLabel")
+        self.gridLayout_2.addWidget(self.stackTraceLabel, 0, 1, 1, 1)
+        self.stackTrace = QtWidgets.QPlainTextEdit(self.centralwidget)
+        font = QtGui.QFont()
+        font.setFamily("Monaco")
+        self.stackTrace.setFont(font)
+        self.stackTrace.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.stackTrace.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        self.stackTrace.setLineWrapMode(QtWidgets.QPlainTextEdit.NoWrap)
+        self.stackTrace.setPlainText("")
+        self.stackTrace.setTextInteractionFlags(QtCore.Qt.NoTextInteraction)
+        self.stackTrace.setObjectName("stackTrace")
+        self.gridLayout_2.addWidget(self.stackTrace, 1, 1, 1, 1)
+        self.threadBrowser = QtWidgets.QTextEdit(self.centralwidget)
+        self.threadBrowser.setMinimumSize(QtCore.QSize(650, 0))
+        self.threadBrowser.setMaximumSize(QtCore.QSize(650, 16777215))
+        font = QtGui.QFont()
+        font.setFamily("Monaco")
+        self.threadBrowser.setFont(font)
+        self.threadBrowser.setObjectName("threadBrowser")
+        self.threadBrowser.setTextInteractionFlags(QtCore.Qt.NoTextInteraction)
+        self.gridLayout_2.addWidget(self.threadBrowser, 1, 0, 1, 1)
+        self.gridLayout_2.setColumnStretch(0, 1)
+        self.gridLayout_2.setColumnStretch(1, 10)
+        self.verticalLayout_3.addLayout(self.gridLayout_2)
+        self.verticalLayout_3.setStretch(1, 10)
+        self.verticalLayout_7.addLayout(self.verticalLayout_3)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 800, 22))
@@ -95,6 +179,7 @@ class Ui_MainWindow(object):
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
         self.statusbar.setObjectName("statusbar")
         MainWindow.setStatusBar(self.statusbar)
+
 
         self.browse.clicked.connect(self.browseFiles)
         self.nextIns.clicked.connect(self.nextMicrostep)
@@ -117,6 +202,7 @@ class Ui_MainWindow(object):
         self.threadNumber = -1
         self.threadColor = []
 
+
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
@@ -124,10 +210,15 @@ class Ui_MainWindow(object):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
         self.browse.setText(_translate("MainWindow", "Browse"))
-        self.prevIns.setText(_translate("MainWindow", " < Prev"))
+        self.sharedVariables.headerItem().setText(0, _translate("MainWindow", "Shared Variables"))
+        self.localVariables.headerItem().setText(0, _translate("MainWindow", "Local Variables"))
+        self.stackTop.headerItem().setText(0, _translate("MainWindow", "Stack Top"))
+        self.prevIns.setText(_translate("MainWindow", "< Prev"))
         self.prevIns.setShortcut(_translate("MainWindow", "Left"))
         self.nextIns.setText(_translate("MainWindow", "Next >"))
         self.nextIns.setShortcut(_translate("MainWindow", "Right"))
+        self.threadOffsetLabel.setText(_translate("MainWindow", "    "))
+        self.stackTraceLabel.setText(_translate("MainWindow", "Stack Trace"))
 
 
     def openFile(self, editor, file):
@@ -149,7 +240,7 @@ class Ui_MainWindow(object):
             return
         
         # try compile hvm file
-        runcmd = subprocess.run(["./harmony", fname], capture_output=True)
+        runcmd = subprocess.run(["./harmony", "--noweb", fname], capture_output=True)
         returncode = runcmd.returncode
         stdout =  runcmd.stdout.decode()
         stderr =  runcmd.stderr.decode()
@@ -182,13 +273,17 @@ class Ui_MainWindow(object):
         self.hvm = hvmData
         # initialize self.microSteps to be a list of microsteps
         self.constructMicrosteps()
-        # initialize bytecode display
+        # initialize bytecode display, <adding pc value before each line>
         text = ""
-        for i in range(len(self.microSteps) - 1):
-            microstepLine = self.hco["code"][int(self.microSteps[i]["pc"])]
+        pcMAX = len(self.hco["code"]) - 1
+        offsetDigit = len(str(pcMAX))
+        for i in range(len(self.microSteps)):
+            pc = int(self.microSteps[i]["pc"])
+            spaceOffset = ""
+            for j in range(offsetDigit - len(str(pc))):
+                spaceOffset = spaceOffset + " "
+            microstepLine = spaceOffset + str(pc) + " " + self.hco["code"][int(self.microSteps[i]["pc"])]
             text += (microstepLine + "\n")
-        microstepLine = self.hco["code"][int(self.microSteps[len(self.microSteps) - 1]["pc"])]
-        text += microstepLine
         self.byteCode.setPlainText(text)
         # initialize microstep pointer to 0
         self.microStepPointer = 0
@@ -255,12 +350,14 @@ class Ui_MainWindow(object):
             self.openFile(self.sourceCode, self.hco["locations"][str(pc)]["file"])
             self.highlightByCoordinate(self.sourceCode, self.sourceCodeCursor, sourceCodeR1, sourceCodeR2, sourceCodeC1, sourceCodeC2)
         # hightlight machine code
+        pcMAX = len(self.hco["code"]) - 1
+        offsetDigit = len(str(pcMAX))
         byteCodeR1 = self.microStepPointer + 1
         byteCodeR2 = self.microStepPointer + 1
-        byteCodeC1 = 1
-        byteCodeC2 = 1 + len(self.hco["code"][pc])
+        byteCodeC1 = 1 + (offsetDigit) + 1
+        byteCodeC2 = 1 + len(self.hco["code"][pc]) + (offsetDigit) + 1 # account for pc value at start
         self.highlightByCoordinate(self.byteCode, self.byteCodeCursor, byteCodeR1, byteCodeR2, byteCodeC1, byteCodeC2)
-        # if current microstep is an unconditional jump, then update an arrow
+        # if current microstep is an unconditional jump, then update an arrow (do a red highlight)
         microstep = self.hco['code'][pc]
         npc = int(self.microSteps[self.microStepPointer]["npc"])
         nrow = int(self.hco["locations"][str(npc)]["line"])
@@ -400,7 +497,7 @@ class Ui_MainWindow(object):
         cursor.setCharFormat(fmt)
 
     def createThreadImg(self):
-        h, w = 8, 694
+        h, w = 8, 600
         imgList = []
         for i in range(self.threadNumber):
             imgData = 245 * np.ones((h, w, 3), dtype=np.uint8) # initialize all images to be inactive color (grey)
@@ -467,6 +564,7 @@ class Ui_MainWindow(object):
         # cursor.setPosition(4)
         # cursor.insertImage(f"{self.sourceFile[:-4]}_threadBrowserImg/my.png")
         
+
 
 if __name__ == "__main__":
     import sys
