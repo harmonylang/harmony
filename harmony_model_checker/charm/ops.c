@@ -991,7 +991,7 @@ void op_Frame(const void *env, struct state *state, struct step *step, struct gl
         cs->arg = arg;
         cs->sp = step->ctx->sp;
         cs->vars = oldvars;
-        cs->return_address = VALUE_FROM_INT(ret) >> CALLTYPE_BITS;
+        cs->return_address = VALUE_FROM_INT(ret);
         step->callstack = cs;
     }
 

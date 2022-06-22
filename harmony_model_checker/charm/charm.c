@@ -787,20 +787,20 @@ char *ctx_status(struct node *node, hvalue_t ctx) {
     return "runnable";
 }
 
-static void print_rectrace(struct global *global, FILE *file, struct callstack *cs){
+static void print_rectrace(struct global *global, FILE *file, struct callstack *cs, unsigned int pc, hvalue_t vars){
     if (cs == NULL) {
         fprintf(file, "NO CALL STACK\n");
         return;
     }
     if (cs->parent != NULL) {
-        print_rectrace(global, file, cs->parent);
+        print_rectrace(global, file, cs->parent, cs->return_address >> CALLTYPE_BITS, cs->vars);
         fprintf(file, ",\n");
     }
     const struct env_Frame *ef = global->code.instrs[cs->pc].env;
     char *method = value_string(ef->name);
     char *arg = json_escape_value(cs->arg);
     fprintf(file, "            {\n");
-    fprintf(file, "              \"pc\": %u,\n", cs->return_address >> CALLTYPE_BITS);
+    fprintf(file, "              \"pc\": %u,\n", pc);
     fprintf(file, "              \"xpc\": %u,\n", cs->pc);
     if (*arg == '(') {
         fprintf(file, "              \"method\": \"%.*s%s\",\n", (int) strlen(method) - 2, method + 1, arg);
@@ -808,8 +808,22 @@ static void print_rectrace(struct global *global, FILE *file, struct callstack *
     else {
         fprintf(file, "              \"method\": \"%.*s(%s)\",\n", (int) strlen(method) - 2, method + 1, arg);
     }
+    switch (cs->return_address & CALLTYPE_MASK) {
+    case CALLTYPE_PROCESS:
+        fprintf(file, "              \"calltype\": \"process\",\n");
+        break;
+    case CALLTYPE_NORMAL:
+        fprintf(file, "              \"calltype\": \"normal\",\n");
+        break;
+    case CALLTYPE_INTERRUPT:
+        fprintf(file, "              \"calltype\": \"interrupt\",\n");
+        break;
+    default:
+        printf(">>> %x\n", cs->return_address);
+        panic("print_rectrace: bad call type");
+    }
     fprintf(file, "              \"vars\": ");
-    print_vars(file, cs->vars);
+    print_vars(file, vars);
     fprintf(file, ",\n");
     fprintf(file, "              \"sp\": %u\n", cs->sp);
     fprintf(file, "            }");
@@ -817,13 +831,13 @@ static void print_rectrace(struct global *global, FILE *file, struct callstack *
     free(method);
 }
 
-static void print_alttrace(struct global *global, FILE *file, hvalue_t ctx){
+static void print_alttrace(struct global *global, FILE *file, hvalue_t ctx, struct context *c){
     struct callstack *cs = dict_lookup(global->tracemap, &ctx, sizeof(ctx));
     if (cs == NULL) {
         fprintf(file, "NO TRACE\n");
     }
     else {
-        print_rectrace(global, file, cs);
+        print_rectrace(global, file, cs, c->pc, c->vars);
     }
 }
 
@@ -885,7 +899,7 @@ void print_context(
     fprintf(file, "          ],\n");
 
     fprintf(file, "          \"alttrace\": [\n");
-    print_alttrace(global, file, ctx);
+    print_alttrace(global, file, ctx, c);
     fprintf(file, "\n");
     fprintf(file, "          ],\n");
 
@@ -1097,7 +1111,7 @@ void diff_state(
         fprintf(file, "          ],\n");
 
         fprintf(file, "          \"alttrace\": [\n");
-        print_rectrace(global, file, newcs);
+        print_rectrace(global, file, newcs, newctx->pc, newctx->vars);
         fprintf(file, "\n");
         fprintf(file, "          ],\n");
     }
