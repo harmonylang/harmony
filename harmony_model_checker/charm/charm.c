@@ -788,6 +788,10 @@ char *ctx_status(struct node *node, hvalue_t ctx) {
 }
 
 static void print_rectrace(struct global *global, FILE *file, struct callstack *cs){
+    if (cs == NULL) {
+        fprintf(file, "NO CALL STACK\n");
+        return;
+    }
     if (cs->parent != NULL) {
         print_rectrace(global, file, cs->parent);
         fprintf(file, ",\n");
@@ -799,14 +803,14 @@ static void print_rectrace(struct global *global, FILE *file, struct callstack *
     fprintf(file, "              \"pc\": %u,\n", cs->return_address >> CALLTYPE_BITS);
     fprintf(file, "              \"xpc\": %u,\n", cs->pc);
     if (*arg == '(') {
-        fprintf(file, "              \"method\": %.*s%s\",\n", (int) strlen(method) - 2, method + 1, arg);
+        fprintf(file, "              \"method\": \"%.*s%s\",\n", (int) strlen(method) - 2, method + 1, arg);
     }
     else {
         fprintf(file, "              \"method\": \"%.*s(%s)\",\n", (int) strlen(method) - 2, method + 1, arg);
     }
     fprintf(file, "              \"vars\": ");
     print_vars(file, cs->vars);
-    fprintf(file, "\n");
+    fprintf(file, ",\n");
     fprintf(file, "              \"sp\": %u\n", cs->sp);
     fprintf(file, "            }");
     free(arg);

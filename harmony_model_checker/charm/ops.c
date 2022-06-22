@@ -442,17 +442,6 @@ void op_Apply(const void *env, struct state *state, struct step *step, struct gl
         }
         return;
     case VALUE_PC:
-        // see if we need to keep track of the call stack
-        if (step->keep_callstack) {
-            struct callstack *cs = new_alloc(struct callstack);
-            cs->parent = step->callstack;
-            cs->pc = VALUE_FROM_PC(method);
-            cs->arg = e;
-            cs->sp = step->ctx->sp;
-            cs->vars = step->ctx->vars;
-            cs->return_address = step->ctx->pc + 1;
-            step->callstack = cs;
-        }
         ctx_push(step->ctx, VALUE_TO_INT(((step->ctx->pc + 1) << CALLTYPE_BITS) | CALLTYPE_NORMAL));
         ctx_push(step->ctx, e);
         assert(VALUE_FROM_PC(method) != step->ctx->pc);
@@ -983,19 +972,34 @@ void op_Dup(const void *env, struct state *state, struct step *step, struct glob
 
 void op_Frame(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_Frame *ef = env;
+    hvalue_t oldvars = step->ctx->vars;
 
     if (!check_stack(step->ctx, 2)) {
         value_ctx_failure(step->ctx, &step->engine, "Frame: out of stack (recursion too deep?)");
         return;
     }
 
-    // peek at argument
+    // peek at argument and return address
     hvalue_t arg = ctx_pop(step->ctx);
+    hvalue_t ret = ctx_pop(step->ctx);
+
+    // see if we need to keep track of the call stack
+    if (step->keep_callstack) {
+        struct callstack *cs = new_alloc(struct callstack);
+        cs->parent = step->callstack;
+        cs->pc = step->ctx->pc;
+        cs->arg = arg;
+        cs->sp = step->ctx->sp;
+        cs->vars = oldvars;
+        cs->return_address = VALUE_FROM_INT(ret) >> CALLTYPE_BITS;
+        step->callstack = cs;
+    }
+
+    ctx_push(step->ctx, ret);
     ctx_push(step->ctx, arg);
 
-    hvalue_t oldvars = step->ctx->vars;
-
     // Set result to None
+    // TODO: precompute
     step->ctx->vars = value_dict_store(&step->engine, VALUE_DICT, result_atom, VALUE_ADDRESS);
 
     // try to match against parameters
