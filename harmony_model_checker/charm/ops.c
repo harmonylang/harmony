@@ -982,19 +982,6 @@ void op_Frame(const void *env, struct state *state, struct step *step, struct gl
     // peek at argument and return address
     hvalue_t arg = ctx_pop(step->ctx);
     hvalue_t ret = ctx_pop(step->ctx);
-
-    // see if we need to keep track of the call stack
-    if (step->keep_callstack) {
-        struct callstack *cs = new_alloc(struct callstack);
-        cs->parent = step->callstack;
-        cs->pc = step->ctx->pc;
-        cs->arg = arg;
-        cs->sp = step->ctx->sp;
-        cs->vars = oldvars;
-        cs->return_address = VALUE_FROM_INT(ret);
-        step->callstack = cs;
-    }
-
     ctx_push(step->ctx, ret);
     ctx_push(step->ctx, arg);
 
@@ -1009,10 +996,27 @@ void op_Frame(const void *env, struct state *state, struct step *step, struct gl
     }
  
     ctx_push(step->ctx, oldvars);
+
+#ifdef OBSOLETE
     ctx_push(step->ctx, VALUE_TO_INT(step->ctx->fp));
+#endif
+
+    // see if we need to keep track of the call stack
+    if (step->keep_callstack) {
+        struct callstack *cs = new_alloc(struct callstack);
+        cs->parent = step->callstack;
+        cs->pc = step->ctx->pc;
+        cs->arg = arg;
+        cs->sp = step->ctx->sp;
+        cs->vars = oldvars;
+        cs->return_address = VALUE_FROM_INT(ret);
+        step->callstack = cs;
+    }
 
     struct context *ctx = step->ctx;
+#ifdef OBSOLETE
     ctx->fp = ctx->sp;
+#endif
     ctx->pc += 1;
 }
 
@@ -1292,6 +1296,8 @@ void op_ReadonlyInc(const void *env, struct state *state, struct step *step, str
 //  - call: process, normal, or interrupt plus return address
 void op_Return(const void *env, struct state *state, struct step *step, struct global *global){
     hvalue_t result = value_dict_load(step->ctx->vars, result_atom);
+
+#ifdef OBSOLETE
     hvalue_t fp = ctx_pop(step->ctx);
     if (VALUE_TYPE(fp) != VALUE_INT) {
         printf("XXX %d %d %s\n", step->ctx->pc, step->ctx->sp, value_string(fp));
@@ -1301,6 +1307,8 @@ void op_Return(const void *env, struct state *state, struct step *step, struct g
     }
     assert(VALUE_TYPE(fp) == VALUE_INT);
     step->ctx->fp = VALUE_FROM_INT(fp);
+#endif // OBSOLETE
+
     hvalue_t oldvars = ctx_pop(step->ctx);
     assert(VALUE_TYPE(oldvars) == VALUE_DICT);
     step->ctx->vars = oldvars;
@@ -1453,7 +1461,10 @@ void op_Spawn(
         value_ctx_extend(ctx);
         ctx->ctx_this = thisval;
     }
-    ctx->entry = ctx->pc = pc;
+#ifdef OBSOLETE
+    ctx->entry =
+#endif
+    ctx->pc = pc;
     ctx->vars = VALUE_DICT;
     ctx->interruptlevel = false;
     ctx->eternal = se->eternal;

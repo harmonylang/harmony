@@ -657,6 +657,7 @@ char *json_escape_value(hvalue_t v){
     return r;
 }
 
+#ifdef OBSOLETE
 static bool print_trace(
     struct global *global,
     FILE *file,
@@ -767,6 +768,7 @@ static bool print_trace(
     }
     return false;
 }
+#endif // OBSOLETE
 
 char *ctx_status(struct node *node, hvalue_t ctx) {
     if (node->state->choosing == ctx) {
@@ -800,8 +802,8 @@ static void print_rectrace(struct global *global, FILE *file, struct callstack *
     char *method = value_string(ef->name);
     char *arg = json_escape_value(cs->arg);
     fprintf(file, "            {\n");
-    fprintf(file, "              \"pc\": %u,\n", pc);
-    fprintf(file, "              \"xpc\": %u,\n", cs->pc);
+    fprintf(file, "              \"pc\": \"%u\",\n", pc);
+    fprintf(file, "              \"xpc\": \"%u\",\n", cs->pc);
     if (*arg == '(') {
         fprintf(file, "              \"method\": \"%.*s%s\",\n", (int) strlen(method) - 2, method + 1, arg);
     }
@@ -829,16 +831,6 @@ static void print_rectrace(struct global *global, FILE *file, struct callstack *
     fprintf(file, "            }");
     free(arg);
     free(method);
-}
-
-static void print_alttrace(struct global *global, FILE *file, hvalue_t ctx, struct context *c){
-    struct callstack *cs = dict_lookup(global->tracemap, &ctx, sizeof(ctx));
-    if (cs == NULL) {
-        fprintf(file, "NO TRACE\n");
-    }
-    else {
-        print_rectrace(global, file, cs, c->pc, c->vars);
-    }
 }
 
 void print_context(
@@ -879,10 +871,15 @@ void print_context(
     free(s);
     free(a);
 
+    struct callstack *cs = dict_lookup(global->tracemap, &ctx, sizeof(ctx));
+    if (cs == NULL) {
+        fprintf(file, "NO TRACE\n");
+    }
+
     fprintf(file, "          \"entry\": \"%u\",\n", c->entry);
 
     fprintf(file, "          \"pc\": \"%d\",\n", c->pc);
-    fprintf(file, "          \"fp\": \"%d\",\n", c->fp);
+    fprintf(file, "          \"fp\": \"%d\",\n", cs->sp);
 
 #ifdef notdef
     {
@@ -893,13 +890,15 @@ void print_context(
     }
 #endif
 
+#ifdef OBSOLETE
     fprintf(file, "          \"trace\": [\n");
     print_trace(global, file, c, c->pc, c->fp, c->vars);
     fprintf(file, "\n");
     fprintf(file, "          ],\n");
+#endif
 
-    fprintf(file, "          \"alttrace\": [\n");
-    print_alttrace(global, file, ctx, c);
+    fprintf(file, "          \"trace\": [\n");
+    print_rectrace(global, file, cs, c->pc, c->vars);
     fprintf(file, "\n");
     fprintf(file, "          ],\n");
 
@@ -1095,8 +1094,8 @@ void diff_state(
         fprintf(file, "          \"print\": %s,\n", print);
     }
     fprintf(file, "          \"npc\": \"%d\",\n", newctx->pc);
-    if (newctx->fp != oldctx->fp) {
-        fprintf(file, "          \"fp\": \"%d\",\n", newctx->fp);
+    if (newcs != oldcs) {
+        fprintf(file, "          \"fp\": \"%d\",\n", newcs->sp);
 #ifdef notdef
         {
             fprintf(stderr, "STACK2 %d:\n", newctx->fp);
@@ -1105,12 +1104,15 @@ void diff_state(
             }
         }
 #endif
+
+#ifdef OBSOLETE
         fprintf(file, "          \"trace\": [\n");
         print_trace(global, file, newctx, newctx->pc, newctx->fp, newctx->vars);
         fprintf(file, "\n");
         fprintf(file, "          ],\n");
+#endif
 
-        fprintf(file, "          \"alttrace\": [\n");
+        fprintf(file, "          \"trace\": [\n");
         print_rectrace(global, file, newcs, newctx->pc, newctx->vars);
         fprintf(file, "\n");
         fprintf(file, "          ],\n");

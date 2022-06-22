@@ -574,7 +574,9 @@ static void value_string_context(struct strbuf *sb, hvalue_t v) {
     }
 
     strbuf_printf(sb, ",pc=%d", ctx->pc);
+#ifdef OBSOLETE
     strbuf_printf(sb, ",fp=%d", ctx->fp);
+#endif
     strbuf_printf(sb, ",readonly=%d", ctx->readonly);
     strbuf_printf(sb, ",atomic=%d", ctx->atomic);
     strbuf_printf(sb, ",aflag=%d", ctx->atomicFlag);

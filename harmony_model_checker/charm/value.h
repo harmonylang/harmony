@@ -36,9 +36,13 @@ typedef struct context {   // context value
     uint8_t readonly;         // readonly counter
     uint8_t atomic;           // atomic counter
     uint16_t pc;              // program counter
-    uint16_t fp;              // frame pointer      TODO: get rid of this
     uint16_t sp;              // stack size
+
+#ifdef OBSOLETE
+    uint16_t fp;              // frame pointer      TODO: get rid of this
+#endif
     uint16_t entry;           // pc of method
+
     hvalue_t thestack[0];     // growing stack
 
 // Context can be extended with the following additional values
