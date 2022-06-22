@@ -35,6 +35,7 @@ struct global {
     unsigned int diameter;       // graph diameter
     bool phase2;                 // when model checking is done and graph analysis starts
     struct scc *scc_todo;        // SCC search
+    struct dict *tracemap;       // maps contexts to callstack
     bool run_direct;             // non-model-checked mode
 };
 

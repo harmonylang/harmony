@@ -442,6 +442,17 @@ void op_Apply(const void *env, struct state *state, struct step *step, struct gl
         }
         return;
     case VALUE_PC:
+        // see if we need to keep track of the call stack
+        if (step->keep_callstack) {
+            struct callstack *cs = new_alloc(struct callstack);
+            cs->parent = step->callstack;
+            cs->pc = VALUE_FROM_PC(method);
+            cs->arg = e;
+            cs->sp = step->ctx->sp;
+            cs->vars = step->ctx->vars;
+            cs->return_address = step->ctx->pc + 1;
+            step->callstack = cs;
+        }
         ctx_push(step->ctx, VALUE_TO_INT(((step->ctx->pc + 1) << CALLTYPE_BITS) | CALLTYPE_NORMAL));
         ctx_push(step->ctx, e);
         assert(VALUE_FROM_PC(method) != step->ctx->pc);
@@ -974,7 +985,7 @@ void op_Frame(const void *env, struct state *state, struct step *step, struct gl
     const struct env_Frame *ef = env;
 
     if (!check_stack(step->ctx, 2)) {
-        value_ctx_failure(step->ctx, &step->engine, "Frame: out of stack");
+        value_ctx_failure(step->ctx, &step->engine, "Frame: out of stack (recursion too deep?)");
         return;
     }
 
@@ -1289,6 +1300,13 @@ void op_Return(const void *env, struct state *state, struct step *step, struct g
     hvalue_t oldvars = ctx_pop(step->ctx);
     assert(VALUE_TYPE(oldvars) == VALUE_DICT);
     step->ctx->vars = oldvars;
+
+    if (step->keep_callstack) {
+        struct callstack *cs = step->callstack;
+        step->callstack = cs->parent;
+        free(cs);
+    }
+
     hvalue_t arg = ctx_pop(step->ctx);   // argument saved for stack trace
     do_return(state, step, global, arg, result);
 }

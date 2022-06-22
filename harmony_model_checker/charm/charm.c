@@ -787,6 +787,42 @@ char *ctx_status(struct node *node, hvalue_t ctx) {
     return "runnable";
 }
 
+static void print_rectrace(struct global *global, FILE *file, struct callstack *cs){
+    if (cs->parent != NULL) {
+        print_rectrace(global, file, cs->parent);
+        fprintf(file, ",\n");
+    }
+    const struct env_Frame *ef = global->code.instrs[cs->pc].env;
+    char *method = value_string(ef->name);
+    char *arg = json_escape_value(cs->arg);
+    fprintf(file, "            {\n");
+    fprintf(file, "              \"pc\": %u,\n", cs->return_address >> CALLTYPE_BITS);
+    fprintf(file, "              \"xpc\": %u,\n", cs->pc);
+    if (*arg == '(') {
+        fprintf(file, "              \"method\": %.*s%s\",\n", (int) strlen(method) - 2, method + 1, arg);
+    }
+    else {
+        fprintf(file, "              \"method\": \"%.*s(%s)\",\n", (int) strlen(method) - 2, method + 1, arg);
+    }
+    fprintf(file, "              \"vars\": ");
+    print_vars(file, cs->vars);
+    fprintf(file, "\n");
+    fprintf(file, "              \"sp\": %u\n", cs->sp);
+    fprintf(file, "            }");
+    free(arg);
+    free(method);
+}
+
+static void print_alttrace(struct global *global, FILE *file, hvalue_t ctx){
+    struct callstack *cs = dict_lookup(global->tracemap, &ctx, sizeof(ctx));
+    if (cs == NULL) {
+        fprintf(file, "NO TRACE\n");
+    }
+    else {
+        print_rectrace(global, file, cs);
+    }
+}
+
 void print_context(
     struct global *global,
     FILE *file,
@@ -796,7 +832,7 @@ void print_context(
 ) {
     fprintf(file, "        {\n");
     fprintf(file, "          \"tid\": \"%d\",\n", tid);
-    fprintf(file, "          \"yhash\": \"%"PRI_HVAL"\",\n", ctx);
+    fprintf(file, "          \"hvalue\": \"%"PRI_HVAL"\",\n", ctx);
 
     unsigned int size;
     struct context *c = value_get(ctx, &size);
@@ -841,6 +877,11 @@ void print_context(
 
     fprintf(file, "          \"trace\": [\n");
     print_trace(global, file, c, c->pc, c->fp, c->vars);
+    fprintf(file, "\n");
+    fprintf(file, "          ],\n");
+
+    fprintf(file, "          \"alttrace\": [\n");
+    print_alttrace(global, file, ctx);
     fprintf(file, "\n");
     fprintf(file, "          ],\n");
 
@@ -1005,6 +1046,8 @@ void diff_state(
     struct state *newstate,
     struct context *oldctx,
     struct context *newctx,
+    struct callstack *oldcs,
+    struct callstack *newcs,
     bool interrupt,
     bool choose,
     hvalue_t choice,
@@ -1046,6 +1089,11 @@ void diff_state(
 #endif
         fprintf(file, "          \"trace\": [\n");
         print_trace(global, file, newctx, newctx->pc, newctx->fp, newctx->vars);
+        fprintf(file, "\n");
+        fprintf(file, "          ],\n");
+
+        fprintf(file, "          \"alttrace\": [\n");
+        print_rectrace(global, file, newcs);
         fprintf(file, "\n");
         fprintf(file, "          ],\n");
     }
@@ -1110,6 +1158,8 @@ void diff_dump(
     struct state *newstate,
     struct context **oldctx,
     struct context *newctx,
+    struct callstack *oldcs,
+    struct callstack *newcs,
     bool interrupt,
     bool choose,
     hvalue_t choice,
@@ -1124,7 +1174,7 @@ void diff_dump(
     }
 
     // Keep track of old state and context for taking diffs
-    diff_state(global, file, oldstate, newstate, *oldctx, newctx, interrupt, choose, choice, print);
+    diff_state(global, file, oldstate, newstate, *oldctx, newctx, oldcs, newcs, interrupt, choose, choice, print);
     *oldstate = *newstate;
     free(*oldctx);
     *oldctx = malloc(newsize);
@@ -1141,6 +1191,7 @@ hvalue_t twostep(
     bool interrupt,
     struct state *oldstate,
     struct context **oldctx,
+    struct callstack *oldcs,
     hvalue_t nextvars,
     unsigned int nsteps
 ){
@@ -1151,6 +1202,7 @@ hvalue_t twostep(
 
     struct step step;
     memset(&step, 0, sizeof(step));
+    step.keep_callstack = true;
     step.engine.values = &global->values;
 
     unsigned int size;
@@ -1168,7 +1220,7 @@ hvalue_t twostep(
         assert(step.ctx->extended);
 		assert(step.ctx->ctx_trap_pc != 0);
         interrupt_invoke(&step);
-        diff_dump(global, file, oldstate, sc, oldctx, step.ctx, true, false, 0, NULL);
+        diff_dump(global, file, oldstate, sc, oldctx, step.ctx, oldcs, step.callstack, true, false, 0, NULL);
     }
 
     struct dict *infloop = NULL;        // infinite loop detector
@@ -1221,7 +1273,7 @@ hvalue_t twostep(
         }
 
         assert(!instrs[pc].choose || choice != 0);
-        diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, instrs[pc].choose, choice, print);
+        diff_dump(global, file, oldstate, sc, oldctx, step.ctx, oldcs, step.callstack, false, instrs[pc].choose, choice, print);
         free(print);
         if (step.ctx->terminated || step.ctx->failed || step.ctx->stopped) {
             break;
@@ -1243,14 +1295,14 @@ hvalue_t twostep(
 #ifdef TODO
             if (0 && step.ctx->readonly > 0) {    // TODO
                 value_ctx_failure(step.ctx, &step.engine, "can't choose in assertion or invariant");
-                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice, NULL);
+                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, oldcs, step.callstack, false, global->code.instrs[pc].choose, choice, NULL);
                 break;
             }
 #endif
             hvalue_t s = ctx_stack(step.ctx)[step.ctx->sp - 1];
             if (VALUE_TYPE(s) != VALUE_SET) {
                 value_ctx_failure(step.ctx, &step.engine, "choose operation requires a set");
-                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice, NULL);
+                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, oldcs, step.callstack, false, global->code.instrs[pc].choose, choice, NULL);
                 break;
             }
             unsigned int size;
@@ -1258,7 +1310,7 @@ hvalue_t twostep(
             size /= sizeof(hvalue_t);
             if (size == 0) {
                 value_ctx_failure(step.ctx, &step.engine, "choose operation requires a non-empty set");
-                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice, NULL);
+                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, oldcs, step.callstack, false, global->code.instrs[pc].choose, choice, NULL);
                 break;
             }
             if (size == 1) {
@@ -1283,15 +1335,16 @@ hvalue_t twostep(
         context_add(sc, after);
     }
 
-    // assert(sc->vars == nextvars);
-    // ctx = value_put_context(&step.engine, step.ctx);
-    // if ((ctx & 0xFFFF00000000) == 0x600000000000) {
-    //     printf("YYYYYYY\n");
-    // }
-
     free(sc);
     free(step.ctx);
     // TODO free(step.log);
+
+    bool new;
+    struct callstack **psc = dict_insert(global->tracemap, NULL,
+                &after, sizeof(after), &new);
+    if (new) {
+        *psc = step.callstack;
+    }
 
     return after;
 }
@@ -1301,7 +1354,8 @@ void path_dump(
     FILE *file,
     struct edge *e,
     struct state *oldstate,
-    struct context **oldctx
+    struct context **oldctx,
+    struct callstack *oldcs
 ) {
     struct node *node = e->dst;
     struct node *parent = e->src;
@@ -1310,7 +1364,7 @@ void path_dump(
         fprintf(file, "\n");
     }
     else {
-        path_dump(global, file, parent->to_parent, oldstate, oldctx);
+        path_dump(global, file, parent->to_parent, oldstate, oldctx, oldcs);
         fprintf(file, ",\n");
     }
 
@@ -1341,7 +1395,7 @@ void path_dump(
     char *arg = json_escape_value(ctx_stack(context)[1]);
     char *c = e->choice == 0 ? NULL : value_json(e->choice);
     fprintf(file, "      \"tid\": \"%d\",\n", pid);
-    fprintf(file, "      \"xhash\": \"%"PRI_HVAL"\",\n", ctx);
+    fprintf(file, "      \"ctx\": \"%"PRI_HVAL"\",\n", ctx);
     if (*arg == '(') {
         fprintf(file, "      \"name\": \"%.*s%s\",\n", len - 2, name + 1, arg);
     }
@@ -1369,6 +1423,7 @@ void path_dump(
         e->interrupt,
         oldstate,
         oldctx,
+        oldcs,
         node->state->vars,
         e->nsteps
     );
@@ -2011,6 +2066,7 @@ int main(int argc, char **argv){
     global->failures = minheap_create(fail_cmp);
     global->seqs = VALUE_SET;
     global->invariants = VALUE_SET;
+    global->tracemap = dict_new("tracemap", sizeof(struct callstack *), 0, 0, NULL, NULL);
 
     // First read and parse the DFA if any
     if (dfafile != NULL) {
@@ -2549,7 +2605,7 @@ int main(int argc, char **argv){
         struct state *oldstate = new_alloc(struct state);
         struct context *oldctx = new_alloc(struct context);
         global->dumpfirst = true;
-        path_dump(global, out, bad->edge, oldstate, /* TODO */ &oldctx);
+        path_dump(global, out, bad->edge, oldstate, /* TODO */ &oldctx, NULL);
         fprintf(out, "\n");
         free(oldctx);
         fprintf(out, "  ],\n");

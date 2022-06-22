@@ -408,14 +408,14 @@ static void value_string_list(struct strbuf *sb, hvalue_t v) {
     hvalue_t *vals = dict_retrieve(p, &size);
     size /= sizeof(hvalue_t);
 
-    strbuf_printf(sb, "[ ");
+    strbuf_printf(sb, "[");
     for (unsigned int i = 0; i < size; i++) {
         if (i != 0) {
             strbuf_printf(sb, ", ");
         }
         strbuf_value_string(sb, vals[i]);
     }
-    strbuf_printf(sb, " ]");
+    strbuf_printf(sb, "]");
 }
 
 static void value_string_set(struct strbuf *sb, hvalue_t v) {
