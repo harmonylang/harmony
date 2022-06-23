@@ -855,7 +855,7 @@ void print_context(
         printf(">>> %"PRIx64"\n", ctx);
         panic("print_context: can't find context");
     }
-    fprintf(file, "          \"fp\": \"%d\",\n", cs->sp + 3);
+    fprintf(file, "          \"fp\": \"%d\",\n", cs->sp + 2);
 
     struct callstack *ecs = cs;
     while (ecs->parent != NULL) {
@@ -1099,7 +1099,7 @@ void diff_state(
     }
     fprintf(file, "          \"npc\": \"%d\",\n", newctx->pc);
     if (newcs != oldcs) {
-        fprintf(file, "          \"fp\": \"%d\",\n", newcs->sp + 3);
+        fprintf(file, "          \"fp\": \"%d\",\n", newcs->sp + 2);
 #ifdef notdef
         {
             fprintf(stderr, "STACK2 %d:\n", newctx->fp);

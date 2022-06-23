@@ -46,6 +46,7 @@ static hvalue_t underscore, this_atom, result_atom;
 static hvalue_t alloc_pool_atom, alloc_next_atom;
 static hvalue_t type_bool, type_int, type_str, type_pc, type_list;
 static hvalue_t type_dict, type_set, type_address, type_context;
+static hvalue_t initial_vars;
 
 static inline void ctx_push(struct context *ctx, hvalue_t v){
     ctx_stack(ctx)[ctx->sp++] = v;
@@ -581,17 +582,13 @@ void op_Continue(const void *env, struct state *state, struct step *step, struct
     step->ctx->pc++;
 }
 
-// TODO.  Get rid of arg
-static void do_return(struct state *state, struct step *step, struct global *global, hvalue_t arg, hvalue_t result){
+static void do_return(struct state *state, struct step *step, struct global *global, hvalue_t result){
     hvalue_t callval = ctx_pop(step->ctx);
     assert(VALUE_TYPE(callval) == VALUE_INT);
     unsigned int call = VALUE_FROM_INT(callval);
     switch (call & CALLTYPE_MASK) {
     case CALLTYPE_PROCESS:
         step->ctx->terminated = true;
-        // Restore stack so arg can be printed for identifying context
-        ctx_push(step->ctx, callval);
-        ctx_push(step->ctx, arg);
         break;
     case CALLTYPE_NORMAL:
         {
@@ -637,7 +634,7 @@ void op_Alloc_Malloc(const void *env, struct state *state, struct step *step, st
 
     // Return the address
     hvalue_t result = value_put_address(&step->engine, addr, sizeof(addr));
-    do_return(state, step, global, arg, result);
+    do_return(state, step, global, result);
 }
 
 // Built-in list.tail method
@@ -654,7 +651,7 @@ void op_List_Tail(const void *env, struct state *state, struct step *step, struc
         return;
     }
     hvalue_t result = value_put_list(&step->engine, &list[1], size - sizeof(hvalue_t));
-    do_return(state, step, global, arg, result);
+    do_return(state, step, global, result);
 }
 
 // Built-in bag.add method
@@ -675,7 +672,7 @@ void op_Bag_Add(const void *env, struct state *state, struct step *step, struct 
         return;
     }
     hvalue_t result = value_bag_add(&step->engine, args[0], args[1], 1);
-    do_return(state, step, global, arg, result);
+    do_return(state, step, global, result);
 }
 
 // Built-in bag.remove method
@@ -696,7 +693,7 @@ void op_Bag_Remove(const void *env, struct state *state, struct step *step, stru
         return;
     }
     hvalue_t result = value_bag_remove(&step->engine, args[0], args[1]);
-    do_return(state, step, global, arg, result);
+    do_return(state, step, global, result);
 }
 
 // Built-in bag.multiplicity method
@@ -721,10 +718,10 @@ void op_Bag_Multiplicity(const void *env, struct state *state, struct step *step
         if (VALUE_TYPE(result) != VALUE_INT) {
             value_ctx_failure(step->ctx, &step->engine, "bag.multiplicity: not a good bag");
         }
-        do_return(state, step, global, arg, result);
+        do_return(state, step, global, result);
     }
     else {
-        do_return(state, step, global, arg, VALUE_TO_INT(0));
+        do_return(state, step, global, VALUE_TO_INT(0));
     }
 }
 
@@ -746,7 +743,7 @@ void op_Bag_Size(const void *env, struct state *state, struct step *step, struct
         }
         total += VALUE_FROM_INT(list[i]);
     }
-    do_return(state, step, global, arg, VALUE_TO_INT(total));
+    do_return(state, step, global, VALUE_TO_INT(total));
 }
 
 // Built-in bag.bmax method
@@ -771,7 +768,7 @@ void op_Bag_Bmax(const void *env, struct state *state, struct step *step, struct
             result = list[i];
         }
     }
-    do_return(state, step, global, arg, result);
+    do_return(state, step, global, result);
 }
 
 // Built-in bag.bmin method
@@ -796,7 +793,7 @@ void op_Bag_Bmin(const void *env, struct state *state, struct step *step, struct
             result = list[i];
         }
     }
-    do_return(state, step, global, arg, result);
+    do_return(state, step, global, result);
 }
 
 // This operation expects on the top of the stack the set to iterate over
@@ -993,38 +990,22 @@ void op_Frame(const void *env, struct state *state, struct step *step, struct gl
     const struct env_Frame *ef = env;
     hvalue_t oldvars = step->ctx->vars;
 
-    if (!check_stack(step->ctx, 2)) {
+    if (!check_stack(step->ctx, 1)) {
         value_ctx_failure(step->ctx, &step->engine, "Frame: out of stack (recursion too deep?)");
         return;
     }
 
-    // peek at argument and return address
+    step->ctx->vars = initial_vars; // Set result to None
+
+    // match argument against parameters
     hvalue_t arg = ctx_pop(step->ctx);
-    hvalue_t ret = ctx_pop(step->ctx);
-    ctx_push(step->ctx, ret);
-    ctx_push(step->ctx, arg);
-
-    // Set result to None
-    // TODO: precompute
-    step->ctx->vars = value_dict_store(&step->engine, VALUE_DICT, result_atom, VALUE_ADDRESS);
-
-    // try to match against parameters
     var_match(step->ctx, ef->args, &step->engine, arg);
     if (step->ctx->failed) {
         return;
     }
- 
-    ctx_push(step->ctx, oldvars);
 
-#ifdef OBSOLETE
-    ctx_push(step->ctx, VALUE_TO_INT(step->ctx->fp));
-#endif
-
-    struct context *ctx = step->ctx;
-#ifdef OBSOLETE
-    ctx->fp = ctx->sp;
-#endif
-    ctx->pc += 1;
+    ctx_push(step->ctx, oldvars);   // Save old variables
+    step->ctx->pc += 1;
 }
 
 void op_Go(
@@ -1316,12 +1297,12 @@ void op_Return(const void *env, struct state *state, struct step *step, struct g
     step->ctx->fp = VALUE_FROM_INT(fp);
 #endif // OBSOLETE
 
+    // Restore old variables
     hvalue_t oldvars = ctx_pop(step->ctx);
     assert(VALUE_TYPE(oldvars) == VALUE_DICT);
     step->ctx->vars = oldvars;
 
-    hvalue_t arg = ctx_pop(step->ctx);   // argument saved for stack trace
-    do_return(state, step, global, arg, result);
+    do_return(state, step, global, result);
 }
 
 void op_Builtin(const void *env, struct state *state, struct step *step, struct global *global){
@@ -3320,6 +3301,7 @@ void ops_init(struct global *global, struct engine *engine) {
     type_context = value_put_atom(engine, "context", 7);
 	alloc_pool_atom = value_put_atom(engine, "alloc$pool", 10);
 	alloc_next_atom = value_put_atom(engine, "alloc$next", 10);
+    initial_vars = value_dict_store(engine, VALUE_DICT, result_atom, VALUE_ADDRESS);
 
     for (struct op_info *oi = op_table; oi->name != NULL; oi++) {
         struct op_info **p = dict_insert(ops_map, NULL, oi->name, strlen(oi->name), NULL);
