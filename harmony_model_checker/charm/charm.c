@@ -166,9 +166,6 @@ bool invariant_check(struct global *global, struct state *state, struct step *st
     }
     assert(step->ctx->sp == 1);
     step->ctx->sp = 0;
-#ifdef OBSOLETE
-    assert(step->ctx->fp == 0);
-#endif
     hvalue_t b = ctx_stack(step->ctx)[0];
     assert(VALUE_TYPE(b) == VALUE_BOOL);
     return VALUE_FROM_BOOL(b);
@@ -988,15 +985,8 @@ void print_state(
     struct state *state = node->state;
     extern int invariant_cnt(const void *env);
 
-    struct callstack *cs = new_alloc(struct callstack);
-    cs->arg = VALUE_LIST;
-    cs->vars = VALUE_DICT;
-    cs->return_address = CALLTYPE_PROCESS;
-
     struct step inv_step;
     memset(&inv_step, 0, sizeof(inv_step));
-    inv_step.keep_callstack = true;
-    inv_step.callstack = cs;
     inv_step.engine.values = &global->values;
     inv_step.ctx = calloc(1, sizeof(struct context) +
                         MAX_CONTEXT_STACK * sizeof(hvalue_t));
@@ -1040,6 +1030,7 @@ void print_state(
             }
             nfailures++;
             fprintf(file, "        }");
+            break;
         }
     }
     fprintf(file, "\n      ],\n");
@@ -1500,7 +1491,7 @@ void path_dump(
 }
 
 static char *json_string_encode(char *s, int len){
-    char *result = malloc(4 * len), *p = result;
+    char *result = malloc(4 * len + 1), *p = result;
 
     while (len > 0) {
         switch (*s) {

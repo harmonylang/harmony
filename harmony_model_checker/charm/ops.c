@@ -621,7 +621,6 @@ static void do_return(struct state *state, struct step *step, struct global *glo
     if (step->keep_callstack && (call & CALLTYPE_MASK) != CALLTYPE_PROCESS) {
         struct callstack *cs = step->callstack;
         step->callstack = cs->parent;
-        free(cs);
     }
 }
 
