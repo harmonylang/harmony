@@ -201,6 +201,10 @@ class Ui_MainWindow(object):
         self.threadInactiveColor = [192, 192, 192] # set thread inactive color to be gray
         self.threadNumber = -1
         self.threadColor = []
+        # self.stackTraceList is a list of string with length <number of threads>. Each entry is the stack trace for each thread
+        self.stackTraceList = []
+        # self.stackTraceTextList contains stack trace to display at each microstep
+        self.stackTraceTextList = []
 
 
         self.retranslateUi(MainWindow)
@@ -271,8 +275,10 @@ class Ui_MainWindow(object):
         # set self.hco and self.hvm
         self.hco = hcoData
         self.hvm = hvmData
-        # initialize self.microSteps to be a list of microsteps
+        # construct self.microSteps to be a list of microsteps
         self.constructMicrosteps()
+        # construct self.stackTraceText to be stack trace to display at each microstep
+        self.constructStackTraceTextList()
         # initialize bytecode display, <adding pc value before each line>
         text = ""
         pcMAX = len(self.hco["code"]) - 1
@@ -300,6 +306,8 @@ class Ui_MainWindow(object):
         self.highlightUpdate()
         # display thread browser
         self.displayThreadBrowser()
+        # update stack trace
+        self.stackTraceUpdate()
 
     def constructMicrosteps(self):
         self.microSteps = []
@@ -316,6 +324,12 @@ class Ui_MainWindow(object):
                 cpMicroStep['invfails'] = macroStep['invfails']
                 cpMicroStep['contexts'] = macroStep['contexts']
                 self.microSteps.append(cpMicroStep)
+        # initialize self.stackTraceList
+        for i in range(self.threadNumber):
+            self.stackTraceList.append("")
+        # initialize 
+        for i in range(len(self.microSteps)):
+            self.stackTraceTextList.append("")
 
     def highlightUpdate(self):
         # update microsteps label
@@ -376,6 +390,7 @@ class Ui_MainWindow(object):
             return
         self.microStepPointer = self.microStepPointer + 1
         self.highlightUpdate()
+        self.stackTraceUpdate()
 
     def prevMicroStep(self):
         if self.byteCode.toPlainText() == "":
@@ -384,12 +399,14 @@ class Ui_MainWindow(object):
             return
         self.microStepPointer = self.microStepPointer - 1
         self.highlightUpdate()
+        self.stackTraceUpdate()
 
     def sliderMoveUpdate(self):
         if self.byteCode.toPlainText() == "":
             return
         self.microStepPointer = self.horizontalSlider.value()
         self.highlightUpdate()
+        self.stackTraceUpdate()
     
     def openFileByTypedPath(self):
         filepath = self.filePathText.text()
@@ -563,6 +580,43 @@ class Ui_MainWindow(object):
         # cursor = QTextCursor(document)
         # cursor.setPosition(4)
         # cursor.insertImage(f"{self.sourceFile[:-4]}_threadBrowserImg/my.png")
+
+        # TODO: handle cases where threadId has more than 1 digit
+
+    def variableUpdate(self, variableBrowser):
+        pass
+
+    # TODO: merge self.threadBrowser and self.stackTrace
+    def constructStackTraceTextList(self):
+        assert len(self.stackTraceList) == self.threadNumber
+        assert len(self.stackTraceTextList) == len(self.microSteps)
+        for i in range(len(self.microSteps)):
+            if 'trace' in self.microSteps[i]:
+                # there is a change in stack trace
+                trace = self.microSteps[i]['trace']
+                traceLine = ""
+                if(len(trace) > 0):
+                    for j in range(len(trace) - 1):
+                        traceLine = traceLine + trace[j]['method'] + ' -> '
+                    traceLine = traceLine + trace[len(trace) - 1]['method']
+                tid = int(self.microSteps[i]['tid'])
+                self.stackTraceList[tid] = traceLine
+                # update the ith entry in self.stackTraceTextList
+                text = ""
+                for stackTraceLine in self.stackTraceList:
+                    text = text + stackTraceLine + "\n"
+                self.stackTraceTextList[i] = text
+            else:
+                # there is no change in stack trace
+                self.stackTraceTextList[i] = self.stackTraceTextList[i - 1]
+
+
+    def stackTraceUpdate(self):
+        self.stackTrace.setPlainText(self.stackTraceTextList[self.microStepPointer])
+
+
+
+
         
 
 
