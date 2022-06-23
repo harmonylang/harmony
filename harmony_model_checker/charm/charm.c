@@ -1297,8 +1297,7 @@ void path_dump(
     const struct env_Frame *ef = global->code.instrs[cs->pc].env;
     char *name = value_string(ef->name);
 	int len = strlen(name);
-    assert(context->sp > 1);
-    char *arg = json_escape_value(ctx_stack(context)[1]);
+    char *arg = json_escape_value(cs->arg);
     char *c = e->choice == 0 ? NULL : value_json(e->choice);
     fprintf(file, "      \"tid\": \"%d\",\n", pid);
     fprintf(file, "      \"ctx\": \"%"PRI_HVAL"\",\n", ctx);
