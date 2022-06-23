@@ -987,8 +987,16 @@ void print_state(
 
     struct state *state = node->state;
     extern int invariant_cnt(const void *env);
+
+    struct callstack *cs = new_alloc(struct callstack);
+    cs->arg = VALUE_LIST;
+    cs->vars = VALUE_DICT;
+    cs->return_address = CALLTYPE_PROCESS;
+
     struct step inv_step;
     memset(&inv_step, 0, sizeof(inv_step));
+    inv_step.keep_callstack = true;
+    inv_step.callstack = cs;
     inv_step.engine.values = &global->values;
     inv_step.ctx = calloc(1, sizeof(struct context) +
                         MAX_CONTEXT_STACK * sizeof(hvalue_t));
