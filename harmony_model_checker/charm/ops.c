@@ -603,9 +603,11 @@ static void do_return(struct state *state, struct step *step, struct global *glo
     assert(VALUE_TYPE(callval) == VALUE_INT);
     unsigned int call = VALUE_FROM_INT(callval);
     switch (call & CALLTYPE_MASK) {
+#ifdef ZZZ
     case CALLTYPE_PROCESS:
         step->ctx->terminated = true;
         break;
+#endif
     case CALLTYPE_NORMAL:
         {
             unsigned int pc = call >> CALLTYPE_BITS;
@@ -624,7 +626,11 @@ static void do_return(struct state *state, struct step *step, struct global *glo
         panic("Return: bad call type");
     }
 
-    if (step->keep_callstack && (call & CALLTYPE_MASK) != CALLTYPE_PROCESS) {
+    if (step->keep_callstack
+#ifdef ZZZ
+            && (call & CALLTYPE_MASK) != CALLTYPE_PROCESS
+#endif
+    ) {
         struct callstack *cs = step->callstack;
         step->callstack = cs->parent;
     }

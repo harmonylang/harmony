@@ -551,11 +551,6 @@ static void value_string_context(struct strbuf *sb, hvalue_t v) {
     strbuf_printf(sb, ", %d)", ctx->pc);
     free(name);
 #else
-    // strbuf_printf(sb, "name=");
-    // strbuf_value_string(sb, ctx->name);
-    // strbuf_printf(sb, ",entry=%u", ctx->entry);
-    // strbuf_printf(sb, ",arg=");
-    // strbuf_value_string(sb, ctx->arg);
     strbuf_printf(sb, ",vars=");
     strbuf_value_string(sb, ctx->vars);
     if (ctx->extended) {
@@ -602,10 +597,57 @@ static void value_json_context(struct strbuf *sb, hvalue_t v) {
     struct context *ctx = value_get(v, NULL);
     
     strbuf_printf(sb, "{ \"type\": \"context\", \"value\": {");
-    // strbuf_printf(sb, "\"entry\": %u", ctx->entry);
-    // strbuf_printf(sb, ", \"arg\": ");
-    // strbuf_value_json(sb, ctx->arg);
-    strbuf_printf(sb, "\"pc\": { \"type\": \"pc\", \"value\": \"%d\" }", ctx->pc);
+    strbuf_printf(sb, "\"pc\": { \"type\": \"pc\", \"value\": \"%u\" },", ctx->pc);
+    if (ctx->atomic > 0) {
+        strbuf_printf(sb, "\"atomic\": { \"type\": \"int\", \"value\": \"%u\" },", ctx->atomic);
+    }
+    if (ctx->readonly > 0) {
+        strbuf_printf(sb, "\"readonly\": { \"type\": \"int\", \"value\": \"%u\" },", ctx->readonly);
+    }
+    if (ctx->initial) {
+        strbuf_printf(sb, "\"initial\": { \"type\": \"bool\", \"value\": \"True\" },");
+    }
+    if (ctx->atomicFlag) {
+        strbuf_printf(sb, "\"atomicFlag\": { \"type\": \"bool\", \"value\": \"True\" },");
+    }
+    if (ctx->interruptlevel) {
+        strbuf_printf(sb, "\"interruptlevel\": { \"type\": \"bool\", \"value\": \"1\" },");
+    }
+    if (ctx->stopped) {
+        strbuf_printf(sb, "\"stopped\": { \"type\": \"bool\", \"value\": \"True\" },");
+    }
+    if (ctx->terminated) {
+        strbuf_printf(sb, "\"mode\": { \"type\": \"atom\", \"value\": \"terminated\" },");
+    }
+    else if (ctx->failed) {
+        strbuf_printf(sb, "\"mode\": { \"type\": \"atom\", \"value\": \"failed\" },");
+    }
+    if (ctx->eternal) {
+        strbuf_printf(sb, "\"eternal\": { \"type\": \"bool\", \"value\": \"True\" },");
+    }
+    if (ctx->extended) {
+        if (ctx->ctx_this != 0) {
+            strbuf_printf(sb, "\"this\": ");
+            strbuf_value_json(sb, ctx->ctx_this);
+            strbuf_printf(sb, ", ");
+        }
+        if (ctx->ctx_failure != 0) {
+            strbuf_printf(sb, "\"failure\": ");
+            strbuf_value_json(sb, ctx->ctx_failure);
+            strbuf_printf(sb, ", ");
+        }
+        if (ctx->ctx_trap_pc != 0) {
+            strbuf_printf(sb, "\"trap_pc\": ");
+            strbuf_value_json(sb, ctx->ctx_trap_pc);
+            strbuf_printf(sb, ", ");
+        }
+        if (ctx->ctx_trap_arg != 0) {
+            strbuf_printf(sb, "\"trap_arg\": ");
+            strbuf_value_json(sb, ctx->ctx_trap_arg);
+            strbuf_printf(sb, ", ");
+        }
+    }
+    strbuf_printf(sb, "\"sp\": { \"type\": \"int\", \"value\": \"%u\" }", ctx->sp);
 
     strbuf_printf(sb, " } }");
 }
