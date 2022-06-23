@@ -866,8 +866,7 @@ void print_context(
     const struct env_Frame *ef = global->code.instrs[ecs->pc].env;
     char *s = value_string(ef->name);
 	int len = strlen(s);
-    assert(c->sp > 1);
-    char *a = json_escape_value(ctx_stack(c)[1]);
+    char *a = json_escape_value(ecs->arg);
     if (*a == '(') {
         fprintf(file, "          \"name\": \"%.*s%s\",\n", len - 2, s + 1, a);
     }
