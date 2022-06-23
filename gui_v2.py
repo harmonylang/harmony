@@ -88,12 +88,14 @@ class Ui_MainWindow(object):
         self.sharedVariables = QtWidgets.QTreeWidget(self.centralwidget)
         font = QtGui.QFont()
         font.setFamily("Monaco")
+        font.setPointSize(12)
         self.sharedVariables.setFont(font)
         self.sharedVariables.setObjectName("sharedVariables")
         self.verticalLayout.addWidget(self.sharedVariables)
         self.localVariables = QtWidgets.QTreeWidget(self.centralwidget)
         font = QtGui.QFont()
         font.setFamily("Monaco")
+        font.setPointSize(12)
         self.localVariables.setFont(font)
         self.localVariables.setObjectName("localVariables")
         self.verticalLayout.addWidget(self.localVariables)
@@ -306,6 +308,10 @@ class Ui_MainWindow(object):
         self.highlightUpdate()
         # display thread browser
         self.displayThreadBrowser()
+        # update shared variable
+        self.sharedVariableUpdate()
+        # update local variable
+        self.localVariableUpdate()
         # update stack trace
         self.stackTraceUpdate()
 
@@ -390,6 +396,8 @@ class Ui_MainWindow(object):
             return
         self.microStepPointer = self.microStepPointer + 1
         self.highlightUpdate()
+        self.sharedVariableUpdate()
+        self.localVariableUpdate()
         self.stackTraceUpdate()
 
     def prevMicroStep(self):
@@ -399,6 +407,8 @@ class Ui_MainWindow(object):
             return
         self.microStepPointer = self.microStepPointer - 1
         self.highlightUpdate()
+        self.sharedVariableUpdate()
+        self.localVariableUpdate()
         self.stackTraceUpdate()
 
     def sliderMoveUpdate(self):
@@ -406,6 +416,8 @@ class Ui_MainWindow(object):
             return
         self.microStepPointer = self.horizontalSlider.value()
         self.highlightUpdate()
+        self.sharedVariableUpdate()
+        self.localVariableUpdate()
         self.stackTraceUpdate()
     
     def openFileByTypedPath(self):
@@ -583,13 +595,189 @@ class Ui_MainWindow(object):
 
         # TODO: handle cases where threadId has more than 1 digit
 
-    def variableUpdate(self, variableBrowser):
-        pass
+    def sharedVariableUpdate(self):
+        # clear all displayed content
+        self.sharedVariables.clear() 
+        # find current shared variable state
+        mostRecentSharedVariablePointer = self.microStepPointer
+        while 'shared' not in self.microSteps[mostRecentSharedVariablePointer]:
+            mostRecentSharedVariablePointer -= 1
+        microstep = self.microSteps[mostRecentSharedVariablePointer]
+        sharedVariableList = microstep['shared']
+        # TODO: are pc and address primitive?
+        primitiveTypes = {'int', 'bool', 'atom', 'pc', 'address'}
+        # iterate through harmony values in sharedVariableList
+        counter = 0 
+        for variableName, variable in sharedVariableList.items():
+            item_0 = QtWidgets.QTreeWidgetItem(self.sharedVariables)
+            if variable['type'] in primitiveTypes: 
+                self.sharedVariables.topLevelItem(counter).setText(0, f"{variableName}: {self.variableToText(variable['type'], variable)}")
+            elif variable['type'] == 'list':
+                if self.isNaive(variable):
+                    self.sharedVariables.topLevelItem(counter).setText(0, f"{variableName}: {self.variableToText(variable['type'], variable)}")
+                else:
+                    self.recursiveAdd(item_0, self.sharedVariables.topLevelItem(counter), variable, variableName)
+            elif variable['type'] == 'set':
+                if self.isNaive(variable):
+                    self.sharedVariables.topLevelItem(counter).setText(0, f"{variableName}: {self.variableToText(variable['type'], variable)}")
+                else:
+                    self.recursiveAdd(item_0, self.sharedVariables.topLevelItem(counter), variable, variableName)
+            elif variable['type'] == 'dict':
+                self.recursiveAdd(item_0, self.sharedVariables.topLevelItem(counter), variable, variableName)
+            counter += 1
+    
+    def localVariableUpdate(self):
+        # clear all displayed content
+        self.localVariables.clear() 
+        # find current local variable state
+        mostRecentLocalVariablePointer = self.microStepPointer
+        while 'local' not in self.microSteps[mostRecentLocalVariablePointer]:
+            mostRecentLocalVariablePointer -= 1
+        microstep = self.microSteps[mostRecentLocalVariablePointer]
+        localVariableList = microstep['local']
+        assert microstep['tid'] == self.microSteps[self.microStepPointer]['tid']
+        # TODO: are pc and address primitive?
+        primitiveTypes = {'int', 'bool', 'atom', 'pc', 'address'}
+        # iterate through harmony values in localVariableList
+        counter = 0 
+        for variableName, variable in localVariableList.items():
+            item_0 = QtWidgets.QTreeWidgetItem(self.localVariables)
+            if variable['type'] in primitiveTypes: 
+                self.localVariables.topLevelItem(counter).setText(0, f"{variableName}: {self.variableToText(variable['type'], variable)}")
+            elif variable['type'] == 'list':
+                if self.isNaive(variable):
+                    self.localVariables.topLevelItem(counter).setText(0, f"{variableName}: {self.variableToText(variable['type'], variable)}")
+                else:
+                    self.recursiveAdd(item_0, self.localVariables.topLevelItem(counter), variable, variableName)
+            elif variable['type'] == 'set':
+                if self.isNaive(variable):
+                    self.localVariables.topLevelItem(counter).setText(0, f"{variableName}: {self.variableToText(variable['type'], variable)}")
+                else:
+                    self.recursiveAdd(item_0, self.localVariables.topLevelItem(counter), variable, variableName)
+            elif variable['type'] == 'dict':
+                self.recursiveAdd(item_0, self.localVariables.topLevelItem(counter), variable, variableName)
+            counter += 1
+
+    def recursiveAdd(self, item, node, variable, variableName):
+        """
+        recursively display harmony values to treelist view
+        """
+        primitiveTypes = {'int', 'bool', 'atom', 'pc', 'address'}
+        if variable['type'] in primitiveTypes:
+            # base case 1
+            node.setText(0, f"{variableName}: {self.variableToText(variable['type'], variable)}")
+        if variable['type'] == 'list':
+            if self.isNaive(variable):
+                # base case
+                node.setText(0, f"{variableName}: {self.variableToText(variable['type'], variable)}")
+                return
+            node.setText(0, f"{variableName} <list>")
+            for i in range(len(variable['value'])):
+                new_items = []
+                new_items.append(QtWidgets.QTreeWidgetItem(item))
+            for i in range(len(variable['value'])):
+                self.recursiveAdd(node.child(i), node.child(i), variable['value'][i], f"{variableName}[{i}]")
+        elif variable['type'] == 'set':
+            if self.isNaive(variable):
+                # base case
+                node.setText(0, f"{variableName}: {self.variableToText(variable['type'], variable)}")
+                return
+            node.setText(0, f"{variableName} <set>")
+            for i in range(len(variable['value'])):
+                new_items = []
+                new_items.append(QtWidgets.QTreeWidgetItem(item))
+            for i in range(len(variable['value'])):
+                self.recursiveAdd(node.child(i), node.child(i), variable['value'][i], f"{variableName}[{i}]")
+        elif variable['type'] == 'dict':
+            node.setText(0, f"{variableName} <dict>")
+            for i in range(len(variable['value'])):
+                new_items = []
+                new_items.append(QtWidgets.QTreeWidgetItem(item))
+            for i in range(len(variable['value'])):
+                keyValue = variable['value'][i]['key']
+                # !!! here we are assuming dictionary key is of primitive type
+                # is it safe to assume so?
+                assert keyValue['type'] in primitiveTypes
+                key = self.variableToText(keyValue['type'], keyValue)
+                self.recursiveAdd(node.child(i), node.child(i), variable['value'][i]['value'], f"{variableName}[{key}]")
+
+    # TODO: context variable
+    def variableToText(self, type, value):
+        if type == 'int':
+            # e.g, { "type": "int", "value": "1" } -> "1"
+            return value['value']
+        elif type == 'bool':
+            # e.g, { "type": "bool", "value": "True" } -> "True"
+            return value['value']
+        elif type == 'atom':
+            # e.g, { "type": "atom", "value": "hello" } -> "\"hello\""
+            return f"\"{value['value']}\""
+        elif type == 'pc':
+            pc = int(value['value'])
+            byteCode = self.hco['code'][pc]
+            # If pc points to a method or is lambda, then bytecode is "Frame ..."
+            # shows everything after "Frame "
+            if byteCode[:6] == 'Frame ':
+                return byteCode[6:]
+            # TODO: if pc points to a label, only shows "pc(pc_number)"
+            else:
+                return f"pc({pc})"
+        elif type == 'address':
+            # Precondition: everything in adress is of type string and int
+            # TODO: what if is not string or int? list/dictionary/set? boolean? 
+            # value['value'] is a list of harmony values
+            if len(value['value']) == 0:
+                return "None"
+            addrStr = "?"
+            addrStr += value['value'][0]['value']
+            for i in range(1, len(value['value'])):
+                addrStr += f"[{value['value'][i]['value']}]"
+            return addrStr
+        elif type == 'list':
+            assert self.isNaive(value)
+            # a harmony value of type list whose entries are primitive
+            listText = ""
+            naiveList = value['value']
+            if len(naiveList) == 0:
+                return "[ ]"
+            for i in range(len(naiveList) - 1):
+                element = naiveList[i]
+                listText += f"{self.variableToText(element['type'], element)}, "
+            lastElement = naiveList[len(naiveList) - 1]
+            listText += f"{self.variableToText(lastElement['type'], lastElement)}"
+            listText = f"[ {listText} ]"
+            return listText
+        elif type == 'set':
+            assert self.isNaive(value)
+            # a harmony value of type set whose entries are primitive
+            setText = ""
+            naiveSet = value['value']
+            if len(naiveSet) == 0:
+                return "{ }"
+            for i in range(len(naiveSet) - 1):
+                element = naiveSet[i]
+                setText += f"{self.variableToText(element['type'], element)}, "
+            lastElement = naiveSet[len(naiveSet) - 1]
+            setText += f"{self.variableToText(lastElement['type'], lastElement)}"
+            setText = "{ " + setText + " }"
+            return setText
+
+    def isNaive(self, value):
+        """
+        determine whether a list or set is naive
+        """
+        assert value['type'] == 'list' or value['type'] == 'set'
+        primitiveTypes = {'int', 'bool', 'atom', 'pc', 'address'}
+        for element in value['value']:
+            if element['type'] not in primitiveTypes:
+                return False
+        return True
+
 
     # TODO: merge self.threadBrowser and self.stackTrace
     def constructStackTraceTextList(self):
-        assert len(self.stackTraceList) == self.threadNumber
-        assert len(self.stackTraceTextList) == len(self.microSteps)
+        # assert len(self.stackTraceList) == self.threadNumber
+        # assert len(self.stackTraceTextList) == len(self.microSteps)
         for i in range(len(self.microSteps)):
             if 'trace' in self.microSteps[i]:
                 # there is a change in stack trace
@@ -610,14 +798,9 @@ class Ui_MainWindow(object):
                 # there is no change in stack trace
                 self.stackTraceTextList[i] = self.stackTraceTextList[i - 1]
 
-
     def stackTraceUpdate(self):
         self.stackTrace.setPlainText(self.stackTraceTextList[self.microStepPointer])
 
-
-
-
-        
 
 
 if __name__ == "__main__":
