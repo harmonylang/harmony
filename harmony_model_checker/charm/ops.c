@@ -1315,7 +1315,7 @@ void op_Return(const void *env, struct state *state, struct step *step, struct g
 
     if (step->keep_callstack) {
         struct callstack *cs = step->callstack;
-        step->callstack = cs->parent;
+        step->callstack = cs == NULL ? NULL : cs->parent;
         free(cs);
     }
 

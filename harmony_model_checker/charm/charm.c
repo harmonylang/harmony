@@ -166,7 +166,9 @@ bool invariant_check(struct global *global, struct state *state, struct step *st
     }
     assert(step->ctx->sp == 1);
     step->ctx->sp = 0;
+#ifdef OBSOLETE
     assert(step->ctx->fp == 0);
+#endif
     hvalue_t b = ctx_stack(step->ctx)[0];
     assert(VALUE_TYPE(b) == VALUE_BOOL);
     return VALUE_FROM_BOOL(b);
@@ -685,7 +687,7 @@ static bool print_trace(
             pc = call >> CALLTYPE_BITS;
             break;
         default:
-            fprintf(stderr, "call type: %x %d %d %d\n", call, ctx->sp, ctx->fp, ctx->pc);
+            fprintf(stderr, "call type: %x %u %u\n", call, ctx->sp, ctx->pc);
             panic("print_trace: bad call type 1");
         }
     }
@@ -871,15 +873,17 @@ void print_context(
     free(s);
     free(a);
 
-    struct callstack *cs = dict_lookup(global->tracemap, &ctx, sizeof(ctx));
-    if (cs == NULL) {
-        fprintf(file, "NO TRACE\n");
-    }
 
     fprintf(file, "          \"entry\": \"%u\",\n", c->entry);
-
     fprintf(file, "          \"pc\": \"%d\",\n", c->pc);
-    fprintf(file, "          \"fp\": \"%d\",\n", cs->sp);
+
+    struct callstack *cs = dict_lookup(global->tracemap, &ctx, sizeof(ctx));
+    if (cs == NULL) {
+        fprintf(file, "          \"fp\": \"0\",\n");
+    }
+    else {
+        fprintf(file, "          \"fp\": \"%d\",\n", cs->sp);
+    }
 
 #ifdef notdef
     {
