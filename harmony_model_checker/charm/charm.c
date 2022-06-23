@@ -652,119 +652,6 @@ char *json_escape_value(hvalue_t v){
     return r;
 }
 
-#ifdef OBSOLETE
-static bool print_trace(
-    struct global *global,
-    FILE *file,
-    struct context *ctx,
-    int pc,
-    int fp,
-    hvalue_t vars
-) {
-    if (fp == 0) {
-        return false;
-    }
-    assert(fp >= 4);
-
-	int level = 0, orig_pc = pc;
-    if (strcmp(global->code.instrs[pc].oi->name, "Frame") == 0) {
-        hvalue_t callval = ctx_stack(ctx)[ctx->sp - 2];
-        assert(VALUE_TYPE(callval) == VALUE_INT);
-        unsigned int call = VALUE_FROM_INT(callval);
-        switch (call & CALLTYPE_MASK) {
-        case CALLTYPE_PROCESS:
-            pc++;
-            break;
-        case CALLTYPE_INTERRUPT:
-        case CALLTYPE_NORMAL:
-            pc = call >> CALLTYPE_BITS;
-            break;
-        default:
-            fprintf(stderr, "call type: %x %u %u\n", call, ctx->sp, ctx->pc);
-            panic("print_trace: bad call type 1");
-        }
-    }
-    while (--pc >= 0) {
-        const char *name = global->code.instrs[pc].oi->name;
-
-        if (strcmp(name, "Return") == 0) {
-			level++;
-		}
-        else if (strcmp(name, "Frame") == 0) {
-			if (level == 0) {
-				if (fp > 4) {
-                    hvalue_t callval = ctx_stack(ctx)[fp - 4];
-                    assert(VALUE_TYPE(callval) == VALUE_INT);
-                    unsigned int call = VALUE_FROM_INT(callval);
-                    switch (call & CALLTYPE_MASK) {
-                    case CALLTYPE_PROCESS:
-                        panic("XXX");
-                    case CALLTYPE_INTERRUPT:
-                    case CALLTYPE_NORMAL:
-                        { 
-                            unsigned int npc = call >>= CALLTYPE_BITS;
-                            hvalue_t nvars = ctx_stack(ctx)[fp - 2];
-                            int nfp = ctx_stack(ctx)[fp - 1] >> VALUE_BITS;
-                            if (print_trace(global, file, ctx, npc, nfp, nvars)) {
-                                fprintf(file, ",\n");
-                            }
-                        }
-                        break;
-                    default:
-                        panic("YYY");
-                    }
-				}
-				fprintf(file, "            {\n");
-				fprintf(file, "              \"pc\": \"%d\",\n", orig_pc);
-				fprintf(file, "              \"xpc\": \"%d\",\n", pc);
-
-				const struct env_Frame *ef = global->code.instrs[pc].env;
-				char *s = value_string(ef->name), *a = NULL;
-				int len = strlen(s);
-                a = json_escape_value(ctx_stack(ctx)[fp - 3]);
-				if (*a == '(') {
-					fprintf(file, "              \"method\": \"%.*s%s\",\n", len - 2, s + 1, a);
-				}
-				else {
-					fprintf(file, "              \"method\": \"%.*s(%s)\",\n", len - 2, s + 1, a);
-				}
-
-                hvalue_t callval = ctx_stack(ctx)[fp - 4];
-                assert(VALUE_TYPE(callval) == VALUE_INT);
-                unsigned int call = VALUE_FROM_INT(callval);
-                switch (call & CALLTYPE_MASK) {
-                case CALLTYPE_PROCESS:
-                    fprintf(file, "              \"calltype\": \"process\",\n");
-                    break;
-                case CALLTYPE_NORMAL:
-                    fprintf(file, "              \"calltype\": \"normal\",\n");
-                    break;
-                case CALLTYPE_INTERRUPT:
-                    fprintf(file, "              \"calltype\": \"interrupt\",\n");
-                    break;
-                default:
-                    printf(">>> %x\n", call);
-                    panic("print_trace: bad call type 2");
-                }
-
-				free(s);
-				free(a);
-				fprintf(file, "              \"vars\": ");
-				print_vars(file, vars);
-				fprintf(file, "\n");
-				fprintf(file, "            }");
-				return true;
-			}
-            else {
-                assert(level > 0);
-                level--;
-            }
-        }
-    }
-    return false;
-}
-#endif // OBSOLETE
-
 char *ctx_status(struct node *node, hvalue_t ctx) {
     if (node->state->choosing == ctx) {
         return "choosing";
@@ -852,7 +739,7 @@ void print_context(
         printf(">>> %"PRIx64"\n", ctx);
         panic("print_context: can't find context");
     }
-    fprintf(file, "          \"fp\": \"%d\",\n", cs->sp + 2);
+    fprintf(file, "          \"fp\": \"%d\",\n", cs->sp + 1);
 
     struct callstack *ecs = cs;
     while (ecs->parent != NULL) {
@@ -889,13 +776,6 @@ void print_context(
             fprintf(file, "    %d: %s\n", x, value_string(ctx_stack(k)[x]));
         }
     }
-#endif
-
-#ifdef OBSOLETE
-    fprintf(file, "          \"trace\": [\n");
-    print_trace(global, file, c, c->pc, c->fp, c->vars);
-    fprintf(file, "\n");
-    fprintf(file, "          ],\n");
 #endif
 
     fprintf(file, "          \"trace\": [\n");
@@ -1097,7 +977,7 @@ void diff_state(
     }
     fprintf(file, "          \"npc\": \"%d\",\n", newctx->pc);
     if (newcs != oldcs) {
-        fprintf(file, "          \"fp\": \"%d\",\n", newcs->sp + 2);
+        fprintf(file, "          \"fp\": \"%d\",\n", newcs->sp + 1);
 #ifdef notdef
         {
             fprintf(stderr, "STACK2 %d:\n", newctx->fp);
@@ -1105,13 +985,6 @@ void diff_state(
                 fprintf(stderr, "    %d: %s\n", x, value_string(ctx_stack(newctx)[x]));
             }
         }
-#endif
-
-#ifdef OBSOLETE
-        fprintf(file, "          \"trace\": [\n");
-        print_trace(global, file, newctx, newctx->pc, newctx->fp, newctx->vars);
-        fprintf(file, "\n");
-        fprintf(file, "          ],\n");
 #endif
 
         fprintf(file, "          \"trace\": [\n");
@@ -2022,14 +1895,6 @@ static void print_transitions(FILE *out, struct dict *symbols, struct edge *edge
     dict_delete(d);
 }
 
-#ifdef OBSOLETE
-static void pr_state(struct global *global, FILE *fp, struct state *state, int index){
-    char *v = state_string(state);
-    fprintf(fp, "%s\n", v);
-    free(v);
-}
-#endif
-
 static void usage(char *prog){
     fprintf(stderr, "Usage: %s [-c] [-t<maxtime>] [-B<dfafile>] -o<outfile> file.json\n", prog);
     exit(1);
@@ -2143,7 +2008,9 @@ int main(int argc, char **argv){
     init_ctx->atomic = 1;
     init_ctx->initial = true;
     init_ctx->atomicFlag = true;
+#ifdef ZZZ
     value_ctx_push(init_ctx, VALUE_TO_INT(CALLTYPE_PROCESS));
+#endif
     value_ctx_push(init_ctx, VALUE_LIST);
 
     struct state *state = calloc(1, sizeof(struct state) + sizeof(hvalue_t) + 1);

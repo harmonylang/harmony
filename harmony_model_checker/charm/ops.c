@@ -189,6 +189,8 @@ void interrupt_invoke(struct step *step){
         value_ctx_failure(step->ctx, &step->engine, "interrupt: out of stack");
         return;
     }
+    ctx_push(step->ctx,
+        VALUE_TO_INT((step->ctx->pc << CALLTYPE_BITS) | CALLTYPE_INTERRUPT));
     if (step->keep_callstack) {
         struct callstack *cs = new_alloc(struct callstack);
         cs->parent = step->callstack;
@@ -199,8 +201,6 @@ void interrupt_invoke(struct step *step){
         cs->return_address = ((step->ctx->pc + 1) << CALLTYPE_BITS) | CALLTYPE_INTERRUPT;
         step->callstack = cs;
     }
-    ctx_push(step->ctx,
-        VALUE_TO_INT((step->ctx->pc << CALLTYPE_BITS) | CALLTYPE_INTERRUPT));
     ctx_push(step->ctx, step->ctx->ctx_trap_arg);
     step->ctx->pc = VALUE_FROM_PC(step->ctx->ctx_trap_pc);
     step->ctx->ctx_trap_pc = 0;
@@ -453,6 +453,8 @@ void op_Apply(const void *env, struct state *state, struct step *step, struct gl
         }
         return;
     case VALUE_PC:
+        ctx_push(step->ctx, VALUE_TO_INT(((step->ctx->pc + 1) << CALLTYPE_BITS) | CALLTYPE_NORMAL));
+
         // see if we need to keep track of the call stack
         if (step->keep_callstack) {
             struct callstack *cs = new_alloc(struct callstack);
@@ -465,7 +467,6 @@ void op_Apply(const void *env, struct state *state, struct step *step, struct gl
             step->callstack = cs;
         }
 
-        ctx_push(step->ctx, VALUE_TO_INT(((step->ctx->pc + 1) << CALLTYPE_BITS) | CALLTYPE_NORMAL));
         ctx_push(step->ctx, e);
         assert(VALUE_FROM_PC(method) != step->ctx->pc);
         step->ctx->pc = VALUE_FROM_PC(method);
@@ -593,6 +594,11 @@ void op_Continue(const void *env, struct state *state, struct step *step, struct
 }
 
 static void do_return(struct state *state, struct step *step, struct global *global, hvalue_t result){
+    if (step->ctx->sp == 0) {
+        step->ctx->terminated = true;
+        return;
+    }
+
     hvalue_t callval = ctx_pop(step->ctx);
     assert(VALUE_TYPE(callval) == VALUE_INT);
     unsigned int call = VALUE_FROM_INT(callval);
@@ -1294,18 +1300,6 @@ void op_ReadonlyInc(const void *env, struct state *state, struct step *step, str
 void op_Return(const void *env, struct state *state, struct step *step, struct global *global){
     hvalue_t result = value_dict_load(step->ctx->vars, result_atom);
 
-#ifdef OBSOLETE
-    hvalue_t fp = ctx_pop(step->ctx);
-    if (VALUE_TYPE(fp) != VALUE_INT) {
-        printf("XXX %d %d %s\n", step->ctx->pc, step->ctx->sp, value_string(fp));
-        value_ctx_failure(step->ctx, &step->engine, "XXX");
-        return;
-        // exit(1);
-    }
-    assert(VALUE_TYPE(fp) == VALUE_INT);
-    step->ctx->fp = VALUE_FROM_INT(fp);
-#endif // OBSOLETE
-
     // Restore old variables
     hvalue_t oldvars = ctx_pop(step->ctx);
     assert(VALUE_TYPE(oldvars) == VALUE_DICT);
@@ -1452,14 +1446,13 @@ void op_Spawn(
         value_ctx_extend(ctx);
         ctx->ctx_this = thisval;
     }
-#ifdef OBSOLETE
-    ctx->entry =
-#endif
     ctx->pc = pc;
     ctx->vars = VALUE_DICT;
     ctx->interruptlevel = false;
     ctx->eternal = se->eternal;
+#ifdef ZZZ
     ctx_push(ctx, VALUE_TO_INT((step->ctx->pc << CALLTYPE_BITS) | CALLTYPE_PROCESS));
+#endif
     ctx_push(ctx, arg);
     if (global->run_direct) {
         unsigned int size = sizeof(*ctx) + (ctx->sp * sizeof(hvalue_t));
