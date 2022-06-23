@@ -189,6 +189,16 @@ void interrupt_invoke(struct step *step){
         value_ctx_failure(step->ctx, &step->engine, "interrupt: out of stack");
         return;
     }
+    if (step->keep_callstack) {
+        struct callstack *cs = new_alloc(struct callstack);
+        cs->parent = step->callstack;
+        cs->pc = VALUE_FROM_PC(step->ctx->ctx_trap_pc);
+        cs->arg = step->ctx->ctx_trap_arg;
+        cs->sp = step->ctx->sp;
+        cs->vars = step->ctx->vars;
+        cs->return_address = ((step->ctx->pc + 1) << CALLTYPE_BITS) | CALLTYPE_INTERRUPT;
+        step->callstack = cs;
+    }
     ctx_push(step->ctx,
         VALUE_TO_INT((step->ctx->pc << CALLTYPE_BITS) | CALLTYPE_INTERRUPT));
     ctx_push(step->ctx, step->ctx->ctx_trap_arg);
