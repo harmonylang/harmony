@@ -17,7 +17,6 @@ struct callstack {
     unsigned int pc;
     unsigned int sp;
     unsigned int return_address;
-    hvalue_t method;
     hvalue_t arg;
     hvalue_t vars;
 };

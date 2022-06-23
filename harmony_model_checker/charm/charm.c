@@ -254,19 +254,15 @@ static bool onestep(
             double now = gettime();
             if (now - global->lasttime > 1) {
                 if (global->lasttime != 0) {
-                    assert(strcmp(global->code.instrs[step->ctx->entry].oi->name, "Frame") == 0);
-                    const struct env_Frame *ef = global->code.instrs[step->ctx->entry].env;
-                    char *p = value_string(ef->name);
                     unsigned int enqueued = 0, dequeued = 0;
                     for (unsigned int i = 0; i < w->nworkers; i++) {
                         struct worker *w2 = &w->workers[i];
                         enqueued += w2->enqueued;
                         dequeued += w2->dequeued;
                     }
-                    fprintf(stderr, "%s pc=%d states=%u diam=%u q=%d rate=%d\n",
-                            p, step->ctx->pc, enqueued, global->diameter, enqueued - dequeued, (unsigned int) ((enqueued - global->last_nstates) / (now - global->lasttime)));
+                    fprintf(stderr, "pc=%d states=%u diam=%u q=%d rate=%d\n",
+                            step->ctx->pc, enqueued, global->diameter, enqueued - dequeued, (unsigned int) ((enqueued - global->last_nstates) / (now - global->lasttime)));
                     global->last_nstates = enqueued;
-                    free(p);
                 }
                 global->lasttime = now;
                 if (now > w->timeout) {
@@ -792,10 +788,6 @@ char *ctx_status(struct node *node, hvalue_t ctx) {
 }
 
 static void print_rectrace(struct global *global, FILE *file, struct callstack *cs, unsigned int pc, hvalue_t vars){
-    if (cs == NULL) {
-        fprintf(file, "NO CALL STACK\n");
-        return;
-    }
     if (cs->parent != NULL) {
         print_rectrace(global, file, cs->parent, cs->return_address >> CALLTYPE_BITS, cs->vars);
         fprintf(file, ",\n");
@@ -858,8 +850,20 @@ void print_context(
     fprintf(file, "\",\n");
 #endif
 
-    assert(strcmp(global->code.instrs[c->entry].oi->name, "Frame") == 0);
-    const struct env_Frame *ef = global->code.instrs[c->entry].env;
+    struct callstack *cs = dict_lookup(global->tracemap, &ctx, sizeof(ctx));
+    if (cs == NULL) {
+        printf(">>> %"PRIx64"\n", ctx);
+        panic("print_context: can't find context");
+    }
+    fprintf(file, "          \"fp\": \"%d\",\n", cs->sp);
+
+    struct callstack *ecs = cs;
+    while (ecs->parent != NULL) {
+        ecs = ecs->parent;
+    }
+
+    assert(strcmp(global->code.instrs[ecs->pc].oi->name, "Frame") == 0);
+    const struct env_Frame *ef = global->code.instrs[ecs->pc].env;
     char *s = value_string(ef->name);
 	int len = strlen(s);
     assert(c->sp > 1);
@@ -873,17 +877,14 @@ void print_context(
     free(s);
     free(a);
 
+    // TODO.  Backwards compatibility
+    struct callstack *lcs = cs;
+    while (lcs->parent != NULL) {
+        lcs = lcs->parent;
+    }
+    fprintf(file, "          \"entry\": \"%u\",\n", lcs->pc);
 
-    fprintf(file, "          \"entry\": \"%u\",\n", c->entry);
     fprintf(file, "          \"pc\": \"%d\",\n", c->pc);
-
-    struct callstack *cs = dict_lookup(global->tracemap, &ctx, sizeof(ctx));
-    if (cs == NULL) {
-        fprintf(file, "          \"fp\": \"0\",\n");
-    }
-    else {
-        fprintf(file, "          \"fp\": \"%d\",\n", cs->sp);
-    }
 
 #ifdef notdef
     {
@@ -1008,8 +1009,7 @@ void print_state(
     int nfailures = 0;
     for (unsigned int i = 0; i < size; i++) {
         assert(VALUE_TYPE(vals[i]) == VALUE_PC);
-        inv_step.ctx->entry = VALUE_FROM_PC(vals[i]);
-        inv_step.ctx->pc = inv_step.ctx->entry;
+        inv_step.ctx->pc = VALUE_FROM_PC(vals[i]);
         assert(strcmp(global->code.instrs[inv_step.ctx->pc].oi->name, "Invariant") == 0);
         int end = invariant_cnt(global->code.instrs[inv_step.ctx->pc].env);
         bool b = invariant_check(global, state, &inv_step, end);
@@ -1182,7 +1182,7 @@ void diff_dump(
     struct state *newstate,
     struct context **oldctx,
     struct context *newctx,
-    struct callstack *oldcs,
+    struct callstack **oldcs,
     struct callstack *newcs,
     bool interrupt,
     bool choose,
@@ -1198,11 +1198,12 @@ void diff_dump(
     }
 
     // Keep track of old state and context for taking diffs
-    diff_state(global, file, oldstate, newstate, *oldctx, newctx, oldcs, newcs, interrupt, choose, choice, print);
+    diff_state(global, file, oldstate, newstate, *oldctx, newctx, *oldcs, newcs, interrupt, choose, choice, print);
     *oldstate = *newstate;
     free(*oldctx);
     *oldctx = malloc(newsize);
     memcpy(*oldctx, newctx, newsize);
+    *oldcs = newcs;
 }
 
 // similar to onestep.
@@ -1215,7 +1216,6 @@ hvalue_t twostep(
     bool interrupt,
     struct state *oldstate,
     struct context **oldctx,
-    struct callstack *oldcs,
     hvalue_t nextvars,
     unsigned int nsteps
 ){
@@ -1228,6 +1228,11 @@ hvalue_t twostep(
     memset(&step, 0, sizeof(step));
     step.keep_callstack = true;
     step.engine.values = &global->values;
+    step.callstack = dict_lookup(global->tracemap, &ctx, sizeof(ctx));
+    if (step.callstack == NULL) {
+        printf(">>> %"PRIx64"\n", ctx);
+        panic("can't find context");
+    }
 
     unsigned int size;
     struct context *cc = value_get(ctx, &size);
@@ -1240,11 +1245,13 @@ hvalue_t twostep(
         return ctx;
     }
 
+    struct callstack *oldcs = NULL;
+
     if (interrupt) {
         assert(step.ctx->extended);
 		assert(step.ctx->ctx_trap_pc != 0);
         interrupt_invoke(&step);
-        diff_dump(global, file, oldstate, sc, oldctx, step.ctx, oldcs, step.callstack, true, false, 0, NULL);
+        diff_dump(global, file, oldstate, sc, oldctx, step.ctx, &oldcs, step.callstack, true, false, 0, NULL);
     }
 
     struct dict *infloop = NULL;        // infinite loop detector
@@ -1297,7 +1304,7 @@ hvalue_t twostep(
         }
 
         assert(!instrs[pc].choose || choice != 0);
-        diff_dump(global, file, oldstate, sc, oldctx, step.ctx, oldcs, step.callstack, false, instrs[pc].choose, choice, print);
+        diff_dump(global, file, oldstate, sc, oldctx, step.ctx, &oldcs, step.callstack, false, instrs[pc].choose, choice, print);
         free(print);
         if (step.ctx->terminated || step.ctx->failed || step.ctx->stopped) {
             break;
@@ -1319,14 +1326,14 @@ hvalue_t twostep(
 #ifdef TODO
             if (0 && step.ctx->readonly > 0) {    // TODO
                 value_ctx_failure(step.ctx, &step.engine, "can't choose in assertion or invariant");
-                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, oldcs, step.callstack, false, global->code.instrs[pc].choose, choice, NULL);
+                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, &oldcs, step.callstack, false, global->code.instrs[pc].choose, choice, NULL);
                 break;
             }
 #endif
             hvalue_t s = ctx_stack(step.ctx)[step.ctx->sp - 1];
             if (VALUE_TYPE(s) != VALUE_SET) {
                 value_ctx_failure(step.ctx, &step.engine, "choose operation requires a set");
-                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, oldcs, step.callstack, false, global->code.instrs[pc].choose, choice, NULL);
+                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, &oldcs, step.callstack, false, global->code.instrs[pc].choose, choice, NULL);
                 break;
             }
             unsigned int size;
@@ -1334,7 +1341,7 @@ hvalue_t twostep(
             size /= sizeof(hvalue_t);
             if (size == 0) {
                 value_ctx_failure(step.ctx, &step.engine, "choose operation requires a non-empty set");
-                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, oldcs, step.callstack, false, global->code.instrs[pc].choose, choice, NULL);
+                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, &oldcs, step.callstack, false, global->code.instrs[pc].choose, choice, NULL);
                 break;
             }
             if (size == 1) {
@@ -1378,8 +1385,7 @@ void path_dump(
     FILE *file,
     struct edge *e,
     struct state *oldstate,
-    struct context **oldctx,
-    struct callstack *oldcs
+    struct context **oldctx
 ) {
     struct node *node = e->dst;
     struct node *parent = e->src;
@@ -1388,7 +1394,7 @@ void path_dump(
         fprintf(file, "\n");
     }
     else {
-        path_dump(global, file, parent->to_parent, oldstate, oldctx, oldcs);
+        path_dump(global, file, parent->to_parent, oldstate, oldctx);
         fprintf(file, ",\n");
     }
 
@@ -1411,8 +1417,13 @@ void path_dump(
 
     struct context *context = value_get(ctx, NULL);
     assert(!context->terminated);
-    assert(strcmp(global->code.instrs[context->entry].oi->name, "Frame") == 0);
-    const struct env_Frame *ef = global->code.instrs[context->entry].env;
+
+    struct callstack *cs = dict_lookup(global->tracemap, &ctx, sizeof(ctx));
+    while (cs->parent != NULL) {
+        cs = cs->parent;
+    }
+    assert(strcmp(global->code.instrs[cs->pc].oi->name, "Frame") == 0);
+    const struct env_Frame *ef = global->code.instrs[cs->pc].env;
     char *name = value_string(ef->name);
 	int len = strlen(name);
     assert(context->sp > 1);
@@ -1447,7 +1458,6 @@ void path_dump(
         e->interrupt,
         oldstate,
         oldctx,
-        oldcs,
         node->state->vars,
         e->nsteps
     );
@@ -2133,6 +2143,7 @@ int main(int argc, char **argv){
     struct context *init_ctx = calloc(1, sizeof(struct context) + MAX_CONTEXT_STACK * sizeof(hvalue_t));
     init_ctx->vars = VALUE_DICT;
     init_ctx->atomic = 1;
+    init_ctx->initial = true;
     init_ctx->atomicFlag = true;
     value_ctx_push(init_ctx, VALUE_TO_INT(CALLTYPE_PROCESS));
     value_ctx_push(init_ctx, VALUE_LIST);
@@ -2625,11 +2636,19 @@ int main(int argc, char **argv){
             panic("main: bad fail type");
         }
 
+        struct callstack *cs = new_alloc(struct callstack);
+        cs->arg = VALUE_LIST;
+        cs->vars = VALUE_DICT;
+        cs->return_address = CALLTYPE_PROCESS;
+        struct callstack **psc = dict_insert(global->tracemap, NULL,
+                    &ictx, sizeof(ictx), NULL);
+        *psc = cs;
+
         fprintf(out, "  \"macrosteps\": [");
         struct state *oldstate = new_alloc(struct state);
         struct context *oldctx = new_alloc(struct context);
         global->dumpfirst = true;
-        path_dump(global, out, bad->edge, oldstate, /* TODO */ &oldctx, NULL);
+        path_dump(global, out, bad->edge, oldstate, /* TODO */ &oldctx);
         fprintf(out, "\n");
         free(oldctx);
         fprintf(out, "  ],\n");

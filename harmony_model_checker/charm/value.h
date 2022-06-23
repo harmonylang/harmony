@@ -26,6 +26,7 @@ typedef struct state {
 
 typedef struct context {   // context value
     hvalue_t vars;            // method-local variables
+    bool initial : 1;         // __init__ context
     bool atomicFlag : 1;      // to implement lazy atomicity
     bool interruptlevel : 1;  // interrupt level
     bool stopped : 1;         // context is stopped
@@ -39,9 +40,9 @@ typedef struct context {   // context value
     uint16_t sp;              // stack size
 
 #ifdef OBSOLETE
-    uint16_t fp;              // frame pointer      TODO: get rid of this
-#endif
+    uint16_t fp;              // frame pointer
     uint16_t entry;           // pc of method
+#endif
 
     hvalue_t thestack[0];     // growing stack
 

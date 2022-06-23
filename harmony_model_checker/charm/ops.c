@@ -442,10 +442,23 @@ void op_Apply(const void *env, struct state *state, struct step *step, struct gl
         }
         return;
     case VALUE_PC:
+        // see if we need to keep track of the call stack
+        if (step->keep_callstack) {
+            struct callstack *cs = new_alloc(struct callstack);
+            cs->parent = step->callstack;
+            cs->pc = VALUE_FROM_PC(method);
+            cs->arg = e;
+            cs->sp = step->ctx->sp;
+            cs->vars = step->ctx->vars;
+            cs->return_address = ((step->ctx->pc + 1) << CALLTYPE_BITS) | CALLTYPE_NORMAL;
+            step->callstack = cs;
+        }
+
         ctx_push(step->ctx, VALUE_TO_INT(((step->ctx->pc + 1) << CALLTYPE_BITS) | CALLTYPE_NORMAL));
         ctx_push(step->ctx, e);
         assert(VALUE_FROM_PC(method) != step->ctx->pc);
         step->ctx->pc = VALUE_FROM_PC(method);
+
         return;
     default:
         {
@@ -596,6 +609,12 @@ static void do_return(struct state *state, struct step *step, struct global *glo
         break;
     default:
         panic("Return: bad call type");
+    }
+
+    if (step->keep_callstack && (call & CALLTYPE_MASK) != CALLTYPE_PROCESS) {
+        struct callstack *cs = step->callstack;
+        step->callstack = cs->parent;
+        free(cs);
     }
 }
 
@@ -1001,18 +1020,6 @@ void op_Frame(const void *env, struct state *state, struct step *step, struct gl
     ctx_push(step->ctx, VALUE_TO_INT(step->ctx->fp));
 #endif
 
-    // see if we need to keep track of the call stack
-    if (step->keep_callstack) {
-        struct callstack *cs = new_alloc(struct callstack);
-        cs->parent = step->callstack;
-        cs->pc = step->ctx->pc;
-        cs->arg = arg;
-        cs->sp = step->ctx->sp;
-        cs->vars = oldvars;
-        cs->return_address = VALUE_FROM_INT(ret);
-        step->callstack = cs;
-    }
-
     struct context *ctx = step->ctx;
 #ifdef OBSOLETE
     ctx->fp = ctx->sp;
@@ -1313,12 +1320,6 @@ void op_Return(const void *env, struct state *state, struct step *step, struct g
     assert(VALUE_TYPE(oldvars) == VALUE_DICT);
     step->ctx->vars = oldvars;
 
-    if (step->keep_callstack) {
-        struct callstack *cs = step->callstack;
-        step->callstack = cs == NULL ? NULL : cs->parent;
-        free(cs);
-    }
-
     hvalue_t arg = ctx_pop(step->ctx);   // argument saved for stack trace
     do_return(state, step, global, arg, result);
 }
@@ -1468,7 +1469,7 @@ void op_Spawn(
     ctx->vars = VALUE_DICT;
     ctx->interruptlevel = false;
     ctx->eternal = se->eternal;
-    ctx_push(ctx, VALUE_TO_INT(CALLTYPE_PROCESS));
+    ctx_push(ctx, VALUE_TO_INT((step->ctx->pc << CALLTYPE_BITS) | CALLTYPE_PROCESS));
     ctx_push(ctx, arg);
     if (global->run_direct) {
         unsigned int size = sizeof(*ctx) + (ctx->sp * sizeof(hvalue_t));
@@ -1479,10 +1480,28 @@ void op_Spawn(
         memcpy(copy, ctx, size);
         spawn_thread(global, state, copy);
     }
-    else if (!context_add(state, value_put_context(&step->engine, ctx))) {
-        value_ctx_failure(step->ctx, &step->engine, "spawn: too many threads");
-        return;
+    else {
+        hvalue_t context = value_put_context(&step->engine, ctx);
+        if (!context_add(state, context)) {
+            value_ctx_failure(step->ctx, &step->engine, "spawn: too many threads");
+            return;
+        }
+
+        if (step->keep_callstack) {
+            struct callstack *cs = new_alloc(struct callstack);
+            cs->pc = pc;
+            cs->arg = arg;
+            cs->vars = VALUE_DICT;
+            cs->return_address = (step->ctx->pc << CALLTYPE_BITS) | CALLTYPE_PROCESS;
+            bool new;
+            struct callstack **psc = dict_insert(global->tracemap, NULL,
+                        &context, sizeof(context), &new);
+            if (new) {
+                *psc = cs;
+            }
+        }
     }
+
     step->ctx->pc++;
 }
 
@@ -1619,9 +1638,9 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
             step->ai->load = is_sequential(global->seqs, step->ai->indices, step->ai->n);
         }
 
-        if (size == 1 && step->ctx->entry != 0) {
+        if (size == 1 && !step->ctx->initial) {
             hvalue_t newvars;
-            if (!value_dict_trystore(&step->engine, state->vars, indices[0], v, step->ctx->entry == 0, &newvars)){
+            if (!value_dict_trystore(&step->engine, state->vars, indices[0], v, false, &newvars)){
                 char *x = indices_string(indices, size);
                 value_ctx_failure(step->ctx, &step->engine, "Store: declare a local variable %s (or set during initialization)", x);
                 free(x);
@@ -1642,9 +1661,9 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
             step->ai->n = es->n;
             step->ai->load = is_sequential(global->seqs, step->ai->indices, step->ai->n);
         }
-        if (es->n == 1 && step->ctx->entry != 0) {
+        if (es->n == 1 && !step->ctx->initial) {
             hvalue_t newvars;
-            if (!value_dict_trystore(&step->engine, state->vars, es->indices[0], v, step->ctx->entry == 0, &newvars)){
+            if (!value_dict_trystore(&step->engine, state->vars, es->indices[0], v, false, &newvars)){
                 char *x = indices_string(es->indices, es->n);
                 value_ctx_failure(step->ctx, &step->engine, "Store: declare a local variable %s (or set during initialization)", x);
                 free(x);

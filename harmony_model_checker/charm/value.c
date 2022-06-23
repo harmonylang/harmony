@@ -553,7 +553,7 @@ static void value_string_context(struct strbuf *sb, hvalue_t v) {
 #else
     // strbuf_printf(sb, "name=");
     // strbuf_value_string(sb, ctx->name);
-    strbuf_printf(sb, ",entry=%u", ctx->entry);
+    // strbuf_printf(sb, ",entry=%u", ctx->entry);
     // strbuf_printf(sb, ",arg=");
     // strbuf_value_string(sb, ctx->arg);
     strbuf_printf(sb, ",vars=");
@@ -602,7 +602,7 @@ static void value_json_context(struct strbuf *sb, hvalue_t v) {
     struct context *ctx = value_get(v, NULL);
     
     strbuf_printf(sb, "{ \"type\": \"context\", \"value\": {");
-    strbuf_printf(sb, "\"entry\": %u", ctx->entry);
+    // strbuf_printf(sb, "\"entry\": %u", ctx->entry);
     // strbuf_printf(sb, ", \"arg\": ");
     // strbuf_value_json(sb, ctx->arg);
     strbuf_printf(sb, ", \"pc\": { \"type\": \"pc\", \"value\": \"%d\" }", ctx->pc);
