@@ -12,14 +12,14 @@
 
 #define new_alloc(t)	(t *) calloc(1, sizeof(t))
 
-void graph_init(struct graph_t *graph, unsigned int initial_size) {
+void graph_init(struct graph *graph, unsigned int initial_size) {
     assert(initial_size >= 1);
     graph->size = 0;
     graph->alloc_size = initial_size;
     graph->nodes = malloc(graph->alloc_size * sizeof(struct node *));
 }
 
-void graph_add(struct graph_t *graph, struct node *node) {
+void graph_add(struct graph *graph, struct node *node) {
     node->id = graph->size;
     if (graph->size >= graph->alloc_size) {
         graph->alloc_size = (graph->alloc_size + 1) * 2;
@@ -28,7 +28,7 @@ void graph_add(struct graph_t *graph, struct node *node) {
     graph->nodes[graph->size++] = node;
 }
 
-unsigned int graph_add_multiple(struct graph_t *graph, unsigned int n) {
+unsigned int graph_add_multiple(struct graph *graph, unsigned int n) {
     unsigned int node_id = graph->size;
     graph->size += n;
     if (graph->size > graph->alloc_size) {
@@ -38,7 +38,7 @@ unsigned int graph_add_multiple(struct graph_t *graph, unsigned int n) {
     return node_id;
 }
 
-static void inline swap(struct graph_t *graph, unsigned int x, unsigned int y){
+static void inline swap(struct graph *graph, unsigned int x, unsigned int y){
     struct node *tmp = graph->nodes[x];
     graph->nodes[x] = graph->nodes[y];
     graph->nodes[y] = tmp;
@@ -72,7 +72,7 @@ struct scc *scc_alloc(unsigned int start, unsigned int finish, struct scc *next,
 // connected component holding node scc->start, the remaining successors of the node, the remaining
 // nodes minus the predecessors and the successors, and finally the predecessors minus the nodes
 // in the strongly connected component.  Then iteratively visit the last three partitions.
-struct scc *graph_find_scc_one(struct graph_t *graph, struct scc *scc, unsigned int component, void **scc_cache) {
+struct scc *graph_find_scc_one(struct graph *graph, struct scc *scc, unsigned int component, void **scc_cache) {
     unsigned int start = scc->start;
     unsigned int finish = scc->finish;
     assert(start < finish);
@@ -186,7 +186,7 @@ struct scc *graph_find_scc_one(struct graph_t *graph, struct scc *scc, unsigned 
     return scc;
 }
 
-unsigned int graph_find_scc(struct graph_t *graph) {
+unsigned int graph_find_scc(struct graph *graph) {
     struct scc *scc = scc_alloc(0, graph->size, NULL, NULL);
     unsigned int count = 0;
     while (scc != NULL) {

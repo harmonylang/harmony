@@ -37,7 +37,7 @@ mutex_t run_waiting;     // for main thread to wait on
 
 // One of these per worker thread
 struct worker {
-    struct global_t *global;     // global state
+    struct global *global;     // global state
     double timeout;
     barrier_t *start_barrier, *middle_barrier, *end_barrier;
 
@@ -92,7 +92,7 @@ static void *walloc(void *ctx, unsigned int size, bool zero){
     return result;
 }
 
-static void run_thread(struct global_t *global, struct state *state, struct context *ctx){
+static void run_thread(struct global *global, struct state *state, struct context *ctx){
     struct step step;
     memset(&step, 0, sizeof(step));
     step.ctx = ctx;
@@ -100,7 +100,7 @@ static void run_thread(struct global_t *global, struct state *state, struct cont
 
     for (;;) {
         int pc = step.ctx->pc;
-        struct instr_t *instrs = global->code.instrs;
+        struct instr *instrs = global->code.instrs;
         struct op_info *oi = instrs[pc].oi;
         (*oi->op)(instrs[pc].env, state, &step, global);
         if (step.ctx->terminated) {
@@ -137,7 +137,7 @@ static void wrap_thread(void *arg){
     run_thread(si->global, si->state, si->ctx);
 }
 
-void spawn_thread(struct global_t *global, struct state *state, struct context *ctx){
+void spawn_thread(struct global *global, struct state *state, struct context *ctx){
     mutex_acquire(&run_mutex);
     run_count++;
     mutex_release(&run_mutex);
@@ -149,7 +149,7 @@ void spawn_thread(struct global_t *global, struct state *state, struct context *
     thread_create(wrap_thread, si);
 }
 
-bool invariant_check(struct global_t *global, struct state *state, struct step *step, int end){
+bool invariant_check(struct global *global, struct state *state, struct step *step, int end){
     assert(step->ctx->sp == 0);
     assert(!step->ctx->failed);
     step->ctx->pc++;
@@ -166,14 +166,13 @@ bool invariant_check(struct global_t *global, struct state *state, struct step *
     }
     assert(step->ctx->sp == 1);
     step->ctx->sp = 0;
-    assert(step->ctx->fp == 0);
     hvalue_t b = ctx_stack(step->ctx)[0];
     assert(VALUE_TYPE(b) == VALUE_BOOL);
     return VALUE_FROM_BOOL(b);
 }
 
 bool check_invariants(struct worker *w, struct node *node, struct step *step){
-    struct global_t *global = w->global;
+    struct global *global = w->global;
     struct state *state = node->state;
     extern int invariant_cnt(const void *env);
 
@@ -224,7 +223,7 @@ static bool onestep(
     assert(!step->ctx->failed);
     assert(step->engine.allocator == &w->allocator);
 
-    struct global_t *global = w->global;
+    struct global *global = w->global;
 
     // See if we should also try an interrupt.
     if (interrupt) {
@@ -252,19 +251,15 @@ static bool onestep(
             double now = gettime();
             if (now - global->lasttime > 1) {
                 if (global->lasttime != 0) {
-                    assert(strcmp(global->code.instrs[step->ctx->entry].oi->name, "Frame") == 0);
-                    const struct env_Frame *ef = global->code.instrs[step->ctx->entry].env;
-                    char *p = value_string(ef->name);
                     unsigned int enqueued = 0, dequeued = 0;
                     for (unsigned int i = 0; i < w->nworkers; i++) {
                         struct worker *w2 = &w->workers[i];
                         enqueued += w2->enqueued;
                         dequeued += w2->dequeued;
                     }
-                    fprintf(stderr, "%s pc=%d states=%u diam=%u q=%d rate=%d\n",
-                            p, step->ctx->pc, enqueued, global->diameter, enqueued - dequeued, (unsigned int) ((enqueued - global->last_nstates) / (now - global->lasttime)));
+                    fprintf(stderr, "pc=%d states=%u diam=%u q=%d rate=%d\n",
+                            step->ctx->pc, enqueued, global->diameter, enqueued - dequeued, (unsigned int) ((enqueued - global->last_nstates) / (now - global->lasttime)));
                     global->last_nstates = enqueued;
-                    free(p);
                 }
                 global->lasttime = now;
                 if (now > w->timeout) {
@@ -276,7 +271,7 @@ static bool onestep(
         }
 
         w->profile[pc]++;       // for profiling
-        struct instr_t *instrs = global->code.instrs;
+        struct instr *instrs = global->code.instrs;
         struct op_info *oi = instrs[pc].oi;
         if (instrs[pc].choose) {
             assert(step->ctx->sp > 0);
@@ -370,7 +365,7 @@ static bool onestep(
 
         /* Peek at the next instruction.
          */
-        struct instr_t *next_instr = &global->code.instrs[step->ctx->pc];
+        struct instr *next_instr = &global->code.instrs[step->ctx->pc];
         if (next_instr->choose) {
             assert(step->ctx->sp > 0);
 #ifdef TODO
@@ -657,117 +652,6 @@ char *json_escape_value(hvalue_t v){
     return r;
 }
 
-static bool print_trace(
-    struct global_t *global,
-    FILE *file,
-    struct context *ctx,
-    int pc,
-    int fp,
-    hvalue_t vars
-) {
-    if (fp == 0) {
-        return false;
-    }
-    assert(fp >= 4);
-
-	int level = 0, orig_pc = pc;
-    if (strcmp(global->code.instrs[pc].oi->name, "Frame") == 0) {
-        hvalue_t callval = ctx_stack(ctx)[ctx->sp - 2];
-        assert(VALUE_TYPE(callval) == VALUE_INT);
-        unsigned int call = VALUE_FROM_INT(callval);
-        switch (call & CALLTYPE_MASK) {
-        case CALLTYPE_PROCESS:
-            pc++;
-            break;
-        case CALLTYPE_INTERRUPT:
-        case CALLTYPE_NORMAL:
-            pc = call >> CALLTYPE_BITS;
-            break;
-        default:
-            fprintf(stderr, "call type: %x %d %d %d\n", call, ctx->sp, ctx->fp, ctx->pc);
-            panic("print_trace: bad call type 1");
-        }
-    }
-    while (--pc >= 0) {
-        const char *name = global->code.instrs[pc].oi->name;
-
-        if (strcmp(name, "Return") == 0) {
-			level++;
-		}
-        else if (strcmp(name, "Frame") == 0) {
-			if (level == 0) {
-				if (fp > 4) {
-                    hvalue_t callval = ctx_stack(ctx)[fp - 4];
-                    assert(VALUE_TYPE(callval) == VALUE_INT);
-                    unsigned int call = VALUE_FROM_INT(callval);
-                    switch (call & CALLTYPE_MASK) {
-                    case CALLTYPE_PROCESS:
-                        panic("XXX");
-                    case CALLTYPE_INTERRUPT:
-                    case CALLTYPE_NORMAL:
-                        { 
-                            unsigned int npc = call >>= CALLTYPE_BITS;
-                            hvalue_t nvars = ctx_stack(ctx)[fp - 2];
-                            int nfp = ctx_stack(ctx)[fp - 1] >> VALUE_BITS;
-                            if (print_trace(global, file, ctx, npc, nfp, nvars)) {
-                                fprintf(file, ",\n");
-                            }
-                        }
-                        break;
-                    default:
-                        panic("YYY");
-                    }
-				}
-				fprintf(file, "            {\n");
-				fprintf(file, "              \"pc\": \"%d\",\n", orig_pc);
-				fprintf(file, "              \"xpc\": \"%d\",\n", pc);
-
-				const struct env_Frame *ef = global->code.instrs[pc].env;
-				char *s = value_string(ef->name), *a = NULL;
-				int len = strlen(s);
-                a = json_escape_value(ctx_stack(ctx)[fp - 3]);
-				if (*a == '(') {
-					fprintf(file, "              \"method\": \"%.*s%s\",\n", len - 2, s + 1, a);
-				}
-				else {
-					fprintf(file, "              \"method\": \"%.*s(%s)\",\n", len - 2, s + 1, a);
-				}
-
-                hvalue_t callval = ctx_stack(ctx)[fp - 4];
-                assert(VALUE_TYPE(callval) == VALUE_INT);
-                unsigned int call = VALUE_FROM_INT(callval);
-                switch (call & CALLTYPE_MASK) {
-                case CALLTYPE_PROCESS:
-                    fprintf(file, "              \"calltype\": \"process\",\n");
-                    break;
-                case CALLTYPE_NORMAL:
-                    fprintf(file, "              \"calltype\": \"normal\",\n");
-                    break;
-                case CALLTYPE_INTERRUPT:
-                    fprintf(file, "              \"calltype\": \"interrupt\",\n");
-                    break;
-                default:
-                    printf(">>> %x\n", call);
-                    panic("print_trace: bad call type 2");
-                }
-
-				free(s);
-				free(a);
-				fprintf(file, "              \"vars\": ");
-				print_vars(file, vars);
-				fprintf(file, "\n");
-				fprintf(file, "            }");
-				return true;
-			}
-            else {
-                assert(level > 0);
-                level--;
-            }
-        }
-    }
-    return false;
-}
-
 char *ctx_status(struct node *node, hvalue_t ctx) {
     if (node->state->choosing == ctx) {
         return "choosing";
@@ -787,8 +671,48 @@ char *ctx_status(struct node *node, hvalue_t ctx) {
     return "runnable";
 }
 
+static void print_rectrace(struct global *global, FILE *file, struct callstack *cs, unsigned int pc, hvalue_t vars){
+    if (cs->parent != NULL) {
+        print_rectrace(global, file, cs->parent, cs->return_address >> CALLTYPE_BITS, cs->vars);
+        fprintf(file, ",\n");
+    }
+    const struct env_Frame *ef = global->code.instrs[cs->pc].env;
+    char *method = value_string(ef->name);
+    char *arg = json_escape_value(cs->arg);
+    fprintf(file, "            {\n");
+    fprintf(file, "              \"pc\": \"%u\",\n", pc);
+    fprintf(file, "              \"xpc\": \"%u\",\n", cs->pc);
+    if (*arg == '(') {
+        fprintf(file, "              \"method\": \"%.*s%s\",\n", (int) strlen(method) - 2, method + 1, arg);
+    }
+    else {
+        fprintf(file, "              \"method\": \"%.*s(%s)\",\n", (int) strlen(method) - 2, method + 1, arg);
+    }
+    switch (cs->return_address & CALLTYPE_MASK) {
+    case CALLTYPE_PROCESS:
+        fprintf(file, "              \"calltype\": \"process\",\n");
+        break;
+    case CALLTYPE_NORMAL:
+        fprintf(file, "              \"calltype\": \"normal\",\n");
+        break;
+    case CALLTYPE_INTERRUPT:
+        fprintf(file, "              \"calltype\": \"interrupt\",\n");
+        break;
+    default:
+        printf(">>> %x\n", cs->return_address);
+        panic("print_rectrace: bad call type");
+    }
+    fprintf(file, "              \"vars\": ");
+    print_vars(file, vars);
+    fprintf(file, ",\n");
+    fprintf(file, "              \"sp\": %u\n", cs->sp);
+    fprintf(file, "            }");
+    free(arg);
+    free(method);
+}
+
 void print_context(
-    struct global_t *global,
+    struct global *global,
     FILE *file,
     hvalue_t ctx,
     int tid,
@@ -796,7 +720,7 @@ void print_context(
 ) {
     fprintf(file, "        {\n");
     fprintf(file, "          \"tid\": \"%d\",\n", tid);
-    fprintf(file, "          \"yhash\": \"%"PRI_HVAL"\",\n", ctx);
+    fprintf(file, "          \"hvalue\": \"%"PRI_HVAL"\",\n", ctx);
 
     unsigned int size;
     struct context *c = value_get(ctx, &size);
@@ -810,12 +734,23 @@ void print_context(
     fprintf(file, "\",\n");
 #endif
 
-    assert(strcmp(global->code.instrs[c->entry].oi->name, "Frame") == 0);
-    const struct env_Frame *ef = global->code.instrs[c->entry].env;
+    struct callstack *cs = dict_lookup(global->tracemap, &ctx, sizeof(ctx));
+    if (cs == NULL) {
+        printf(">>> %"PRIx64"\n", ctx);
+        panic("print_context: can't find context");
+    }
+    fprintf(file, "          \"fp\": \"%d\",\n", cs->sp + 1);
+
+    struct callstack *ecs = cs;
+    while (ecs->parent != NULL) {
+        ecs = ecs->parent;
+    }
+
+    assert(strcmp(global->code.instrs[ecs->pc].oi->name, "Frame") == 0);
+    const struct env_Frame *ef = global->code.instrs[ecs->pc].env;
     char *s = value_string(ef->name);
 	int len = strlen(s);
-    assert(c->sp > 1);
-    char *a = json_escape_value(ctx_stack(c)[1]);
+    char *a = json_escape_value(ecs->arg);
     if (*a == '(') {
         fprintf(file, "          \"name\": \"%.*s%s\",\n", len - 2, s + 1, a);
     }
@@ -825,10 +760,14 @@ void print_context(
     free(s);
     free(a);
 
-    fprintf(file, "          \"entry\": \"%u\",\n", c->entry);
+    // TODO.  Backwards compatibility
+    struct callstack *lcs = cs;
+    while (lcs->parent != NULL) {
+        lcs = lcs->parent;
+    }
+    fprintf(file, "          \"entry\": \"%u\",\n", lcs->pc);
 
     fprintf(file, "          \"pc\": \"%d\",\n", c->pc);
-    fprintf(file, "          \"fp\": \"%d\",\n", c->fp);
 
 #ifdef notdef
     {
@@ -840,7 +779,7 @@ void print_context(
 #endif
 
     fprintf(file, "          \"trace\": [\n");
-    print_trace(global, file, c, c->pc, c->fp, c->vars);
+    print_rectrace(global, file, cs, c->pc, c->vars);
     fprintf(file, "\n");
     fprintf(file, "          ],\n");
 
@@ -912,7 +851,7 @@ void print_context(
 }
 
 void print_state(
-    struct global_t *global,
+    struct global *global,
     FILE *file,
     struct node *node
 ) {
@@ -925,6 +864,7 @@ void print_state(
 
     struct state *state = node->state;
     extern int invariant_cnt(const void *env);
+
     struct step inv_step;
     memset(&inv_step, 0, sizeof(inv_step));
     inv_step.engine.values = &global->values;
@@ -946,8 +886,7 @@ void print_state(
     int nfailures = 0;
     for (unsigned int i = 0; i < size; i++) {
         assert(VALUE_TYPE(vals[i]) == VALUE_PC);
-        inv_step.ctx->entry = VALUE_FROM_PC(vals[i]);
-        inv_step.ctx->pc = inv_step.ctx->entry;
+        inv_step.ctx->pc = VALUE_FROM_PC(vals[i]);
         assert(strcmp(global->code.instrs[inv_step.ctx->pc].oi->name, "Invariant") == 0);
         int end = invariant_cnt(global->code.instrs[inv_step.ctx->pc].env);
         bool b = invariant_check(global, state, &inv_step, end);
@@ -971,6 +910,7 @@ void print_state(
             }
             nfailures++;
             fprintf(file, "        }");
+            break;
         }
     }
     fprintf(file, "\n      ],\n");
@@ -999,12 +939,14 @@ void print_state(
 }
 
 void diff_state(
-    struct global_t *global,
+    struct global *global,
     FILE *file,
     struct state *oldstate,
     struct state *newstate,
     struct context *oldctx,
     struct context *newctx,
+    struct callstack *oldcs,
+    struct callstack *newcs,
     bool interrupt,
     bool choose,
     hvalue_t choice,
@@ -1034,8 +976,8 @@ void diff_state(
         fprintf(file, "          \"print\": %s,\n", print);
     }
     fprintf(file, "          \"npc\": \"%d\",\n", newctx->pc);
-    if (newctx->fp != oldctx->fp) {
-        fprintf(file, "          \"fp\": \"%d\",\n", newctx->fp);
+    if (newcs != oldcs) {
+        fprintf(file, "          \"fp\": \"%d\",\n", newcs->sp + 1);
 #ifdef notdef
         {
             fprintf(stderr, "STACK2 %d:\n", newctx->fp);
@@ -1044,8 +986,9 @@ void diff_state(
             }
         }
 #endif
+
         fprintf(file, "          \"trace\": [\n");
-        print_trace(global, file, newctx, newctx->pc, newctx->fp, newctx->vars);
+        print_rectrace(global, file, newcs, newctx->pc, newctx->vars);
         fprintf(file, "\n");
         fprintf(file, "          ],\n");
     }
@@ -1104,12 +1047,14 @@ void diff_state(
 }
 
 void diff_dump(
-    struct global_t *global,
+    struct global *global,
     FILE *file,
     struct state *oldstate,
     struct state *newstate,
     struct context **oldctx,
     struct context *newctx,
+    struct callstack **oldcs,
+    struct callstack *newcs,
     bool interrupt,
     bool choose,
     hvalue_t choice,
@@ -1124,16 +1069,17 @@ void diff_dump(
     }
 
     // Keep track of old state and context for taking diffs
-    diff_state(global, file, oldstate, newstate, *oldctx, newctx, interrupt, choose, choice, print);
+    diff_state(global, file, oldstate, newstate, *oldctx, newctx, *oldcs, newcs, interrupt, choose, choice, print);
     *oldstate = *newstate;
     free(*oldctx);
     *oldctx = malloc(newsize);
     memcpy(*oldctx, newctx, newsize);
+    *oldcs = newcs;
 }
 
 // similar to onestep.
 hvalue_t twostep(
-    struct global_t *global,
+    struct global *global,
     FILE *file,
     struct node *node,
     hvalue_t ctx,
@@ -1151,7 +1097,13 @@ hvalue_t twostep(
 
     struct step step;
     memset(&step, 0, sizeof(step));
+    step.keep_callstack = true;
     step.engine.values = &global->values;
+    step.callstack = dict_lookup(global->tracemap, &ctx, sizeof(ctx));
+    if (step.callstack == NULL) {
+        printf(">>> %"PRIx64"\n", ctx);
+        panic("can't find context");
+    }
 
     unsigned int size;
     struct context *cc = value_get(ctx, &size);
@@ -1164,11 +1116,13 @@ hvalue_t twostep(
         return ctx;
     }
 
+    struct callstack *oldcs = NULL;
+
     if (interrupt) {
         assert(step.ctx->extended);
 		assert(step.ctx->ctx_trap_pc != 0);
         interrupt_invoke(&step);
-        diff_dump(global, file, oldstate, sc, oldctx, step.ctx, true, false, 0, NULL);
+        diff_dump(global, file, oldstate, sc, oldctx, step.ctx, &oldcs, step.callstack, true, false, 0, NULL);
     }
 
     struct dict *infloop = NULL;        // infinite loop detector
@@ -1177,7 +1131,7 @@ hvalue_t twostep(
         int pc = step.ctx->pc;
 
         char *print = NULL;
-        struct instr_t *instrs = global->code.instrs;
+        struct instr *instrs = global->code.instrs;
         struct op_info *oi = instrs[pc].oi;
         if (instrs[pc].choose) {
             assert(choice != 0);
@@ -1221,7 +1175,7 @@ hvalue_t twostep(
         }
 
         assert(!instrs[pc].choose || choice != 0);
-        diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, instrs[pc].choose, choice, print);
+        diff_dump(global, file, oldstate, sc, oldctx, step.ctx, &oldcs, step.callstack, false, instrs[pc].choose, choice, print);
         free(print);
         if (step.ctx->terminated || step.ctx->failed || step.ctx->stopped) {
             break;
@@ -1243,14 +1197,14 @@ hvalue_t twostep(
 #ifdef TODO
             if (0 && step.ctx->readonly > 0) {    // TODO
                 value_ctx_failure(step.ctx, &step.engine, "can't choose in assertion or invariant");
-                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice, NULL);
+                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, &oldcs, step.callstack, false, global->code.instrs[pc].choose, choice, NULL);
                 break;
             }
 #endif
             hvalue_t s = ctx_stack(step.ctx)[step.ctx->sp - 1];
             if (VALUE_TYPE(s) != VALUE_SET) {
                 value_ctx_failure(step.ctx, &step.engine, "choose operation requires a set");
-                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice, NULL);
+                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, &oldcs, step.callstack, false, global->code.instrs[pc].choose, choice, NULL);
                 break;
             }
             unsigned int size;
@@ -1258,7 +1212,7 @@ hvalue_t twostep(
             size /= sizeof(hvalue_t);
             if (size == 0) {
                 value_ctx_failure(step.ctx, &step.engine, "choose operation requires a non-empty set");
-                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice, NULL);
+                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, &oldcs, step.callstack, false, global->code.instrs[pc].choose, choice, NULL);
                 break;
             }
             if (size == 1) {
@@ -1283,21 +1237,22 @@ hvalue_t twostep(
         context_add(sc, after);
     }
 
-    // assert(sc->vars == nextvars);
-    // ctx = value_put_context(&step.engine, step.ctx);
-    // if ((ctx & 0xFFFF00000000) == 0x600000000000) {
-    //     printf("YYYYYYY\n");
-    // }
-
     free(sc);
     free(step.ctx);
     // TODO free(step.log);
+
+    bool new;
+    struct callstack **psc = dict_insert(global->tracemap, NULL,
+                &after, sizeof(after), &new);
+    if (new) {
+        *psc = step.callstack;
+    }
 
     return after;
 }
 
 void path_dump(
-    struct global_t *global,
+    struct global *global,
     FILE *file,
     struct edge *e,
     struct state *oldstate,
@@ -1333,15 +1288,19 @@ void path_dump(
 
     struct context *context = value_get(ctx, NULL);
     assert(!context->terminated);
-    assert(strcmp(global->code.instrs[context->entry].oi->name, "Frame") == 0);
-    const struct env_Frame *ef = global->code.instrs[context->entry].env;
+
+    struct callstack *cs = dict_lookup(global->tracemap, &ctx, sizeof(ctx));
+    while (cs->parent != NULL) {
+        cs = cs->parent;
+    }
+    assert(strcmp(global->code.instrs[cs->pc].oi->name, "Frame") == 0);
+    const struct env_Frame *ef = global->code.instrs[cs->pc].env;
     char *name = value_string(ef->name);
 	int len = strlen(name);
-    assert(context->sp > 1);
-    char *arg = json_escape_value(ctx_stack(context)[1]);
+    char *arg = json_escape_value(cs->arg);
     char *c = e->choice == 0 ? NULL : value_json(e->choice);
     fprintf(file, "      \"tid\": \"%d\",\n", pid);
-    fprintf(file, "      \"xhash\": \"%"PRI_HVAL"\",\n", ctx);
+    fprintf(file, "      \"ctx\": \"%"PRI_HVAL"\",\n", ctx);
     if (*arg == '(') {
         fprintf(file, "      \"name\": \"%.*s%s\",\n", len - 2, name + 1, arg);
     }
@@ -1404,7 +1363,7 @@ void path_dump(
 }
 
 static char *json_string_encode(char *s, int len){
-    char *result = malloc(4 * len), *p = result;
+    char *result = malloc(4 * len + 1), *p = result;
 
     while (len > 0) {
         switch (*s) {
@@ -1582,7 +1541,7 @@ static int fail_cmp(void *f1, void *f2){
 }
 
 static void do_work(struct worker *w){
-    struct global_t *global = w->global;
+    struct global *global = w->global;
 
     for (;;) {
         mutex_acquire(&global->todo_lock);
@@ -1650,7 +1609,7 @@ static void do_work(struct worker *w){
     }
 }
 
-static void work_phase2(struct worker *w, struct global_t *global){
+static void work_phase2(struct worker *w, struct global *global){
     mutex_acquire(&global->todo_lock);
     for (;;) {
         if (global->scc_todo == NULL) {
@@ -1714,7 +1673,7 @@ static void work_phase2(struct worker *w, struct global_t *global){
 
 static void worker(void *arg){
     struct worker *w = arg;
-    struct global_t *global = w->global;
+    struct global *global = w->global;
 
     for (int epoch = 0;; epoch++) {
         barrier_wait(w->start_barrier);
@@ -1765,7 +1724,7 @@ static void worker(void *arg){
     }
 }
 
-void process_results(struct global_t *global, struct worker *w){
+void process_results(struct global *global, struct worker *w){
     struct failure *f;
     while ((f = w->failures) != NULL) {
         w->failures = f->next;
@@ -1791,7 +1750,7 @@ char *state_string(struct state *state){
 // This routine removes all node that have a single incoming edge and it's
 // an "epsilon" edge (empty print log).  These are essentially useless nodes.
 // Typically about half of the nodes can be removed this way.
-static void destutter1(struct graph_t *graph){
+static void destutter1(struct graph *graph){
     for (unsigned int i = 0; i < graph->size; i++) {
         struct node *n = graph->nodes[i];
 
@@ -1836,7 +1795,7 @@ static void destutter1(struct graph_t *graph){
     }
 }
 
-static struct dict *collect_symbols(struct graph_t *graph){
+static struct dict *collect_symbols(struct graph *graph){
     struct dict *symbols = dict_new("symbols", sizeof(unsigned int), 0, 0, NULL, NULL);
     unsigned int symbol_id = 0;
 
@@ -1935,14 +1894,6 @@ static void print_transitions(FILE *out, struct dict *symbols, struct edge *edge
     dict_delete(d);
 }
 
-#ifdef OBSOLETE
-static void pr_state(struct global_t *global, FILE *fp, struct state *state, int index){
-    char *v = state_string(state);
-    fprintf(fp, "%s\n", v);
-    free(v);
-}
-#endif
-
 static void usage(char *prog){
     fprintf(stderr, "Usage: %s [-c] [-t<maxtime>] [-B<dfafile>] -o<outfile> file.json\n", prog);
     exit(1);
@@ -1987,7 +1938,7 @@ int main(int argc, char **argv){
     double timeout = gettime() + maxtime;
 
     // Determine how many worker threads to use
-    struct global_t *global = new_alloc(struct global_t);
+    struct global *global = new_alloc(struct global);
     global->nworkers = getNumCores();
 	printf("nworkers = %d\n", global->nworkers);
 
@@ -2011,6 +1962,7 @@ int main(int argc, char **argv){
     global->failures = minheap_create(fail_cmp);
     global->seqs = VALUE_SET;
     global->invariants = VALUE_SET;
+    global->tracemap = dict_new("tracemap", sizeof(struct callstack *), 0, 0, NULL, NULL);
 
     // First read and parse the DFA if any
     if (dfafile != NULL) {
@@ -2053,8 +2005,11 @@ int main(int argc, char **argv){
     struct context *init_ctx = calloc(1, sizeof(struct context) + MAX_CONTEXT_STACK * sizeof(hvalue_t));
     init_ctx->vars = VALUE_DICT;
     init_ctx->atomic = 1;
+    init_ctx->initial = true;
     init_ctx->atomicFlag = true;
+#ifdef ZZZ
     value_ctx_push(init_ctx, VALUE_TO_INT(CALLTYPE_PROCESS));
+#endif
     value_ctx_push(init_ctx, VALUE_LIST);
 
     struct state *state = calloc(1, sizeof(struct state) + sizeof(hvalue_t) + 1);
@@ -2544,6 +2499,14 @@ int main(int argc, char **argv){
         default:
             panic("main: bad fail type");
         }
+
+        struct callstack *cs = new_alloc(struct callstack);
+        cs->arg = VALUE_LIST;
+        cs->vars = VALUE_DICT;
+        cs->return_address = CALLTYPE_PROCESS;
+        struct callstack **psc = dict_insert(global->tracemap, NULL,
+                    &ictx, sizeof(ictx), NULL);
+        *psc = cs;
 
         fprintf(out, "  \"macrosteps\": [");
         struct state *oldstate = new_alloc(struct state);

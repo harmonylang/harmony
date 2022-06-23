@@ -8,6 +8,6 @@ int dfa_initial(struct dfa *dfa);
 bool dfa_is_final(struct dfa *dfa, int state);
 int dfa_step(struct dfa *dfa, int current, hvalue_t symbol);
 int dfa_ntransitions(struct dfa *dfa);
-void dfa_check_trie(struct global_t *global);
+void dfa_check_trie(struct global *global);
 
 #endif // SRC_DFA_H

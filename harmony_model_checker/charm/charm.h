@@ -11,12 +11,12 @@ struct scc {
     unsigned int start, finish;
 };
 
-struct global_t {
-    struct code_t code;
-    struct values_t values;
+struct global {
+    struct code code;
+    struct values values;
     hvalue_t seqs;               // sequential variables
     hvalue_t invariants;         // set of invariants that must hold
-    struct graph_t graph;        // the Kripke structure
+    struct graph graph;        // the Kripke structure
     unsigned int todo;           // points into graph->nodes
     unsigned int goal;           // points into graph->nodes
     bool layer_done;             // all states in a layer completed
@@ -35,6 +35,7 @@ struct global_t {
     unsigned int diameter;       // graph diameter
     bool phase2;                 // when model checking is done and graph analysis starts
     struct scc *scc_todo;        // SCC search
+    struct dict *tracemap;       // maps contexts to callstack
     bool run_direct;             // non-model-checked mode
 };
 

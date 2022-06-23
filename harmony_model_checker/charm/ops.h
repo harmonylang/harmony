@@ -9,23 +9,33 @@
 
 #define MAX_PRINT       64
 
-void ops_init(struct global_t *global, struct engine *engine);
+void ops_init(struct global *global, struct engine *engine);
 struct op_info *ops_get(char *opname, int size);
+
+struct callstack {
+    struct callstack *parent;
+    unsigned int pc;
+    unsigned int sp;
+    unsigned int return_address;
+    hvalue_t arg;
+    hvalue_t vars;
+};
 
 struct step {
     struct engine engine;
     struct context *ctx;
     struct access_info *ai;
-    // TODO hvalue_t *log;
-    hvalue_t log[MAX_PRINT];
-    unsigned int nlog;
     struct dfa_trie *dfa_trie;
+    bool keep_callstack;
+    struct callstack *callstack;
+    unsigned int nlog;
+    hvalue_t log[MAX_PRINT];
 };
 
 struct op_info {
     const char *name;
     void *(*init)(struct dict *, struct engine *engine);
-    void (*op)(const void *env, struct state *state, struct step *step, struct global_t *global);
+    void (*op)(const void *env, struct state *state, struct step *step, struct global *global);
 };
 
 struct env_Builtin {

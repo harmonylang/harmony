@@ -78,13 +78,13 @@ struct failure {
     hvalue_t address;       // in case of data race
 };
 
-struct graph_t {
+struct graph {
     struct node **nodes;         // vector of all nodes
     unsigned int size;           // to create node identifiers
     unsigned int alloc_size;     // size allocated
 };
 
-void graph_init(struct graph_t *graph, unsigned int initial_size);
+void graph_init(struct graph *graph, unsigned int initial_size);
 
 struct access_info *graph_ai_alloc(int multiplicity, int atomic, int pc);
 
@@ -93,10 +93,10 @@ void graph_check_for_data_race(
     struct minheap *warnings,
     struct engine *engine
 );
-void graph_add(struct graph_t *graph, struct node *node);
-unsigned int graph_add_multiple(struct graph_t *graph, unsigned int n);
-unsigned int graph_find_scc(struct graph_t *graph);
-struct scc *graph_find_scc_one(struct graph_t *graph, struct scc *scc, unsigned int component, void **scc_cache);
+void graph_add(struct graph *graph, struct node *node);
+unsigned int graph_add_multiple(struct graph *graph, unsigned int n);
+unsigned int graph_find_scc(struct graph *graph);
+struct scc *graph_find_scc_one(struct graph *graph, struct scc *scc, unsigned int component, void **scc_cache);
 struct scc *scc_alloc(unsigned int start, unsigned int finish, struct scc *next, void **scc_cache);
 
 #endif //SRC_GRAPH_H

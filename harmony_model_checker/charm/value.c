@@ -408,14 +408,14 @@ static void value_string_list(struct strbuf *sb, hvalue_t v) {
     hvalue_t *vals = dict_retrieve(p, &size);
     size /= sizeof(hvalue_t);
 
-    strbuf_printf(sb, "[ ");
+    strbuf_printf(sb, "[");
     for (unsigned int i = 0; i < size; i++) {
         if (i != 0) {
             strbuf_printf(sb, ", ");
         }
         strbuf_value_string(sb, vals[i]);
     }
-    strbuf_printf(sb, " ]");
+    strbuf_printf(sb, "]");
 }
 
 static void value_string_set(struct strbuf *sb, hvalue_t v) {
@@ -486,10 +486,10 @@ static void strbuf_indices_string(struct strbuf *sb, const hvalue_t *vec, int si
         strbuf_printf(sb, "None");
         return;
     }
-    char *s = value_string(vec[0]);
+    char *s = value_string(vec[0]);     // TODO.  Inefficient
     assert(s[0] == '"');
 	int len = strlen(s);
-    strbuf_printf(sb, "%.*s", len - 2, s + 1);
+    strbuf_printf(sb, "?%.*s", len - 2, s + 1);
     free(s);
 
     for (int i = 1; i < size; i++) {
@@ -553,7 +553,7 @@ static void value_string_context(struct strbuf *sb, hvalue_t v) {
 #else
     // strbuf_printf(sb, "name=");
     // strbuf_value_string(sb, ctx->name);
-    strbuf_printf(sb, ",entry=%u", ctx->entry);
+    // strbuf_printf(sb, ",entry=%u", ctx->entry);
     // strbuf_printf(sb, ",arg=");
     // strbuf_value_string(sb, ctx->arg);
     strbuf_printf(sb, ",vars=");
@@ -574,7 +574,9 @@ static void value_string_context(struct strbuf *sb, hvalue_t v) {
     }
 
     strbuf_printf(sb, ",pc=%d", ctx->pc);
+#ifdef OBSOLETE
     strbuf_printf(sb, ",fp=%d", ctx->fp);
+#endif
     strbuf_printf(sb, ",readonly=%d", ctx->readonly);
     strbuf_printf(sb, ",atomic=%d", ctx->atomic);
     strbuf_printf(sb, ",aflag=%d", ctx->atomicFlag);
@@ -600,10 +602,10 @@ static void value_json_context(struct strbuf *sb, hvalue_t v) {
     struct context *ctx = value_get(v, NULL);
     
     strbuf_printf(sb, "{ \"type\": \"context\", \"value\": {");
-    strbuf_printf(sb, "\"entry\": %u", ctx->entry);
+    // strbuf_printf(sb, "\"entry\": %u", ctx->entry);
     // strbuf_printf(sb, ", \"arg\": ");
     // strbuf_value_json(sb, ctx->arg);
-    strbuf_printf(sb, ", \"pc\": { \"type\": \"pc\", \"value\": \"%d\" }", ctx->pc);
+    strbuf_printf(sb, "\"pc\": { \"type\": \"pc\", \"value\": \"%d\" }", ctx->pc);
 
     strbuf_printf(sb, " } }");
 }
@@ -894,7 +896,7 @@ static bool align_test(){
     return true;
 }
 
-void value_init(struct values_t *values, unsigned int nworkers){
+void value_init(struct values *values, unsigned int nworkers){
     if (align_test()) {
         // printf("malloc appears aligned to %d bytes\n", 1 << VALUE_BITS);
         values->atoms = dict_new("atoms", 0, 0, nworkers, NULL, NULL);
@@ -914,7 +916,7 @@ void value_init(struct values_t *values, unsigned int nworkers){
     }
 }
 
-void value_set_concurrent(struct values_t *values){
+void value_set_concurrent(struct values *values){
     dict_set_concurrent(values->atoms);
     dict_set_concurrent(values->dicts);
     dict_set_concurrent(values->sets);
@@ -923,7 +925,7 @@ void value_set_concurrent(struct values_t *values){
     dict_set_concurrent(values->contexts);
 }
 
-void value_make_stable(struct values_t *values, unsigned int worker){
+void value_make_stable(struct values *values, unsigned int worker){
     dict_make_stable(values->atoms, worker);
     dict_make_stable(values->dicts, worker);
     dict_make_stable(values->sets, worker);
@@ -932,7 +934,7 @@ void value_make_stable(struct values_t *values, unsigned int worker){
     dict_make_stable(values->contexts, worker);
 }
 
-void value_grow_prepare(struct values_t *values) {
+void value_grow_prepare(struct values *values) {
     dict_grow_prepare(values->atoms);
     dict_grow_prepare(values->dicts);
     dict_grow_prepare(values->sets);
@@ -941,7 +943,7 @@ void value_grow_prepare(struct values_t *values) {
     dict_grow_prepare(values->contexts);
 }
 
-void value_set_sequential(struct values_t *values){
+void value_set_sequential(struct values *values){
     dict_set_sequential(values->atoms);
     dict_set_sequential(values->dicts);
     dict_set_sequential(values->sets);

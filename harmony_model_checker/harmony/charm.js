@@ -112,9 +112,8 @@ function json_string_address(obj) {
 }
 
 function json_string_context(obj) {
-  var entry = json_string(obj.entry);
   var pc = json_string(obj.pc);
-  return "CTX(" + entry + ", " + pc + ")";
+  return "CTX(" + pc + ")";
 }
 
 function json_string(obj) {
