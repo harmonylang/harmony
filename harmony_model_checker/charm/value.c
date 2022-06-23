@@ -605,7 +605,7 @@ static void value_json_context(struct strbuf *sb, hvalue_t v) {
     // strbuf_printf(sb, "\"entry\": %u", ctx->entry);
     // strbuf_printf(sb, ", \"arg\": ");
     // strbuf_value_json(sb, ctx->arg);
-    strbuf_printf(sb, ", \"pc\": { \"type\": \"pc\", \"value\": \"%d\" }", ctx->pc);
+    strbuf_printf(sb, "\"pc\": { \"type\": \"pc\", \"value\": \"%d\" }", ctx->pc);
 
     strbuf_printf(sb, " } }");
 }
