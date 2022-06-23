@@ -486,10 +486,10 @@ static void strbuf_indices_string(struct strbuf *sb, const hvalue_t *vec, int si
         strbuf_printf(sb, "None");
         return;
     }
-    char *s = value_string(vec[0]);
+    char *s = value_string(vec[0]);     // TODO.  Inefficient
     assert(s[0] == '"');
 	int len = strlen(s);
-    strbuf_printf(sb, "%.*s", len - 2, s + 1);
+    strbuf_printf(sb, "?%.*s", len - 2, s + 1);
     free(s);
 
     for (int i = 1; i < size; i++) {
