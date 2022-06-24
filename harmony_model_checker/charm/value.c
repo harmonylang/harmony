@@ -705,8 +705,13 @@ static void value_json_context(struct strbuf *sb, hvalue_t v, struct global *glo
     strbuf_printf(sb, "{ \"type\": \"context\", \"value\": {");
     strbuf_printf(sb, "\"pc\": { \"type\": \"pc\", \"value\": \"%u\" },", ctx->pc);
     struct callstack *cs = dict_lookup(global->tracemap, &v, sizeof(v));
-    if (cs != NULL) {
-        strbuf_printf(sb, "\"callstack\": [");
+    if (cs == NULL) {
+        strbuf_printf(sb, "\"vars\":");
+        strbuf_print_vars(global, sb, ctx->vars);
+        strbuf_printf(sb, ",");
+    }
+    else {
+        strbuf_printf(sb, "\"callstack\":[");
         value_json_trace(global, sb, cs, ctx->pc, ctx->vars);
         strbuf_printf(sb, "],");
     }
