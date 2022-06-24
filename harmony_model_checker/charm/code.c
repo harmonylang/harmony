@@ -5,6 +5,7 @@
 #include <assert.h>
 
 #ifndef HARMONY_COMBINE
+#include "value.h"
 #include "code.h"
 #include "hashdict.h"
 #include "ops.h"

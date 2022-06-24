@@ -1,9 +1,10 @@
 #ifndef SRC_VALUE_H
 #define SRC_VALUE_H
 
+#include <stdbool.h>
 #include "global.h"
 #include "strbuf.h"
-#include <stdbool.h>
+#include "charm.h"
 
 #define MAX_CONTEXT_STACK   1000        // maximum size of context stack
 #define MAX_CONTEXT_BAG       32        // maximum number of distinct contexts
@@ -51,20 +52,6 @@ typedef struct context {   // context value
 
 #define ctx_stack(c)    ((c)->extended ? &(c)->thestack[ctx_extent] : (c)->thestack)
 
-struct values {
-    struct dict *atoms;
-    struct dict *dicts;
-    struct dict *sets;
-    struct dict *lists;
-    struct dict *addresses;
-    struct dict *contexts;
-};
-
-struct engine {
-    struct allocator *allocator;
-    struct values *values;
-};
-
 void value_init(struct values *values, unsigned int nworkers);
 void value_set_concurrent(struct values *values);
 void value_make_stable(struct values *values, unsigned int worker);
@@ -82,10 +69,10 @@ hvalue_t value_put_address(struct engine *engine, void *p, int size);
 hvalue_t value_put_context(struct engine *engine, struct context *ctx);
 char *value_string(hvalue_t v);
 char *indices_string(const hvalue_t *vec, int size);
-char *value_json(hvalue_t v);
+char *value_json(hvalue_t v, struct global *global);
 
 void strbuf_value_string(strbuf *sb, hvalue_t v);
-void strbuf_value_json(strbuf *sb, hvalue_t v);
+void strbuf_value_json(strbuf *sb, hvalue_t v, struct global *global);
 
 #define VALUE_BITS      4
 #define VALUE_MASK      ((hvalue_t) ((1 << VALUE_BITS) - 1))
@@ -133,7 +120,9 @@ bool value_ctx_all_eternal(hvalue_t ctxbag);
 bool value_state_all_eternal(struct state *state);
 void context_remove(struct state *state, hvalue_t ctx);
 bool context_add(struct state *state, hvalue_t ctx);
+char *json_escape_value(hvalue_t v);
+void value_trace(struct global *global, FILE *file, struct callstack *cs, unsigned int pc, hvalue_t vars);
 void value_grow_prepare(struct values *values);
-
+void print_vars(struct global *global, FILE *file, hvalue_t v);
 
 #endif //SRC_VALUE_H

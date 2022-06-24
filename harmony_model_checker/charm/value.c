@@ -15,6 +15,7 @@
 #include "hashdict.h"
 #include "value.h"
 #include "strbuf.h"
+#include "ops.h"
 #include "json.h"
 
 void *value_get(hvalue_t v, unsigned int *psize){
@@ -372,7 +373,7 @@ static void value_string_dict(struct strbuf *sb, hvalue_t v) {
     strbuf_printf(sb, " }");
 }
 
-static void value_json_dict(struct strbuf *sb, hvalue_t v) {
+static void value_json_dict(struct strbuf *sb, hvalue_t v, struct global *global) {
     if (v == 0) {
         strbuf_printf(sb, "{ \"type\": \"dict\", \"value\": [] }");
         return;
@@ -389,9 +390,9 @@ static void value_json_dict(struct strbuf *sb, hvalue_t v) {
             strbuf_printf(sb, ", ");
         }
         strbuf_printf(sb, "{ \"key\": ");
-        strbuf_value_json(sb, vals[2*i]);
+        strbuf_value_json(sb, vals[2*i], global);
         strbuf_printf(sb, ", \"value\": ");
-        strbuf_value_json(sb, vals[2*i+1]);
+        strbuf_value_json(sb, vals[2*i+1], global);
         strbuf_printf(sb, " }");
     }
     strbuf_printf(sb, " ] }");
@@ -439,7 +440,7 @@ static void value_string_set(struct strbuf *sb, hvalue_t v) {
     strbuf_printf(sb, " }");
 }
 
-static void value_json_list(struct strbuf *sb, hvalue_t v) {
+static void value_json_list(struct strbuf *sb, hvalue_t v, struct global *global) {
     if (v == 0) {
         strbuf_printf(sb, "{ \"type\": \"list\", \"value\": [] }");
         return;
@@ -455,12 +456,12 @@ static void value_json_list(struct strbuf *sb, hvalue_t v) {
         if (i != 0) {
             strbuf_printf(sb, ", ");
         }
-        strbuf_value_json(sb, vals[i]);
+        strbuf_value_json(sb, vals[i], global);
     }
     strbuf_printf(sb, " ] }");
 }
 
-static void value_json_set(struct strbuf *sb, hvalue_t v) {
+static void value_json_set(struct strbuf *sb, hvalue_t v, struct global *global) {
     if (v == 0) {
         strbuf_printf(sb, "{ \"type\": \"set\", \"value\": [] }");
         return;
@@ -476,7 +477,7 @@ static void value_json_set(struct strbuf *sb, hvalue_t v) {
         if (i != 0) {
             strbuf_printf(sb, ", ");
         }
-        strbuf_value_json(sb, vals[i]);
+        strbuf_value_json(sb, vals[i], global);
     }
     strbuf_printf(sb, " ] }");
 }
@@ -521,7 +522,7 @@ static void value_string_address(struct strbuf *sb, hvalue_t v) {
     strbuf_indices_string(sb, indices, size);
 }
 
-static void value_json_address(struct strbuf *sb, hvalue_t v) {
+static void value_json_address(struct strbuf *sb, hvalue_t v, struct global *global) {
     if (v == 0) {
         strbuf_printf(sb, "{ \"type\": \"address\", \"value\": [] }");
         return;
@@ -537,7 +538,7 @@ static void value_json_address(struct strbuf *sb, hvalue_t v) {
         if (i != 0) {
             strbuf_printf(sb, ", ");
         }
-        strbuf_value_json(sb, vals[i]);
+        strbuf_value_json(sb, vals[i], global);
     }
 
     strbuf_printf(sb, " ] }");
@@ -593,11 +594,123 @@ static void value_string_context(struct strbuf *sb, hvalue_t v) {
 #endif
 }
 
-static void value_json_context(struct strbuf *sb, hvalue_t v) {
+void strbuf_print_vars(struct global *global, struct strbuf *sb, hvalue_t v){
+    assert(VALUE_TYPE(v) == VALUE_DICT);
+    unsigned int size;
+    hvalue_t *vars = value_get(v, &size);
+    size /= sizeof(hvalue_t);
+    strbuf_printf(sb, "{");
+    for (unsigned int i = 0; i < size; i += 2) {
+        if (i > 0) {
+            strbuf_printf(sb, ",");
+        }
+        char *k = value_string(vars[i]);
+		int len = strlen(k);
+        char *v = value_json(vars[i+1], global);
+        strbuf_printf(sb, " \"%.*s\": %s", len - 2, k + 1, v);
+        free(k);
+        free(v);
+    }
+    strbuf_printf(sb, " }");
+}
+
+void print_vars(struct global *global, FILE *file, hvalue_t v){
+    struct strbuf sb;
+    strbuf_init(&sb);
+    strbuf_print_vars(global, &sb, v);
+    fwrite(sb.buf, 1, sb.len, file);
+    strbuf_deinit(&sb);
+}
+
+void value_trace(struct global *global, FILE *file, struct callstack *cs, unsigned int pc, hvalue_t vars){
+    if (cs->parent != NULL) {
+        value_trace(global, file, cs->parent, cs->return_address >> CALLTYPE_BITS, cs->vars);
+        fprintf(file, ",\n");
+    }
+    const struct env_Frame *ef = global->code.instrs[cs->pc].env;
+    char *method = value_string(ef->name);
+    char *arg = json_escape_value(cs->arg);
+    fprintf(file, "            {\n");
+    fprintf(file, "              \"pc\": \"%u\",\n", pc);
+    fprintf(file, "              \"xpc\": \"%u\",\n", cs->pc);
+    if (*arg == '(') {
+        fprintf(file, "              \"method\": \"%.*s%s\",\n", (int) strlen(method) - 2, method + 1, arg);
+    }
+    else {
+        fprintf(file, "              \"method\": \"%.*s(%s)\",\n", (int) strlen(method) - 2, method + 1, arg);
+    }
+    switch (cs->return_address & CALLTYPE_MASK) {
+    case CALLTYPE_PROCESS:
+        fprintf(file, "              \"calltype\": \"process\",\n");
+        break;
+    case CALLTYPE_NORMAL:
+        fprintf(file, "              \"calltype\": \"normal\",\n");
+        break;
+    case CALLTYPE_INTERRUPT:
+        fprintf(file, "              \"calltype\": \"interrupt\",\n");
+        break;
+    default:
+        printf(">>> %x\n", cs->return_address);
+        panic("value_trace: bad call type");
+    }
+    fprintf(file, "              \"vars\": ");
+    print_vars(global, file, vars);
+    fprintf(file, ",\n");
+    fprintf(file, "              \"sp\": %u\n", cs->sp);
+    fprintf(file, "            }");
+    free(arg);
+    free(method);
+}
+
+void value_json_trace(struct global *global, struct strbuf *sb, struct callstack *cs, unsigned int pc, hvalue_t vars){
+    if (cs->parent != NULL) {
+        value_json_trace(global, sb, cs->parent, cs->return_address >> CALLTYPE_BITS, cs->vars);
+        strbuf_printf(sb, ",");
+    }
+    const struct env_Frame *ef = global->code.instrs[cs->pc].env;
+    char *method = value_string(ef->name);
+    char *arg = json_escape_value(cs->arg);
+    strbuf_printf(sb, "{\"pc\": \"%u\",", pc);
+    strbuf_printf(sb, "\"xpc\": \"%u\",", cs->pc);
+    if (*arg == '(') {
+        strbuf_printf(sb, "\"method\": \"%.*s%s\",", (int) strlen(method) - 2, method + 1, arg);
+    }
+    else {
+        strbuf_printf(sb, "\"method\": \"%.*s(%s)\",", (int) strlen(method) - 2, method + 1, arg);
+    }
+    switch (cs->return_address & CALLTYPE_MASK) {
+    case CALLTYPE_PROCESS:
+        strbuf_printf(sb, "\"calltype\": \"process\",");
+        break;
+    case CALLTYPE_NORMAL:
+        strbuf_printf(sb, "\"calltype\": \"normal\",");
+        break;
+    case CALLTYPE_INTERRUPT:
+        strbuf_printf(sb, "\"calltype\": \"interrupt\",");
+        break;
+    default:
+        printf(">>> %x\n", cs->return_address);
+        panic("value_json_trace: bad call type");
+    }
+    strbuf_printf(sb, "\"vars\":");
+    strbuf_print_vars(global, sb, vars);
+    strbuf_printf(sb, ",\"sp\": %u}", cs->sp);
+    free(arg);
+    free(method);
+}
+
+static void value_json_context(struct strbuf *sb, hvalue_t v, struct global *global) {
     struct context *ctx = value_get(v, NULL);
     
     strbuf_printf(sb, "{ \"type\": \"context\", \"value\": {");
     strbuf_printf(sb, "\"pc\": { \"type\": \"pc\", \"value\": \"%u\" },", ctx->pc);
+    struct callstack *cs = dict_lookup(global->tracemap, &v, sizeof(v));
+    if (cs != NULL) {
+        strbuf_printf(sb, "\"callstack\": [");
+        value_json_trace(global, sb, cs, ctx->pc, ctx->vars);
+        strbuf_printf(sb, "],");
+    }
+
     if (ctx->atomic > 0) {
         strbuf_printf(sb, "\"atomic\": { \"type\": \"int\", \"value\": \"%u\" },", ctx->atomic);
     }
@@ -628,22 +741,22 @@ static void value_json_context(struct strbuf *sb, hvalue_t v) {
     if (ctx->extended) {
         if (ctx->ctx_this != 0) {
             strbuf_printf(sb, "\"this\": ");
-            strbuf_value_json(sb, ctx->ctx_this);
+            strbuf_value_json(sb, ctx->ctx_this, global);
             strbuf_printf(sb, ", ");
         }
         if (ctx->ctx_failure != 0) {
             strbuf_printf(sb, "\"failure\": ");
-            strbuf_value_json(sb, ctx->ctx_failure);
+            strbuf_value_json(sb, ctx->ctx_failure, global);
             strbuf_printf(sb, ", ");
         }
         if (ctx->ctx_trap_pc != 0) {
             strbuf_printf(sb, "\"trap_pc\": ");
-            strbuf_value_json(sb, ctx->ctx_trap_pc);
+            strbuf_value_json(sb, ctx->ctx_trap_pc, global);
             strbuf_printf(sb, ", ");
         }
         if (ctx->ctx_trap_arg != 0) {
             strbuf_printf(sb, "\"trap_arg\": ");
-            strbuf_value_json(sb, ctx->ctx_trap_arg);
+            strbuf_value_json(sb, ctx->ctx_trap_arg, global);
             strbuf_printf(sb, ", ");
         }
     }
@@ -694,7 +807,7 @@ char *value_string(hvalue_t v){
     return strbuf_convert(&sb);
 }
 
-void strbuf_value_json(struct strbuf *sb, hvalue_t v){
+void strbuf_value_json(struct strbuf *sb, hvalue_t v, struct global *global){
     switch VALUE_TYPE(v) {
     case VALUE_BOOL:
         value_json_bool(sb, v & ~VALUE_MASK);
@@ -709,19 +822,19 @@ void strbuf_value_json(struct strbuf *sb, hvalue_t v){
         value_json_pc(sb, v & ~VALUE_MASK);
         break;
     case VALUE_LIST:
-        value_json_list(sb, v & ~VALUE_MASK);
+        value_json_list(sb, v & ~VALUE_MASK, global);
         break;
     case VALUE_DICT:
-        value_json_dict(sb, v & ~VALUE_MASK);
+        value_json_dict(sb, v & ~VALUE_MASK, global);
         break;
     case VALUE_SET:
-        value_json_set(sb, v & ~VALUE_MASK);
+        value_json_set(sb, v & ~VALUE_MASK, global);
         break;
     case VALUE_ADDRESS:
-        value_json_address(sb, v & ~VALUE_MASK);
+        value_json_address(sb, v & ~VALUE_MASK, global);
         break;
     case VALUE_CONTEXT:
-        value_json_context(sb, v & ~VALUE_MASK);
+        value_json_context(sb, v, global);
         break;
     default:
         printf("bad value type: %p\n", (void *) v);
@@ -729,10 +842,10 @@ void strbuf_value_json(struct strbuf *sb, hvalue_t v){
     }
 }
 
-char *value_json(hvalue_t v){
+char *value_json(hvalue_t v, struct global *global){
     struct strbuf sb;
     strbuf_init(&sb);
-    strbuf_value_json(&sb, v);
+    strbuf_value_json(&sb, v, global);
     return strbuf_convert(&sb);
 }
 
@@ -1423,6 +1536,18 @@ bool value_ctx_all_eternal(hvalue_t ctxbag) {
         }
     }
     return true;
+}
+
+char *json_escape_value(hvalue_t v){
+    char *s = value_string(v);
+    int len = strlen(s);
+    if (*s == '[') {
+        *s = '(';
+        s[len-1] = ')';
+    }
+    char *r = json_escape(s, len);
+    free(s);
+    return r;
 }
 
 void context_remove(struct state *state, hvalue_t ctx){

@@ -2,6 +2,8 @@
 #define SRC_IFACE_H
 
 #ifndef HARMONY_COMBINE
+#include "value.h"
+#include "strbuf.h"
 #include "ops.h"
 #include "charm.h"
 #include "graph.h"

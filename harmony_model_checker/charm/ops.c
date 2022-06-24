@@ -11,6 +11,7 @@
 #include <ctype.h>
 #include <assert.h>
 
+#include "value.h"
 #include "ops.h"
 #include "strbuf.h"
 #include "dfa.h"
@@ -1588,7 +1589,7 @@ void op_Stop(const void *env, struct state *state, struct step *step, struct glo
         step->ctx->pc++;
         hvalue_t v = value_put_context(&step->engine, step->ctx);
         if (!ind_trystore(state->vars, es->indices, es->n, v, &step->engine, &state->vars)) {
-            value_ctx_failure(step->ctx, &step->engine, "Store: bad variable");
+            value_ctx_failure(step->ctx, &step->engine, "Stop: bad variable");
         }
     }
 }

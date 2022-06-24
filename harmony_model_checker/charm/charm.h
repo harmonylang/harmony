@@ -3,12 +3,20 @@
 
 #include "minheap.h"
 #include "code.h"
-#include "value.h"
 #include "graph.h"
 
 struct scc {
     struct scc *next;
     unsigned int start, finish;
+};
+
+struct values {
+    struct dict *atoms;
+    struct dict *dicts;
+    struct dict *sets;
+    struct dict *lists;
+    struct dict *addresses;
+    struct dict *contexts;
 };
 
 struct global {

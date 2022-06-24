@@ -12,10 +12,6 @@
 #define CALLTYPE_NORMAL        2
 #define CALLTYPE_INTERRUPT     3
 
-//void *mcopy(void *p, unsigned int size);
-//char *scopy(char *s);
-//void mfree(void *p);
-
 #define PRI_HVAL            PRIx64
 typedef uint64_t            hvalue_t;
 

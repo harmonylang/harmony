@@ -17,6 +17,20 @@ struct code {
     struct dict *code_map;       // maps pc to file:line
 };
 
+struct engine {
+    struct allocator *allocator;
+    struct values *values;
+};
+
+struct callstack {
+    struct callstack *parent;
+    unsigned int pc;
+    unsigned int sp;
+    unsigned int return_address;
+    hvalue_t arg;
+    hvalue_t vars;
+};
+
 struct code code_init_parse(struct engine *engine, struct json_value *json_code);
 
 #endif //SRC_CODE_H

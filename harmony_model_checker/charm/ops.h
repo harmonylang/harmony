@@ -12,15 +12,6 @@
 void ops_init(struct global *global, struct engine *engine);
 struct op_info *ops_get(char *opname, int size);
 
-struct callstack {
-    struct callstack *parent;
-    unsigned int pc;
-    unsigned int sp;
-    unsigned int return_address;
-    hvalue_t arg;
-    hvalue_t vars;
-};
-
 struct step {
     struct engine engine;
     struct context *ctx;

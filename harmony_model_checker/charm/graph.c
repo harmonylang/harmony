@@ -6,6 +6,8 @@
 #include <stdio.h>
 
 #ifndef HARMONY_COMBINE
+#include "value.h"
+#include "ops.h"
 #include "charm.h"
 #include "graph.h"
 #endif

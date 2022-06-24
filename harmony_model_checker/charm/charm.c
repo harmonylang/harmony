@@ -16,12 +16,11 @@
 #include <time.h>
 
 #include "global.h"
-#include "global.h"
 #include "thread.h"
-#include "charm.h"
+#include "value.h"
+#include "strbuf.h"
 #include "ops.h"
 #include "dot.h"
-#include "strbuf.h"
 #include "iface/iface.h"
 #include "hashdict.h"
 #include "dfa.h"
@@ -620,38 +619,6 @@ static void make_step(
     }
 }
 
-void print_vars(FILE *file, hvalue_t v){
-    assert(VALUE_TYPE(v) == VALUE_DICT);
-    unsigned int size;
-    hvalue_t *vars = value_get(v, &size);
-    size /= sizeof(hvalue_t);
-    fprintf(file, "{");
-    for (unsigned int i = 0; i < size; i += 2) {
-        if (i > 0) {
-            fprintf(file, ",");
-        }
-        char *k = value_string(vars[i]);
-		int len = strlen(k);
-        char *v = value_json(vars[i+1]);
-        fprintf(file, " \"%.*s\": %s", len - 2, k + 1, v);
-        free(k);
-        free(v);
-    }
-    fprintf(file, " }");
-}
-
-char *json_escape_value(hvalue_t v){
-    char *s = value_string(v);
-    int len = strlen(s);
-    if (*s == '[') {
-        *s = '(';
-        s[len-1] = ')';
-    }
-    char *r = json_escape(s, len);
-    free(s);
-    return r;
-}
-
 char *ctx_status(struct node *node, hvalue_t ctx) {
     if (node->state->choosing == ctx) {
         return "choosing";
@@ -669,46 +636,6 @@ char *ctx_status(struct node *node, hvalue_t ctx) {
         return "blocked";
     }
     return "runnable";
-}
-
-static void print_rectrace(struct global *global, FILE *file, struct callstack *cs, unsigned int pc, hvalue_t vars){
-    if (cs->parent != NULL) {
-        print_rectrace(global, file, cs->parent, cs->return_address >> CALLTYPE_BITS, cs->vars);
-        fprintf(file, ",\n");
-    }
-    const struct env_Frame *ef = global->code.instrs[cs->pc].env;
-    char *method = value_string(ef->name);
-    char *arg = json_escape_value(cs->arg);
-    fprintf(file, "            {\n");
-    fprintf(file, "              \"pc\": \"%u\",\n", pc);
-    fprintf(file, "              \"xpc\": \"%u\",\n", cs->pc);
-    if (*arg == '(') {
-        fprintf(file, "              \"method\": \"%.*s%s\",\n", (int) strlen(method) - 2, method + 1, arg);
-    }
-    else {
-        fprintf(file, "              \"method\": \"%.*s(%s)\",\n", (int) strlen(method) - 2, method + 1, arg);
-    }
-    switch (cs->return_address & CALLTYPE_MASK) {
-    case CALLTYPE_PROCESS:
-        fprintf(file, "              \"calltype\": \"process\",\n");
-        break;
-    case CALLTYPE_NORMAL:
-        fprintf(file, "              \"calltype\": \"normal\",\n");
-        break;
-    case CALLTYPE_INTERRUPT:
-        fprintf(file, "              \"calltype\": \"interrupt\",\n");
-        break;
-    default:
-        printf(">>> %x\n", cs->return_address);
-        panic("print_rectrace: bad call type");
-    }
-    fprintf(file, "              \"vars\": ");
-    print_vars(file, vars);
-    fprintf(file, ",\n");
-    fprintf(file, "              \"sp\": %u\n", cs->sp);
-    fprintf(file, "            }");
-    free(arg);
-    free(method);
 }
 
 void print_context(
@@ -779,7 +706,7 @@ void print_context(
 #endif
 
     fprintf(file, "          \"trace\": [\n");
-    print_rectrace(global, file, cs, c->pc, c->vars);
+    value_trace(global, file, cs, c->pc, c->vars);
     fprintf(file, "\n");
     fprintf(file, "          ],\n");
 
@@ -807,7 +734,7 @@ void print_context(
     }
 
     if (c->extended) {
-        s = value_json(c->ctx_this);
+        s = value_json(c->ctx_this, global);
         fprintf(file, "          \"this\": %s,\n", s);
         free(s);
     }
@@ -855,13 +782,6 @@ void print_state(
     FILE *file,
     struct node *node
 ) {
-
-#ifdef notdef
-    fprintf(file, "      \"shared\": ");
-    print_vars(file, node->state->vars);
-    fprintf(file, ",\n");
-#endif
-
     struct state *state = node->state;
     extern int invariant_cnt(const void *env);
 
@@ -961,14 +881,14 @@ void diff_state(
     fprintf(file, "\n        {\n");
     if (newstate->vars != oldstate->vars) {
         fprintf(file, "          \"shared\": ");
-        print_vars(file, newstate->vars);
+        print_vars(global, file, newstate->vars);
         fprintf(file, ",\n");
     }
     if (interrupt) {
         fprintf(file, "          \"interrupt\": \"True\",\n");
     }
     if (choose) {
-        char *val = value_json(choice);
+        char *val = value_json(choice, global);
         fprintf(file, "          \"choose\": %s,\n", val);
         free(val);
     }
@@ -988,18 +908,18 @@ void diff_state(
 #endif
 
         fprintf(file, "          \"trace\": [\n");
-        print_rectrace(global, file, newcs, newctx->pc, newctx->vars);
+        value_trace(global, file, newcs, newctx->pc, newctx->vars);
         fprintf(file, "\n");
         fprintf(file, "          ],\n");
     }
     if (newctx->extended && newctx->ctx_this != oldctx->ctx_this) {
-        char *val = value_json(newctx->ctx_this);
+        char *val = value_json(newctx->ctx_this, global);
         fprintf(file, "          \"this\": %s,\n", val);
         free(val);
     }
     if (newctx->vars != oldctx->vars) {
         fprintf(file, "          \"local\": ");
-        print_vars(file, newctx->vars);
+        print_vars(global, file, newctx->vars);
         fprintf(file, ",\n");
     }
     if (newctx->atomic != oldctx->atomic) {
@@ -1035,7 +955,7 @@ void diff_state(
         if (i > common) {
             fprintf(file, ",");
         }
-        char *val = value_json(ctx_stack(newctx)[i]);
+        char *val = value_json(ctx_stack(newctx)[i], global);
         fprintf(file, " %s", val);
         free(val);
     }
@@ -1145,7 +1065,7 @@ hvalue_t twostep(
             (*oi->op)(instrs[pc].env, sc, &step, global);
         }
         else if (instrs[pc].print) {
-            print = value_json(ctx_stack(step.ctx)[step.ctx->sp - 1]);
+            print = value_json(ctx_stack(step.ctx)[step.ctx->sp - 1], global);
             (*oi->op)(instrs[pc].env, sc, &step, global);
         }
         else {
@@ -1298,7 +1218,7 @@ void path_dump(
     char *name = value_string(ef->name);
 	int len = strlen(name);
     char *arg = json_escape_value(cs->arg);
-    char *c = e->choice == 0 ? NULL : value_json(e->choice);
+    char *c = e->choice == 0 ? NULL : value_json(e->choice, global);
     fprintf(file, "      \"tid\": \"%d\",\n", pid);
     fprintf(file, "      \"ctx\": \"%"PRI_HVAL"\",\n", ctx);
     if (*arg == '(') {
@@ -1818,6 +1738,7 @@ static struct dict *collect_symbols(struct graph *graph){
 }
 
 struct symbol_env {
+    struct global *global;
     FILE *out;
     bool first;
 };
@@ -1827,7 +1748,7 @@ static void print_symbol(void *env, const void *key, unsigned int key_size, void
     const hvalue_t *symbol = key;
 
     assert(key_size == sizeof(*symbol));
-    char *p = value_json(*symbol);
+    char *p = value_json(*symbol, se->global);
     if (se->first) {
         se->first = false;
     }
@@ -2395,7 +2316,7 @@ int main(int argc, char **argv){
         // Output the symbols;
         struct dict *symbols = collect_symbols(&global->graph);
         fprintf(out, "  \"symbols\": {\n");
-        struct symbol_env se = { .out = out, .first = true };
+        struct symbol_env se = { .global = global, .out = out, .first = true };
         dict_iter(symbols, print_symbol, &se);
         fprintf(out, "\n");
         fprintf(out, "  },\n");
