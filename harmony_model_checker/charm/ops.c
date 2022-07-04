@@ -1080,8 +1080,16 @@ void op_Frame(const void *env, struct state *state, struct step *step, struct gl
 
     step->ctx->vars = initial_vars; // Set result to None
 
-    // match argument against parameters
     hvalue_t arg = ctx_pop(step->ctx);
+    if (step->keep_callstack) {
+        char *name = value_string(ef->name);
+        char *val = value_string(arg);
+        strbuf_printf(&step->explain, "method %s with argument %s", name, val);
+        free(name);
+        free(val);
+    }
+
+    // match argument against parameters
     var_match(step->ctx, ef->args, &step->engine, arg);
     if (step->ctx->failed) {
         return;
