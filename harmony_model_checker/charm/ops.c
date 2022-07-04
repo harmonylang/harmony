@@ -2097,6 +2097,9 @@ void *init_StoreVar(struct dict *map, struct engine *engine){
 
 hvalue_t f_abs(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 1);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "compute the absolute value; ");
+    }
     hvalue_t e = args[0];
     if (VALUE_TYPE(e) != VALUE_INT) {
         return value_ctx_failure(step->ctx, &step->engine, "abs() can only be applied to integers");
@@ -2107,6 +2110,9 @@ hvalue_t f_abs(struct state *state, struct step *step, hvalue_t *args, int n){
 
 hvalue_t f_all(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 1);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "check if all values are True; ");
+    }
     hvalue_t e = args[0];
 	if (e == VALUE_SET || e == VALUE_LIST) {
 		return VALUE_TRUE;
@@ -2130,6 +2136,9 @@ hvalue_t f_all(struct state *state, struct step *step, hvalue_t *args, int n){
 
 hvalue_t f_any(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 1);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "check if any value is True; ");
+    }
     hvalue_t e = args[0];
 	if (e == VALUE_SET || e == VALUE_LIST) {
 		return VALUE_FALSE;
@@ -2153,6 +2162,9 @@ hvalue_t f_any(struct state *state, struct step *step, hvalue_t *args, int n){
 
 hvalue_t f_countLabel(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 1);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "count how many threads are at this program counter; ");
+    }
     if (step->ctx->atomic == 0) {
         return value_ctx_failure(step->ctx, &step->engine, "countLabel: can only be called in atomic mode");
     }
@@ -2174,7 +2186,11 @@ hvalue_t f_countLabel(struct state *state, struct step *step, hvalue_t *args, in
 }
 
 hvalue_t f_div(struct state *state, struct step *step, hvalue_t *args, int n){
+    assert(n == 2);
     int64_t e1 = args[0], e2 = args[1];
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "integer divide; ");
+    }
     if (VALUE_TYPE(e1) != VALUE_INT) {
         return value_ctx_failure(step->ctx, &step->engine, "right argument to / not an integer");
     }
@@ -2191,33 +2207,49 @@ hvalue_t f_div(struct state *state, struct step *step, hvalue_t *args, int n){
 
 hvalue_t f_eq(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 2);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "check if both values are the same; ");
+    }
     return VALUE_TO_BOOL(args[0] == args[1]);
 }
 
 hvalue_t f_ge(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 2);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "check if second value is greater than or equal to the first; ");
+    }
     int cmp = value_cmp(args[1], args[0]);
     return VALUE_TO_BOOL(cmp >= 0);
 }
 
 hvalue_t f_gt(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 2);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "check if second value is greater than the first; ");
+    }
     int cmp = value_cmp(args[1], args[0]);
     return VALUE_TO_BOOL(cmp > 0);
 }
 
 hvalue_t f_ne(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 2);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "check if the values are unequal; ");
+    }
     return VALUE_TO_BOOL(args[0] != args[1]);
 }
 
 hvalue_t f_in(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 2);
     hvalue_t s = args[0], e = args[1];
-	if (s == VALUE_SET || s == VALUE_DICT || s == VALUE_LIST) {
+	if (!step->keep_callstack &&
+            (s == VALUE_SET || s == VALUE_DICT || s == VALUE_LIST)) {
 		return VALUE_FALSE;
 	}
     if (VALUE_TYPE(s) == VALUE_ATOM) {
+        if (step->keep_callstack) {
+            strbuf_printf(&step->explain, "check if the second value is a substring of the first; ");
+        }
         if (VALUE_TYPE(e) != VALUE_ATOM) {
             return value_ctx_failure(step->ctx, &step->engine, "'in <string>' can only be applied to another string");
         }
@@ -2240,6 +2272,9 @@ hvalue_t f_in(struct state *state, struct step *step, hvalue_t *args, int n){
         return VALUE_FALSE;
     }
     if (VALUE_TYPE(s) == VALUE_SET || VALUE_TYPE(s) == VALUE_LIST) {
+        if (step->keep_callstack) {
+            strbuf_printf(&step->explain, "check if the second value is a member of the first; ");
+        }
         unsigned int size;
         hvalue_t *v = value_get(s, &size);
         size /= sizeof(hvalue_t);
@@ -2251,6 +2286,9 @@ hvalue_t f_in(struct state *state, struct step *step, hvalue_t *args, int n){
         return VALUE_FALSE;
     }
     if (VALUE_TYPE(s) == VALUE_DICT) {
+        if (step->keep_callstack) {
+            strbuf_printf(&step->explain, "check if the second value is a key in the first; ");
+        }
         unsigned int size;
         hvalue_t *v = value_get(s, &size);
         size /= 2 * sizeof(hvalue_t);
@@ -2273,6 +2311,9 @@ hvalue_t f_intersection(
     hvalue_t e1 = args[0];
 
     if (VALUE_TYPE(e1) == VALUE_INT) {
+        if (step->keep_callstack) {
+            strbuf_printf(&step->explain, "bitwise and; ");
+        }
         for (int i = 1; i < n; i++) {
             hvalue_t e2 = args[i];
             if (VALUE_TYPE(e2) != VALUE_INT) {
@@ -2282,10 +2323,13 @@ hvalue_t f_intersection(
         }
         return e1;
     }
-	if (e1 == VALUE_SET) {
+	if (!step->keep_callstack && e1 == VALUE_SET) {
 		return VALUE_SET;
 	}
     if (VALUE_TYPE(e1) == VALUE_SET) {
+        if (step->keep_callstack) {
+            strbuf_printf(&step->explain, "intersect the sets; ");
+        }
         // get all the sets
 		assert(n > 0);
         struct val_info vi[n];
@@ -2368,9 +2412,12 @@ hvalue_t f_intersection(
         return result;
     }
 
-	if (e1 == VALUE_DICT) {
+	if (!step->keep_callstack && e1 == VALUE_DICT) {
 		return VALUE_DICT;
 	}
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "dictionary intersection; ");
+    }
     if (VALUE_TYPE(e1) != VALUE_DICT) {
         return value_ctx_failure(step->ctx, &step->engine, "'&' can only be applied to ints and dicts");
     }
@@ -2436,6 +2483,9 @@ hvalue_t f_intersection(
 
 hvalue_t f_invert(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 1);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "one's complement (flip the bits); ");
+    }
     int64_t e = args[0];
     if (VALUE_TYPE(e) != VALUE_INT) {
         return value_ctx_failure(step->ctx, &step->engine, "~ can only be applied to ints");
@@ -2444,27 +2494,11 @@ hvalue_t f_invert(struct state *state, struct step *step, hvalue_t *args, int n)
     return VALUE_TO_INT(~e);
 }
 
-// TODO: obsolete
-hvalue_t f_isEmpty(struct state *state, struct step *step, hvalue_t *args, int n){
-    assert(n == 1);
-    hvalue_t e = args[0];
-    if (VALUE_TYPE(e) == VALUE_DICT) {
-        return VALUE_TO_BOOL(e == VALUE_DICT);
-    }
-    if (VALUE_TYPE(e) == VALUE_SET) {
-        return VALUE_TO_BOOL(e == VALUE_SET);
-    }
-    if (VALUE_TYPE(e) == VALUE_ATOM) {
-        return VALUE_TO_BOOL(e == VALUE_ATOM);
-    }
-    if (VALUE_TYPE(e) == VALUE_LIST) {
-        return VALUE_TO_BOOL(e == VALUE_LIST);
-    }
-    return value_ctx_failure(step->ctx, &step->engine, "loops can only iterate over dictionaries, lists, and sets");
-}
-
 hvalue_t f_keys(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 1);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "extract the keys; ");
+    }
     hvalue_t v = args[0];
     if (VALUE_TYPE(v) != VALUE_DICT) {
         return value_ctx_failure(step->ctx, &step->engine, "keys() can only be applied to dictionaries");
@@ -2486,6 +2520,9 @@ hvalue_t f_keys(struct state *state, struct step *step, hvalue_t *args, int n){
 
 hvalue_t f_str(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 1);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "convert into a string; ");
+    }
     hvalue_t e = args[0];
     char *s = value_string(e);
     hvalue_t v = value_put_atom(&step->engine, s, strlen(s));
@@ -2496,28 +2533,41 @@ hvalue_t f_str(struct state *state, struct step *step, hvalue_t *args, int n){
 hvalue_t f_len(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 1);
     hvalue_t e = args[0];
-	if (e == VALUE_SET || e == VALUE_DICT || e == VALUE_LIST || e == VALUE_ATOM) {
+	if (step->keep_callstack &&
+            (e == VALUE_SET || e == VALUE_DICT || e == VALUE_LIST || e == VALUE_ATOM)) {
 		return VALUE_INT;
 	}
     if (VALUE_TYPE(e) == VALUE_SET) {
+        if (step->keep_callstack) {
+            strbuf_printf(&step->explain, "compute cardinality; ");
+        }
         unsigned int size;
         (void) value_get(e, &size);
         size /= sizeof(hvalue_t);
         return VALUE_TO_INT(size);
     }
     if (VALUE_TYPE(e) == VALUE_LIST) {
+        if (step->keep_callstack) {
+            strbuf_printf(&step->explain, "compute the length of the list; ");
+        }
         unsigned int size;
         (void) value_get(e, &size);
         size /= sizeof(hvalue_t);
         return VALUE_TO_INT(size);
     }
     if (VALUE_TYPE(e) == VALUE_DICT) {
+        if (step->keep_callstack) {
+            strbuf_printf(&step->explain, "compute the number of entries; ");
+        }
         unsigned int size;
         (void) value_get(e, &size);
         size /= 2 * sizeof(hvalue_t);
         return VALUE_TO_INT(size);
     }
     if (VALUE_TYPE(e) == VALUE_ATOM) {
+        if (step->keep_callstack) {
+            strbuf_printf(&step->explain, "compute the length of the string; ");
+        }
         unsigned int size;
         (void) value_get(e, &size);
         return VALUE_TO_INT(size);
@@ -2527,6 +2577,9 @@ hvalue_t f_len(struct state *state, struct step *step, hvalue_t *args, int n){
 
 hvalue_t f_type(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 1);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "determine the type; ");
+    }
     hvalue_t e = args[0];
     switch (VALUE_TYPE(e)) {
     case VALUE_BOOL:
@@ -2555,18 +2608,27 @@ hvalue_t f_type(struct state *state, struct step *step, hvalue_t *args, int n){
 
 hvalue_t f_le(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 2);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "check if second value is less than or equal to the first; ");
+    }
     int cmp = value_cmp(args[1], args[0]);
     return VALUE_TO_BOOL(cmp <= 0);
 }
 
 hvalue_t f_lt(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 2);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "check if second value is less than the first; ");
+    }
     int cmp = value_cmp(args[1], args[0]);
     return VALUE_TO_BOOL(cmp < 0);
 }
 
 hvalue_t f_max(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 1);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "compute the maximum of the values; ");
+    }
     hvalue_t e = args[0];
 	if (e == VALUE_SET) {
         return value_ctx_failure(step->ctx, &step->engine, "can't apply max() to empty set");
@@ -2597,6 +2659,9 @@ hvalue_t f_max(struct state *state, struct step *step, hvalue_t *args, int n){
 
 hvalue_t f_min(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 1);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "compute the minimum of the values; ");
+    }
     hvalue_t e = args[0];
 	if (e == VALUE_SET) {
         return value_ctx_failure(step->ctx, &step->engine, "can't apply min() to empty set");
@@ -2627,6 +2692,9 @@ hvalue_t f_min(struct state *state, struct step *step, hvalue_t *args, int n){
 hvalue_t f_minus(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 1 || n == 2);
     if (n == 1) {
+        if (step->keep_callstack) {
+            strbuf_printf(&step->explain, "unary minux; ");
+        }
         int64_t e = args[0];
         if (VALUE_TYPE(e) != VALUE_INT) {
             return value_ctx_failure(step->ctx, &step->engine, "unary minus can only be applied to ints");
@@ -2644,6 +2712,9 @@ hvalue_t f_minus(struct state *state, struct step *step, hvalue_t *args, int n){
         return VALUE_TO_INT(-e);
     }
     else {
+        if (step->keep_callstack) {
+            strbuf_printf(&step->explain, "the second integer minus the first; ");
+        }
         if (VALUE_TYPE(args[0]) == VALUE_INT) {
             int64_t e1 = args[0], e2 = args[1];
             if (VALUE_TYPE(e2) != VALUE_INT) {
@@ -2709,6 +2780,9 @@ hvalue_t f_minus(struct state *state, struct step *step, hvalue_t *args, int n){
 
 hvalue_t f_mod(struct state *state, struct step *step, hvalue_t *args, int n){
     int64_t e1 = args[0], e2 = args[1];
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "second value modulo the first; ");
+    }
     if (VALUE_TYPE(e1) != VALUE_INT) {
         return value_ctx_failure(step->ctx, &step->engine, "right argument to mod not an integer");
     }
@@ -2725,6 +2799,9 @@ hvalue_t f_mod(struct state *state, struct step *step, hvalue_t *args, int n){
 
 hvalue_t f_not(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 1);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "logical not; ");
+    }
     hvalue_t e = args[0];
     if (VALUE_TYPE(e) != VALUE_BOOL) {
         return value_ctx_failure(step->ctx, &step->engine, "not can only be applied to booleans");
@@ -2821,6 +2898,9 @@ hvalue_t f_plus(struct state *state, struct step *step, hvalue_t *args, int n){
 
 hvalue_t f_power(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 2);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "exponentiation; ");
+    }
     int64_t e1 = args[0], e2 = args[1];
 
     if (VALUE_TYPE(e1) != VALUE_INT) {
@@ -2859,8 +2939,10 @@ hvalue_t f_power(struct state *state, struct step *step, hvalue_t *args, int n){
 
 hvalue_t f_range(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 2);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "range of integers; ");
+    }
     int64_t e1 = args[0], e2 = args[1];
-
     if (VALUE_TYPE(e1) != VALUE_INT) {
         return value_ctx_failure(step->ctx, &step->engine, "right argument to .. not an integer");
     }
@@ -2885,6 +2967,9 @@ hvalue_t f_range(struct state *state, struct step *step, hvalue_t *args, int n){
 
 hvalue_t f_list_add(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 2);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "insert first value into the second; ");
+    }
     hvalue_t list = args[1];
     assert(VALUE_TYPE(list) == VALUE_LIST);
     unsigned int size;
@@ -2898,6 +2983,9 @@ hvalue_t f_list_add(struct state *state, struct step *step, hvalue_t *args, int 
 
 hvalue_t f_dict_add(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 3);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "add key/value pair to dictionary; ");
+    }
     int64_t value = args[0], key = args[1], dict = args[2];
     assert(VALUE_TYPE(dict) == VALUE_DICT);
     unsigned int size;
@@ -2939,6 +3027,9 @@ hvalue_t f_dict_add(struct state *state, struct step *step, hvalue_t *args, int 
 
 hvalue_t f_set_add(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 2);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "insert second value into the first; ");
+    }
     int64_t elt = args[0], set = args[1];
     assert(VALUE_TYPE(set) == VALUE_SET);
     unsigned int size;
@@ -2966,6 +3057,9 @@ hvalue_t f_set_add(struct state *state, struct step *step, hvalue_t *args, int n
 
 hvalue_t f_shiftleft(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 2);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "shift second value left by the number of bits given by the first value; ");
+    }
     int64_t e1 = args[0], e2 = args[1];
 
     if (VALUE_TYPE(e1) != VALUE_INT) {
@@ -2991,6 +3085,9 @@ hvalue_t f_shiftleft(struct state *state, struct step *step, hvalue_t *args, int
 
 hvalue_t f_shiftright(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 2);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "shift second value right by the number of bits given by the first value; ");
+    }
     int64_t e1 = args[0], e2 = args[1];
 
     if (VALUE_TYPE(e1) != VALUE_INT) {
@@ -3013,6 +3110,9 @@ hvalue_t f_times(struct state *state, struct step *step, hvalue_t *args, int n){
     for (int i = 0; i < n; i++) {
         int64_t e = args[i];
         if (VALUE_TYPE(e) == VALUE_ATOM || VALUE_TYPE(e) == VALUE_LIST) {
+            if (step->keep_callstack) {
+                strbuf_printf(&step->explain, "create multiple copies of list; ");
+            }
             if (list >= 0) {
                 return value_ctx_failure(step->ctx, &step->engine, "* can only have at most one list or string");
             }
@@ -3040,6 +3140,9 @@ hvalue_t f_times(struct state *state, struct step *step, hvalue_t *args, int n){
         return value_ctx_failure(step->ctx, &step->engine, "*: overflow (model too large)");
     }
     if (list < 0) {
+        if (step->keep_callstack) {
+            strbuf_printf(&step->explain, "multiply; ");
+        }
         return VALUE_TO_INT(result);
     }
     if (result == 0) {
@@ -3081,6 +3184,9 @@ hvalue_t f_union(struct state *state, struct step *step, hvalue_t *args, int n){
     hvalue_t e1 = args[0];
 
     if (VALUE_TYPE(e1) == VALUE_INT) {
+        if (step->keep_callstack) {
+            strbuf_printf(&step->explain, "bitwise or; ");
+        }
         for (int i = 1; i < n; i++) {
             hvalue_t e2 = args[i];
             if (VALUE_TYPE(e2) != VALUE_INT) {
@@ -3092,6 +3198,9 @@ hvalue_t f_union(struct state *state, struct step *step, hvalue_t *args, int n){
     }
 
     if (VALUE_TYPE(e1) == VALUE_SET) {
+        if (step->keep_callstack) {
+            strbuf_printf(&step->explain, "union; ");
+        }
         // get all the sets
         struct val_info vi[n];
         int total = 0;
@@ -3129,6 +3238,9 @@ hvalue_t f_union(struct state *state, struct step *step, hvalue_t *args, int n){
 
     if (VALUE_TYPE(e1) != VALUE_DICT) {
         return value_ctx_failure(step->ctx, &step->engine, "'|' can only be applied to ints, sets, and dicts");
+    }
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "dictionary union; ");
     }
     // get all the dictionaries
     struct val_info vi[n];
@@ -3183,6 +3295,9 @@ hvalue_t f_xor(struct state *state, struct step *step, hvalue_t *args, int n){
     hvalue_t e1 = args[0];
 
     if (VALUE_TYPE(e1) == VALUE_INT) {
+        if (step->keep_callstack) {
+            strbuf_printf(&step->explain, "bitwise exclusive or; ");
+        }
         for (int i = 1; i < n; i++) {
             hvalue_t e2 = args[i];
             if (VALUE_TYPE(e2) != VALUE_INT) {
@@ -3194,6 +3309,9 @@ hvalue_t f_xor(struct state *state, struct step *step, hvalue_t *args, int n){
     }
 
     // get all the sets
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "excluded values: compute the values that are in an odd number of sets; ");
+    }
     struct val_info vi[n];
     int total = 0;
     for (int i = 0; i < n; i++) {
@@ -3322,7 +3440,6 @@ struct f_info f_table[] = {
     { "countLabel", f_countLabel },
     { "DictAdd", f_dict_add },
     { "in", f_in },
-    { "IsEmpty", f_isEmpty },
     { "ListAdd", f_list_add },
     { "keys", f_keys },
     { "len", f_len },

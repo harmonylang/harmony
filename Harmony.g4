@@ -92,7 +92,6 @@ unary_op
     | 'countLabel'
     | 'get_context'
     | 'contexts'
-    | 'isEmpty'
     | 'min'
     | 'max'
     | 'len'
