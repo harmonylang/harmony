@@ -917,6 +917,7 @@ void diff_state(
     if (print != NULL) {
         fprintf(file, "          \"print\": %s,\n", print);
     }
+    fprintf(file, "          \"npc\": \"%d\",\n", newctx->pc);
     if (newcs != oldcs) {
         fprintf(file, "          \"fp\": \"%d\",\n", newcs->sp + 1);
 #ifdef notdef

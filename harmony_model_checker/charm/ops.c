@@ -393,7 +393,17 @@ void op_Address(const void *env, struct state *state, struct step *step, struct 
     hvalue_t indices[size / sizeof(hvalue_t) + 1];
     memcpy(indices, indices_orig, size);
     indices[size / sizeof(hvalue_t)] = index;
-    ctx_push(step->ctx, value_put_address(&step->engine, indices, size + sizeof(index)));
+    hvalue_t result = value_put_address(&step->engine, indices, size + sizeof(index));
+    if (step->keep_callstack) {
+        char *key = value_string(index);
+        char *addr = value_string(av);
+        char *val = value_string(result);
+        strbuf_printf(&step->explain, "pop a key (%s) and an address (%s) and push the combined address (%s)", key, addr, val);
+        free(key);
+        free(addr);
+        free(val);
+    }
+    ctx_push(step->ctx, result);
     step->ctx->pc++;
 }
 
@@ -414,6 +424,15 @@ void op_Apply(const void *env, struct state *state, struct step *step, struct gl
                 free(x);
                 return;
             }
+            if (step->keep_callstack) {
+                char *m = value_string(method);
+                char *key = value_string(e);
+                char *val = value_string(v);
+                strbuf_printf(&step->explain, "pop a key (%s) and a dict value (%s) and push the corresponding value (%s)", key, m, val);
+                free(m);
+                free(key);
+                free(val);
+            }
             ctx_push(step->ctx, v);
             step->ctx->pc++;
         }
@@ -430,6 +449,15 @@ void op_Apply(const void *env, struct state *state, struct step *step, struct gl
             if (e >= (hvalue_t) size) {
                 value_ctx_failure(step->ctx, &step->engine, "Index out of range");
                 return;
+            }
+            if (step->keep_callstack) {
+                char *m = value_string(method);
+                char *key = value_string(e);
+                char *val = value_string(vals[e]);
+                strbuf_printf(&step->explain, "pop an index (%s) and a list value (%s) and push the corresponding value (%s)", key, m, val);
+                free(m);
+                free(key);
+                free(val);
             }
             ctx_push(step->ctx, vals[e]);
             step->ctx->pc++;
@@ -449,6 +477,15 @@ void op_Apply(const void *env, struct state *state, struct step *step, struct gl
                 return;
             }
             hvalue_t v = value_put_atom(&step->engine, &chars[e], 1);
+            if (step->keep_callstack) {
+                char *m = value_string(method);
+                char *key = value_string(e);
+                char *val = value_string(v);
+                strbuf_printf(&step->explain, "pop an offset (%s) and a string value (%s) and push the corresponding character (%s)", key, m, val);
+                free(m);
+                free(key);
+                free(val);
+            }
             ctx_push(step->ctx, v);
             step->ctx->pc++;
         }
@@ -458,14 +495,23 @@ void op_Apply(const void *env, struct state *state, struct step *step, struct gl
 
         // see if we need to keep track of the call stack
         if (step->keep_callstack) {
+            unsigned int pc = VALUE_FROM_PC(method);
+            assert(strcmp(global->code.instrs[pc].oi->name, "Frame") == 0);
             struct callstack *cs = new_alloc(struct callstack);
             cs->parent = step->callstack;
-            cs->pc = VALUE_FROM_PC(method);
+            cs->pc = pc;
             cs->arg = e;
             cs->sp = step->ctx->sp;
             cs->vars = step->ctx->vars;
             cs->return_address = ((step->ctx->pc + 1) << CALLTYPE_BITS) | CALLTYPE_NORMAL;
             step->callstack = cs;
+
+            const struct env_Frame *ef = global->code.instrs[pc].env;
+            char *m = value_string(ef->name);
+            char *key = value_string(e);
+            strbuf_printf(&step->explain, "pop an argument (%s) and a program counter value (%u: %s) and call the method", key, pc, m);
+            free(m);
+            free(key);
         }
 
         ctx_push(step->ctx, e);
@@ -1162,6 +1208,15 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
             free(x);
             return;
         }
+
+        if (step->keep_callstack) {
+            char *x = indices_string(indices, size);
+            char *val = value_string(v);
+            strbuf_printf(&step->explain, "pop address of variable (%s) and push value (%s)", x, val);
+            free(x);
+            free(val);
+        }
+
         ctx_push(step->ctx, v);
     }
     else {
@@ -1180,6 +1235,15 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
             free(x);
             return;
         }
+
+        if (step->keep_callstack) {
+            char *x = indices_string(el->indices, el->n);
+            char *val = value_string(v);
+            strbuf_printf(&step->explain, "push value (%s) of variable %s", val, x + 1);
+            free(x);
+            free(val);
+        }
+
         ctx_push(step->ctx, v);
     }
     step->ctx->pc++;
@@ -1218,6 +1282,15 @@ void op_LoadVar(const void *env, struct state *state, struct step *step, struct 
             }
             result = ind_tryload(&step->engine, step->ctx->vars, indices, size, &v);
         }
+
+        if (step->keep_callstack) {
+            char *x = indices_string(indices, size);
+            char *val = value_string(v);
+            strbuf_printf(&step->explain, "pop address of method variable (%s) and push value (%s)", x, val);
+            free(x);
+            free(val);
+        }
+
         if (!result) {
             char *x = indices_string(indices, size);
             value_ctx_failure(step->ctx, &step->engine, "LoadVar: bad address: %s", x);
@@ -1239,6 +1312,13 @@ void op_LoadVar(const void *env, struct state *state, struct step *step, struct 
             ctx_push(step->ctx, step->ctx->ctx_this);
         }
         else if (value_tryload(&step->engine, step->ctx->vars, el->name, &v)) {
+            if (step->keep_callstack) {
+                char *x = value_string(el->name);
+                char *val = value_string(v);
+                strbuf_printf(&step->explain, "push value (%s) of variable %s", val, x);
+                free(x);
+                free(val);
+            }
             ctx_push(step->ctx, v);
         }
         else {
@@ -1318,6 +1398,15 @@ void op_Pop(const void *env, struct state *state, struct step *step, struct glob
 void op_Push(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_Push *ep = env;
 
+    if (step->keep_callstack && VALUE_TYPE(ep->value) == VALUE_PC) {
+        unsigned int pc = VALUE_FROM_PC(ep->value);
+        if (strcmp(global->code.instrs[pc].oi->name, "Frame") == 0) {
+            const struct env_Frame *ef = global->code.instrs[pc].env;
+            char *m = value_string(ef->name);
+            strbuf_printf(&step->explain, "push program counter constant %u (%s)", pc, m);
+            free(m);
+        }
+    }
     if (!check_stack(step->ctx, 1)) {
         value_ctx_failure(step->ctx, &step->engine, "Push: out of stack");
         return;
@@ -1759,6 +1848,14 @@ void op_StoreVar(const void *env, struct state *state, struct step *step, struct
         unsigned int size;
         hvalue_t *indices = value_get(av, &size);
         size /= sizeof(hvalue_t);
+
+        if (step->keep_callstack) {
+            char *x = indices_string(indices, size);
+            char *val = value_string(v);
+            strbuf_printf(&step->explain, "pop value (%s) and address (%s) and store locally", val, x);
+            free(x);
+            free(val);
+        }
 
         bool result;
         if (indices[0] == this_atom) {
