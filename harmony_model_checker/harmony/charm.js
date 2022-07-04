@@ -8,6 +8,7 @@ var curMegaStep = 0;
 var mestable = document.getElementById("mestable");
 var threadtable = document.getElementById("threadtable");
 var coderow = document.getElementById("coderow");
+var hvmrow = document.getElementById("hvmrow");
 var container = document.getElementById('table-scroll');
 var currOffset = 0;
 var currCloc = null;
@@ -316,7 +317,9 @@ function init_microstep(masidx, misidx) {
     tid: parseInt(mas.tid),
     pc: parseInt(mis.pc),
     invfails: misidx == mas.microsteps.length - 1 ? mas.invfails : [],
-    contexts: mas.contexts
+    contexts: mas.contexts,
+    hvm: mis.code,
+    explain: mis.explain
   };
 
   if (mis.hasOwnProperty("npc")) {
@@ -551,16 +554,23 @@ function run_microstep(t) {
     coderow.innerHTML = mis.code.file + ":" + mis.code.line + "&nbsp;&nbsp;&nbsp;" + escapeHTML(mis.code.code);
   }
 
+  if (t+1 < microsteps.length) {
+    var nmis = microsteps[t+1];
+    hvmrow.innerHTML = "T" + nmis.tid + "/" + nmis.pc + ": " + nmis.hvm + " (" + nmis.explain + ")"
+  }
+
   currCloc = mis.cloc;
   currOffset = mis.offset;
 }
 
 function run_microsteps() {
   coderow.innerHTML = "";
+  hvmrow.innerHTML = "";
   if (currCloc != null) {
     currCloc.style.color = "black";
-    currCloc = null;
   }
+  currCloc = document.getElementById('C0');
+  currOffset = document.getElementById('P0');
   for (var i = 0; i < nmegasteps; i++) {
     mestable.rows[i].cells[3].innerHTML = "";
     for (var j = 0; j < vardir.length; j++) {
@@ -573,6 +583,12 @@ function run_microsteps() {
     stackTrace(tid, [], null);
     threadtable.rows[tid].cells[3].innerHTML = "";
   }
+
+  var mis = microsteps[0];
+  var mesrow = mestable.rows[mis.mesidx];
+  mesrow.cells[3].innerHTML = 0;
+  hvmrow.innerHTML = "T" + mis.tid + "/" + mis.pc + ": " + mis.hvm + " (" + mis.explain + ")"
+
   for (var t = 0; t < currentTime; t++) {
     run_microstep(t);
   }

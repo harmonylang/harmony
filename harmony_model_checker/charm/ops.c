@@ -594,10 +594,10 @@ void op_AtomicDec(const void *env, struct state *state, struct step *step, struc
 
     if (step->keep_callstack) {
         if (ctx->atomic == 1) {
-            strbuf_printf(&step->explain, "decrement atomic counter from 1 to 0: no longer atomic; ");
+            strbuf_printf(&step->explain, "decrement atomic counter from 1 to 0: no longer atomic");
         }
         else {
-            strbuf_printf(&step->explain, "decrement atomic counter from %d to %d: remains atomic; ", ctx->atomic, ctx->atomic - 1);
+            strbuf_printf(&step->explain, "decrement atomic counter from %d to %d: remains atomic", ctx->atomic, ctx->atomic - 1);
         }
     }
 
@@ -613,10 +613,10 @@ void op_AtomicInc(const void *env, struct state *state, struct step *step, struc
 
     if (step->keep_callstack) {
         if (ctx->atomic == 0) {
-            strbuf_printf(&step->explain, "increment atomic counter from 0 to 1: becomes atomic; ");
+            strbuf_printf(&step->explain, "increment atomic counter from 0 to 1: becomes atomic");
         }
         else {
-            strbuf_printf(&step->explain, "increment atomic counter from %d to %d: remains atomic; ", ctx->atomic, ctx->atomic + 1);
+            strbuf_printf(&step->explain, "increment atomic counter from %d to %d: remains atomic", ctx->atomic, ctx->atomic + 1);
         }
     }
 
@@ -1419,10 +1419,10 @@ void op_ReadonlyDec(const void *env, struct state *state, struct step *step, str
 
     if (step->keep_callstack) {
         if (ctx->readonly == 1) {
-            strbuf_printf(&step->explain, "decrement readonly counter from 1 to 0: no longer readonly; ");
+            strbuf_printf(&step->explain, "decrement readonly counter from 1 to 0: no longer readonly");
         }
         else {
-            strbuf_printf(&step->explain, "decrement readonly counter from %d to %d: remains readonly; ", ctx->readonly, ctx->readonly - 1);
+            strbuf_printf(&step->explain, "decrement readonly counter from %d to %d: remains readonly", ctx->readonly, ctx->readonly - 1);
         }
     }
     assert(ctx->readonly > 0);
@@ -1435,10 +1435,10 @@ void op_ReadonlyInc(const void *env, struct state *state, struct step *step, str
 
     if (step->keep_callstack) {
         if (ctx->readonly == 0) {
-            strbuf_printf(&step->explain, "increment readonly counter from 0 to 1: becomes readonly; ");
+            strbuf_printf(&step->explain, "increment readonly counter from 0 to 1: becomes readonly");
         }
         else {
-            strbuf_printf(&step->explain, "increment readonly counter from %d to %d: remains readonly; ", ctx->readonly, ctx->readonly + 1);
+            strbuf_printf(&step->explain, "increment readonly counter from %d to %d: remains readonly", ctx->readonly, ctx->readonly + 1);
         }
     }
 

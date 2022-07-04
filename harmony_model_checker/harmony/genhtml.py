@@ -2,10 +2,7 @@ import json
 import os
 import queue
 from pathlib import Path
-
 from harmony_model_checker.harmony.jsonstring import json_string
-
-
 
 class GenHTML:
     def __init__(self):
@@ -14,7 +11,6 @@ class GenHTML:
         self.nmicrosteps = 0
         self.nthreads = 0
         self.vardir = {}
-
         self_dir = Path(__file__).parent
         self.style = (self_dir / "charm.css").read_text()
         self.js = (self_dir / "charm.js").read_text()
@@ -244,6 +240,14 @@ class GenHTML:
         print("    <td colspan='2'>", file=f)
         print("      <h3 style='color:blue;'>", file=f)
         print("        <div id='coderow'>", file=f)
+        print("        </div>", file=f)
+        print("      </h3>", file=f)
+        print("    </td>", file=f)
+        print("  </tr>", file=f)
+        print("  <tr>", file=f)
+        print("    <td colspan='2'>", file=f)
+        print("      <h3 style='color:green;'>", file=f)
+        print("        <div id='hvmrow'>", file=f)
         print("        </div>", file=f)
         print("      </h3>", file=f)
         print("    </td>", file=f)
