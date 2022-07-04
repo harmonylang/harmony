@@ -443,23 +443,22 @@ void op_Apply(const void *env, struct state *state, struct step *step, struct gl
                 value_ctx_failure(step->ctx, &step->engine, "Bad index type for list");
                 return;
             }
-            e = VALUE_FROM_INT(e);
-            unsigned int size;
+            unsigned int index = VALUE_FROM_INT(e), size;
             hvalue_t *vals = value_get(method, &size);
-            if (e >= (hvalue_t) size) {
+            if (index >= (hvalue_t) size) {
                 value_ctx_failure(step->ctx, &step->engine, "Index out of range");
                 return;
             }
             if (step->keep_callstack) {
                 char *m = value_string(method);
                 char *key = value_string(e);
-                char *val = value_string(vals[e]);
+                char *val = value_string(vals[index]);
                 strbuf_printf(&step->explain, "pop an index (%s) and a list value (%s) and push the corresponding value (%s)", key, m, val);
                 free(m);
                 free(key);
                 free(val);
             }
-            ctx_push(step->ctx, vals[e]);
+            ctx_push(step->ctx, vals[index]);
             step->ctx->pc++;
         }
         return;
