@@ -1,6 +1,5 @@
 from harmony_model_checker.harmony.ops import *
 
-
 class Labeled_Op:
     def __init__(self, op, start, stop, labels):
         self.op = op

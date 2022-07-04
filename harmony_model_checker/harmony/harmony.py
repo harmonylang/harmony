@@ -242,13 +242,14 @@ def optjump(code, pc):
         pc = op.pc
     return pc
 
+# Jump chaining
 def optimize(code):
     for i in range(len(code.labeled_ops)):
         op = code.labeled_ops[i].op
         if isinstance(op, JumpOp):
-            code.labeled_ops[i].op = JumpOp(optjump(code, op.pc))
+            code.labeled_ops[i].op = JumpOp(optjump(code, op.pc), reason=op.reason)
         elif isinstance(op, JumpCondOp):
-            code.labeled_ops[i].op = JumpCondOp(op.cond, optjump(code, op.pc))
+            code.labeled_ops[i].op = JumpCondOp(op.cond, optjump(code, op.pc), reason=op.reason)
 
 def invcheck(state, inv):
     assert isinstance(state.code[inv], InvariantOp)
@@ -1171,6 +1172,9 @@ table td, table th {
         print("</html>", file=f)
     print("open file://" + os.getcwd() + "/harmony.html for more information")
 
+def explanation(lop):
+    return lop.op.explain()
+
 def dumpCode(printCode, code, scope, f=sys.stdout):
     lastloc = None
     if printCode == "json":
@@ -1218,9 +1222,9 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
         print('  "pretty": [', file=f)
         for pc in range(len(code.labeled_ops)):
             if pc < len(code.labeled_ops) - 1:
-                print('    [%s,%s],'%(json.dumps(str(code.labeled_ops[pc].op), ensure_ascii=False), json.dumps(code.labeled_ops[pc].op.explain(), ensure_ascii=False)), file=f)
+                print('    [%s,%s],'%(json.dumps(str(code.labeled_ops[pc].op), ensure_ascii=False), json.dumps(explanation(code.labeled_ops[pc]), ensure_ascii=False)), file=f)
             else:
-                print('    [%s,%s]'%(json.dumps(str(code.labeled_ops[pc].op), ensure_ascii=False), json.dumps(code.labeled_ops[pc].op.explain(), ensure_ascii=False)), file=f)
+                print('    [%s,%s]'%(json.dumps(str(code.labeled_ops[pc].op), ensure_ascii=False), json.dumps(explanation(code.labeled_ops[pc]), ensure_ascii=False)), file=f)
         print("  ],", file=f)
         print("  \"locations\": {", file=f, end="")
         firstTime = True

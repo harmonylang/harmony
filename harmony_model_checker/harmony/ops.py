@@ -141,10 +141,11 @@ class CutOp(Op):
                         self.tlaconvert(self.value), self.tlaconvert(self.key))
 
     def explain(self):
+        suffix = "; push False or True depending on success"
         if self.key == None:
-            return "get next element and assign to %s"%(self.convert(self.value))
+            return "get next element and assign to %s"%(self.convert(self.value)) + suffix
         else:
-            return "get next element and assign to %s:%s"%(self.convert(self.key), self.convert(self.value))
+            return "get next element and assign to %s:%s"%(self.convert(self.key), self.convert(self.value)) + suffix
 
     def eval(self, state, context):
         assert False
@@ -273,9 +274,10 @@ class GoOp(Op):
             context.pc += 1
 
 class LoadVarOp(Op):
-    def __init__(self, v, lvar=None):
+    def __init__(self, v, lvar=None, reason=None):
         self.v = v
         self.lvar = lvar        # name of local var if v == None
+        self.reason = reason
 
     def __repr__(self):
         if self.v == None:
@@ -304,10 +306,14 @@ class LoadVarOp(Op):
             return 'OpLoadVar(self, %s)'%self.tlaconvert(self.v)
 
     def explain(self):
-        if self.v == None:
-            return "pop the address of a method variable and push the value of that variable"
+        if self.reason == None:
+            prefix = ""
         else:
-            return "push the value of " + self.convert(self.v)
+            prefix = self.reason + ": "
+        if self.v == None:
+            return prefix + "pop the address of a method variable and push the value of that variable"
+        else:
+            return prefix + "push the value of " + self.convert(self.v)
 
     def eval(self, state, context):
         if self.v == None:
@@ -667,9 +673,10 @@ class AddressOp(Op):
         context.pc += 1
 
 class StoreVarOp(Op):
-    def __init__(self, v, lvar=None):
+    def __init__(self, v, lvar=None, reason=None):
         self.v = v
         self.lvar = lvar        # name of local var if v == None
+        self.reason = reason
 
     def __repr__(self):
         if self.v == None:
@@ -702,10 +709,14 @@ class StoreVarOp(Op):
             return 'OpStoreVar(self, %s)'%self.tlaconvert(self.v)
 
     def explain(self):
-        if self.v == None:
-            return "pop a value and the address of a method variable and store the value at that address"
+        if self.reason == None:
+            prefix = ""
         else:
-            return "pop a value and store in " + self.convert(self.v)
+            prefix = self.reason + ": "
+        if self.v == None:
+            return prefix + "pop a value and the address of a method variable and store the value at that address"
+        else:
+            return prefix + "pop a value and store in " + self.convert(self.v)
 
     # TODO.  Check error message.  Doesn't seem right
     def eval(self, state, context):
@@ -1132,8 +1143,9 @@ class InvariantOp(Op):
             self.end = map[self.end].pc
 
 class JumpOp(Op):
-    def __init__(self, pc):
+    def __init__(self, pc, reason=None):
         self.pc = pc
+        self.reason = reason
 
     def __repr__(self):
         return "Jump " + str(self.pc)
@@ -1145,7 +1157,8 @@ class JumpOp(Op):
         return 'OpJump(self, %d)'%self.pc
 
     def explain(self):
-        return "set program counter to " + str(self.pc)
+        prefix = "" if self.reason == None else (self.reason + ": ")
+        return prefix + "set program counter to " + str(self.pc)
 
     def eval(self, state, context):
         assert self.pc != context.pc
@@ -1157,9 +1170,10 @@ class JumpOp(Op):
             self.pc = map[self.pc].pc
 
 class JumpCondOp(Op):
-    def __init__(self, cond, pc):
+    def __init__(self, cond, pc, reason=None):
         self.cond = cond
         self.pc = pc
+        self.reason = reason
 
     def __repr__(self):
         return "JumpCond " + str(self.cond) + " " + str(self.pc)
@@ -1171,7 +1185,11 @@ class JumpCondOp(Op):
         return 'OpJumpCond(self, %d, %s)'%(self.pc, tlaValue(self.cond))
 
     def explain(self):
-        return "pop a value and jump to " + str(self.pc) + \
+        if self.reason == None:
+            prefix = ""
+        else:
+            prefix = self.reason + ": "
+        return prefix + "pop a value and jump to " + str(self.pc) + \
             " if the value is " + strValue(self.cond)
 
     def eval(self, state, context):

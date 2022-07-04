@@ -125,20 +125,20 @@ class ComprehensionAST(AST):
     def rec_comprehension(self, scope, code, iter, pc, accu, ctype):
         if iter == []:
             if ctype in { "dict", "set", "list" }:
-                code.append(LoadVarOp(accu), self.token, self.endtoken)
+                code.append(LoadVarOp(accu, reason="load accumulator"), self.token, self.endtoken)
             (_, file, line, column) = self.token
             if ctype == "dict":
                 self.key.compile(scope, code)
             self.value.compile(scope, code)
             if ctype == "set":
                 code.append(NaryOp(("SetAdd", file, line, column), 2), self.token, self.endtoken)
-                code.append(StoreVarOp(accu), self.token, self.endtoken)
+                code.append(StoreVarOp(accu, reason="update accumulator"), self.token, self.endtoken)
             elif ctype == "dict":
                 code.append(NaryOp(("DictAdd", file, line, column), 3), self.token, self.endtoken)
-                code.append(StoreVarOp(accu), self.token, self.endtoken)
+                code.append(StoreVarOp(accu, reason="update accumulator"), self.token, self.endtoken)
             elif ctype == "list":
                 code.append(NaryOp(("ListAdd", file, line, column), 2), self.token, self.endtoken)
-                code.append(StoreVarOp(accu), self.token, self.endtoken)
+                code.append(StoreVarOp(accu, reason="update accumulator"), self.token, self.endtoken)
             return
 
         (type, rest) = iter[0]
@@ -165,7 +165,7 @@ class ComprehensionAST(AST):
             labelcnt += 1
             code.nextLabel(startlabel)
             code.append(CutOp(var, var2), self.token, self.endtoken)
-            code.append(JumpCondOp(False, endlabel), self.token, self.endtoken)
+            code.append(JumpCondOp(False, endlabel, reason="check if loop is done"), self.token, self.endtoken)
             self.rec_comprehension(scope, code, iter[1:], startlabel, accu, ctype)
             code.append(JumpOp(startlabel), self.endtoken, self.endtoken)
             code.nextLabel(endlabel)
@@ -186,16 +186,16 @@ class ComprehensionAST(AST):
         accu = ("$accu%d"%len(code.labeled_ops), file, line, column)
         if ctype == "set":
             code.append(PushOp((SetValue(set()), file, line, column)), self.token, self.endtoken)
-            code.append(StoreVarOp(accu), self.token, self.endtoken)
+            code.append(StoreVarOp(accu, reason="initialize accumulator for set comprehension"), self.token, self.endtoken)
         elif ctype == "dict":
-            code.append(PushOp((emptydict, file, line, column)), self.token, self.endtoken)  # LIST TOD
-            code.append(StoreVarOp(accu), self.token, self.endtoken)
+            code.append(PushOp((emptydict, file, line, column)), self.token, self.endtoken)
+            code.append(StoreVarOp(accu, reason="initialize accumulator for dict comprehension"), self.token, self.endtoken)
         elif ctype == "list":
             code.append(PushOp((emptytuple, file, line, column)), self.token, self.endtoken)
-            code.append(StoreVarOp(accu), self.token, self.endtoken)
+            code.append(StoreVarOp(accu, reason="initialize accumulator for list comprehension"), self.token, self.endtoken)
         self.rec_comprehension(ns, code, self.iter, None, accu, ctype)
         if ctype in { "set", "dict", "list" }:
-            code.append(LoadVarOp(accu), self.token, self.endtoken)
+            code.append(LoadVarOp(accu, reason="load final accumulator result"), self.token, self.endtoken)
 
 class ConstantAST(AST):
     def __init__(self, endtoken, const):

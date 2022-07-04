@@ -4,6 +4,7 @@
 #include "minheap.h"
 #include "code.h"
 #include "graph.h"
+#include "json.h"
 
 struct scc {
     struct scc *next;
@@ -44,6 +45,7 @@ struct global {
     bool phase2;                 // when model checking is done and graph analysis starts
     struct scc *scc_todo;        // SCC search
     struct dict *tracemap;       // maps contexts to callstack
+    struct json_value *pretty;   // for output
     bool run_direct;             // non-model-checked mode
 };
 

@@ -880,11 +880,26 @@ void diff_state(
         fprintf(file, ",");
     }
     fprintf(file, "\n        {\n");
+    struct json_value *next = global->pretty->u.list.vals[oldctx->pc];
+    assert(next->type == JV_LIST);
+    assert(next->u.list.nvals == 2);
+    struct json_value *opstr = next->u.list.vals[0];
+    assert(opstr->type == JV_ATOM);
+    char *op = json_escape(opstr->u.atom.base, opstr->u.atom.len);
+    fprintf(file, "          \"code\": \"%s\",\n", op);
+    free(op);
     if (strbuf_getlen(&step->explain) > 0) {
         char *v = json_escape(step->explain.buf, step->explain.len);
         fprintf(file, "          \"explain\": \"%s\",\n", v);
         free(v);
         step->explain.len = 0;
+    }
+    else {
+        struct json_value *codestr = next->u.list.vals[1];
+        assert(codestr->type == JV_ATOM);
+		char *v = json_escape(codestr->u.atom.base, codestr->u.atom.len);
+        fprintf(file, "          \"explain\": \"%s\",\n", v);
+        free(v);
     }
     if (newstate->vars != oldstate->vars) {
         fprintf(file, "          \"shared\": ");
@@ -902,7 +917,6 @@ void diff_state(
     if (print != NULL) {
         fprintf(file, "          \"print\": %s,\n", print);
     }
-    fprintf(file, "          \"npc\": \"%d\",\n", newctx->pc);
     if (newcs != oldcs) {
         fprintf(file, "          \"fp\": \"%d\",\n", newcs->sp + 1);
 #ifdef notdef
@@ -2317,6 +2331,9 @@ int main(int argc, char **argv){
     printf("Phase 4: write results to %s\n", outfile);
     fflush(stdout);
 
+    global->pretty = dict_lookup(jv->u.map, "pretty", 6);
+    assert(global->pretty->type == JV_LIST);
+
     fprintf(out, "{\n");
 
     if (no_issues) {
@@ -2451,10 +2468,8 @@ int main(int argc, char **argv){
     }
 
     fprintf(out, "  \"code\": [\n");
-    jc = dict_lookup(jv->u.map, "pretty", 6);
-    assert(jc->type == JV_LIST);
-    for (unsigned int i = 0; i < jc->u.list.nvals; i++) {
-        struct json_value *next = jc->u.list.vals[i];
+    for (unsigned int i = 0; i < global->pretty->u.list.nvals; i++) {
+        struct json_value *next = global->pretty->u.list.vals[i];
         assert(next->type == JV_LIST);
         assert(next->u.list.nvals == 2);
         struct json_value *codestr = next->u.list.vals[0];
@@ -2462,7 +2477,7 @@ int main(int argc, char **argv){
 		char *v = json_escape(codestr->u.atom.base, codestr->u.atom.len);
         fprintf(out, "    \"%s\"", v);
 		free(v);
-        if (i < jc->u.list.nvals - 1) {
+        if (i < global->pretty->u.list.nvals - 1) {
             fprintf(out, ",");
         }
         fprintf(out, "\n");
@@ -2470,8 +2485,8 @@ int main(int argc, char **argv){
     fprintf(out, "  ],\n");
 
     fprintf(out, "  \"explain\": [\n");
-    for (unsigned int i = 0; i < jc->u.list.nvals; i++) {
-        struct json_value *next = jc->u.list.vals[i];
+    for (unsigned int i = 0; i < global->pretty->u.list.nvals; i++) {
+        struct json_value *next = global->pretty->u.list.vals[i];
         assert(next->type == JV_LIST);
         assert(next->u.list.nvals == 2);
         struct json_value *codestr = next->u.list.vals[1];
@@ -2479,7 +2494,7 @@ int main(int argc, char **argv){
 		char *v = json_escape(codestr->u.atom.base, codestr->u.atom.len);
         fprintf(out, "    \"%s\"", v);
 		free(v);
-        if (i < jc->u.list.nvals - 1) {
+        if (i < global->pretty->u.list.nvals - 1) {
             fprintf(out, ",");
         }
         fprintf(out, "\n");

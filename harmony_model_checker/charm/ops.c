@@ -484,13 +484,20 @@ void op_Apply(const void *env, struct state *state, struct step *step, struct gl
 
 void op_Assert(const void *env, struct state *state, struct step *step, struct global *global){
     hvalue_t v = ctx_pop(step->ctx);
+
     if (VALUE_TYPE(v) != VALUE_BOOL) {
         value_ctx_failure(step->ctx, &step->engine, "assert can only be applied to bool engine");
     }
     if (v == VALUE_FALSE) {
+        if (step->keep_callstack) {
+            strbuf_printf(&step->explain, "pop a value (False) and raise exception");
+        }
         value_ctx_failure(step->ctx, &step->engine, "Harmony assertion failed");
     }
     else {
+        if (step->keep_callstack) {
+            strbuf_printf(&step->explain, "pop a value (True); do not raise exception");
+        }
         step->ctx->pc++;
     }
 }
@@ -540,6 +547,15 @@ void op_Print(const void *env, struct state *state, struct step *step, struct gl
 void op_AtomicDec(const void *env, struct state *state, struct step *step, struct global *global){
     struct context *ctx = step->ctx;
 
+    if (step->keep_callstack) {
+        if (ctx->atomic == 1) {
+            strbuf_printf(&step->explain, "decrement atomic counter from 1 to 0: no longer atomic; ");
+        }
+        else {
+            strbuf_printf(&step->explain, "decrement atomic counter from %d to %d: remains atomic; ", ctx->atomic, ctx->atomic - 1);
+        }
+    }
+
     assert(ctx->atomic > 0);
     if (--ctx->atomic == 0) {
         ctx->atomicFlag = false;
@@ -549,6 +565,15 @@ void op_AtomicDec(const void *env, struct state *state, struct step *step, struc
 
 void op_AtomicInc(const void *env, struct state *state, struct step *step, struct global *global){
     struct context *ctx = step->ctx;
+
+    if (step->keep_callstack) {
+        if (ctx->atomic == 0) {
+            strbuf_printf(&step->explain, "increment atomic counter from 0 to 1: becomes atomic; ");
+        }
+        else {
+            strbuf_printf(&step->explain, "increment atomic counter from %d to %d: remains atomic; ", ctx->atomic, ctx->atomic + 1);
+        }
+    }
 
     ctx->atomic++;
     if (ctx->atomic == 0) {
@@ -604,11 +629,6 @@ static void do_return(struct state *state, struct step *step, struct global *glo
     assert(VALUE_TYPE(callval) == VALUE_INT);
     unsigned int call = VALUE_FROM_INT(callval);
     switch (call & CALLTYPE_MASK) {
-#ifdef ZZZ
-    case CALLTYPE_PROCESS:
-        step->ctx->terminated = true;
-        break;
-#endif
     case CALLTYPE_NORMAL:
         {
             unsigned int pc = call >> CALLTYPE_BITS;
@@ -627,11 +647,7 @@ static void do_return(struct state *state, struct step *step, struct global *glo
         panic("Return: bad call type");
     }
 
-    if (step->keep_callstack
-#ifdef ZZZ
-            && (call & CALLTYPE_MASK) != CALLTYPE_PROCESS
-#endif
-    ) {
+    if (step->keep_callstack) {
         struct callstack *cs = step->callstack;
         step->callstack = cs->parent;
     }
@@ -1313,6 +1329,14 @@ void op_Push(const void *env, struct state *state, struct step *step, struct glo
 void op_ReadonlyDec(const void *env, struct state *state, struct step *step, struct global *global){
     struct context *ctx = step->ctx;
 
+    if (step->keep_callstack) {
+        if (ctx->readonly == 1) {
+            strbuf_printf(&step->explain, "decrement readonly counter from 1 to 0: no longer readonly; ");
+        }
+        else {
+            strbuf_printf(&step->explain, "decrement readonly counter from %d to %d: remains readonly; ", ctx->readonly, ctx->readonly - 1);
+        }
+    }
     assert(ctx->readonly > 0);
     ctx->readonly--;
     ctx->pc++;
@@ -1320,6 +1344,15 @@ void op_ReadonlyDec(const void *env, struct state *state, struct step *step, str
 
 void op_ReadonlyInc(const void *env, struct state *state, struct step *step, struct global *global){
     struct context *ctx = step->ctx;
+
+    if (step->keep_callstack) {
+        if (ctx->readonly == 0) {
+            strbuf_printf(&step->explain, "increment readonly counter from 0 to 1: becomes readonly; ");
+        }
+        else {
+            strbuf_printf(&step->explain, "increment readonly counter from %d to %d: remains readonly; ", ctx->readonly, ctx->readonly + 1);
+        }
+    }
 
     ctx->readonly++;
     if (ctx->readonly == 0) {
@@ -1488,9 +1521,6 @@ void op_Spawn(
     ctx->vars = VALUE_DICT;
     ctx->interruptlevel = false;
     ctx->eternal = se->eternal;
-#ifdef ZZZ
-    ctx_push(ctx, VALUE_TO_INT((step->ctx->pc << CALLTYPE_BITS) | CALLTYPE_PROCESS));
-#endif
     ctx_push(ctx, arg);
     if (global->run_direct) {
         unsigned int size = sizeof(*ctx) + (ctx->sp * sizeof(hvalue_t));
@@ -3028,7 +3058,7 @@ hvalue_t f_dict_add(struct state *state, struct step *step, hvalue_t *args, int 
 hvalue_t f_set_add(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 2);
     if (step->keep_callstack) {
-        strbuf_printf(&step->explain, "insert second value into the first; ");
+        strbuf_printf(&step->explain, "insert first value into the second; ");
     }
     int64_t elt = args[0], set = args[1];
     assert(VALUE_TYPE(set) == VALUE_SET);
