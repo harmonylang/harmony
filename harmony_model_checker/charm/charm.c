@@ -870,7 +870,8 @@ void diff_state(
     bool interrupt,
     bool choose,
     hvalue_t choice,
-    char *print
+    char *print,
+    struct step *step
 ) {
     if (global->dumpfirst) {
         global->dumpfirst = false;
@@ -879,6 +880,12 @@ void diff_state(
         fprintf(file, ",");
     }
     fprintf(file, "\n        {\n");
+    if (strbuf_getlen(&step->explain) > 0) {
+        char *v = json_escape(step->explain.buf, step->explain.len);
+        fprintf(file, "          \"explain\": \"%s\",\n", v);
+        free(v);
+        step->explain.len = 0;
+    }
     if (newstate->vars != oldstate->vars) {
         fprintf(file, "          \"shared\": ");
         print_vars(global, file, newstate->vars);
@@ -978,7 +985,8 @@ void diff_dump(
     bool interrupt,
     bool choose,
     hvalue_t choice,
-    char *print
+    char *print,
+    struct step *step
 ) {
     int newsize = sizeof(*newctx) + (newctx->sp * sizeof(hvalue_t));
 
@@ -989,7 +997,7 @@ void diff_dump(
     }
 
     // Keep track of old state and context for taking diffs
-    diff_state(global, file, oldstate, newstate, *oldctx, newctx, *oldcs, newcs, interrupt, choose, choice, print);
+    diff_state(global, file, oldstate, newstate, *oldctx, newctx, *oldcs, newcs, interrupt, choose, choice, print, step);
     *oldstate = *newstate;
     free(*oldctx);
     *oldctx = malloc(newsize);
@@ -1020,6 +1028,7 @@ hvalue_t twostep(
     step.keep_callstack = true;
     step.engine.values = &global->values;
     step.callstack = dict_lookup(global->tracemap, &ctx, sizeof(ctx));
+    strbuf_init(&step.explain);
     if (step.callstack == NULL) {
         printf(">>> %"PRIx64"\n", ctx);
         panic("can't find context");
@@ -1033,6 +1042,7 @@ hvalue_t twostep(
     if (step.ctx->terminated || step.ctx->failed) {
         free(step.ctx);
         printf("XYZXYZXYZ\n");
+        panic("twostep: already terminated???");
         return ctx;
     }
 
@@ -1042,7 +1052,7 @@ hvalue_t twostep(
         assert(step.ctx->extended);
 		assert(step.ctx->ctx_trap_pc != 0);
         interrupt_invoke(&step);
-        diff_dump(global, file, oldstate, sc, oldctx, step.ctx, &oldcs, step.callstack, true, false, 0, NULL);
+        diff_dump(global, file, oldstate, sc, oldctx, step.ctx, &oldcs, step.callstack, true, false, 0, NULL, &step);
     }
 
     struct dict *infloop = NULL;        // infinite loop detector
@@ -1095,7 +1105,7 @@ hvalue_t twostep(
         }
 
         assert(!instrs[pc].choose || choice != 0);
-        diff_dump(global, file, oldstate, sc, oldctx, step.ctx, &oldcs, step.callstack, false, instrs[pc].choose, choice, print);
+        diff_dump(global, file, oldstate, sc, oldctx, step.ctx, &oldcs, step.callstack, false, instrs[pc].choose, choice, print, &step);
         free(print);
         if (step.ctx->terminated || step.ctx->failed || step.ctx->stopped) {
             break;
@@ -1117,14 +1127,14 @@ hvalue_t twostep(
 #ifdef TODO
             if (0 && step.ctx->readonly > 0) {    // TODO
                 value_ctx_failure(step.ctx, &step.engine, "can't choose in assertion or invariant");
-                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, &oldcs, step.callstack, false, global->code.instrs[pc].choose, choice, NULL);
+                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, &oldcs, step.callstack, false, global->code.instrs[pc].choose, choice, NULL, &step);
                 break;
             }
 #endif
             hvalue_t s = ctx_stack(step.ctx)[step.ctx->sp - 1];
             if (VALUE_TYPE(s) != VALUE_SET) {
                 value_ctx_failure(step.ctx, &step.engine, "choose operation requires a set");
-                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, &oldcs, step.callstack, false, global->code.instrs[pc].choose, choice, NULL);
+                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, &oldcs, step.callstack, false, global->code.instrs[pc].choose, choice, NULL, &step);
                 break;
             }
             unsigned int size;
@@ -1132,7 +1142,7 @@ hvalue_t twostep(
             size /= sizeof(hvalue_t);
             if (size == 0) {
                 value_ctx_failure(step.ctx, &step.engine, "choose operation requires a non-empty set");
-                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, &oldcs, step.callstack, false, global->code.instrs[pc].choose, choice, NULL);
+                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, &oldcs, step.callstack, false, global->code.instrs[pc].choose, choice, NULL, &step);
                 break;
             }
             if (size == 1) {
@@ -1159,6 +1169,7 @@ hvalue_t twostep(
 
     free(sc);
     free(step.ctx);
+    strbuf_deinit(&step.explain);
     // TODO free(step.log);
 
     bool new;

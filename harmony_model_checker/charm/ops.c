@@ -27,7 +27,7 @@ struct val_info {
 
 struct f_info {
     char *name;
-    hvalue_t (*f)(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine);
+    hvalue_t (*f)(struct state *state, struct step *step, hvalue_t *args, int n);
 };
 
 struct var_tree {
@@ -1252,13 +1252,44 @@ void op_Nary(const void *env, struct state *state, struct step *step, struct glo
     const struct env_Nary *en = env;
     hvalue_t args[MAX_ARITY];
 
+    if (step->keep_callstack) {
+        if (en->arity > 0) {
+            if (en->arity == 1) {
+                strbuf_printf(&step->explain, "pop a value (");
+            }
+            else {
+                strbuf_printf(&step->explain, "pop %d values (", en->arity);
+            }
+        }
+    }
     for (unsigned int i = 0; i < en->arity; i++) {
         args[i] = ctx_pop(step->ctx);
+        if (step->keep_callstack) {
+            if (i > 0) {
+                strbuf_printf(&step->explain, ", ");
+            }
+            char *x = value_string(args[i]);
+            strbuf_printf(&step->explain, "%s", x);
+            free(x);
+        }
     }
-    hvalue_t result = (*en->fi->f)(state, step->ctx, args, en->arity, &step->engine);
+    if (step->keep_callstack) {
+        if (en->arity > 0) {
+            strbuf_printf(&step->explain, "); ");
+        }
+    }
+    hvalue_t result = (*en->fi->f)(state, step, args, en->arity);
     if (!step->ctx->failed) {
+        if (step->keep_callstack) {
+            char *x = value_string(result);
+            strbuf_printf(&step->explain, "push result (%s)", x);
+            free(x);
+        }
         ctx_push(step->ctx, result);
         step->ctx->pc++;
+    }
+    else if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "operation failed");
     }
 }
 
@@ -1627,6 +1658,13 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
             step->ai->n = size;
             step->ai->load = is_sequential(global->seqs, step->ai->indices, step->ai->n);
         }
+        if (step->keep_callstack) {
+            char *x = indices_string(indices, size);
+            char *val = value_string(v);
+            strbuf_printf(&step->explain, "pop value (%s) and address (%s) and store", val, x);
+            free(x);
+            free(val);
+        }
 
         if (size == 1 && !step->ctx->initial) {
             hvalue_t newvars;
@@ -1646,6 +1684,13 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
         }
     }
     else {
+        if (step->keep_callstack) {
+            char *x = indices_string(es->indices, es->n);
+            char *val = value_string(v);
+            strbuf_printf(&step->explain, "pop value (%s) and store into variable %s", val, x + 1);
+            free(x);
+            free(val);
+        }
         if (step->ai != NULL) {
             step->ai->indices = es->indices;
             step->ai->n = es->n;
@@ -2050,17 +2095,17 @@ void *init_StoreVar(struct dict *map, struct engine *engine){
     }
 }
 
-hvalue_t f_abs(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
+hvalue_t f_abs(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 1);
     hvalue_t e = args[0];
     if (VALUE_TYPE(e) != VALUE_INT) {
-        return value_ctx_failure(ctx, engine, "abs() can only be applied to integers");
+        return value_ctx_failure(step->ctx, &step->engine, "abs() can only be applied to integers");
     }
     e = VALUE_FROM_INT(e);
     return e >= 0 ? args[0] : VALUE_TO_INT(-e);
 }
 
-hvalue_t f_all(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
+hvalue_t f_all(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 1);
     hvalue_t e = args[0];
 	if (e == VALUE_SET || e == VALUE_LIST) {
@@ -2072,7 +2117,7 @@ hvalue_t f_all(struct state *state, struct context *ctx, hvalue_t *args, int n, 
         size /= sizeof(hvalue_t);
         for (unsigned int i = 0; i < size; i++) {
             if (VALUE_TYPE(v[i]) != VALUE_BOOL) {
-                return value_ctx_failure(ctx, engine, "all() can only be applied to booleans");
+                return value_ctx_failure(step->ctx, &step->engine, "all() can only be applied to booleans");
             }
             if (v[i] == VALUE_FALSE) {
                 return VALUE_FALSE;
@@ -2080,10 +2125,10 @@ hvalue_t f_all(struct state *state, struct context *ctx, hvalue_t *args, int n, 
         }
 		return VALUE_TRUE;
     }
-    return value_ctx_failure(ctx, engine, "all() can only be applied to sets or lists");
+    return value_ctx_failure(step->ctx, &step->engine, "all() can only be applied to sets or lists");
 }
 
-hvalue_t f_any(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
+hvalue_t f_any(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 1);
     hvalue_t e = args[0];
 	if (e == VALUE_SET || e == VALUE_LIST) {
@@ -2095,7 +2140,7 @@ hvalue_t f_any(struct state *state, struct context *ctx, hvalue_t *args, int n, 
         size /= sizeof(hvalue_t);
         for (unsigned int i = 0; i < size; i++) {
             if (VALUE_TYPE(v[i]) != VALUE_BOOL) {
-                return value_ctx_failure(ctx, engine, "any() can only be applied to booleans");
+                return value_ctx_failure(step->ctx, &step->engine, "any() can only be applied to booleans");
             }
             if (v[i] != VALUE_FALSE) {
                 return VALUE_TRUE;
@@ -2103,17 +2148,17 @@ hvalue_t f_any(struct state *state, struct context *ctx, hvalue_t *args, int n, 
         }
 		return VALUE_FALSE;
     }
-    return value_ctx_failure(ctx, engine, "any() can only be applied to sets or dictionaries");
+    return value_ctx_failure(step->ctx, &step->engine, "any() can only be applied to sets or dictionaries");
 }
 
-hvalue_t f_countLabel(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
+hvalue_t f_countLabel(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 1);
-    if (ctx->atomic == 0) {
-        return value_ctx_failure(ctx, engine, "countLabel: can only be called in atomic mode");
+    if (step->ctx->atomic == 0) {
+        return value_ctx_failure(step->ctx, &step->engine, "countLabel: can only be called in atomic mode");
     }
     hvalue_t e = args[0];
     if (VALUE_TYPE(e) != VALUE_PC) {
-        return value_ctx_failure(ctx, engine, "countLabel: not a label");
+        return value_ctx_failure(step->ctx, &step->engine, "countLabel: not a label");
     }
     e = VALUE_FROM_PC(e);
 
@@ -2128,45 +2173,45 @@ hvalue_t f_countLabel(struct state *state, struct context *ctx, hvalue_t *args, 
     return VALUE_TO_INT(result);
 }
 
-hvalue_t f_div(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
+hvalue_t f_div(struct state *state, struct step *step, hvalue_t *args, int n){
     int64_t e1 = args[0], e2 = args[1];
     if (VALUE_TYPE(e1) != VALUE_INT) {
-        return value_ctx_failure(ctx, engine, "right argument to / not an integer");
+        return value_ctx_failure(step->ctx, &step->engine, "right argument to / not an integer");
     }
     if (VALUE_TYPE(e2) != VALUE_INT) {
-        return value_ctx_failure(ctx, engine, "left argument to / not an integer");
+        return value_ctx_failure(step->ctx, &step->engine, "left argument to / not an integer");
     }
     e1 = VALUE_FROM_INT(e1);
     if (e1 == 0) {
-        return value_ctx_failure(ctx, engine, "divide by zero");
+        return value_ctx_failure(step->ctx, &step->engine, "divide by zero");
     }
     int64_t result = VALUE_FROM_INT(e2) / e1;
     return VALUE_TO_INT(result);
 }
 
-hvalue_t f_eq(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
+hvalue_t f_eq(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 2);
     return VALUE_TO_BOOL(args[0] == args[1]);
 }
 
-hvalue_t f_ge(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
+hvalue_t f_ge(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 2);
     int cmp = value_cmp(args[1], args[0]);
     return VALUE_TO_BOOL(cmp >= 0);
 }
 
-hvalue_t f_gt(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
+hvalue_t f_gt(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 2);
     int cmp = value_cmp(args[1], args[0]);
     return VALUE_TO_BOOL(cmp > 0);
 }
 
-hvalue_t f_ne(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
+hvalue_t f_ne(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 2);
     return VALUE_TO_BOOL(args[0] != args[1]);
 }
 
-hvalue_t f_in(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
+hvalue_t f_in(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 2);
     hvalue_t s = args[0], e = args[1];
 	if (s == VALUE_SET || s == VALUE_DICT || s == VALUE_LIST) {
@@ -2174,7 +2219,7 @@ hvalue_t f_in(struct state *state, struct context *ctx, hvalue_t *args, int n, s
 	}
     if (VALUE_TYPE(s) == VALUE_ATOM) {
         if (VALUE_TYPE(e) != VALUE_ATOM) {
-            return value_ctx_failure(ctx, engine, "'in <string>' can only be applied to another string");
+            return value_ctx_failure(step->ctx, &step->engine, "'in <string>' can only be applied to another string");
         }
         if (s == VALUE_ATOM) {
             return VALUE_TO_BOOL(e == VALUE_ATOM);
@@ -2216,15 +2261,14 @@ hvalue_t f_in(struct state *state, struct context *ctx, hvalue_t *args, int n, s
         }
         return VALUE_FALSE;
     }
-    return value_ctx_failure(ctx, engine, "'in' can only be applied to sets or dictionaries");
+    return value_ctx_failure(step->ctx, &step->engine, "'in' can only be applied to sets or dictionaries");
 }
 
 hvalue_t f_intersection(
     struct state *state,
-    struct context *ctx,
+    struct step *step,
     hvalue_t *args,
-    int n,
-    struct engine *engine
+    int n
 ) {
     hvalue_t e1 = args[0];
 
@@ -2232,7 +2276,7 @@ hvalue_t f_intersection(
         for (int i = 1; i < n; i++) {
             hvalue_t e2 = args[i];
             if (VALUE_TYPE(e2) != VALUE_INT) {
-                return value_ctx_failure(ctx, engine, "'&' applied to mix of ints and other types");
+                return value_ctx_failure(step->ctx, &step->engine, "'&' applied to mix of ints and other types");
             }
             e1 &= e2;
         }
@@ -2251,7 +2295,7 @@ hvalue_t f_intersection(
         hvalue_t max_val = vi[0].vals[0];       // maximum value over the minima of all sets
         for (int i = 1; i < n; i++) {
             if (VALUE_TYPE(args[i]) != VALUE_SET) {
-                return value_ctx_failure(ctx, engine, "'&' applied to mix of sets and other types");
+                return value_ctx_failure(step->ctx, &step->engine, "'&' applied to mix of sets and other types");
             }
             if (args[i] == VALUE_SET) {
                 min_size = 0;
@@ -2320,7 +2364,7 @@ hvalue_t f_intersection(
             }
         }
 
-        hvalue_t result = value_put_set(engine, vals, (char *) v - (char *) vals);
+        hvalue_t result = value_put_set(&step->engine, vals, (char *) v - (char *) vals);
         return result;
     }
 
@@ -2328,14 +2372,14 @@ hvalue_t f_intersection(
 		return VALUE_DICT;
 	}
     if (VALUE_TYPE(e1) != VALUE_DICT) {
-        return value_ctx_failure(ctx, engine, "'&' can only be applied to ints and dicts");
+        return value_ctx_failure(step->ctx, &step->engine, "'&' can only be applied to ints and dicts");
     }
     // get all the dictionaries
     struct val_info vi[n];
     int total = 0;
     for (int i = 0; i < n; i++) {
         if (VALUE_TYPE(args[i]) != VALUE_DICT) {
-            return value_ctx_failure(ctx, engine, "'&' applied to mix of dictionaries and other types");
+            return value_ctx_failure(step->ctx, &step->engine, "'&' applied to mix of dictionaries and other types");
         }
         if (args[i] == VALUE_DICT) {
             vi[i].vals = NULL;
@@ -2386,22 +2430,22 @@ hvalue_t f_intersection(
         in = i;
     }
 
-    hvalue_t result = value_put_dict(engine, vals, 2 * out * sizeof(hvalue_t));
+    hvalue_t result = value_put_dict(&step->engine, vals, 2 * out * sizeof(hvalue_t));
     return result;
 }
 
-hvalue_t f_invert(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
+hvalue_t f_invert(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 1);
     int64_t e = args[0];
     if (VALUE_TYPE(e) != VALUE_INT) {
-        return value_ctx_failure(ctx, engine, "~ can only be applied to ints");
+        return value_ctx_failure(step->ctx, &step->engine, "~ can only be applied to ints");
     }
     e = VALUE_FROM_INT(e);
     return VALUE_TO_INT(~e);
 }
 
 // TODO: obsolete
-hvalue_t f_isEmpty(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
+hvalue_t f_isEmpty(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 1);
     hvalue_t e = args[0];
     if (VALUE_TYPE(e) == VALUE_DICT) {
@@ -2416,14 +2460,14 @@ hvalue_t f_isEmpty(struct state *state, struct context *ctx, hvalue_t *args, int
     if (VALUE_TYPE(e) == VALUE_LIST) {
         return VALUE_TO_BOOL(e == VALUE_LIST);
     }
-    return value_ctx_failure(ctx, engine, "loops can only iterate over dictionaries, lists, and sets");
+    return value_ctx_failure(step->ctx, &step->engine, "loops can only iterate over dictionaries, lists, and sets");
 }
 
-hvalue_t f_keys(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
+hvalue_t f_keys(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 1);
     hvalue_t v = args[0];
     if (VALUE_TYPE(v) != VALUE_DICT) {
-        return value_ctx_failure(ctx, engine, "keys() can only be applied to dictionaries");
+        return value_ctx_failure(step->ctx, &step->engine, "keys() can only be applied to dictionaries");
     }
     if (v == VALUE_DICT) {
         return VALUE_SET;
@@ -2436,20 +2480,20 @@ hvalue_t f_keys(struct state *state, struct context *ctx, hvalue_t *args, int n,
     for (unsigned int i = 0; i < size; i++) {
         keys[i] = vals[2*i];
     }
-    hvalue_t result = value_put_set(engine, keys, size * sizeof(hvalue_t));
+    hvalue_t result = value_put_set(&step->engine, keys, size * sizeof(hvalue_t));
     return result;
 }
 
-hvalue_t f_str(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
+hvalue_t f_str(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 1);
     hvalue_t e = args[0];
     char *s = value_string(e);
-    hvalue_t v = value_put_atom(engine, s, strlen(s));
+    hvalue_t v = value_put_atom(&step->engine, s, strlen(s));
     free(s);
     return v;
 }
 
-hvalue_t f_len(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
+hvalue_t f_len(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 1);
     hvalue_t e = args[0];
 	if (e == VALUE_SET || e == VALUE_DICT || e == VALUE_LIST || e == VALUE_ATOM) {
@@ -2478,10 +2522,10 @@ hvalue_t f_len(struct state *state, struct context *ctx, hvalue_t *args, int n, 
         (void) value_get(e, &size);
         return VALUE_TO_INT(size);
     }
-    return value_ctx_failure(ctx, engine, "len() can only be applied to sets, dictionaries, lists, or strings");
+    return value_ctx_failure(step->ctx, &step->engine, "len() can only be applied to sets, dictionaries, lists, or strings");
 }
 
-hvalue_t f_type(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
+hvalue_t f_type(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 1);
     hvalue_t e = args[0];
     switch (VALUE_TYPE(e)) {
@@ -2506,29 +2550,29 @@ hvalue_t f_type(struct state *state, struct context *ctx, hvalue_t *args, int n,
     default:
         assert(false);
     }
-    return value_ctx_failure(ctx, engine, "unknown type???");
+    return value_ctx_failure(step->ctx, &step->engine, "unknown type???");
 }
 
-hvalue_t f_le(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
+hvalue_t f_le(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 2);
     int cmp = value_cmp(args[1], args[0]);
     return VALUE_TO_BOOL(cmp <= 0);
 }
 
-hvalue_t f_lt(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
+hvalue_t f_lt(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 2);
     int cmp = value_cmp(args[1], args[0]);
     return VALUE_TO_BOOL(cmp < 0);
 }
 
-hvalue_t f_max(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
+hvalue_t f_max(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 1);
     hvalue_t e = args[0];
 	if (e == VALUE_SET) {
-        return value_ctx_failure(ctx, engine, "can't apply max() to empty set");
+        return value_ctx_failure(step->ctx, &step->engine, "can't apply max() to empty set");
     }
     if (e == VALUE_LIST) {
-        return value_ctx_failure(ctx, engine, "can't apply max() to empty list");
+        return value_ctx_failure(step->ctx, &step->engine, "can't apply max() to empty list");
     }
     if (VALUE_TYPE(e) == VALUE_SET) {
         unsigned int size;
@@ -2548,17 +2592,17 @@ hvalue_t f_max(struct state *state, struct context *ctx, hvalue_t *args, int n, 
         }
 		return max;
     }
-    return value_ctx_failure(ctx, engine, "max() can only be applied to sets or lists");
+    return value_ctx_failure(step->ctx, &step->engine, "max() can only be applied to sets or lists");
 }
 
-hvalue_t f_min(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
+hvalue_t f_min(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 1);
     hvalue_t e = args[0];
 	if (e == VALUE_SET) {
-        return value_ctx_failure(ctx, engine, "can't apply min() to empty set");
+        return value_ctx_failure(step->ctx, &step->engine, "can't apply min() to empty set");
     }
     if (e == VALUE_LIST) {
-        return value_ctx_failure(ctx, engine, "can't apply min() to empty list");
+        return value_ctx_failure(step->ctx, &step->engine, "can't apply min() to empty list");
     }
     if (VALUE_TYPE(e) == VALUE_SET) {
         unsigned int size;
@@ -2577,21 +2621,15 @@ hvalue_t f_min(struct state *state, struct context *ctx, hvalue_t *args, int n, 
         }
 		return min;
     }
-    return value_ctx_failure(ctx, engine, "min() can only be applied to sets or lists");
+    return value_ctx_failure(step->ctx, &step->engine, "min() can only be applied to sets or lists");
 }
 
-hvalue_t f_minus(
-    struct state *state,
-    struct context *ctx,
-    hvalue_t *args,
-    int n,
-    struct engine *engine
-) {
+hvalue_t f_minus(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 1 || n == 2);
     if (n == 1) {
         int64_t e = args[0];
         if (VALUE_TYPE(e) != VALUE_INT) {
-            return value_ctx_failure(ctx, engine, "unary minus can only be applied to ints");
+            return value_ctx_failure(step->ctx, &step->engine, "unary minus can only be applied to ints");
         }
         e = VALUE_FROM_INT(e);
         if (e == VALUE_MAX) {
@@ -2601,7 +2639,7 @@ hvalue_t f_minus(
             return VALUE_TO_INT(VALUE_MAX);
         }
         if (-e <= VALUE_MIN || -e >= VALUE_MAX) {
-            return value_ctx_failure(ctx, engine, "unary minus overflow (model too large)");
+            return value_ctx_failure(step->ctx, &step->engine, "unary minus overflow (model too large)");
         }
         return VALUE_TO_INT(-e);
     }
@@ -2609,20 +2647,20 @@ hvalue_t f_minus(
         if (VALUE_TYPE(args[0]) == VALUE_INT) {
             int64_t e1 = args[0], e2 = args[1];
             if (VALUE_TYPE(e2) != VALUE_INT) {
-                return value_ctx_failure(ctx, engine, "minus applied to int and non-int");
+                return value_ctx_failure(step->ctx, &step->engine, "minus applied to int and non-int");
             }
             e1 = VALUE_FROM_INT(e1);
             e2 = VALUE_FROM_INT(e2);
             int64_t result = e2 - e1;
             if (result <= VALUE_MIN || result >= VALUE_MAX) {
-                return value_ctx_failure(ctx, engine, "minus overflow (model too large)");
+                return value_ctx_failure(step->ctx, &step->engine, "minus overflow (model too large)");
             }
             return VALUE_TO_INT(result);
         }
 
         hvalue_t e1 = args[0], e2 = args[1];
         if (VALUE_TYPE(e1) != VALUE_SET || VALUE_TYPE(e2) != VALUE_SET) {
-            return value_ctx_failure(ctx, engine, "minus can only be applied to ints or sets");
+            return value_ctx_failure(step->ctx, &step->engine, "minus can only be applied to ints or sets");
         }
         unsigned int size1, size2;
         hvalue_t *vals1, *vals2;
@@ -2664,18 +2702,18 @@ hvalue_t f_minus(
         while (size2 > 0) {
             *q++ = *p2++; size2--;
         }
-        hvalue_t result = value_put_set(engine, vals, (char *) q - (char *) vals);
+        hvalue_t result = value_put_set(&step->engine, vals, (char *) q - (char *) vals);
         return result;
     }
 }
 
-hvalue_t f_mod(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
+hvalue_t f_mod(struct state *state, struct step *step, hvalue_t *args, int n){
     int64_t e1 = args[0], e2 = args[1];
     if (VALUE_TYPE(e1) != VALUE_INT) {
-        return value_ctx_failure(ctx, engine, "right argument to mod not an integer");
+        return value_ctx_failure(step->ctx, &step->engine, "right argument to mod not an integer");
     }
     if (VALUE_TYPE(e2) != VALUE_INT) {
-        return value_ctx_failure(ctx, engine, "left argument to mod not an integer");
+        return value_ctx_failure(step->ctx, &step->engine, "left argument to mod not an integer");
     }
     int64_t mod = VALUE_FROM_INT(e1);
     int64_t result = VALUE_FROM_INT(e2) % mod;
@@ -2685,29 +2723,32 @@ hvalue_t f_mod(struct state *state, struct context *ctx, hvalue_t *args, int n, 
     return VALUE_TO_INT(result);
 }
 
-hvalue_t f_not(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
+hvalue_t f_not(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 1);
     hvalue_t e = args[0];
     if (VALUE_TYPE(e) != VALUE_BOOL) {
-        return value_ctx_failure(ctx, engine, "not can only be applied to booleans");
+        return value_ctx_failure(step->ctx, &step->engine, "not can only be applied to booleans");
     }
     return e ^ (1 << VALUE_BITS);
 }
 
-hvalue_t f_plus(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
+hvalue_t f_plus(struct state *state, struct step *step, hvalue_t *args, int n){
     int64_t e1 = args[0];
     if (VALUE_TYPE(e1) == VALUE_INT) {
+        if (step->keep_callstack) {
+            strbuf_printf(&step->explain, "add the integers; ");
+        }
         e1 = VALUE_FROM_INT(e1);
         for (int i = 1; i < n; i++) {
             int64_t e2 = args[i];
             if (VALUE_TYPE(e2) != VALUE_INT) {
-                return value_ctx_failure(ctx, engine,
-                    "+: applied to mix of integers and other engine");
+                return value_ctx_failure(step->ctx, &step->engine,
+                    "+: applied to mix of integers and other &step->engine");
             }
             e2 = VALUE_FROM_INT(e2);
             int64_t sum = e1 + e2;
             if (sum <= VALUE_MIN || sum >= VALUE_MAX) {
-                return value_ctx_failure(ctx, engine,
+                return value_ctx_failure(step->ctx, &step->engine,
                     "+: integer overflow (model too large)");
             }
             e1 = sum;
@@ -2716,29 +2757,35 @@ hvalue_t f_plus(struct state *state, struct context *ctx, hvalue_t *args, int n,
     }
 
     if (VALUE_TYPE(e1) == VALUE_ATOM) {
+        if (step->keep_callstack) {
+            strbuf_printf(&step->explain, "concatenate the strings; ");
+        }
         struct strbuf sb;
         strbuf_init(&sb);
         for (int i = n; --i >= 0;) {
             if (VALUE_TYPE(args[i]) != VALUE_ATOM) {
-                return value_ctx_failure(ctx, engine,
-                    "+: applied to mix of strings and other engine");
+                return value_ctx_failure(step->ctx, &step->engine,
+                    "+: applied to mix of strings and other &step->engine");
             }
             unsigned int size;
             char *chars = value_get(args[i], &size);
             strbuf_append(&sb, chars, size);
         }
         char *result = strbuf_convert(&sb);
-        hvalue_t v = value_put_atom(engine, result, strbuf_getlen(&sb));
+        hvalue_t v = value_put_atom(&step->engine, result, strbuf_getlen(&sb));
         return v;
     }
 
     if (VALUE_TYPE(e1) == VALUE_LIST) {
+        if (step->keep_callstack) {
+            strbuf_printf(&step->explain, "concatenate the lists; ");
+        }
         // get all the lists
         struct val_info vi[n];
         int total = 0;
         for (int i = 0; i < n; i++) {
             if (VALUE_TYPE(args[i]) != VALUE_LIST) {
-                value_ctx_failure(ctx, engine, "+: applied to mix of value types");
+                value_ctx_failure(step->ctx, &step->engine, "+: applied to mix of value types");
                 return 0;
             }
             if (args[i] == VALUE_LIST) {
@@ -2764,23 +2811,23 @@ hvalue_t f_plus(struct state *state, struct context *ctx, hvalue_t *args, int n,
             total += vi[i].size;
         }
 
-        hvalue_t result = value_put_list(engine, vals, total);
+        hvalue_t result = value_put_list(&step->engine, vals, total);
         return result;
     }
 
-    value_ctx_failure(ctx, engine, "+: can only apply to ints, strings, or lists");
+    value_ctx_failure(step->ctx, &step->engine, "+: can only apply to ints, strings, or lists");
     return 0;
 }
 
-hvalue_t f_power(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
+hvalue_t f_power(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 2);
     int64_t e1 = args[0], e2 = args[1];
 
     if (VALUE_TYPE(e1) != VALUE_INT) {
-        return value_ctx_failure(ctx, engine, "right argument to ** not an integer");
+        return value_ctx_failure(step->ctx, &step->engine, "right argument to ** not an integer");
     }
     if (VALUE_TYPE(e2) != VALUE_INT) {
-        return value_ctx_failure(ctx, engine, "left argument to ** not an integer");
+        return value_ctx_failure(step->ctx, &step->engine, "left argument to ** not an integer");
     }
     int64_t base = VALUE_FROM_INT(e2);
     int64_t exp = VALUE_FROM_INT(e1);
@@ -2788,7 +2835,7 @@ hvalue_t f_power(struct state *state, struct context *ctx, hvalue_t *args, int n
         return VALUE_TO_INT(1);
     }
     if (exp < 0) {
-        return value_ctx_failure(ctx, engine, "**: negative exponent");
+        return value_ctx_failure(step->ctx, &step->engine, "**: negative exponent");
     }
 
     int64_t result = 1, orig = base;
@@ -2804,21 +2851,21 @@ hvalue_t f_power(struct state *state, struct context *ctx, hvalue_t *args, int n
     }
     if (result < orig) {
         // TODO.  Improve overflow detection
-        return value_ctx_failure(ctx, engine, "**: overflow (model too large)");
+        return value_ctx_failure(step->ctx, &step->engine, "**: overflow (model too large)");
     }
 
     return VALUE_TO_INT(result);
 }
 
-hvalue_t f_range(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
+hvalue_t f_range(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 2);
     int64_t e1 = args[0], e2 = args[1];
 
     if (VALUE_TYPE(e1) != VALUE_INT) {
-        return value_ctx_failure(ctx, engine, "right argument to .. not an integer");
+        return value_ctx_failure(step->ctx, &step->engine, "right argument to .. not an integer");
     }
     if (VALUE_TYPE(e2) != VALUE_INT) {
-        return value_ctx_failure(ctx, engine, "left argument to .. not an integer");
+        return value_ctx_failure(step->ctx, &step->engine, "left argument to .. not an integer");
     }
     int64_t start = VALUE_FROM_INT(e2);
     int64_t finish = VALUE_FROM_INT(e1);
@@ -2832,11 +2879,11 @@ hvalue_t f_range(struct state *state, struct context *ctx, hvalue_t *args, int n
     for (int i = 0; i < cnt; i++) {
         v[i] = VALUE_TO_INT(start + i);
     }
-    hvalue_t result = value_put_set(engine, v, cnt * sizeof(hvalue_t));
+    hvalue_t result = value_put_set(&step->engine, v, cnt * sizeof(hvalue_t));
     return result;
 }
 
-hvalue_t f_list_add(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
+hvalue_t f_list_add(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 2);
     hvalue_t list = args[1];
     assert(VALUE_TYPE(list) == VALUE_LIST);
@@ -2845,11 +2892,11 @@ hvalue_t f_list_add(struct state *state, struct context *ctx, hvalue_t *args, in
     hvalue_t nvals[size / sizeof(hvalue_t) + 1];
     memcpy(nvals, vals, size);
     memcpy((char *) nvals + size, &args[0], sizeof(hvalue_t));
-    hvalue_t result = value_put_list(engine, nvals, size + sizeof(hvalue_t));
+    hvalue_t result = value_put_list(&step->engine, nvals, size + sizeof(hvalue_t));
     return result;
 }
 
-hvalue_t f_dict_add(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
+hvalue_t f_dict_add(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 3);
     int64_t value = args[0], key = args[1], dict = args[2];
     assert(VALUE_TYPE(dict) == VALUE_DICT);
@@ -2875,7 +2922,7 @@ hvalue_t f_dict_add(struct state *state, struct context *ctx, hvalue_t *args, in
         memcpy(nvals, vals, size);
         * (hvalue_t *) ((char *) nvals + (i + sizeof(hvalue_t))) = value;
 
-        hvalue_t result = value_put_dict(engine, nvals, size);
+        hvalue_t result = value_put_dict(&step->engine, nvals, size);
         return result;
     }
     else {
@@ -2885,12 +2932,12 @@ hvalue_t f_dict_add(struct state *state, struct context *ctx, hvalue_t *args, in
         * (hvalue_t *) ((char *) nvals + (i + sizeof(hvalue_t))) = value;
         memcpy((char *) nvals + i + 2*sizeof(hvalue_t), v, size - i);
 
-        hvalue_t result = value_put_dict(engine, nvals, size + 2*sizeof(hvalue_t));
+        hvalue_t result = value_put_dict(&step->engine, nvals, size + 2*sizeof(hvalue_t));
         return result;
     }
 }
 
-hvalue_t f_set_add(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
+hvalue_t f_set_add(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 2);
     int64_t elt = args[0], set = args[1];
     assert(VALUE_TYPE(set) == VALUE_SET);
@@ -2913,67 +2960,67 @@ hvalue_t f_set_add(struct state *state, struct context *ctx, hvalue_t *args, int
     * (hvalue_t *) ((char *) nvals + i) = elt;
     memcpy((char *) nvals + i + sizeof(hvalue_t), v, size - i);
 
-    hvalue_t result = value_put_set(engine, nvals, size + sizeof(hvalue_t));
+    hvalue_t result = value_put_set(&step->engine, nvals, size + sizeof(hvalue_t));
     return result;
 }
 
-hvalue_t f_shiftleft(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
+hvalue_t f_shiftleft(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 2);
     int64_t e1 = args[0], e2 = args[1];
 
     if (VALUE_TYPE(e1) != VALUE_INT) {
-        return value_ctx_failure(ctx, engine, "right argument to << not an integer");
+        return value_ctx_failure(step->ctx, &step->engine, "right argument to << not an integer");
     }
     if (VALUE_TYPE(e2) != VALUE_INT) {
-        return value_ctx_failure(ctx, engine, "left argument to << not an integer");
+        return value_ctx_failure(step->ctx, &step->engine, "left argument to << not an integer");
     }
     e1 = VALUE_FROM_INT(e1);
     if (e1 < 0) {
-        return value_ctx_failure(ctx, engine, "<<: negative shift count");
+        return value_ctx_failure(step->ctx, &step->engine, "<<: negative shift count");
     }
     e2 = VALUE_FROM_INT(e2);
     int64_t result = e2 << e1;
     if (((result << VALUE_BITS) >> VALUE_BITS) != result) {
-        return value_ctx_failure(ctx, engine, "<<: overflow (model too large)");
+        return value_ctx_failure(step->ctx, &step->engine, "<<: overflow (model too large)");
     }
     if (result <= VALUE_MIN || result >= VALUE_MAX) {
-        return value_ctx_failure(ctx, engine, "<<: overflow (model too large)");
+        return value_ctx_failure(step->ctx, &step->engine, "<<: overflow (model too large)");
     }
     return VALUE_TO_INT(result);
 }
 
-hvalue_t f_shiftright(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
+hvalue_t f_shiftright(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 2);
     int64_t e1 = args[0], e2 = args[1];
 
     if (VALUE_TYPE(e1) != VALUE_INT) {
-        return value_ctx_failure(ctx, engine, "right argument to >> not an integer");
+        return value_ctx_failure(step->ctx, &step->engine, "right argument to >> not an integer");
     }
     if (VALUE_TYPE(e2) != VALUE_INT) {
-        return value_ctx_failure(ctx, engine, "left argument to >> not an integer");
+        return value_ctx_failure(step->ctx, &step->engine, "left argument to >> not an integer");
     }
     if (e1 < 0) {
-        return value_ctx_failure(ctx, engine, ">>: negative shift count");
+        return value_ctx_failure(step->ctx, &step->engine, ">>: negative shift count");
     }
     e1 = VALUE_FROM_INT(e1);
     e2 = VALUE_FROM_INT(e2);
     return VALUE_TO_INT(e2 >> e1);
 }
 
-hvalue_t f_times(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
+hvalue_t f_times(struct state *state, struct step *step, hvalue_t *args, int n){
     int64_t result = 1;
     int list = -1;
     for (int i = 0; i < n; i++) {
         int64_t e = args[i];
         if (VALUE_TYPE(e) == VALUE_ATOM || VALUE_TYPE(e) == VALUE_LIST) {
             if (list >= 0) {
-                return value_ctx_failure(ctx, engine, "* can only have at most one list or string");
+                return value_ctx_failure(step->ctx, &step->engine, "* can only have at most one list or string");
             }
             list = i;
         }
         else {
             if (VALUE_TYPE(e) != VALUE_INT) {
-                return value_ctx_failure(ctx, engine,
+                return value_ctx_failure(step->ctx, &step->engine,
                     "* can only be applied to integers and at most one list or string");
             }
             e = VALUE_FROM_INT(e);
@@ -2983,14 +3030,14 @@ hvalue_t f_times(struct state *state, struct context *ctx, hvalue_t *args, int n
             else {
                 int64_t product = result * e;
                 if (product / result != e) {
-                    return value_ctx_failure(ctx, engine, "*: overflow (model too large)");
+                    return value_ctx_failure(step->ctx, &step->engine, "*: overflow (model too large)");
                 }
                 result = product;
             }
         }
     }
     if (result != (result << VALUE_BITS) >> VALUE_BITS) {
-        return value_ctx_failure(ctx, engine, "*: overflow (model too large)");
+        return value_ctx_failure(step->ctx, &step->engine, "*: overflow (model too large)");
     }
     if (list < 0) {
         return VALUE_TO_INT(result);
@@ -3010,7 +3057,7 @@ hvalue_t f_times(struct state *state, struct context *ctx, hvalue_t *args, int n
         for (unsigned int i = 0; i < result; i++) {
             memcpy(&r[i * n], vals, size);
         }
-        hvalue_t v = value_put_list(engine, r, result * size);
+        hvalue_t v = value_put_list(&step->engine, r, result * size);
         return v;
     }
     assert(VALUE_TYPE(args[list]) == VALUE_ATOM);
@@ -3025,19 +3072,19 @@ hvalue_t f_times(struct state *state, struct context *ctx, hvalue_t *args, int n
 		strbuf_append(&sb, chars, size);
 	}
 	char *s = strbuf_getstr(&sb);
-	hvalue_t v = value_put_atom(engine, s, result * size);
+	hvalue_t v = value_put_atom(&step->engine, s, result * size);
 	free(s);
 	return v;
 }
 
-hvalue_t f_union(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
+hvalue_t f_union(struct state *state, struct step *step, hvalue_t *args, int n){
     hvalue_t e1 = args[0];
 
     if (VALUE_TYPE(e1) == VALUE_INT) {
         for (int i = 1; i < n; i++) {
             hvalue_t e2 = args[i];
             if (VALUE_TYPE(e2) != VALUE_INT) {
-                return value_ctx_failure(ctx, engine, "'|' applied to mix of ints and other types");
+                return value_ctx_failure(step->ctx, &step->engine, "'|' applied to mix of ints and other types");
             }
             e1 |= e2;
         }
@@ -3050,7 +3097,7 @@ hvalue_t f_union(struct state *state, struct context *ctx, hvalue_t *args, int n
         int total = 0;
         for (int i = 0; i < n; i++) {
             if (VALUE_TYPE(args[i]) != VALUE_SET) {
-                return value_ctx_failure(ctx, engine, "'|' applied to mix of sets and other types");
+                return value_ctx_failure(step->ctx, &step->engine, "'|' applied to mix of sets and other types");
             }
             if (args[i] == VALUE_SET) {
                 vi[i].vals = NULL;
@@ -3076,19 +3123,19 @@ hvalue_t f_union(struct state *state, struct context *ctx, hvalue_t *args, int n
         }
 
         n = sort(vals, total / sizeof(hvalue_t));
-        hvalue_t result = value_put_set(engine, vals, n * sizeof(hvalue_t));
+        hvalue_t result = value_put_set(&step->engine, vals, n * sizeof(hvalue_t));
         return result;
     }
 
     if (VALUE_TYPE(e1) != VALUE_DICT) {
-        return value_ctx_failure(ctx, engine, "'|' can only be applied to ints, sets, and dicts");
+        return value_ctx_failure(step->ctx, &step->engine, "'|' can only be applied to ints, sets, and dicts");
     }
     // get all the dictionaries
     struct val_info vi[n];
     int total = 0;
     for (int i = 0; i < n; i++) {
         if (VALUE_TYPE(args[i]) != VALUE_DICT) {
-            return value_ctx_failure(ctx, engine, "'|' applied to mix of dictionaries and other types");
+            return value_ctx_failure(step->ctx, &step->engine, "'|' applied to mix of dictionaries and other types");
         }
         if (args[i] == VALUE_DICT) {
             vi[i].vals = NULL;
@@ -3128,18 +3175,18 @@ hvalue_t f_union(struct state *state, struct context *ctx, hvalue_t *args, int n
     }
     n++;
 
-    hvalue_t result = value_put_dict(engine, vals, 2 * n * sizeof(hvalue_t));
+    hvalue_t result = value_put_dict(&step->engine, vals, 2 * n * sizeof(hvalue_t));
     return result;
 }
 
-hvalue_t f_xor(struct state *state, struct context *ctx, hvalue_t *args, int n, struct engine *engine){
+hvalue_t f_xor(struct state *state, struct step *step, hvalue_t *args, int n){
     hvalue_t e1 = args[0];
 
     if (VALUE_TYPE(e1) == VALUE_INT) {
         for (int i = 1; i < n; i++) {
             hvalue_t e2 = args[i];
             if (VALUE_TYPE(e2) != VALUE_INT) {
-                return value_ctx_failure(ctx, engine, "'^' applied to mix of ints and other types");
+                return value_ctx_failure(step->ctx, &step->engine, "'^' applied to mix of ints and other types");
             }
             e1 ^= e2;
         }
@@ -3151,7 +3198,7 @@ hvalue_t f_xor(struct state *state, struct context *ctx, hvalue_t *args, int n, 
     int total = 0;
     for (int i = 0; i < n; i++) {
         if (VALUE_TYPE(args[i]) != VALUE_SET) {
-            return value_ctx_failure(ctx, engine, "'^' applied to mix of value types");
+            return value_ctx_failure(step->ctx, &step->engine, "'^' applied to mix of value types");
         }
         if (args[i] == VALUE_SET) {
             vi[i].vals = NULL;
@@ -3176,11 +3223,11 @@ hvalue_t f_xor(struct state *state, struct context *ctx, hvalue_t *args, int n, 
         total += vi[i].size;
     }
 
-    // sort the engine, but retain duplicates
+    // sort the values, retaining duplicates
     int cnt = total / sizeof(hvalue_t);
     qsort(vals, cnt, sizeof(hvalue_t), q_value_cmp);
 
-    // Now remove the engine that have an even number
+    // Now remove the &step->engine that have an even number
     int i = 0, j = 0, k = 0;
     while (i < cnt) {
         while (i < cnt && vals[i] == vals[j]) {
@@ -3192,7 +3239,7 @@ hvalue_t f_xor(struct state *state, struct context *ctx, hvalue_t *args, int n, 
         j = i;
     }
 
-    hvalue_t result = value_put_set(engine, vals, k * sizeof(hvalue_t));
+    hvalue_t result = value_put_set(&step->engine, vals, k * sizeof(hvalue_t));
     return result;
 }
 

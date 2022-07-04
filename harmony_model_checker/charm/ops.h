@@ -18,6 +18,7 @@ struct step {
     struct access_info *ai;
     struct dfa_trie *dfa_trie;
     bool keep_callstack;
+    struct strbuf explain;
     struct callstack *callstack;
     unsigned int nlog;
     hvalue_t log[MAX_PRINT];
