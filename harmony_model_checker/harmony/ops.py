@@ -325,8 +325,9 @@ class LoadVarOp(Op):
         context.pc += 1
 
 class PushOp(Op):
-    def __init__(self, constant):
+    def __init__(self, constant, reason=None):
         self.constant = constant
+        self.reason = reason
 
     def __repr__(self):
         (lexeme, file, line, column) = self.constant
@@ -342,7 +343,8 @@ class PushOp(Op):
         return 'OpPush(self, %s)'%v
 
     def explain(self):
-        return "push constant " + strValue(self.constant[0])
+        prefix = "" if self.reason == None else (self.reason + ": ")
+        return prefix + "push constant " + strValue(self.constant[0])
 
     def eval(self, state, context):
         (lexeme, file, line, column) = self.constant

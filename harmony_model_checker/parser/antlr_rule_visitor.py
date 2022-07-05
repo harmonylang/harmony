@@ -271,7 +271,8 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         if ctx.ATOMICALLY():
             a = self.visit(ctx.children[-1])
             assert isinstance(a, AST)
-            a.atomically = True
+            atom = ctx.ATOMICALLY()
+            a.atomically = self.get_token(atom.getSymbol(), atom.getText())
             return a
         return super().visitSimple_stmt(ctx)
 
@@ -279,7 +280,8 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         if ctx.ATOMICALLY():
             a = self.visit(ctx.children[-1])
             assert isinstance(a, AST)
-            a.atomically = True
+            atom = ctx.ATOMICALLY()
+            a.atomically = self.get_token(atom.getSymbol(), atom.getText())
             return a
         return super().visitCompound_stmt(ctx)
 
@@ -330,7 +332,9 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         stmts = self.visit(ctx.block())
         tkn = self.get_token(ctx.start, ctx.start.text)
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
-        return AtomicAST(endtoken, tkn, True, stmts)
+        atom = ctx.ATOMICALLY()
+        atoken = self.get_token(atom.getSymbol(), atom.getText())
+        return AtomicAST(endtoken, tkn, atoken, stmts)
 
     # Visit a parse tree produced by HarmonyParser#for_block.
     def visitFor_block(self, ctx: HarmonyParser.For_blockContext):
@@ -344,7 +348,9 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     def visitLet_decl(self, ctx: HarmonyParser.Let_declContext):
         lvalues = self.visit(ctx.bound())
         values = self.visit(ctx.tuple_rule())
-        return "var", lvalues, values
+        tkn = self.get_token(ctx.start, ctx.start.text)
+        op = self.visit(ctx.assign_op())
+        return "var", lvalues, values, tkn, op
 
     # Visit a parse tree produced by HarmonyParser#when_decl.
     def visitWhen_decl(self, ctx:HarmonyParser.When_declContext):

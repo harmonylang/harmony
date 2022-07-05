@@ -212,7 +212,7 @@ builtin_stmt: BUILTIN NAME STRING;
 atomic_block: ATOMICALLY COLON block;
 for_block: iter_parse COLON block;
 
-let_decl: LET bound EQ tuple_rule NL?;
+let_decl: LET bound assign_op tuple_rule NL?;
 when_decl: WHEN (EXISTS bound IN expr | expr) NL?;
 let_when_decl: (let_decl | when_decl) let_when_decl?;
 let_when_block: let_when_decl COLON block;
