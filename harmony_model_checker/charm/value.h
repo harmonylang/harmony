@@ -50,6 +50,7 @@ typedef struct context {   // context value
 
 } context;
 
+#define ctx_size(c)     (sizeof(struct context) + (c)->sp * sizeof(hvalue_t) + ((c)->extended ? (ctx_extent*sizeof(hvalue_t)) : 0))
 #define ctx_stack(c)    ((c)->extended ? &(c)->thestack[ctx_extent] : (c)->thestack)
 
 void value_init(struct values *values, unsigned int nworkers);
@@ -121,7 +122,7 @@ bool value_state_all_eternal(struct state *state);
 void context_remove(struct state *state, hvalue_t ctx);
 bool context_add(struct state *state, hvalue_t ctx);
 char *json_escape_value(hvalue_t v);
-void value_trace(struct global *global, FILE *file, struct callstack *cs, unsigned int pc, hvalue_t vars);
+void value_trace(struct global *global, FILE *file, struct callstack *cs, unsigned int pc, hvalue_t vars, char *prefix);
 void value_grow_prepare(struct values *values);
 void print_vars(struct global *global, FILE *file, hvalue_t v);
 

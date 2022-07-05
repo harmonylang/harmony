@@ -103,11 +103,7 @@ hvalue_t value_put_address(struct engine *engine, void *p, int size){
 
 hvalue_t value_put_context(struct engine *engine, struct context *ctx){
 	assert(ctx->pc >= 0);
-    unsigned int size = sizeof(*ctx) + (ctx->sp * sizeof(hvalue_t));
-    if (ctx->extended) {
-        size += ctx_extent * sizeof(hvalue_t);
-    }
-    void *q = dict_find(engine->values->contexts, engine->allocator, ctx, size, NULL);
+    void *q = dict_find(engine->values->contexts, engine->allocator, ctx, ctx_size(ctx), NULL);
     return (hvalue_t) q | VALUE_CONTEXT;
 }
 
@@ -622,42 +618,42 @@ void print_vars(struct global *global, FILE *file, hvalue_t v){
     strbuf_deinit(&sb);
 }
 
-void value_trace(struct global *global, FILE *file, struct callstack *cs, unsigned int pc, hvalue_t vars){
+void value_trace(struct global *global, FILE *file, struct callstack *cs, unsigned int pc, hvalue_t vars, char *prefix){
     if (cs->parent != NULL) {
-        value_trace(global, file, cs->parent, cs->return_address >> CALLTYPE_BITS, cs->vars);
+        value_trace(global, file, cs->parent, cs->return_address >> CALLTYPE_BITS, cs->vars, prefix);
         fprintf(file, ",\n");
     }
     const struct env_Frame *ef = global->code.instrs[cs->pc].env;
     char *method = value_string(ef->name);
     char *arg = json_escape_value(cs->arg);
-    fprintf(file, "            {\n");
-    fprintf(file, "              \"pc\": \"%u\",\n", pc);
-    fprintf(file, "              \"xpc\": \"%u\",\n", cs->pc);
+    fprintf(file, "%s  {\n", prefix);
+    fprintf(file, "%s  \"pc\": \"%u\",\n", prefix, pc);
+    fprintf(file, "%s  \"xpc\": \"%u\",\n", prefix, cs->pc);
     if (*arg == '(') {
-        fprintf(file, "              \"method\": \"%.*s%s\",\n", (int) strlen(method) - 2, method + 1, arg);
+        fprintf(file, "%s  \"method\": \"%.*s%s\",\n", prefix, (int) strlen(method) - 2, method + 1, arg);
     }
     else {
-        fprintf(file, "              \"method\": \"%.*s(%s)\",\n", (int) strlen(method) - 2, method + 1, arg);
+        fprintf(file, "%s  \"method\": \"%.*s(%s)\",\n", prefix, (int) strlen(method) - 2, method + 1, arg);
     }
     switch (cs->return_address & CALLTYPE_MASK) {
     case CALLTYPE_PROCESS:
-        fprintf(file, "              \"calltype\": \"process\",\n");
+        fprintf(file, "%s  \"calltype\": \"process\",\n", prefix);
         break;
     case CALLTYPE_NORMAL:
-        fprintf(file, "              \"calltype\": \"normal\",\n");
+        fprintf(file, "%s  \"calltype\": \"normal\",\n", prefix);
         break;
     case CALLTYPE_INTERRUPT:
-        fprintf(file, "              \"calltype\": \"interrupt\",\n");
+        fprintf(file, "%s  \"calltype\": \"interrupt\",\n", prefix);
         break;
     default:
         printf(">>> %x\n", cs->return_address);
         panic("value_trace: bad call type");
     }
-    fprintf(file, "              \"vars\": ");
+    fprintf(file, "%s  \"vars\": ", prefix);
     print_vars(global, file, vars);
     fprintf(file, ",\n");
-    fprintf(file, "              \"sp\": %u\n", cs->sp);
-    fprintf(file, "            }");
+    fprintf(file, "%s  \"sp\": %u\n", prefix, cs->sp);
+    fprintf(file, "%s  }", prefix);
     free(arg);
     free(method);
 }

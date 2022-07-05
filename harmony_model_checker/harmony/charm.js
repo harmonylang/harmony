@@ -321,6 +321,55 @@ function init_microstep(masidx, misidx) {
     hvm: mis.code,
     explain: mis.explain
   };
+  if (misidx == 0) {
+    ctx = mas.context;
+    previous = { mode: ctx.mode, };
+    if (ctx.hasOwnProperty("atomic")) {
+      previous.atomic = ctx["atomic"];
+    }
+    else {
+      previous.atomic = 0;
+    }
+    if (ctx.hasOwnProperty("readonly")) {
+      previous.readonly = ctx["readonly"];
+    }
+    else {
+      previous.readonly = 0;
+    }
+    if (ctx.hasOwnProperty("interruptlevel")) {
+      previous.interruptlevel = ctx["interruptlevel"];
+    }
+    else {
+      previous.interruptlevel = 0;
+    }
+    if (ctx.hasOwnProperty("trace")) {
+      previous.trace = ctx.trace;
+    }
+    else {
+      previous.trace = [];
+    }
+    if (ctx.hasOwnProperty("shared")) {
+      previous.shared = convert_vars(ctx.shared);
+    }
+    else {
+      previous.shared = {};
+    }
+    if (ctx.hasOwnProperty("fp")) {
+      previous.fp = ctx.fp;
+    }
+    else {
+      previous.fp = 0;
+    }
+    if (ctx.hasOwnProperty("stack")) {
+      previous.stack = ctx.stack;
+    }
+    else {
+      previous.stack = [];
+    }
+  }
+  else {
+    previous = microsteps[t-1];
+  }
 
   if (mis.hasOwnProperty("npc")) {
     microsteps[t].npc = mis.npc;
@@ -342,37 +391,28 @@ function init_microstep(masidx, misidx) {
     microsteps[t].mode = mis.mode;
   }
   else {
-    microsteps[t].mode = misidx == 0 ? "running" : microsteps[t-1].mode;
+    microsteps[t].mode = previous.mode;
   }
 
   if (mis.hasOwnProperty("atomic")) {
     microsteps[t].atomic = mis["atomic"];
   }
-  else if (misidx == 0) {
-    microsteps[t].atomic = 0;
-  }
   else {
-    microsteps[t].atomic = microsteps[t-1].atomic;
+    microsteps[t].atomic = previous.atomic;
   }
 
   if (mis.hasOwnProperty("readonly")) {
     microsteps[t].readonly = mis["readonly"];
   }
-  else if (misidx == 0) {
-    microsteps[t].readonly = 0;
-  }
   else {
-    microsteps[t].readonly = microsteps[t-1].readonly;
+    microsteps[t].readonly = previous.readonly;
   }
 
   if (mis.hasOwnProperty("interruptlevel")) {
     microsteps[t].interruptlevel = mis["interruptlevel"];
   }
-  else if (misidx == 0) {
-    microsteps[t].interruptlevel = 0;
-  }
   else {
-    microsteps[t].interruptlevel = microsteps[t-1].interruptlevel;
+    microsteps[t].interruptlevel = previous.interruptlevel;
   }
 
   if (mis.hasOwnProperty("choose")) {
@@ -399,11 +439,8 @@ function init_microstep(masidx, misidx) {
   if (mis.hasOwnProperty("trace")) {
     microsteps[t].trace = mis.trace;
   }
-  else if (misidx == 0) {
-    microsteps[t].trace = [];
-  }
   else {
-    microsteps[t].trace = microsteps[t-1].trace;
+    microsteps[t].trace = previous.trace;
   }
 
   // Update local variables
@@ -417,32 +454,23 @@ function init_microstep(masidx, misidx) {
   if (mis.hasOwnProperty("shared")) {
     microsteps[t].shared = convert_vars(mis.shared);
   }
-  else if (t == 0) {
-    microsteps[t].shared = {};
-  }
   else {
-    microsteps[t].shared = microsteps[t-1].shared;
+    microsteps[t].shared = previous.shared;
   }
 
   if (mis.hasOwnProperty("fp")) {
     microsteps[t].fp = mis.fp;
   }
-  else if (misidx == 0) {
-    microsteps[t].fp = 0;
-  }
   else {
-    microsteps[t].fp = microsteps[t-1].fp;
+    microsteps[t].fp = previous.fp;
   }
   if (mis.hasOwnProperty("pop")) {
     var n = parseInt(mis.pop);
-    microsteps[t].stack = microsteps[t-1].stack.slice(0,
-                              microsteps[t-1].stack.length - n);
-  }
-  else if (misidx == 0) {
-    microsteps[t].stack = [];
+    microsteps[t].stack = previous.stack.slice(0,
+                              previous.stack.length - n);
   }
   else {
-    microsteps[t].stack = microsteps[t-1].stack;
+    microsteps[t].stack = previous.stack;
   }
   if (mis.hasOwnProperty("push")) {
     var vals = mis.push.map(x => json_string(x));
@@ -635,6 +663,7 @@ for (var tid = 0; tid < nthreads; tid++) {
     tracetable: document.getElementById("threadinfo" + tid)
   };
 }
+threads[0].stack = { type: "list", value: [] };
 for (let i = 0; i < nmegasteps; i++) {
   var canvas = document.getElementById("timeline" + i);
   megasteps[i] = {

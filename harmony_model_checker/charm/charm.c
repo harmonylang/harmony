@@ -331,10 +331,7 @@ static bool onestep(
                 infloop = dict_new("infloop1", 0, 0, 0, NULL, NULL);
             }
 
-            int ctxsize = sizeof(struct context) + step->ctx->sp * sizeof(hvalue_t);
-            if (step->ctx->extended) {
-                ctxsize += ctx_extent * sizeof(hvalue_t);
-            }
+            int ctxsize = ctx_size(step->ctx);
             int combosize = ctxsize + state_size(sc);
             char *combo = calloc(1, combosize);
             memcpy(combo, step->ctx, ctxsize);
@@ -586,6 +583,7 @@ static void make_step(
     // Make a copy of the context
     unsigned int size;
     struct context *cc = value_get(ctx, &size);
+    assert(ctx_size(cc) == size);
     memcpy(&w->ctx, cc, size);
     assert(step.engine.allocator == &w->allocator);
     step.ctx = &w->ctx;
@@ -643,30 +641,21 @@ void print_context(
     FILE *file,
     hvalue_t ctx,
     int tid,
-    struct node *node
+    struct node *node,
+    char *prefix
 ) {
-    fprintf(file, "        {\n");
-    fprintf(file, "          \"tid\": \"%d\",\n", tid);
-    fprintf(file, "          \"hvalue\": \"%"PRI_HVAL"\",\n", ctx);
+    fprintf(file, "%s\"tid\": \"%d\",\n", prefix, tid);
+    fprintf(file, "%s\"hvalue\": \"%"PRI_HVAL"\",\n", prefix, ctx);
 
     unsigned int size;
     struct context *c = value_get(ctx, &size);
-
-#ifdef notdef
-    fprintf(file, "          \"dump\": \"");
-    unsigned char *p = (unsigned char *) c;
-    for (unsigned i = 0; i < size; i++) {
-        fprintf(file, "%02x", *p++);
-    }
-    fprintf(file, "\",\n");
-#endif
 
     struct callstack *cs = dict_lookup(global->tracemap, &ctx, sizeof(ctx));
     if (cs == NULL) {
         printf(">>> %"PRIx64"\n", ctx);
         panic("print_context: can't find context");
     }
-    fprintf(file, "          \"fp\": \"%d\",\n", cs->sp + 1);
+    fprintf(file, "%s\"fp\": \"%d\",\n", prefix, cs->sp + 1);
 
     struct callstack *ecs = cs;
     while (ecs->parent != NULL) {
@@ -679,10 +668,10 @@ void print_context(
 	int len = strlen(s);
     char *a = json_escape_value(ecs->arg);
     if (*a == '(') {
-        fprintf(file, "          \"name\": \"%.*s%s\",\n", len - 2, s + 1, a);
+        fprintf(file, "%s\"name\": \"%.*s%s\",\n", prefix, len - 2, s + 1, a);
     }
     else {
-        fprintf(file, "          \"name\": \"%.*s(%s)\",\n", len - 2, s + 1, a);
+        fprintf(file, "%s\"name\": \"%.*s(%s)\",\n", prefix, len - 2, s + 1, a);
     }
     free(s);
     free(a);
@@ -692,27 +681,30 @@ void print_context(
     while (lcs->parent != NULL) {
         lcs = lcs->parent;
     }
-    fprintf(file, "          \"entry\": \"%u\",\n", lcs->pc);
+    fprintf(file, "%s\"entry\": \"%u\",\n", prefix, lcs->pc);
 
-    fprintf(file, "          \"pc\": \"%d\",\n", c->pc);
+    fprintf(file, "%s\"pc\": \"%u\",\n", prefix, c->pc);
+    fprintf(file, "%s\"sp\": \"%u\",\n", prefix, c->sp);
 
-#ifdef notdef
-    {
-        fprintf(file, "STACK1 %d:\n", c->fp);
-        for (int x = 0; x < c->sp; x++) {
-            fprintf(file, "    %d: %s\n", x, value_string(ctx_stack(k)[x]));
+    fprintf(file, "%s\"stack\": [", prefix);
+    for (unsigned int x = cs->sp; x < c->sp; x++) {
+        if (x != cs->sp) {
+            fprintf(file, ", ");
         }
+        char *v = value_json(ctx_stack(c)[x], global);
+        fprintf(file, "%s", v);
+        free(v);
     }
-#endif
+    fprintf(file, "],\n");
 
-    fprintf(file, "          \"trace\": [\n");
-    value_trace(global, file, cs, c->pc, c->vars);
+    fprintf(file, "%s\"trace\": [\n", prefix);
+    value_trace(global, file, cs, c->pc, c->vars, prefix);
     fprintf(file, "\n");
-    fprintf(file, "          ],\n");
+    fprintf(file, "%s],\n", prefix);
 
     if (c->failed) {
         s = value_string(c->ctx_failure);
-        fprintf(file, "          \"failure\": %s,\n", s);
+        fprintf(file, "%s\"failure\": %s,\n", prefix, s);
         free(s);
     }
 
@@ -720,43 +712,43 @@ void print_context(
         s = value_string(c->ctx_trap_pc);
         a = value_string(c->ctx_trap_arg);
         if (*a == '(') {
-            fprintf(file, "          \"trap\": \"%s%s\",\n", s, a);
+            fprintf(file, "%s\"trap\": \"%s%s\",\n", prefix, s, a);
         }
         else {
-            fprintf(file, "          \"trap\": \"%s(%s)\",\n", s, a);
+            fprintf(file, "%s\"trap\": \"%s(%s)\",\n", prefix, s, a);
         }
         free(a);
         free(s);
     }
 
     if (c->interruptlevel) {
-        fprintf(file, "          \"interruptlevel\": \"1\",\n");
+        fprintf(file, "%s\"interruptlevel\": \"1\",\n", prefix);
     }
 
     if (c->extended) {
         s = value_json(c->ctx_this, global);
-        fprintf(file, "          \"this\": %s,\n", s);
+        fprintf(file, "%s\"this\": %s,\n", prefix, s);
         free(s);
     }
 
     if (c->atomic != 0) {
-        fprintf(file, "          \"atomic\": \"%d\",\n", c->atomic);
+        fprintf(file, "%s\"atomic\": \"%d\",\n", prefix, c->atomic);
     }
     if (c->readonly != 0) {
-        fprintf(file, "          \"readonly\": \"%d\",\n", c->readonly);
+        fprintf(file, "%s\"readonly\": \"%d\",\n", prefix, c->readonly);
     }
 
     if (c->terminated) {
-        fprintf(file, "          \"mode\": \"terminated\"\n");
+        fprintf(file, "%s\"mode\": \"terminated\"\n", prefix);
     }
     else if (c->failed) {
-        fprintf(file, "          \"mode\": \"failed\"\n");
+        fprintf(file, "%s\"mode\": \"failed\"\n", prefix);
     }
     else if (c->stopped) {
-        fprintf(file, "          \"mode\": \"stopped\"\n");
+        fprintf(file, "%s\"mode\": \"stopped\"\n", prefix);
     }
     else {
-        fprintf(file, "          \"mode\": \"%s\"\n", ctx_status(node, ctx));
+        fprintf(file, "%s\"mode\": \"%s\"\n", prefix, ctx_status(node, ctx));
     }
 
 #ifdef notdef
@@ -773,8 +765,6 @@ void print_context(
     }
     fprintf(file, "          ],\n");
 #endif
-
-    fprintf(file, "        }");
 }
 
 void print_state(
@@ -849,7 +839,9 @@ void print_state(
 
     fprintf(file, "      \"contexts\": [\n");
     for (unsigned int i = 0; i < global->nprocesses; i++) {
-        print_context(global, file, global->processes[i], i, node);
+        fprintf(file, "        {\n");
+        print_context(global, file, global->processes[i], i, node, "          ");
+        fprintf(file, "        }");
         if (i < global->nprocesses - 1) {
             fprintf(file, ",");
         }
@@ -930,7 +922,7 @@ void diff_state(
 #endif
 
         fprintf(file, "          \"trace\": [\n");
-        value_trace(global, file, newcs, newctx->pc, newctx->vars);
+        value_trace(global, file, newcs, newctx->pc, newctx->vars, "          ");
         fprintf(file, "\n");
         fprintf(file, "          ],\n");
     }
@@ -963,7 +955,7 @@ void diff_state(
         fprintf(file, "          \"mode\": \"terminated\",\n");
     }
 
-    int common;
+    unsigned int common;
     for (common = 0; common < newctx->sp && common < oldctx->sp; common++) {
         if (ctx_stack(newctx)[common] != ctx_stack(oldctx)[common]) {
             break;
@@ -973,7 +965,7 @@ void diff_state(
         fprintf(file, "          \"pop\": \"%d\",\n", oldctx->sp - common);
     }
     fprintf(file, "          \"push\": [");
-    for (int i = common; i < newctx->sp; i++) {
+    for (unsigned int i = common; i < newctx->sp; i++) {
         if (i > common) {
             fprintf(file, ",");
         }
@@ -993,7 +985,7 @@ void diff_dump(
     FILE *file,
     struct state *oldstate,
     struct state *newstate,
-    struct context **oldctx,
+    struct context *oldctx,
     struct context *newctx,
     struct callstack **oldcs,
     struct callstack *newcs,
@@ -1003,20 +995,18 @@ void diff_dump(
     char *print,
     struct step *step
 ) {
-    int newsize = sizeof(*newctx) + (newctx->sp * sizeof(hvalue_t));
-
+    unsigned int oldsize = ctx_size(oldctx);
+    unsigned int newsize = ctx_size(newctx);
     if (memcmp(oldstate, newstate, sizeof(struct state)) == 0 &&
-            (*oldctx)->sp == newctx->sp &&
-            memcmp(*oldctx, newctx, newsize) == 0) {
+            newsize == oldsize &&
+            memcmp(oldctx, newctx, newsize) == 0) {
         return;
     }
 
     // Keep track of old state and context for taking diffs
-    diff_state(global, file, oldstate, newstate, *oldctx, newctx, *oldcs, newcs, interrupt, choose, choice, print, step);
+    diff_state(global, file, oldstate, newstate, oldctx, newctx, *oldcs, newcs, interrupt, choose, choice, print, step);
     *oldstate = *newstate;
-    free(*oldctx);
-    *oldctx = malloc(newsize);
-    memcpy(*oldctx, newctx, newsize);
+    memcpy(oldctx, newctx, newsize);
     *oldcs = newcs;
 }
 
@@ -1029,7 +1019,7 @@ hvalue_t twostep(
     hvalue_t choice,
     bool interrupt,
     struct state *oldstate,
-    struct context **oldctx,
+    struct context *oldctx,
     hvalue_t nextvars,
     unsigned int nsteps
 ){
@@ -1055,9 +1045,8 @@ hvalue_t twostep(
                             MAX_CONTEXT_STACK * sizeof(hvalue_t));
     memcpy(step.ctx, cc, size);
     if (step.ctx->terminated || step.ctx->failed) {
-        free(step.ctx);
-        printf("XYZXYZXYZ\n");
         panic("twostep: already terminated???");
+        free(step.ctx);
         return ctx;
     }
 
@@ -1202,7 +1191,7 @@ void path_dump(
     FILE *file,
     struct edge *e,
     struct state *oldstate,
-    struct context **oldctx
+    struct context *oldctx
 ) {
     struct node *node = e->dst;
     struct node *parent = e->src;
@@ -1232,7 +1221,8 @@ void path_dump(
     // fprintf(file, "      \"OLDPID\": \"%d\",\n", pid);
     // fprintf(file, "      \"OLDCTX\": \"%llx\",\n", ctx);
 
-    struct context *context = value_get(ctx, NULL);
+    unsigned int ctxsize;
+    struct context *context = value_get(ctx, &ctxsize);
     assert(!context->terminated);
 
     struct callstack *cs = dict_lookup(global->tracemap, &ctx, sizeof(ctx));
@@ -1243,10 +1233,12 @@ void path_dump(
     const struct env_Frame *ef = global->code.instrs[cs->pc].env;
     char *name = value_string(ef->name);
 	int len = strlen(name);
-    char *arg = json_escape_value(cs->arg);
     char *c = e->choice == 0 ? NULL : value_json(e->choice, global);
+    fprintf(file, "      \"shared\": ");
+    print_vars(global, file, oldstate->vars);
+    fprintf(file, ",\n");
     fprintf(file, "      \"tid\": \"%d\",\n", pid);
-    fprintf(file, "      \"ctx\": \"%"PRI_HVAL"\",\n", ctx);
+    char *arg = json_escape_value(cs->arg);
     if (*arg == '(') {
         fprintf(file, "      \"name\": \"%.*s%s\",\n", len - 2, name + 1, arg);
     }
@@ -1257,12 +1249,22 @@ void path_dump(
         fprintf(file, "      \"choice\": %s,\n", c);
     }
     global->dumpfirst = true;
+    // fprintf(file, "      \"ctxid\": \"%"PRI_HVAL"\",\n", ctx);
+    fprintf(file, "      \"context\": {\n");
+    print_context(global, file, ctx, pid, node, "        ");
+    fprintf(file, "      },\n");
+
     fprintf(file, "      \"microsteps\": [");
     free(name);
     free(arg);
     free(c);
-    memset(*oldctx, 0, sizeof(**oldctx));
+    memset(oldctx, 0, sizeof(struct context) +
+                        MAX_CONTEXT_STACK * sizeof(hvalue_t));
+#ifdef ORIG
     (*oldctx)->pc = context->pc;
+#else
+    memcpy(oldctx, context, ctxsize);
+#endif
 
     // Recreate the steps
     global->processes[pid] = twostep(
@@ -2460,9 +2462,10 @@ int main(int argc, char **argv){
 
         fprintf(out, "  \"macrosteps\": [");
         struct state *oldstate = new_alloc(struct state);
-        struct context *oldctx = new_alloc(struct context);
+        struct context *oldctx = calloc(1, sizeof(struct context) +
+                        MAX_CONTEXT_STACK * sizeof(hvalue_t));
         global->dumpfirst = true;
-        path_dump(global, out, bad->edge, oldstate, /* TODO */ &oldctx);
+        path_dump(global, out, bad->edge, oldstate, oldctx);
         fprintf(out, "\n");
         free(oldctx);
         fprintf(out, "  ],\n");
