@@ -361,7 +361,7 @@ function init_microstep(masidx, misidx) {
       previous.fp = 0;
     }
     if (ctx.hasOwnProperty("stack")) {
-      previous.stack = ctx.stack;
+      previous.stack = ctx.stack.map(x => json_string(x));
     }
     else {
       previous.stack = [];
@@ -476,7 +476,6 @@ function init_microstep(masidx, misidx) {
     var vals = mis.push.map(x => json_string(x));
     microsteps[t].stack = microsteps[t].stack.concat(vals);
   }
-  // microsteps[t].choose = microsteps[t].stack;
 }
 
 function init_macrostep(i) {
@@ -563,6 +562,7 @@ function run_microstep(t) {
     var tid = parseInt(mis.contexts[ctx].tid);
     threads[tid].name = mis.contexts[ctx].name;
     threadtable.rows[tid].cells[1].innerHTML = get_status(mis.contexts[ctx]);
+    threadtable.rows[tid].cells[3].innerHTML = mis.contexts[ctx].stack.map(x => json_string(x));
   }
   var mes = megasteps[mis.mesidx];
   if (t != mes.startTime + mes.nsteps - 1) {
@@ -579,16 +579,23 @@ function run_microstep(t) {
   }
   else {
     coderow.style.color = "blue";
-    coderow.innerHTML = mis.code.file + ":" + mis.code.line + "&nbsp;&nbsp;&nbsp;" + escapeHTML(mis.code.code);
+    if (t+1 < microsteps.length) {
+      var nmis = microsteps[t+1];
+      code = getCode(nmis.pc);
+      coderow.innerHTML = code.file + ":" + code.line + "&nbsp;&nbsp;&nbsp;" + escapeHTML(code.code);
+    }
   }
 
   if (t+1 < microsteps.length) {
     var nmis = microsteps[t+1];
     hvmrow.innerHTML = "T" + nmis.tid + "/" + nmis.pc + ": " + nmis.hvm + " (" + nmis.explain + ")"
+    currCloc = document.getElementById('C' + nmis.pc)
+    currOffset = document.getElementById('P' + nmis.pc);
   }
-
-  currCloc = mis.cloc;
-  currOffset = mis.offset;
+  else {
+    currCloc = null;
+    currOffset = mis.offset;
+  }
 }
 
 function run_microsteps() {
@@ -609,7 +616,7 @@ function run_microsteps() {
   for (var tid = 0; tid < nthreads; tid++) {
     threadtable.rows[tid].cells[1].innerHTML = "init";
     stackTrace(tid, [], null);
-    threadtable.rows[tid].cells[3].innerHTML = "";
+    threadtable.rows[tid].cells[3].innerHTML = threads[tid].stack;
   }
 
   var mis = microsteps[0];
@@ -629,7 +636,7 @@ function run_microsteps() {
     currCloc.style.color = "red";
   }
 
-  var curmes = microsteps[currentTime == 0 ? 0 : (currentTime-1)].mesidx;
+  var curmes = currentTime < totalTime ? microsteps[currentTime].mesidx : -1;
   for (var mes = 0; mes < nmegasteps; mes++) {
     var row = document.getElementById("mes" + mes)
     if (mes == curmes) {
@@ -640,7 +647,7 @@ function run_microsteps() {
     }
   }
 
-  var curtid = microsteps[currentTime == 0 ? 0 : (currentTime-1)].tid;
+  var curtid = currentTime < totalTime ? microsteps[currentTime].tid : -1;
   for (var tid = 0; tid < nthreads; tid++) {
     var row = document.getElementById("thread" + tid)
     if (tid == curtid) {
@@ -663,7 +670,7 @@ for (var tid = 0; tid < nthreads; tid++) {
     tracetable: document.getElementById("threadinfo" + tid)
   };
 }
-threads[0].stack = { type: "list", value: [] };
+threads[0].stack = [ "()" ]
 for (let i = 0; i < nmegasteps; i++) {
   var canvas = document.getElementById("timeline" + i);
   megasteps[i] = {

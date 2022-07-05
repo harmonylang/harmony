@@ -975,6 +975,12 @@ void diff_state(
     }
     fprintf(file, " ],\n");
 
+    unsigned int bs = oldstate->bagsize * (sizeof(hvalue_t) + 1);
+    if (oldstate->bagsize != newstate->bagsize ||
+            memcmp(oldstate->contexts, newstate->contexts, bs) != 0) {
+        fprintf(file, "          \"contexts\": \"%d\",\n", newstate->bagsize);
+    }
+
     fprintf(file, "          \"pc\": \"%d\"\n", oldctx->pc);
 
     fprintf(file, "        }");
@@ -1005,7 +1011,7 @@ void diff_dump(
 
     // Keep track of old state and context for taking diffs
     diff_state(global, file, oldstate, newstate, oldctx, newctx, *oldcs, newcs, interrupt, choose, choice, print, step);
-    *oldstate = *newstate;
+    memcpy(oldstate, newstate, state_size(newstate));
     memcpy(oldctx, newctx, newsize);
     *oldcs = newcs;
 }
@@ -2461,7 +2467,7 @@ int main(int argc, char **argv){
         *psc = cs;
 
         fprintf(out, "  \"macrosteps\": [");
-        struct state *oldstate = new_alloc(struct state);
+        struct state *oldstate = calloc(1, sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1));
         struct context *oldctx = calloc(1, sizeof(struct context) +
                         MAX_CONTEXT_STACK * sizeof(hvalue_t));
         global->dumpfirst = true;
