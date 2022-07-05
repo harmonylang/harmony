@@ -401,7 +401,9 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         method_name = self.get_token(ctx.NAME().symbol, value)
         args = self.visit(ctx.bound()) if ctx.bound() else []
         body = self.visit(ctx.block())
-        ast = MethodAST(endtoken, tkn, False, method_name, args, body)
+        colon = ctx.COLON()
+        ctoken = self.get_token(colon.getSymbol(), colon.getText())
+        ast = MethodAST(endtoken, tkn, False, method_name, args, body, ctoken)
         return ast
 
     # Visit a parse tree produced by HarmonyParser#while_block.

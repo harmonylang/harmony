@@ -1360,13 +1360,14 @@ class PrintAST(AST):
 
 
 class MethodAST(AST):
-    def __init__(self, endtoken, token, atomically, name, args, stat):
+    def __init__(self, endtoken, token, atomically, name, args, stat, colon):
         AST.__init__(self, endtoken, token, atomically)
         self.name = name
         self.args = args
         self.stat = stat
         (lexeme, file, line, column) = name
         self.label = LabelValue(None, lexeme)
+        self.colon = colon
 
     def __repr__(self):
         return "Method(" + str(self.name) + ", " + str(self.args) + ", " + str(self.stat) + ")"
@@ -1378,7 +1379,7 @@ class MethodAST(AST):
         (lexeme, file, line, column) = self.name
         code.append(JumpOp(endlabel, reason="jump over method definition"), self.token, self.token)
         code.nextLabel(self.label)
-        code.append(FrameOp(self.name, self.args), self.token, self.endtoken)
+        code.append(FrameOp(self.name, self.args), self.token, self.colon)
         # scope.names[lexeme] = ("constant", (self.label, file, line, column))
 
         ns = Scope(scope)
