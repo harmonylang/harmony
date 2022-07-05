@@ -915,7 +915,10 @@ class FrameOp(Op):
 
     def __repr__(self):
         (lexeme, file, line, column) = self.name
-        return "Frame " + str(lexeme) + " " + self.convert(self.args)
+        args = self.convert(self.args)
+        if args[0] == "(":
+            return "Frame " + str(lexeme) + args
+        return "Frame " + str(lexeme) + "(" + args + ")"
 
     def define(self):
         return self.lvars(self.args) | { "result" }

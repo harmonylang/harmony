@@ -49,6 +49,38 @@ static hvalue_t type_bool, type_int, type_str, type_pc, type_list;
 static hvalue_t type_dict, type_set, type_address, type_context;
 static hvalue_t initial_vars;
 
+static void vt_string_recurse(struct strbuf *sb, const struct var_tree *vt){
+    switch (vt->type) {
+    case VT_NAME:
+        {
+            unsigned int size;
+            char *name = value_get(vt->u.name, &size);
+            strbuf_printf(sb, "%.*s", size, name);
+        }
+        break;
+    case VT_TUPLE:
+        strbuf_printf(sb, "(");
+        for (unsigned int i = 0; i < vt->u.tuple.n; i++) {
+            if (i != 0) {
+                strbuf_printf(sb, ", ");
+            }
+            vt_string_recurse(sb, vt->u.tuple.elements[i]);
+        }
+        strbuf_printf(sb, ")");
+        break;
+    default:
+        panic("vt_string_recurse");
+    }
+}
+
+static char *vt_string(struct var_tree *vt){
+    struct strbuf sb;
+
+    strbuf_init(&sb);
+    vt_string_recurse(&sb, vt);
+    return strbuf_convert(&sb);
+}
+
 static inline void ctx_push(struct context *ctx, hvalue_t v){
     ctx_stack(ctx)[ctx->sp++] = v;
 }
@@ -1083,9 +1115,11 @@ void op_Frame(const void *env, struct state *state, struct step *step, struct gl
     hvalue_t arg = ctx_pop(step->ctx);
     if (step->keep_callstack) {
         char *name = value_string(ef->name);
+        char *args = vt_string(ef->args);
         char *val = value_string(arg);
-        strbuf_printf(&step->explain, "method %s with argument %s", name, val);
+        strbuf_printf(&step->explain, "method %s with argument %s set to %s", name, args, val);
         free(name);
+        free(args);
         free(val);
     }
 

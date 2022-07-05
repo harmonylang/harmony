@@ -1376,7 +1376,7 @@ class MethodAST(AST):
         endlabel = LabelValue(None, "$%d" % labelcnt)
         labelcnt += 1
         (lexeme, file, line, column) = self.name
-        code.append(JumpOp(endlabel), self.token, self.token)
+        code.append(JumpOp(endlabel, reason="jump over method definition"), self.token, self.token)
         code.nextLabel(self.label)
         code.append(FrameOp(self.name, self.args), self.token, self.endtoken)
         # scope.names[lexeme] = ("constant", (self.label, file, line, column))
@@ -1424,7 +1424,7 @@ class LambdaAST(AST):
     def compile_body(self, scope, code):
         startlabel = LabelValue(None, "lambda")
         endlabel = LabelValue(None, "lambda")
-        code.append(JumpOp(endlabel), self.token, self.token)
+        code.append(JumpOp(endlabel, reason="jump over lambda definition"), self.token, self.token)
         code.nextLabel(startlabel)
         code.append(FrameOp(self.token, self.args), self.token, self.endtoken)
 
