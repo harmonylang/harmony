@@ -1246,7 +1246,7 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
             if (endline, endcolumn) > (line2, column2):
                 endline = line2
                 endcolumn = column2
-            if True:        # TODO: debugging
+            if False:        # TODO: debugging
                 line = line1
                 column = column1
                 endline = line2
