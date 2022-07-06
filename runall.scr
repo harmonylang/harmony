@@ -144,16 +144,6 @@ echo ==============
 ./harmony --noweb -mqueue=queueMS -msynch=synchS code/queuedemo.hny
 
 echo ==============
-echo intsettest
-echo ==============
-./harmony --noweb -msetobj=linkedlist code/intsettest.hny
-
-echo ==============
-echo intsettest synchS
-echo ==============
-./harmony --noweb -msynch=synchS -msetobj=linkedlist code/intsettest.hny
-
-echo ==============
 echo RWtest
 echo ==============
 ./harmony --noweb code/RWtest.hny

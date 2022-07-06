@@ -73,7 +73,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
                 column=tkn[3],
                 lexeme=tkn[0]
             )
-        return BlockAST(endtoken, tkn, False, stmts)
+        return BlockAST(endtoken, tkn, False, stmts, endtoken)
 
     # Visit a parse tree produced by HarmonyParser#tuple_bound.
     def visitTuple_bound(self, ctx:HarmonyParser.Tuple_boundContext):
@@ -333,7 +333,9 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
         atom = ctx.ATOMICALLY()
         atoken = self.get_token(atom.getSymbol(), atom.getText())
-        return AtomicAST(endtoken, tkn, atoken, stmts)
+        colon = ctx.COLON()
+        ctoken = self.get_token(colon.getSymbol(), colon.getText())
+        return AtomicAST(endtoken, tkn, atoken, stmts, ctoken)
 
     # Visit a parse tree produced by HarmonyParser#for_block.
     def visitFor_block(self, ctx: HarmonyParser.For_blockContext):
@@ -348,8 +350,9 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         lvalues = self.visit(ctx.bound())
         values = self.visit(ctx.tuple_rule())
         tkn = self.get_token(ctx.start, ctx.start.text)
+        endtoken = self.get_token(ctx.stop, ctx.stop.text)
         op = self.visit(ctx.assign_op())
-        return "var", lvalues, values, tkn, op
+        return "var", lvalues, values, tkn, endtoken, op
 
     # Visit a parse tree produced by HarmonyParser#when_decl.
     def visitWhen_decl(self, ctx:HarmonyParser.When_declContext):
@@ -411,7 +414,9 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         stmts = self.visit(ctx.block())
         tkn = self.get_token(ctx.start, ctx.start.text)
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
-        return WhileAST(endtoken, tkn, False, cond, stmts)
+        colon = ctx.COLON()
+        ctoken = self.get_token(colon.getSymbol(), colon.getText())
+        return WhileAST(endtoken, tkn, False, cond, stmts, ctoken)
 
     # Visit a parse tree produced by HarmonyParser#if_block.
     def visitIf_block(self, ctx: HarmonyParser.If_blockContext):
@@ -460,7 +465,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
             return self.visit(ctx.block())
         elif ctx.block_stmts() is not None:
             stmts = self.visit(ctx.block_stmts())
-            return BlockAST(endtoken, tkn, False, stmts)
+            return BlockAST(endtoken, tkn, False, stmts, endtoken)
         raise HarmonyCompilerError(
             message="Unexpected block structure.",
             filename=self.file,
@@ -503,7 +508,12 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         elif isinstance(stmt, list):
             stmt_block = [LocationAST(endtoken, tkn, s, self.file, tkn[2]) for s in stmt]
         if ctx.COLON() or labels:
-            block = BlockAST(endtoken, tkn, False, stmt_block)
+            if ctx.COLON():
+                colon = ctx.COLON()
+                ctoken = self.get_token(colon.getSymbol(), colon.getText())
+                block = BlockAST(endtoken, tkn, False, stmt_block, ctoken)
+            else:
+                block = BlockAST(endtoken, tkn, False, stmt_block, endtoken)
             if labels:
                 return [LocationAST(endtoken, tkn, LabelStatAST(endtoken, tkn, labels, block), self.file, tkn[2])]
             else:
@@ -516,7 +526,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         if ctx.normal_block():
             return self.visit(ctx.normal_block())
         elif ctx.one_line_stmt():
-            return BlockAST(endtoken, tkn, False, self.visit(ctx.one_line_stmt()))
+            return BlockAST(endtoken, tkn, False, self.visit(ctx.one_line_stmt()), endtoken)
         raise HarmonyCompilerError(
             message="Unable to parse block",
             filename=self.file,
@@ -588,22 +598,27 @@ class HarmonyVisitorImpl(HarmonyVisitor):
 
     # Visit a parse tree produced by HarmonyParser#iter_parse.
     def visitIter_parse(self, ctx: HarmonyParser.Iter_parseContext):
-        return [self.visit(e) for e in ctx.children]
+        v = [self.visit(e) for e in ctx.children]
+        return [x for x in v if x is not None]
 
     # Visit a parse tree produced by HarmonyParser#for_parse.
     def visitFor_parse(self, ctx: HarmonyParser.For_parseContext):
         l1 = self.visit(ctx.bound(0))
         l2 = self.visit(ctx.bound(1)) if ctx.bound(1) else None
         expr = self.visit(ctx.nary_expr())
+        tkn = self.get_token(ctx.start, ctx.start.text)
+        endtoken = self.get_token(ctx.stop, ctx.stop.text)
         if l2 is not None:
-            return "for", (l2, l1, expr)
+            return "for", (l2, l1, expr, tkn, endtoken)
         else:
-            return "for", (l1, None, expr)
+            return "for", (l1, None, expr, tkn, endtoken)
 
     # Visit a parse tree produced by HarmonyParser#where_parse.
     def visitWhere_parse(self, ctx: HarmonyParser.Where_parseContext):
         expr = self.visit(ctx.nary_expr())
-        return "where", expr
+        tkn = self.get_token(ctx.start, ctx.start.text)
+        endtoken = self.get_token(ctx.stop, ctx.stop.text)
+        return "where", (expr, tkn, endtoken)
 
     # Visit a parse tree produced by HarmonyParser#tuple_rule.
     def visitTuple_rule(self, ctx: HarmonyParser.Tuple_ruleContext):

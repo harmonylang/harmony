@@ -128,7 +128,7 @@ set_rule
 ;
 
 iter_parse
-    : for_parse (for_parse | where_parse)*
+    : for_parse (NL? (for_parse | where_parse))*
 ;
 
 for_parse

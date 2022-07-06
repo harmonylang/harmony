@@ -161,7 +161,9 @@ class ComprehensionAST(AST):
         assert type == "for" or type == "where", type
 
         if type == "for":
-            (var, var2, expr) = rest
+            (var, var2, expr, start, stop) = rest
+            if ctype == "for":
+                stmt = self.range(start, stop)
 
             self.define(scope, var)
             if var2 != None:
@@ -188,8 +190,11 @@ class ComprehensionAST(AST):
 
         else:
             assert type == "where"
-            negate = isinstance(rest, NaryAST) and rest.op[0] == "not"
-            cond = rest.args[0] if negate else rest
+            (expr, start, stop) = rest
+            if ctype == "for":
+                stmt = self.range(start, stop)
+            negate = isinstance(expr, NaryAST) and expr.op[0] == "not"
+            cond = expr.args[0] if negate else expr
             cond.compile(scope, code, stmt)
             code.append(JumpCondOp(negate, pc), self.token, self.endtoken, stmt=stmt)
             self.rec_comprehension(scope, code, iter[1:], pc, accu, ctype, stmt)
@@ -971,16 +976,17 @@ class PassAST(AST):
 
 
 class BlockAST(AST):
-    def __init__(self, endtoken, token, atomically, b):
+    def __init__(self, endtoken, token, atomically, b, colon):
         AST.__init__(self, endtoken, token, atomically)
         assert len(b) > 0
         self.b = b
+        self.colon = colon
 
     def __repr__(self):
         return "Block(" + str(self.b) + ")"
 
     def compile(self, scope, code, stmt):
-        stmt = self.stmt()
+        stmt = self.range(self.token, self.colon)
         ns = Scope(scope)
         for s in self.b:
             for ((lexeme, file, line, column), lb) in s.getLabels():
@@ -1063,16 +1069,17 @@ class IfAST(AST):
 
 
 class WhileAST(AST):
-    def __init__(self, endtoken, token, atomically, cond, stat):
+    def __init__(self, endtoken, token, atomically, cond, stat, colon):
         AST.__init__(self, endtoken, token, atomically)
         self.cond = cond
         self.stat = stat
+        self.colon = colon
 
     def __repr__(self):
         return "While(" + str(self.cond) + ", " + str(self.stat) + ")"
 
     def compile(self, scope, code, stmt):
-        stmt = self.stmt()
+        stmt = self.range(self.token, self.colon)
         if self.atomically:
             code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
         negate = isinstance(self.cond, NaryAST) and self.cond.op[0] == "not"
@@ -1143,7 +1150,8 @@ class LetAST(AST):
         if self.atomically:
             code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
         ns = Scope(scope)
-        for (var, expr, token, op) in self.vars:
+        for (var, expr, token, endtoken, op) in self.vars:
+            stmt = self.range(token, endtoken)
             expr.compile(ns, code, stmt)
             code.append(StoreVarOp(var), token, op, stmt=stmt)
             self.define(ns, var)
@@ -1321,15 +1329,16 @@ class LetWhenAST(AST):
 
 
 class AtomicAST(AST):
-    def __init__(self, endtoken, token, atomically, stat):
+    def __init__(self, endtoken, token, atomically, stat, colon):
         AST.__init__(self, endtoken, token, atomically)
         self.stat = stat
+        self.colon = colon
 
     def __repr__(self):
         return "Atomic(" + str(self.stat) + ")"
 
     def compile(self, scope, code, stmt):
-        stmt = self.stmt()
+        stmt = self.range(self.atomically, self.colon)
         code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
         self.stat.compile(scope, code, stmt)
         code.append(AtomicDecOp(), self.atomically, self.endtoken, stmt=stmt)
