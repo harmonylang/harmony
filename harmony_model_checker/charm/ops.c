@@ -1922,6 +1922,13 @@ void op_StoreVar(const void *env, struct state *state, struct step *step, struct
         step->ctx->pc++;
     }
     else {
+        if (step->keep_callstack) {
+            char *x = vt_string(es->args);
+            char *val = value_string(v);
+            strbuf_printf(&step->explain, "pop value (%s) and store locally in %s", val, x);
+            free(x);
+            free(val);
+        }
         if (es->args->type == VT_NAME && es->args->u.name == this_atom) {
             if (!step->ctx->extended) {
                 value_ctx_extend(step->ctx);
