@@ -263,19 +263,19 @@ class NameAST(AST):
             else:
                 code.append(PushOp((AddressValue([scope.prefix + '$' + lexeme]), file, line, column)), self.token, self.endtoken)
 
-    def ph2(self, scope, code, skip):
+    def ph2(self, scope, code, skip, start, stop):
         if skip > 0:
             code.append(MoveOp(skip + 2), self.token, self.endtoken)
             code.append(MoveOp(2), self.token, self.endtoken)
         (t, v) = scope.lookup(self.name)
         if t == "local-var":
             if self.name[0] == "_":
-                code.append(PopOp(), self.token, self.endtoken)
+                code.append(PopOp(), start, stop)
             else:
-                code.append(StoreVarOp(None, self.name[0]), self.token, self.endtoken)
+                code.append(StoreVarOp(None, self.name[0]), start, stop)
         else:
             assert t == "global", (t, v)
-            code.append(StoreOp(None, self.name, None), self.token, self.endtoken)
+            code.append(StoreOp(None, self.name, None), start, stop)
 
     def isConstant(self, scope):
         (lexeme, file, line, column) = self.name
@@ -366,12 +366,12 @@ class TupleAST(AST):
         for lv in self.list:
             lv.ph1(scope, code)
 
-    def ph2(self, scope, code, skip):
+    def ph2(self, scope, code, skip, start, stop):
         n = len(self.list)
         code.append(SplitOp(n), self.token, self.endtoken)
         for lv in reversed(self.list):
             n -= 1
-            lv.ph2(scope, code, skip + n)
+            lv.ph2(scope, code, skip + n, start, stop)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_tuple(self, *args, **kwargs)
@@ -638,13 +638,13 @@ class ApplyAST(AST):
         self.arg.compile(scope, code)
         code.append(AddressOp(), self.token, self.endtoken)
 
-    def ph2(self, scope, code, skip):
+    def ph2(self, scope, code, skip, start, stop):
         if skip > 0:
             code.append(MoveOp(skip + 2), self.token, self.endtoken)
             code.append(MoveOp(2), self.token, self.endtoken)
         lvar = self.method.localVar(scope)
         st = StoreOp(None, self.token, None) if lvar == None else StoreVarOp(None, lvar)
-        code.append(st, self.token, self.endtoken)
+        code.append(st, start, stop)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_apply(self, *args, **kwargs)
@@ -668,11 +668,11 @@ class PointerAST(AST):
     def ph1(self, scope, code):
         self.expr.compile(scope, code)
 
-    def ph2(self, scope, code, skip):
+    def ph2(self, scope, code, skip, start, stop):
         if skip > 0:
             code.append(MoveOp(skip + 2), self.token, self.endtoken)
             code.append(MoveOp(2), self.token, self.endtoken)
-        code.append(StoreOp(None, self.token, None), self.token, self.endtoken)
+        code.append(StoreOp(None, self.token, None), start, stop)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_pointer(self, *args, **kwargs)
@@ -729,12 +729,12 @@ class AssignmentAST(AST):
                     )
                 assert t in {"local-var", "global"}, (t, lvs.name)
                 if v[0] == "_":
-                    code.append(PopOp(), v, self.ops[skip])
+                    code.append(PopOp(), lvs.token, self.ops[skip])
                 else:
                     st = StoreOp(lvs.name, lvs.name, scope.prefix) if t == "global" else StoreVarOp(lvs.name)
-                    code.append(st, v, self.ops[skip])
+                    code.append(st, lvs.token, self.ops[skip])
             else:
-                lvs.ph2(scope, code, skip)
+                lvs.ph2(scope, code, skip, lvs.token, self.ops[skip])
 
         if self.atomically:
             code.append(AtomicDecOp(), self.atomically, self.endtoken)

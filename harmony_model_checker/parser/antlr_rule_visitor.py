@@ -127,8 +127,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
 
     # Visit a parse tree produced by HarmonyParser#name.
     def visitName(self, ctx: HarmonyParser.NameContext):
-        txt = ctx.getText()
-        tkn = self.get_token(ctx.start, txt)
+        tkn = self.get_token(ctx.start, ctx.getText())
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
         return NameAST(endtoken, tkn)
 
