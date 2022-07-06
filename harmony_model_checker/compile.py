@@ -68,7 +68,7 @@ def _load_string(string, scope: Scope, code: Code, filename="<string-code>"):
             )
         scope.names[lexeme] = ("constant", (lb, file, line, column))
 
-    ast.compile(scope, code)
+    ast.compile(scope, code, None)
     legacy_harmony.namestack.pop()
 
 
@@ -86,8 +86,11 @@ def _load_file(filename: str, scope: Scope, code: Code, init: bool):
             filename=filename
         )
 
+    _, _, line1, column1 = ast.token
+    lexeme2, _, line2, column2 = ast.endtoken
+    column2 += len(lexeme2) - 1
     if init:
-        code.append(FrameOp(("__init__", None, None, None), []), ast.token, ast.endtoken)
+        code.append(FrameOp(("__init__", None, None, None), []), ast.token, ast.endtoken, stmt=(line1, column1, line2, column2))
 
     for mod in ast.getImports():
         _do_import(scope, code, mod)
@@ -106,9 +109,9 @@ def _load_file(filename: str, scope: Scope, code: Code, init: bool):
             )
         scope.names[lexeme] = ("constant", (lb, file, line, column))
 
-    ast.compile(scope, code)
+    ast.compile(scope, code, None)
     if init:
-        code.append(ReturnOp(), ast.token, ast.endtoken)  # to terminate "__init__" process
+        code.append(ReturnOp(), ast.token, ast.endtoken, stmt=(line1, column1, line2, column2))  # to terminate "__init__" process
     legacy_harmony.namestack.pop()
 
 
@@ -116,10 +119,6 @@ def _do_import(scope: Scope, code: Code, module):
     (lexeme, file, line, column) = module
     # assert lexeme not in scope.names        # TODO
     if lexeme not in legacy_harmony.imported:
-        # Obsolete:
-        # code.append(PushOp((legacy_harmony.emptytuple, file, line, column)))
-        # code.append(StoreOp(module, module, None))
-
         # module name replacement with -m flag
         modname = legacy_harmony.modules.get(lexeme, lexeme)
 
@@ -162,7 +161,7 @@ def _parse_constant(name: str, value: str):
 
     scope = Scope(None)
     code = Code()
-    ast.compile(scope, code)
+    ast.compile(scope, code, None)
     state = State(code, scope.labels)
     ctx = ContextValue(("__arg__", None, None, None), 0,
                        legacy_harmony.emptytuple, legacy_harmony.emptytuple)

@@ -1,10 +1,11 @@
 from harmony_model_checker.harmony.ops import *
 
 class Labeled_Op:
-    def __init__(self, op, start, stop, labels):
+    def __init__(self, op, start, stop, stmt, labels):
         self.op = op
         self.start = start
         self.stop = stop
+        self.stmt = stmt
         self.labels = labels
         self.live_in = set()
         self.live_out = set()
@@ -20,10 +21,10 @@ class Code:
         self.curFile = file
         self.curLine = line
 
-    def append(self, op, start, stop, labels=set()):
+    def append(self, op, start, stop, labels=set(), stmt=None):
         assert len(start) == 4
         assert len(stop) == 4
-        self.labeled_ops.append(Labeled_Op(op, start, stop, labels | self.endlabels))
+        self.labeled_ops.append(Labeled_Op(op, start, stop, stmt, labels | self.endlabels))
         self.endlabels = set()
 
     def nextLabel(self, endlabel):
@@ -100,9 +101,9 @@ class Code:
 
             labels = lop.labels
             for d in sorted(lop.pre_del - { 'this' }):
-                newcode.append(DelVarOp((d, None, None, None)), lop.start, lop.stop, labels)
+                newcode.append(DelVarOp((d, None, None, None)), lop.start, lop.stop, labels=labels, stmt=lop.stmt)
                 labels = set()
-            newcode.append(lop.op, lop.start, lop.stop, labels)
+            newcode.append(lop.op, lop.start, lop.stop, labels=labels, stmt=lop.stmt)
 
             # If a variable is defined or live on input but not live on output,
             # immediately delete afterward
@@ -110,7 +111,7 @@ class Code:
             # lop.post_del = (lop.op.define() | lop.live_in) - lop.live_out
             lop.post_del = lop.live_in - lop.live_out
             for d in sorted(lop.post_del - { 'this' }):
-                newcode.append(DelVarOp((d, None, None, None)), lop.start, lop.stop)
+                newcode.append(DelVarOp((d, None, None, None)), lop.start, lop.stop, stmt=lop.stmt)
 
         return newcode
 

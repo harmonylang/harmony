@@ -99,11 +99,6 @@ echo ==============
 ./harmony --noweb code/queuedemo.hny
 
 echo ==============
-echo queuedemo synchS
-echo ==============
-./harmony --noweb -msynch=synchS code/queuedemo.hny
-
-echo ==============
 echo qtestseq
 echo ==============
 ./harmony --noweb code/qtestseq.hny
@@ -114,19 +109,9 @@ echo ==============
 ./harmony --noweb code/qtest1.hny
 
 echo ==============
-echo qtest1 synchS
-echo ==============
-./harmony --noweb -msynch=synchS code/qtest1.hny
-
-echo ==============
 echo qtest2
 echo ==============
 ./harmony --noweb code/qtest2.hny
-
-echo ==============
-echo qtest2 synchS
-echo ==============
-./harmony --noweb -msynch=synchS code/qtest2.hny
 
 echo ==============
 echo qtest3
@@ -134,19 +119,9 @@ echo ==============
 ./harmony --noweb code/qtest3.hny
 
 echo ==============
-echo qtest3 synchS
-echo ==============
-./harmony --noweb -msynch=synchS code/qtest3.hny
-
-echo ==============
 echo qtest4
 echo ==============
 ./harmony --noweb code/qtest4.hny
-
-echo ==============
-echo qtest4 synchS
-echo ==============
-./harmony --noweb -msynch=synchS code/qtest4.hny
 
 echo ==============
 echo qtestconc.hny
@@ -182,11 +157,6 @@ echo ==============
 echo RWtest
 echo ==============
 ./harmony --noweb code/RWtest.hny
-
-echo ==============
-echo RWtest synchS
-echo ==============
-./harmony --noweb -msynch=synchS code/RWtest.hny
 
 echo ==============
 echo RWsbs

@@ -1402,6 +1402,20 @@ static void enum_loc(
         fprintf(out, "\"%s\": \"%.*s\", ", key2, jv2->u.atom.len, jv2->u.atom.base);
     }
 
+    struct json_value *stmt = dict_lookup(jv->u.map, "stmt", 4);
+    assert(stmt->type == JV_LIST);
+    assert(stmt->u.list.nvals == 4);
+    fprintf(out, "\"stmt\": [");
+    for (unsigned int i = 0; i < 4; i++) {
+        if (i != 0) {
+            fprintf(out, ",");
+        }
+        struct json_value *jv2 = stmt->u.list.vals[i];
+        assert(jv2->type == JV_ATOM);
+        fprintf(out, "%.*s", jv2->u.atom.len, jv2->u.atom.base);
+    }
+    fprintf(out, "], ");
+
     char **p = dict_insert(code_map, NULL, &pc, sizeof(pc), NULL);
     struct strbuf sb;
     strbuf_init(&sb);

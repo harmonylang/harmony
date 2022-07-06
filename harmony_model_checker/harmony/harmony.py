@@ -1232,6 +1232,25 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
             lop = code.labeled_ops[pc]
             (_, file, line, column) = lop.start
             (endlexeme, _, endline, endcolumn) = lop.stop
+            endcolumn += len(endlexeme) - 1
+            if lop.stmt == None:
+                line1 = line
+                column1 = column
+                line2 = endline
+                column2 = endcolumn
+            else:
+                (line1, column1, line2, column2) = lop.stmt
+            if (line, column) < (line1, column1):
+                line = line1
+                column = column1
+            if (endline, endcolumn) > (line2, column2):
+                endline = line2
+                endcolumn = column2
+            if True:        # TODO: debugging
+                line = line1
+                column = column1
+                endline = line2
+                endcolumn = column2
             if file != None:
                 if firstTime:
                     firstTime = False
@@ -1240,7 +1259,7 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
                     print(",", file=f)
                 if endlexeme in { "indent", "dedent" }:     # Hack...
                     endlexeme = endlexeme[0]
-                print("    \"%d\": { \"file\": %s, \"line\": %d, \"column\": %d, \"endline\": %d, \"endcolumn\": %d, \"code\": %s }"%(pc, json.dumps(file, ensure_ascii=False), line, column, endline, endcolumn + len(endlexeme) - 1, json.dumps(files[file][line-1], ensure_ascii=False)), file=f, end="")
+                print("    \"%d\": { \"file\": %s, \"line\": %d, \"column\": %d, \"endline\": %d, \"endcolumn\": %d, \"stmt\": [%d,%d,%d,%d], \"code\": %s }"%(pc, json.dumps(file, ensure_ascii=False), line, column, endline, endcolumn, line1, column1, line2, column2, json.dumps(files[file][line-1], ensure_ascii=False)), file=f, end="")
         print(file=f)
         print("  }", file=f)
         print("}", file=f)

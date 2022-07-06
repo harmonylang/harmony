@@ -15,15 +15,31 @@ class AST:
     def __init__(self, endtoken, token, atomically):
         # Check that token is of the form (lexeme, file, line, column)
         assert isinstance(token, tuple), token
-        assert len(token) == 4, len(token)
+        assert len(token) == 4, token
+        assert isinstance(endtoken, tuple), endtoken
+        assert len(endtoken) == 4, endtoken
         # No check b/c lexeme could be one of many types, e.g. int, str, bool, etc
         _, file, line, column = token
-        assert isinstance(file, str), file
-        assert isinstance(line, int), line
-        assert isinstance(column, int), line
+        assert isinstance(file, str), token
+        assert isinstance(line, int), token
+        assert isinstance(column, int), token
+        _, file, line, column = endtoken
+        assert isinstance(file, str), endtoken
+        assert isinstance(line, int), endtoken
+        assert isinstance(column, int), endtoken
         self.endtoken = endtoken
         self.token = token
         self.atomically = atomically
+
+    def stmt(self):
+        _, _, line1, column1 = self.token
+        lexeme2, _, line2, column2 = self.endtoken
+        return (line1, column1, line2, column2 + len(lexeme2) - 1)
+
+    def range(self, token1, token2):
+        _, _, line1, column1 = token1
+        lexeme2, _, line2, column2 = token2
+        return (line1, column1, line2, column2 + len(lexeme2) - 1)
 
     # a new local constant or tree of constants
     def define(self, scope, const):
@@ -65,38 +81,38 @@ class AST:
                 message='constant evaluation failed: %s %s' % (self, ctx.failure),
                 lexeme=lexeme,
                 filename=file,
-                line=line,
+                stmt=stmt,
                 column=column
             )
         return ctx.pop()
 
-    def compile(self, scope, code):
+    def compile(self, scope, code, stmt):
         if self.isConstant(scope):
             code2 = Code()
-            self.gencode(scope, code2)
-            code2.append(ContinueOp(), self.token, self.endtoken)      # Hack: get endlabels evaluated
+            self.gencode(scope, code2, stmt)
+            code2.append(ContinueOp(), self.token, self.endtoken, stmt=stmt)      # Hack: get endlabels evaluated
             code2.link()
             v = self.eval(scope, code2)
-            code.append(PushOp((v, None, None, None)), self.token, self.endtoken)
+            code.append(PushOp((v, None, None, None)), self.token, self.endtoken, stmt=stmt)
         else:
-            self.gencode(scope, code)
+            self.gencode(scope, code, stmt)
 
     # Return local var name if local access
     def localVar(self, scope):
         assert False, self
 
     # This is supposed to push the address of an lvalue
-    def ph1(self, scope, code):
+    def ph1(self, scope, code, stmt):
         lexeme, file, line, column = self.token
         raise HarmonyCompilerError(
             lexeme=lexeme,
             filename=file,
-            line=line,
+            stmt=stmt,
             column=column,
             message='Cannot use in left-hand side expression: %s' % str(self)
         )
 
-    def gencode(self, scope: Scope, code: Code):
+    def gencode(self, scope: Scope, code: Code, stmt):
         assert False, self
 
     def doImport(self, scope, code, module):
@@ -122,23 +138,23 @@ class ComprehensionAST(AST):
         self.iter = iter
         self.value = value
     
-    def rec_comprehension(self, scope, code, iter, pc, accu, ctype):
+    def rec_comprehension(self, scope, code, iter, pc, accu, ctype, stmt):
         if iter == []:
             if ctype in { "dict", "set", "list" }:
-                code.append(LoadVarOp(accu, reason="load accumulator"), self.token, self.endtoken)
+                code.append(LoadVarOp(accu, reason="load accumulator"), self.token, self.endtoken, stmt=stmt)
             (_, file, line, column) = self.token
             if ctype == "dict":
-                self.key.compile(scope, code)
-            self.value.compile(scope, code)
+                self.key.compile(scope, code, stmt)
+            self.value.compile(scope, code, stmt)
             if ctype == "set":
-                code.append(NaryOp(("SetAdd", file, line, column), 2), self.token, self.endtoken)
-                code.append(StoreVarOp(accu, reason="update accumulator"), self.token, self.endtoken)
+                code.append(NaryOp(("SetAdd", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
+                code.append(StoreVarOp(accu, reason="update accumulator"), self.token, self.endtoken, stmt=stmt)
             elif ctype == "dict":
-                code.append(NaryOp(("DictAdd", file, line, column), 3), self.token, self.endtoken)
-                code.append(StoreVarOp(accu, reason="update accumulator"), self.token, self.endtoken)
+                code.append(NaryOp(("DictAdd", file, line, column), 3), self.token, self.endtoken, stmt=stmt)
+                code.append(StoreVarOp(accu, reason="update accumulator"), self.token, self.endtoken, stmt=stmt)
             elif ctype == "list":
-                code.append(NaryOp(("ListAdd", file, line, column), 2), self.token, self.endtoken)
-                code.append(StoreVarOp(accu, reason="update accumulator"), self.token, self.endtoken)
+                code.append(NaryOp(("ListAdd", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
+                code.append(StoreVarOp(accu, reason="update accumulator"), self.token, self.endtoken, stmt=stmt)
             return
 
         (type, rest) = iter[0]
@@ -154,48 +170,48 @@ class ComprehensionAST(AST):
             (lexeme, file, line, column) = self.token
 
             # Evaluate the collection over which to iterate
-            expr.compile(scope, code)
+            expr.compile(scope, code, stmt)
 
             # Push the first index, which is 0
-            code.append(PushOp((0, file, line, column)), self.token, self.token)
+            code.append(PushOp((0, file, line, column)), self.token, self.token, stmt=stmt)
 
             global labelcnt
             startlabel = LabelValue(None, "$%d_start" % labelcnt)
             endlabel = LabelValue(None, "$%d_end" % labelcnt)
             labelcnt += 1
             code.nextLabel(startlabel)
-            code.append(CutOp(var, var2), self.token, self.token)
-            code.append(JumpCondOp(False, endlabel, reason="check if loop is done"), self.token, self.token)
-            self.rec_comprehension(scope, code, iter[1:], startlabel, accu, ctype)
-            code.append(JumpOp(startlabel), self.endtoken, self.endtoken)
+            code.append(CutOp(var, var2), self.token, self.token, stmt=stmt)
+            code.append(JumpCondOp(False, endlabel, reason="check if loop is done"), self.token, self.token, stmt=stmt)
+            self.rec_comprehension(scope, code, iter[1:], startlabel, accu, ctype, stmt)
+            code.append(JumpOp(startlabel), self.endtoken, self.endtoken, stmt=stmt)
             code.nextLabel(endlabel)
 
         else:
             assert type == "where"
             negate = isinstance(rest, NaryAST) and rest.op[0] == "not"
             cond = rest.args[0] if negate else rest
-            cond.compile(scope, code)
-            code.append(JumpCondOp(negate, pc), self.token, self.endtoken)
-            self.rec_comprehension(scope, code, iter[1:], pc, accu, ctype)
+            cond.compile(scope, code, stmt)
+            code.append(JumpCondOp(negate, pc), self.token, self.endtoken, stmt=stmt)
+            self.rec_comprehension(scope, code, iter[1:], pc, accu, ctype, stmt)
 
-    def comprehension(self, scope, code, ctype):
+    def comprehension(self, scope, code, ctype, stmt):
         ns = Scope(scope)
         # Keep track of the size
         uid = len(code.labeled_ops)
         (lexeme, file, line, column) = self.token
         accu = ("$accu%d"%len(code.labeled_ops), file, line, column)
         if ctype == "set":
-            code.append(PushOp((SetValue(set()), file, line, column), reason="initialize accumulator for set comprehension"), self.token, self.endtoken)
-            code.append(StoreVarOp(accu, reason="initialize accumulator for set comprehension"), self.token, self.endtoken)
+            code.append(PushOp((SetValue(set()), file, line, column), reason="initialize accumulator for set comprehension"), self.token, self.endtoken, stmt=stmt)
+            code.append(StoreVarOp(accu, reason="initialize accumulator for set comprehension"), self.token, self.endtoken, stmt=stmt)
         elif ctype == "dict":
-            code.append(PushOp((emptydict, file, line, column), reason="initialize accumulator for dict comprehension"), self.token, self.endtoken)
-            code.append(StoreVarOp(accu, reason="initialize accumulator for dict comprehension"), self.token, self.endtoken)
+            code.append(PushOp((emptydict, file, line, column), reason="initialize accumulator for dict comprehension"), self.token, self.endtoken, stmt=stmt)
+            code.append(StoreVarOp(accu, reason="initialize accumulator for dict comprehension"), self.token, self.endtoken, stmt=stmt)
         elif ctype == "list":
-            code.append(PushOp((emptytuple, file, line, column), reason="initialize accumulator for list comprehension"), self.token, self.endtoken)
-            code.append(StoreVarOp(accu, reason="initialize accumulator for list comprehension"), self.token, self.endtoken)
-        self.rec_comprehension(ns, code, self.iter, None, accu, ctype)
+            code.append(PushOp((emptytuple, file, line, column), reason="initialize accumulator for list comprehension"), self.token, self.endtoken, stmt=stmt)
+            code.append(StoreVarOp(accu, reason="initialize accumulator for list comprehension"), self.token, self.endtoken, stmt=stmt)
+        self.rec_comprehension(ns, code, self.iter, None, accu, ctype, stmt)
         if ctype in { "set", "dict", "list" }:
-            code.append(LoadVarOp(accu, reason="load final accumulator result"), self.token, self.endtoken)
+            code.append(LoadVarOp(accu, reason="load final accumulator result"), self.token, self.endtoken, stmt=stmt)
 
 class ConstantAST(AST):
     def __init__(self, endtoken, const):
@@ -205,8 +221,8 @@ class ConstantAST(AST):
     def __repr__(self):
         return "ConstantAST" + str(self.const)
 
-    def compile(self, scope, code):
-        code.append(PushOp(self.const), self.token, self.endtoken)
+    def compile(self, scope, code, stmt):
+        code.append(PushOp(self.const), self.token, self.endtoken, stmt=stmt)
 
     def isConstant(self, scope):
         return True
@@ -223,17 +239,17 @@ class NameAST(AST):
     def __repr__(self):
         return "NameAST" + str(self.name)
 
-    def compile(self, scope, code):
+    def compile(self, scope, code, stmt):
         (t, v) = scope.lookup(self.name)
         if t in {"local-var", "local-const"}:
-            code.append(LoadVarOp(self.name), self.token, self.endtoken)
+            code.append(LoadVarOp(self.name), self.token, self.endtoken, stmt=stmt)
         elif t == "constant":
             (lexeme, file, line, column) = self.name
-            code.append(PushOp(v), self.token, self.endtoken)
+            code.append(PushOp(v), self.token, self.endtoken, stmt=stmt)
         else:
             # TODO: should module lead to an error here?
             assert t in {"global", "module"}
-            code.append(LoadOp(self.name, self.name, scope.prefix), self.token, self.endtoken)
+            code.append(LoadOp(self.name, self.name, scope.prefix), self.token, self.endtoken, stmt=stmt)
 
     # TODO.  How about local-const?
     def localVar(self, scope):
@@ -241,41 +257,41 @@ class NameAST(AST):
         assert t in {"constant", "local-var", "local-const", "global", "module"}
         return self.name[0] if t == "local-var" else None
 
-    def ph1(self, scope, code):
+    def ph1(self, scope, code, stmt):
         (t, v) = scope.lookup(self.name)
         if t in {"constant", "local-const"}:
             (lexeme, file, line, column) = v
             raise HarmonyCompilerError(
                 filename=file,
                 lexeme=lexeme,
-                line=line,
+                stmt=stmt,
                 column=column,
                 message="constant cannot be an lvalue: %s" % str(self.name),
             )
         elif t == "local-var":
             (lexeme, file, line, column) = v
             if lexeme != "_":
-                code.append(PushOp((AddressValue([lexeme]), file, line, column)), self.token, self.endtoken)
+                code.append(PushOp((AddressValue([lexeme]), file, line, column)), self.token, self.endtoken, stmt=stmt)
         else:
             (lexeme, file, line, column) = self.name
             if scope.prefix == None:
-                code.append(PushOp((AddressValue([lexeme]), file, line, column)), self.token, self.endtoken)
+                code.append(PushOp((AddressValue([lexeme]), file, line, column)), self.token, self.endtoken, stmt=stmt)
             else:
-                code.append(PushOp((AddressValue([scope.prefix + '$' + lexeme]), file, line, column)), self.token, self.endtoken)
+                code.append(PushOp((AddressValue([scope.prefix + '$' + lexeme]), file, line, column)), self.token, self.endtoken, stmt=stmt)
 
-    def ph2(self, scope, code, skip, start, stop):
+    def ph2(self, scope, code, skip, start, stop, stmt):
         if skip > 0:
-            code.append(MoveOp(skip + 2), self.token, self.endtoken)
-            code.append(MoveOp(2), self.token, self.endtoken)
+            code.append(MoveOp(skip + 2), self.token, self.endtoken, stmt=stmt)
+            code.append(MoveOp(2), self.token, self.endtoken, stmt=stmt)
         (t, v) = scope.lookup(self.name)
         if t == "local-var":
             if self.name[0] == "_":
-                code.append(PopOp(), start, stop)
+                code.append(PopOp(), start, stop, stmt=stmt)
             else:
-                code.append(StoreVarOp(None, self.name[0]), start, stop)
+                code.append(StoreVarOp(None, self.name[0]), start, stop, stmt=stmt)
         else:
             assert t == "global", (t, v)
-            code.append(StoreOp(None, self.name, None), start, stop)
+            code.append(StoreOp(None, self.name, None), start, stop, stmt=stmt)
 
     def isConstant(self, scope):
         (lexeme, file, line, column) = self.name
@@ -302,11 +318,11 @@ class SetAST(AST):
     def isConstant(self, scope):
         return all(x.isConstant(scope) for x in self.collection)
 
-    def gencode(self, scope, code):
-        code.append(PushOp((SetValue(set()), None, None, None)), self.token, self.endtoken)
+    def gencode(self, scope, code, stmt):
+        code.append(PushOp((SetValue(set()), None, None, None)), self.token, self.endtoken, stmt=stmt)
         for e in self.collection:
-            e.compile(scope, code)
-            code.append(NaryOp(("SetAdd", None, None, None), 2), self.token, self.endtoken)
+            e.compile(scope, code, stmt)
+            code.append(NaryOp(("SetAdd", None, None, None), 2), self.token, self.endtoken, stmt=stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_set(self, *args, **kwargs)
@@ -324,11 +340,11 @@ class RangeAST(AST):
     def isConstant(self, scope):
         return self.lhs.isConstant(scope) and self.rhs.isConstant(scope)
 
-    def gencode(self, scope, code):
-        self.lhs.compile(scope, code)
-        self.rhs.compile(scope, code)
+    def gencode(self, scope, code, stmt):
+        self.lhs.compile(scope, code, stmt)
+        self.rhs.compile(scope, code, stmt)
         (lexeme, file, line, column) = self.token
-        code.append(NaryOp(("..", file, line, column), 2), self.token, self.endtoken)
+        code.append(NaryOp(("..", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_range(self, *args, **kwargs)
@@ -345,12 +361,12 @@ class TupleAST(AST):
     def isConstant(self, scope):
         return all(v.isConstant(scope) for v in self.list)
 
-    def gencode(self, scope, code):
+    def gencode(self, scope, code, stmt):
         (lexeme, file, line, column) = self.token
-        code.append(PushOp((emptytuple, file, line, column), reason="building a tuple"), self.token, self.endtoken)
+        code.append(PushOp((emptytuple, file, line, column), reason="building a tuple"), self.token, self.endtoken, stmt=stmt)
         for v in self.list:
-            v.compile(scope, code)
-            code.append(NaryOp(("ListAdd", file, line, column), 2), self.token, self.endtoken)
+            v.compile(scope, code, stmt)
+            code.append(NaryOp(("ListAdd", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
 
     def localVar(self, scope):
         lexeme, file, line, column = self.token
@@ -358,20 +374,20 @@ class TupleAST(AST):
             message="Cannot index into tuple in assignment",
             lexeme=lexeme,
             filename=file,
-            line=line,
+            stmt=stmt,
             column=column
         )
 
-    def ph1(self, scope, code):
+    def ph1(self, scope, code, stmt):
         for lv in self.list:
-            lv.ph1(scope, code)
+            lv.ph1(scope, code, stmt)
 
-    def ph2(self, scope, code, skip, start, stop):
+    def ph2(self, scope, code, skip, start, stop, stmt):
         n = len(self.list)
-        code.append(SplitOp(n), self.token, self.endtoken)
+        code.append(SplitOp(n), self.token, self.endtoken, stmt=stmt)
         for lv in reversed(self.list):
             n -= 1
-            lv.ph2(scope, code, skip + n, start, stop)
+            lv.ph2(scope, code, skip + n, start, stop, stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_tuple(self, *args, **kwargs)
@@ -389,12 +405,12 @@ class DictAST(AST):
         return all(k.isConstant(scope) and v.isConstant(scope)
                    for (k, v) in self.record)
 
-    def gencode(self, scope, code):
-        code.append(PushOp((emptydict, None, None, None)), self.token, self.endtoken)
+    def gencode(self, scope, code, stmt):
+        code.append(PushOp((emptydict, None, None, None)), self.token, self.endtoken, stmt=stmt)
         for (k, v) in self.record:
-            k.compile(scope, code)
-            v.compile(scope, code)
-            code.append(NaryOp(("DictAdd", None, None, None), 3), self.token, self.endtoken)
+            k.compile(scope, code, stmt)
+            v.compile(scope, code, stmt)
+            code.append(NaryOp(("DictAdd", None, None, None), 3), self.token, self.endtoken, stmt=stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_dict(self, *args, **kwargs)
@@ -407,8 +423,8 @@ class SetComprehensionAST(ComprehensionAST):
     def __repr__(self):
         return "SetComprehension(" + str(self.iter) + "," + str(self.value) + ")"
 
-    def compile(self, scope, code):
-        self.comprehension(scope, code, "set")
+    def compile(self, scope, code, stmt):
+        self.comprehension(scope, code, "set", stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_set_comprehension(self, *args, **kwargs)
@@ -422,8 +438,8 @@ class DictComprehensionAST(ComprehensionAST):
     def __repr__(self):
         return "DictComprehension(" + str(self.key) + ")"
 
-    def compile(self, scope, code):
-        self.comprehension(scope, code, "dict")
+    def compile(self, scope, code, stmt):
+        self.comprehension(scope, code, "dict", stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_dict_comprehension(self, *args, **kwargs)
@@ -436,8 +452,8 @@ class ListComprehensionAST(ComprehensionAST):
     def __repr__(self):
         return "ListComprehension(" + str(self.value) + ")"
 
-    def compile(self, scope, code):
-        self.comprehension(scope, code, "list")
+    def compile(self, scope, code, stmt):
+        self.comprehension(scope, code, "list", stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_list_comprehension(self, *args, **kwargs)
@@ -460,56 +476,56 @@ class NaryAST(AST):
             return False
         return all(x.isConstant(scope) for x in self.args)
 
-    def gencode(self, scope, code):
+    def gencode(self, scope, code, stmt):
         global labelcnt
         (op, file, line, column) = self.op
         n = len(self.args)
         if op == "and" or op == "or":
-            self.args[0].compile(scope, code)
+            self.args[0].compile(scope, code, stmt)
             lastlabel = LabelValue(None, "$%d_last" % labelcnt)
             endlabel = LabelValue(None, "$%d_end" % labelcnt)
             labelcnt += 1
             for i in range(1, n):
-                code.append(JumpCondOp(op == "or", lastlabel), self.token, self.endtoken)
-                self.args[i].compile(scope, code)
-            code.append(JumpOp(endlabel), self.op, self.op)
+                code.append(JumpCondOp(op == "or", lastlabel), self.token, self.endtoken, stmt=stmt)
+                self.args[i].compile(scope, code, stmt)
+            code.append(JumpOp(endlabel), self.op, self.op, stmt=stmt)
             code.nextLabel(lastlabel)
-            code.append(PushOp((op == "or", file, line, column)), self.token, self.endtoken)
+            code.append(PushOp((op == "or", file, line, column)), self.token, self.endtoken, stmt=stmt)
             code.nextLabel(endlabel)
         elif op == "=>":
             assert n == 2, n
-            self.args[0].compile(scope, code)
+            self.args[0].compile(scope, code, stmt)
             truelabel = LabelValue(None, "$%d_true" % labelcnt)
             endlabel = LabelValue(None, "$%d_end" % labelcnt)
             labelcnt += 1
-            code.append(JumpCondOp(False, truelabel), self.token, self.endtoken)
-            self.args[1].compile(scope, code)
-            code.append(JumpOp(endlabel), self.op, self.op)
+            code.append(JumpCondOp(False, truelabel), self.token, self.endtoken, stmt=stmt)
+            self.args[1].compile(scope, code, stmt)
+            code.append(JumpOp(endlabel), self.op, self.op, stmt=stmt)
             code.nextLabel(truelabel)
-            code.append(PushOp((True, file, line, column)), self.token, self.endtoken)
+            code.append(PushOp((True, file, line, column)), self.token, self.endtoken, stmt=stmt)
             code.nextLabel(endlabel)
         elif op == "if":
             assert n == 3, n
             negate = isinstance(self.args[1], NaryAST) and self.args[1].op[0] == "not"
             cond = self.args[1].args[0] if negate else self.args[1]
-            cond.compile(scope, code)
+            cond.compile(scope, code, stmt)
             elselabel = LabelValue(None, "$%d_else" % labelcnt)
             endlabel = LabelValue(None, "$%d_end" % labelcnt)
             labelcnt += 1
-            code.append(JumpCondOp(negate, elselabel), self.token, self.endtoken)
-            self.args[0].compile(scope, code)  # "if" expr
-            code.append(JumpOp(endlabel), self.op, self.op)
+            code.append(JumpCondOp(negate, elselabel), self.token, self.endtoken, stmt=stmt)
+            self.args[0].compile(scope, code, stmt)  # "if" expr
+            code.append(JumpOp(endlabel), self.op, self.op, stmt=stmt)
             code.nextLabel(elselabel)
-            self.args[2].compile(scope, code)  # "else" expr
+            self.args[2].compile(scope, code, stmt)  # "else" expr
             code.nextLabel(endlabel)
         elif op == "choose":
             assert n == 1
-            self.args[0].compile(scope, code)
-            code.append(ChooseOp(), self.token, self.endtoken)
+            self.args[0].compile(scope, code, stmt)
+            code.append(ChooseOp(), self.token, self.endtoken, stmt=stmt)
         else:
             for i in range(n):
-                self.args[i].compile(scope, code)
-            code.append(NaryOp(self.op, n), self.token, self.endtoken)
+                self.args[i].compile(scope, code, stmt)
+            code.append(NaryOp(self.op, n), self.token, self.endtoken, stmt=stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_nary(self, *args, **kwargs)
@@ -529,26 +545,26 @@ class CmpAST(AST):
     def isConstant(self, scope):
         return all(x.isConstant(scope) for x in self.args)
 
-    def gencode(self, scope, code):
+    def gencode(self, scope, code, stmt):
         n = len(self.args)
-        self.args[0].compile(scope, code)
+        self.args[0].compile(scope, code, stmt)
         (lexeme, file, line, column) = self.ops[0]
         T = ("__cmp__" + str(len(code.labeled_ops)), file, line, column)
         endlabel = LabelValue(None, "cmp$%d"%len(code.labeled_ops))
         for i in range(1, n - 1):
-            self.args[i].compile(scope, code)
-            code.append(DupOp(), self.token, self.endtoken)
-            code.append(StoreVarOp(T), self.token, self.endtoken)
-            code.append(NaryOp(self.ops[i - 1], 2), self.token, self.endtoken)
-            code.append(DupOp(), self.token, self.endtoken)
-            code.append(JumpCondOp(False, endlabel), self.token, self.endtoken)
-            code.append(PopOp(), self.token, self.endtoken)
-            code.append(LoadVarOp(T), self.token, self.endtoken)
-        self.args[n - 1].compile(scope, code)
-        code.append(NaryOp(self.ops[n - 2], 2), self.token, self.endtoken)
+            self.args[i].compile(scope, code, stmt)
+            code.append(DupOp(), self.token, self.endtoken, stmt=stmt)
+            code.append(StoreVarOp(T), self.token, self.endtoken, stmt=stmt)
+            code.append(NaryOp(self.ops[i - 1], 2), self.token, self.endtoken, stmt=stmt)
+            code.append(DupOp(), self.token, self.endtoken, stmt=stmt)
+            code.append(JumpCondOp(False, endlabel), self.token, self.endtoken, stmt=stmt)
+            code.append(PopOp(), self.token, self.endtoken, stmt=stmt)
+            code.append(LoadVarOp(T), self.token, self.endtoken, stmt=stmt)
+        self.args[n - 1].compile(scope, code, stmt)
+        code.append(NaryOp(self.ops[n - 2], 2), self.token, self.endtoken, stmt=stmt)
         code.nextLabel(endlabel)
         if n > 2:
-            code.append(DelVarOp(T), self.token, self.endtoken)     # TODO: is this necessary???
+            code.append(DelVarOp(T), self.token, self.endtoken, stmt=stmt)     # TODO: is this necessary???
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_cmp(self, *args, **kwargs)
@@ -563,63 +579,63 @@ class ApplyAST(AST):
     def __repr__(self):
         return "ApplyAST(" + str(self.method) + ", " + str(self.arg) + ")"
 
-    def varCompile(self, scope, code):
+    def varCompile(self, scope, code, stmt):
         if isinstance(self.method, NameAST):
             (t, v) = scope.lookup(self.method.name)
             if t == "global":
-                self.method.ph1(scope, code)
-                self.arg.compile(scope, code)
-                code.append(AddressOp(), self.token, self.endtoken)
+                self.method.ph1(scope, code, stmt)
+                self.arg.compile(scope, code, stmt)
+                code.append(AddressOp(), self.token, self.endtoken, stmt=stmt)
                 return True
             else:
                 return False
 
         if isinstance(self.method, PointerAST):
-            self.method.expr.compile(scope, code)
-            self.arg.compile(scope, code)
-            code.append(AddressOp(), self.token, self.endtoken)
+            self.method.expr.compile(scope, code, stmt)
+            self.arg.compile(scope, code, stmt)
+            code.append(AddressOp(), self.token, self.endtoken, stmt=stmt)
             return True
 
         if isinstance(self.method, ApplyAST):
-            if self.method.varCompile(scope, code):
-                self.arg.compile(scope, code)
-                code.append(AddressOp(), self.token, self.endtoken)
+            if self.method.varCompile(scope, code, stmt):
+                self.arg.compile(scope, code, stmt)
+                code.append(AddressOp(), self.token, self.endtoken, stmt=stmt)
                 return True
             else:
                 return False
 
         return False
 
-    def compile(self, scope, code):
+    def compile(self, scope, code, stmt):
         if isinstance(self.method, NameAST):
             (t, v) = scope.lookup(self.method.name)
             # See if it's of the form "module.constant":
             if t == "module" and isinstance(self.arg, ConstantAST) and isinstance(self.arg.const[0], str):
                 (t2, v2) = v.lookup(self.arg.const)
                 if t2 == "constant":
-                    code.append(PushOp(v2), self.token, self.endtoken)
+                    code.append(PushOp(v2), self.token, self.endtoken, stmt=stmt)
                     return
             # Decrease chances of data race
             if t == "global":
-                self.method.ph1(scope, code)
-                self.arg.compile(scope, code)
-                code.append(AddressOp(), self.token, self.endtoken)
-                code.append(LoadOp(None, self.token, None), self.token, self.endtoken)
+                self.method.ph1(scope, code, stmt)
+                self.arg.compile(scope, code, stmt)
+                code.append(AddressOp(), self.token, self.endtoken, stmt=stmt)
+                code.append(LoadOp(None, self.token, None), self.token, self.endtoken, stmt=stmt)
                 return
 
         # Decrease chances of data race
-        if self.varCompile(scope, code):
-            code.append(LoadOp(None, self.token, None), self.token, self.endtoken)
+        if self.varCompile(scope, code, stmt):
+            code.append(LoadOp(None, self.token, None), self.token, self.endtoken, stmt=stmt)
             return
 
-        self.method.compile(scope, code)
-        self.arg.compile(scope, code)
-        code.append(ApplyOp(self.token), self.token, self.endtoken)
+        self.method.compile(scope, code, stmt)
+        self.arg.compile(scope, code, stmt)
+        code.append(ApplyOp(self.token), self.token, self.endtoken, stmt=stmt)
 
     def localVar(self, scope):
         return self.method.localVar(scope)
 
-    def ph1(self, scope, code):
+    def ph1(self, scope, code, stmt):
         # See if it's of the form "module.constant":
         if isinstance(self.method, NameAST):
             (t, v) = scope.lookup(self.method.name)
@@ -631,20 +647,20 @@ class ApplyAST(AST):
                         message="Cannot assign to constant %s %s" % (self.method.name, self.arg.const),
                         lexeme=lexeme,
                         filename=file,
-                        line=line,
+                        stmt=stmt,
                         column=column
                     )
-        self.method.ph1(scope, code)
-        self.arg.compile(scope, code)
-        code.append(AddressOp(), self.token, self.endtoken)
+        self.method.ph1(scope, code, stmt)
+        self.arg.compile(scope, code, stmt)
+        code.append(AddressOp(), self.token, self.endtoken, stmt=stmt)
 
-    def ph2(self, scope, code, skip, start, stop):
+    def ph2(self, scope, code, skip, start, stop, stmt):
         if skip > 0:
-            code.append(MoveOp(skip + 2), self.token, self.endtoken)
-            code.append(MoveOp(2), self.token, self.endtoken)
+            code.append(MoveOp(skip + 2), self.token, self.endtoken, stmt=stmt)
+            code.append(MoveOp(2), self.token, self.endtoken, stmt=stmt)
         lvar = self.method.localVar(scope)
         st = StoreOp(None, self.token, None) if lvar == None else StoreVarOp(None, lvar)
-        code.append(st, start, stop)
+        code.append(st, start, stop, stmt=stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_apply(self, *args, **kwargs)
@@ -658,21 +674,21 @@ class PointerAST(AST):
     def __repr__(self):
         return "PointerAST(" + str(self.expr) + ")"
 
-    def compile(self, scope, code):
-        self.expr.compile(scope, code)
-        code.append(LoadOp(None, self.token, None), self.token, self.endtoken)
+    def compile(self, scope, code, stmt):
+        self.expr.compile(scope, code, stmt)
+        code.append(LoadOp(None, self.token, None), self.token, self.endtoken, stmt=stmt)
 
     def localVar(self, scope):
         return None
 
-    def ph1(self, scope, code):
-        self.expr.compile(scope, code)
+    def ph1(self, scope, code, stmt):
+        self.expr.compile(scope, code, stmt)
 
-    def ph2(self, scope, code, skip, start, stop):
+    def ph2(self, scope, code, skip, start, stop, stmt):
         if skip > 0:
-            code.append(MoveOp(skip + 2), self.token, self.endtoken)
-            code.append(MoveOp(2), self.token, self.endtoken)
-        code.append(StoreOp(None, self.token, None), start, stop)
+            code.append(MoveOp(skip + 2), self.token, self.endtoken, stmt=stmt)
+            code.append(MoveOp(2), self.token, self.endtoken, stmt=stmt)
+        code.append(StoreOp(None, self.token, None), start, stop, stmt=stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_pointer(self, *args, **kwargs)
@@ -688,22 +704,23 @@ class AssignmentAST(AST):
         return "Assignment(" + str(self.lhslist) + ", " + str(self.rv) + \
                ", " + str(self.ops) + ")"
 
-    def compile(self, scope, code):
+    def compile(self, scope, code, stmt):
+        stmt = self.stmt()
         if self.atomically:
-            code.append(AtomicIncOp(True), self.atomically, self.atomically)
+            code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
 
         # Compute the addresses of lhs expressions
         for lvs in self.lhslist:
             # handled separately for better assembly code readability
             if not isinstance(lvs, NameAST):
-                lvs.ph1(scope, code)
+                lvs.ph1(scope, code, stmt)
 
         # Compute the right-hand side
-        self.rv.compile(scope, code)
+        self.rv.compile(scope, code, stmt)
 
         # Make enough copies for each left-hand side
         for i in range(len(self.lhslist) - 1):
-            code.append(DupOp(), self.ops[i], self.ops[i])
+            code.append(DupOp(), self.ops[i], self.ops[i], stmt=stmt)
 
         # Now assign to the left-hand side in reverse order
         skip = len(self.lhslist)
@@ -715,7 +732,7 @@ class AssignmentAST(AST):
                     raise HarmonyCompilerError(
                         lexeme=lexeme,
                         filename=file,
-                        line=line,
+                        stmt=stmt,
                         column=column,
                         message='Cannot assign to module %s' % str(lvs.name),
                     )
@@ -723,21 +740,21 @@ class AssignmentAST(AST):
                     raise HarmonyCompilerError(
                         lexeme=lexeme,
                         filename=file,
-                        line=line,
+                        stmt=stmt,
                         column=column,
                         message='Cannot assign to constant %s' % str(lvs.name),
                     )
                 assert t in {"local-var", "global"}, (t, lvs.name)
                 if v[0] == "_":
-                    code.append(PopOp(), lvs.token, self.ops[skip])
+                    code.append(PopOp(), lvs.token, self.ops[skip], stmt=stmt)
                 else:
                     st = StoreOp(lvs.name, lvs.name, scope.prefix) if t == "global" else StoreVarOp(lvs.name)
-                    code.append(st, lvs.token, self.ops[skip])
+                    code.append(st, lvs.token, self.ops[skip], stmt=stmt)
             else:
-                lvs.ph2(scope, code, skip, lvs.token, self.ops[skip])
+                lvs.ph2(scope, code, skip, lvs.token, self.ops[skip], stmt)
 
         if self.atomically:
-            code.append(AtomicDecOp(), self.atomically, self.endtoken)
+            code.append(AtomicDecOp(), self.atomically, self.endtoken, stmt=stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_assignment(self, *args, **kwargs)
@@ -754,9 +771,10 @@ class AuxAssignmentAST(AST):
         return "AuxAssignment(" + str(self.lhs) + ", " + str(self.rv) + \
                ", " + str(self.op) + ")"
 
-    def compile(self, scope, code):
+    def compile(self, scope, code, stmt):
+        stmt = self.stmt()
         if self.atomically:
-            code.append(AtomicIncOp(True), self.atomically, self.atomically)
+            code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
         lv = self.lhs
         lvar = lv.localVar(scope)
         if isinstance(lv, NameAST):
@@ -767,7 +785,7 @@ class AuxAssignmentAST(AST):
                 raise HarmonyCompilerError(
                     filename=file,
                     lexeme=lexeme,
-                    line=line,
+                    stmt=stmt,
                     column=column,
                     message='Cannot operate on module %s' % str(lv.name),
                 )
@@ -775,27 +793,27 @@ class AuxAssignmentAST(AST):
                 raise HarmonyCompilerError(
                     filename=file,
                     lexeme=lexeme,
-                    line=line,
+                    stmt=stmt,
                     column=column,
                     message='Cannot operate on constant %s' % str(lv.name),
                 )
             assert t in {"local-var", "global"}
             ld = LoadOp(lv.name, lv.name, scope.prefix) if t == "global" else LoadVarOp(lv.name)
         else:
-            lv.ph1(scope, code)
-            code.append(DupOp(), self.token, self.endtoken)  # duplicate the addres
+            lv.ph1(scope, code, stmt)
+            code.append(DupOp(), self.token, self.endtoken, stmt=stmt)  # duplicate the addres
             ld = LoadOp(None, self.op, None) if lvar == None else LoadVarOp(None, lvar)
-        code.append(ld, self.token, self.endtoken)  # load the valu
-        self.rv.compile(scope, code)  # compile the rhs
+        code.append(ld, self.token, self.endtoken, stmt=stmt)  # load the valu
+        self.rv.compile(scope, code, stmt)  # compile the rhs
         (lexeme, file, line, column) = self.op
-        code.append(NaryOp((lexeme[:-1], file, line, column), 2), self.token, self.endtoken)
+        code.append(NaryOp((lexeme[:-1], file, line, column), 2), self.token, self.endtoken, stmt=stmt)
         if isinstance(lv, NameAST):
             st = StoreOp(lv.name, lv.name, scope.prefix) if lvar == None else StoreVarOp(lv.name, lvar)
         else:
             st = StoreOp(None, self.op, None) if lvar == None else StoreVarOp(None, lvar)
-        code.append(st, self.token, self.op)
+        code.append(st, self.token, self.op, stmt=stmt)
         if self.atomically:
-            code.append(AtomicDecOp(), self.atomically, self.endtoken)
+            code.append(AtomicDecOp(), self.atomically, self.endtoken, stmt=stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_assignment(self, *args, **kwargs)
@@ -808,18 +826,19 @@ class DelAST(AST):
     def __repr__(self):
         return "Del(" + str(self.lv) + ")"
 
-    def compile(self, scope, code):
+    def compile(self, scope, code, stmt):
+        stmt = self.stmt()
         if self.atomically:
-            code.append(AtomicIncOp(True), self.atomically, self.atomically)
+            code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
         lvar = self.lv.localVar(scope)
         if isinstance(self.lv, NameAST):
             op = DelOp(self.lv.name, scope.prefix) if lvar == None else DelVarOp(self.lv.name)
         else:
-            self.lv.ph1(scope, code)
+            self.lv.ph1(scope, code, stmt)
             op = DelOp(None, None) if lvar == None else DelVarOp(None, lvar)
-        code.append(op, self.token, self.endtoken)
+        code.append(op, self.token, self.endtoken, stmt=stmt)
         if self.atomically:
-            code.append(AtomicDecOp(), self.atomically, self.endtoken)
+            code.append(AtomicDecOp(), self.atomically, self.endtoken, stmt=stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_del(self, *args, **kwargs)
@@ -833,9 +852,9 @@ class SetIntLevelAST(AST):
     def __repr__(self):
         return "SetIntLevel " + str(self.arg)
 
-    def compile(self, scope, code):
-        self.arg.compile(scope, code)
-        code.append(SetIntLevelOp(), self.token, self.endtoken)
+    def compile(self, scope, code, stmt):
+        self.arg.compile(scope, code, stmt)
+        code.append(SetIntLevelOp(), self.token, self.endtoken, stmt=stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_set_int_level(self, *args, **kwargs)
@@ -849,10 +868,10 @@ class SaveAST(AST):
     def __repr__(self):
         return "Save " + str(self.expr)
 
-    def compile(self, scope, code):
-        self.expr.compile(scope, code)
-        code.append(SaveOp(), self.token, self.endtoken)
-        code.append(ContinueOp(), self.token, self.endtoken)
+    def compile(self, scope, code, stmt):
+        self.expr.compile(scope, code, stmt)
+        code.append(SaveOp(), self.token, self.endtoken, stmt=stmt)
+        code.append(ContinueOp(), self.token, self.endtoken, stmt=stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_save(self, *args, **kwargs)
@@ -866,11 +885,11 @@ class StopAST(AST):
     def __repr__(self):
         return "Stop " + str(self.expr)
 
-    def compile(self, scope, code):
-        # self.expr.ph1(scope, code)
-        self.expr.compile(scope, code)
-        code.append(StopOp(None), self.token, self.endtoken)
-        code.append(ContinueOp(), self.token, self.endtoken)
+    def compile(self, scope, code, stmt):
+        # self.expr.ph1(scope, code, stmt)
+        self.expr.compile(scope, code, stmt)
+        code.append(StopOp(None), self.token, self.endtoken, stmt=stmt)
+        code.append(ContinueOp(), self.token, self.endtoken, stmt=stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_stop(self, *args, **kwargs)
@@ -895,7 +914,7 @@ class AddressAST(AST):
                 raise HarmonyCompilerError(
                     filename=file,
                     lexeme=lexeme,
-                    line=line,
+                    stmt=stmt,
                     column=column,
                     message="Can't take address of local variable %s" % str(lv),
                 )
@@ -903,7 +922,7 @@ class AddressAST(AST):
                 raise HarmonyCompilerError(
                     filename=file,
                     lexeme=lexeme,
-                    line=line,
+                    stmt=stmt,
                     column=column,
                     message="Can't take address of constant %s" % str(lv),
                 )
@@ -911,7 +930,7 @@ class AddressAST(AST):
                 raise HarmonyCompilerError(
                     filename=file,
                     lexeme=lexeme,
-                    line=line,
+                    stmt=stmt,
                     column=column,
                     message="Can't take address of imported %s" % str(lv),
                 )
@@ -924,14 +943,14 @@ class AddressAST(AST):
             raise HarmonyCompilerError(
                 filename=file,
                 lexeme=lexeme,
-                line=line,
+                stmt=stmt,
                 column=column,
                 message="Can't take address of %s" % str(lv),
             )
 
-    def gencode(self, scope, code):
+    def gencode(self, scope, code, stmt):
         self.check(self.lv, scope)
-        self.lv.ph1(scope, code)
+        self.lv.ph1(scope, code, stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_address(self, *args, **kwargs)
@@ -944,7 +963,7 @@ class PassAST(AST):
     def __repr__(self):
         return "Pass"
 
-    def compile(self, scope, code):
+    def compile(self, scope, code, stmt):
         pass
 
     def accept_visitor(self, visitor, *args, **kwargs):
@@ -960,17 +979,18 @@ class BlockAST(AST):
     def __repr__(self):
         return "Block(" + str(self.b) + ")"
 
-    def compile(self, scope, code):
+    def compile(self, scope, code, stmt):
+        stmt = self.stmt()
         ns = Scope(scope)
         for s in self.b:
             for ((lexeme, file, line, column), lb) in s.getLabels():
                 ns.names[lexeme] = ("constant", (lb, file, line, column))
         if self.atomically:
-            code.append(AtomicIncOp(True), self.atomically, self.atomically)
+            code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
         for s in self.b:
-            s.compile(ns, code)
+            s.compile(ns, code, stmt)
         if self.atomically:
-            code.append(AtomicDecOp(), self.atomically, self.endtoken)
+            code.append(AtomicDecOp(), self.atomically, self.endtoken, stmt=stmt)
         if scope.inherit:
             for name, x in ns.names.items():
                 scope.names[name] = x
@@ -996,42 +1016,44 @@ class IfAST(AST):
     def __repr__(self):
         return "If(" + str(self.alts) + ", " + str(self.stat) + ")"
 
-    def compile(self, scope, code):
+    def compile(self, scope, code, stmt):
+        stmt = self.stmt()
         global labelcnt
         label = labelcnt
         labelcnt += 1
         sublabel = 0
         endlabel = LabelValue(None, "$%d_end" % label)
         if self.atomically:
-            code.append(AtomicIncOp(True), self.atomically, self.atomically)
+            code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
         last = len(self.alts) - 1
         for i, alt in enumerate(self.alts):
-            (rest, stat, starttoken, endtoken) = alt
+            (rest, stat, starttoken, endtoken, colontoken) = alt
+            stmt = self.range(starttoken, colontoken)
             code.location(starttoken[1], starttoken[2])
             negate = isinstance(rest, NaryAST) and rest.op[0] == "not"
             cond = rest.args[0] if negate else rest
-            cond.compile(scope, code)
+            cond.compile(scope, code, stmt)
             iflabel = LabelValue(None, "$%d_%d" % (label, sublabel))
-            code.append(JumpCondOp(negate, iflabel), starttoken, starttoken)
+            code.append(JumpCondOp(negate, iflabel), starttoken, starttoken, stmt=stmt)
             sublabel += 1
-            stat.compile(scope, code)
+            stat.compile(scope, code, stmt)
             if self.stat != None or i != last:
-                code.append(JumpOp(endlabel), starttoken, endtoken)
+                code.append(JumpOp(endlabel), starttoken, endtoken, stmt=stmt)
             code.nextLabel(iflabel)
         if self.stat != None:
-            self.stat.compile(scope, code)
+            self.stat.compile(scope, code, stmt)
         code.nextLabel(endlabel)
         if self.atomically:
-            code.append(AtomicDecOp(), self.atomically, self.endtoken)
+            code.append(AtomicDecOp(), self.atomically, self.endtoken, stmt=stmt)
 
     def getLabels(self):
-        labels = [x.getLabels() for (c, x, _, _) in self.alts]
+        labels = [x.getLabels() for (c, x, _, _, _) in self.alts]
         if self.stat != None:
             labels += [self.stat.getLabels()]
         return functools.reduce(lambda x, y: x | y, labels)
 
     def getImports(self):
-        imports = [x.getImports() for (c, x, _, _) in self.alts]
+        imports = [x.getImports() for (c, x, _, _, _) in self.alts]
         if self.stat != None:
             imports += [self.stat.getImports()]
         return functools.reduce(lambda x, y: x + y, imports)
@@ -1049,9 +1071,10 @@ class WhileAST(AST):
     def __repr__(self):
         return "While(" + str(self.cond) + ", " + str(self.stat) + ")"
 
-    def compile(self, scope, code):
+    def compile(self, scope, code, stmt):
+        stmt = self.stmt()
         if self.atomically:
-            code.append(AtomicIncOp(True), self.atomically, self.atomically)
+            code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
         negate = isinstance(self.cond, NaryAST) and self.cond.op[0] == "not"
         cond = self.cond.args[0] if negate else self.cond
         global labelcnt
@@ -1059,13 +1082,13 @@ class WhileAST(AST):
         endlabel = LabelValue(None, "$%d_end" % labelcnt)
         labelcnt += 1
         code.nextLabel(startlabel)
-        cond.compile(scope, code)
-        code.append(JumpCondOp(negate, endlabel), self.token, self.token)
-        self.stat.compile(scope, code)
-        code.append(JumpOp(startlabel), self.endtoken, self.token)
+        cond.compile(scope, code, stmt)
+        code.append(JumpCondOp(negate, endlabel), self.token, self.token, stmt=stmt)
+        self.stat.compile(scope, code, stmt)
+        code.append(JumpOp(startlabel), self.endtoken, self.token, stmt=stmt)
         code.nextLabel(endlabel)
         if self.atomically:
-            code.append(AtomicDecOp(), self.atomically, self.endtoken)
+            code.append(AtomicDecOp(), self.atomically, self.endtoken, stmt=stmt)
 
     def getLabels(self):
         return self.stat.getLabels()
@@ -1085,21 +1108,22 @@ class InvariantAST(AST):
     def __repr__(self):
         return "Invariant(" + str(self.cond) + ")"
 
-    def compile(self, scope, code):
+    def compile(self, scope, code, stmt):
+        stmt = self.stmt()
         global labelcnt
         label = LabelValue(None, "$%d" % labelcnt)
         labelcnt += 1
-        code.append(InvariantOp(label, self.token), self.token, self.endtoken)
-        self.cond.compile(scope, code)
+        code.append(InvariantOp(label, self.token), self.token, self.endtoken, stmt=stmt)
+        self.cond.compile(scope, code, stmt)
 
         # TODO. The following is a workaround for a bug.
         # When you do "invariant 0 <= count <= 1", it inserts
         # DelVar operations before the ReturnOp, and the InvariantOp
         # operation then jumps to the wrong instruction
-        code.append(ContinueOp(), self.token, self.endtoken)
+        code.append(ContinueOp(), self.token, self.endtoken, stmt=stmt)
 
         code.nextLabel(label)
-        code.append(ReturnOp(), self.token, self.endtoken)
+        code.append(ReturnOp(), self.token, self.endtoken, stmt=stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_invariant(self, *args, **kwargs)
@@ -1114,20 +1138,21 @@ class LetAST(AST):
     def __repr__(self):
         return "Let(" + str(self.vars) + ", " + str(self.stat) + ")"
 
-    def compile(self, scope, code):
+    def compile(self, scope, code, stmt):
+        stmt = self.stmt()
         if self.atomically:
-            code.append(AtomicIncOp(True), self.atomically, self.atomically)
+            code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
         ns = Scope(scope)
         for (var, expr, token, op) in self.vars:
-            expr.compile(ns, code)
-            code.append(StoreVarOp(var), token, op)
+            expr.compile(ns, code, stmt)
+            code.append(StoreVarOp(var), token, op, stmt=stmt)
             self.define(ns, var)
 
         # Run the body
-        self.stat.compile(ns, code)
+        self.stat.compile(ns, code, stmt)
 
         if self.atomically:
-            code.append(AtomicDecOp(), self.atomically, self.endtoken)
+            code.append(AtomicDecOp(), self.atomically, self.endtoken, stmt=stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_let(self, *args, **kwargs)
@@ -1141,15 +1166,16 @@ class VarAST(AST):
     def __repr__(self):
         return "Var(" + str(self.vars) + ")"
 
-    def compile(self, scope, code):
+    def compile(self, scope, code, stmt):
+        stmt = self.stmt()
         if self.atomically:
-            code.append(AtomicIncOp(True), self.atomically, self.atomically)
+            code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
         for (var, expr) in self.vars:
-            expr.compile(scope, code)
-            code.append(StoreVarOp(var), self.token, self.endtoken)
+            expr.compile(scope, code, stmt)
+            code.append(StoreVarOp(var), self.token, self.endtoken, stmt=stmt)
             self.assign(scope, var)
         if self.atomically:
-            code.append(AtomicDecOp(), self.atomically, self.endtoken)
+            code.append(AtomicDecOp(), self.atomically, self.endtoken, stmt=stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_var(self, *args, **kwargs)
@@ -1162,13 +1188,14 @@ class ForAST(ComprehensionAST):
     def __repr__(self):
         return "For(" + str(self.iter) + ", " + str(self.value) + ")"
 
-    def compile(self, scope, code):
+    def compile(self, scope, code, stmt):
+        stmt = self.stmt()
         if self.atomically:
-            code.append(AtomicIncOp(True), self.atomically, self.atomically)
+            code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
         ns = Scope(scope)
-        self.comprehension(ns, code, "for")
+        self.comprehension(ns, code, "for", stmt)
         if self.atomically:
-            code.append(AtomicDecOp(), self.atomically, self.endtoken)
+            code.append(AtomicDecOp(), self.atomically, self.endtoken, stmt=stmt)
 
     def getLabels(self):
         return self.value.getLabels()
@@ -1193,7 +1220,7 @@ class LetWhenAST(AST):
     def __repr__(self):
         return "LetWhen(" + str(self.vars_and_conds) + ", " + str(self.stat) + ")"
 
-    def compile(self, scope, code):
+    def compile(self, scope, code, stmt):
         """
         start:
             atomic inc
@@ -1215,6 +1242,7 @@ class LetWhenAST(AST):
             [[stmt]]
             atomic dec
         """
+        stmt = self.stmt()
 
         # declare labels
         global labelcnt
@@ -1228,59 +1256,59 @@ class LetWhenAST(AST):
         # start:
         code.nextLabel(label_start)
         if self.atomically:
-            code.append(AtomicIncOp(True), self.atomically, self.atomically)
-            code.append(ReadonlyIncOp(), self.atomically, self.atomically)
+            code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
+            code.append(ReadonlyIncOp(), self.atomically, self.atomically, stmt=stmt)
         ns = Scope(scope)
         for var_or_cond in self.vars_and_conds:
             if var_or_cond[0] == 'var':
                 var, expr = var_or_cond[1:]
-                expr.compile(ns, code)
-                code.append(StoreVarOp(var), self.token, self.endtoken)
+                expr.compile(ns, code, stmt)
+                code.append(StoreVarOp(var), self.token, self.endtoken, stmt=stmt)
                 self.define(ns, var)
             elif var_or_cond[0] == 'cond':
                 cond = var_or_cond[1]
-                cond.compile(ns, code)
-                code.append(JumpCondOp(False, label_condfailed), self.token, self.endtoken)
+                cond.compile(ns, code, stmt)
+                code.append(JumpCondOp(False, label_condfailed), self.token, self.endtoken, stmt=stmt)
             else:
                 assert var_or_cond[0] == 'exists'
                 (_, bv, expr) = var_or_cond
                 (_, file, line, column) = self.token
                 self.define(ns, bv)
-                expr.compile(ns, code)
-                code.append(DupOp(), self.token, self.endtoken)
-                code.append(PushOp((SetValue(set()), file, line, column)), self.token, self.endtoken)
-                code.append(NaryOp(("==", file, line, column), 2), self.token, self.endtoken)
+                expr.compile(ns, code, stmt)
+                code.append(DupOp(), self.token, self.endtoken, stmt=stmt)
+                code.append(PushOp((SetValue(set()), file, line, column)), self.token, self.endtoken, stmt=stmt)
+                code.append(NaryOp(("==", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
                 label_select = LabelValue(None, "LetWhenAST_select$%d" % labelcnt)
                 labelcnt += 1
-                code.append(JumpCondOp(False, label_select), self.token, self.endtoken)
+                code.append(JumpCondOp(False, label_select), self.token, self.endtoken, stmt=stmt)
 
                 # set is empty.  Try again
-                code.append(PopOp(), self.token, self.endtoken)
+                code.append(PopOp(), self.token, self.endtoken, stmt=stmt)
                 if self.atomically:
-                    code.append(ReadonlyDecOp(), self.token, self.endtoken)
-                    code.append(AtomicDecOp(), self.token, self.endtoken)
-                code.append(JumpOp(label_start), self.endtoken, self.endtoken)
+                    code.append(ReadonlyDecOp(), self.token, self.endtoken, stmt=stmt)
+                    code.append(AtomicDecOp(), self.token, self.endtoken, stmt=stmt)
+                code.append(JumpOp(label_start), self.endtoken, self.endtoken, stmt=stmt)
 
                 # select:
                 code.nextLabel(label_select)
-                code.append(ChooseOp(), self.token, self.endtoken)
-                code.append(StoreVarOp(bv), self.token, self.endtoken)
-        code.append(JumpOp(label_body), self.endtoken, self.endtoken)
+                code.append(ChooseOp(), self.token, self.endtoken, stmt=stmt)
+                code.append(StoreVarOp(bv), self.token, self.endtoken, stmt=stmt)
+        code.append(JumpOp(label_body), self.endtoken, self.endtoken, stmt=stmt)
 
         # condfailed:
         code.nextLabel(label_condfailed)
         if self.atomically:
-            code.append(ReadonlyDecOp(), self.token, self.endtoken)
-            code.append(AtomicDecOp(), self.token, self.endtoken)
-        code.append(JumpOp(label_start), self.endtoken, self.endtoken)
+            code.append(ReadonlyDecOp(), self.token, self.endtoken, stmt=stmt)
+            code.append(AtomicDecOp(), self.token, self.endtoken, stmt=stmt)
+        code.append(JumpOp(label_start), self.endtoken, self.endtoken, stmt=stmt)
 
         # body:
         code.nextLabel(label_body)
         if self.atomically:
-            code.append(ReadonlyDecOp(), self.atomically, self.endtoken)
-        self.stat.compile(ns, code)
+            code.append(ReadonlyDecOp(), self.atomically, self.endtoken, stmt=stmt)
+        self.stat.compile(ns, code, stmt)
         if self.atomically:
-            code.append(AtomicDecOp(), self.atomically, self.endtoken)
+            code.append(AtomicDecOp(), self.atomically, self.endtoken, stmt=stmt)
 
     def getLabels(self):
         return self.stat.getLabels()
@@ -1300,10 +1328,11 @@ class AtomicAST(AST):
     def __repr__(self):
         return "Atomic(" + str(self.stat) + ")"
 
-    def compile(self, scope, code):
-        code.append(AtomicIncOp(True), self.atomically, self.atomically)
-        self.stat.compile(scope, code)
-        code.append(AtomicDecOp(), self.atomically, self.endtoken)
+    def compile(self, scope, code, stmt):
+        stmt = self.stmt()
+        code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
+        self.stat.compile(scope, code, stmt)
+        code.append(AtomicDecOp(), self.atomically, self.endtoken, stmt=stmt)
 
     # TODO.  Is it ok to define labels within an atomic block?
     def getLabels(self):
@@ -1325,15 +1354,16 @@ class AssertAST(AST):
     def __repr__(self):
         return "Assert(" + str(self.token) + ", " + str(self.cond) + ", " + str(self.expr) + ")"
 
-    def compile(self, scope, code):
-        code.append(ReadonlyIncOp(), self.token, self.endtoken)
-        code.append(AtomicIncOp(True), self.token, self.endtoken)
-        self.cond.compile(scope, code)
+    def compile(self, scope, code, stmt):
+        stmt = self.stmt()
+        code.append(ReadonlyIncOp(), self.token, self.endtoken, stmt=stmt)
+        code.append(AtomicIncOp(True), self.token, self.endtoken, stmt=stmt)
+        self.cond.compile(scope, code, stmt)
         if self.expr != None:
-            self.expr.compile(scope, code)
-        code.append(AssertOp(self.token, self.expr != None), self.token, self.token)
-        code.append(AtomicDecOp(), self.token, self.endtoken)
-        code.append(ReadonlyDecOp(), self.token, self.endtoken)
+            self.expr.compile(scope, code, stmt)
+        code.append(AssertOp(self.token, self.expr != None), self.token, self.token, stmt=stmt)
+        code.append(AtomicDecOp(), self.token, self.endtoken, stmt=stmt)
+        code.append(ReadonlyDecOp(), self.token, self.endtoken, stmt=stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_assert(self, *args, **kwargs)
@@ -1347,13 +1377,14 @@ class PrintAST(AST):
     def __repr__(self):
         return "Print(" + str(self.token) + ", " + str(self.expr) + ")"
 
-    def compile(self, scope, code):
+    def compile(self, scope, code, stmt):
+        stmt = self.stmt()
         if self.atomically:
-            code.append(AtomicIncOp(True), self.atomically, self.atomically)
-        self.expr.compile(scope, code)
-        code.append(PrintOp(self.token), self.token, self.endtoken)
+            code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
+        self.expr.compile(scope, code, stmt)
+        code.append(PrintOp(self.token), self.token, self.endtoken, stmt=stmt)
         if self.atomically:
-            code.append(AtomicDecOp(), self.atomically, self.endtoken)
+            code.append(AtomicDecOp(), self.atomically, self.endtoken, stmt=stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_print(self, *args, **kwargs)
@@ -1372,14 +1403,15 @@ class MethodAST(AST):
     def __repr__(self):
         return "Method(" + str(self.name) + ", " + str(self.args) + ", " + str(self.stat) + ")"
 
-    def compile(self, scope, code):
+    def compile(self, scope, code, stmt):
+        stmt = self.range(self.token, self.colon)
         global labelcnt
         endlabel = LabelValue(None, "$%d" % labelcnt)
         labelcnt += 1
         (lexeme, file, line, column) = self.name
-        code.append(JumpOp(endlabel, reason="jump over method definition"), self.token, self.token)
+        code.append(JumpOp(endlabel, reason="jump over method definition"), self.token, self.token, stmt=stmt)
         code.nextLabel(self.label)
-        code.append(FrameOp(self.name, self.args), self.token, self.colon)
+        code.append(FrameOp(self.name, self.args), self.token, self.colon, stmt=stmt)
         # scope.names[lexeme] = ("constant", (self.label, file, line, column))
 
         ns = Scope(scope)
@@ -1388,11 +1420,11 @@ class MethodAST(AST):
         self.define(ns, self.args)
         ns.names["result"] = ("local-var", ("result", file, line, column))
         if self.atomically:
-            code.append(AtomicIncOp(True), self.atomically, self.atomically)
-        self.stat.compile(ns, code)
+            code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
+        self.stat.compile(ns, code, stmt)
         if self.atomically:
-            code.append(AtomicDecOp(), self.atomically, self.endtoken)
-        code.append(ReturnOp(), self.token, self.endtoken)
+            code.append(AtomicDecOp(), self.atomically, self.endtoken, stmt=stmt)
+        code.append(ReturnOp(), self.token, self.endtoken, stmt=stmt)
         code.nextLabel(endlabel)
 
         # promote global variables
@@ -1425,9 +1457,9 @@ class LambdaAST(AST):
     def compile_body(self, scope, code):
         startlabel = LabelValue(None, "lambda")
         endlabel = LabelValue(None, "lambda")
-        code.append(JumpOp(endlabel, reason="jump over lambda definition"), self.token, self.token)
+        code.append(JumpOp(endlabel, reason="jump over lambda definition"), self.token, self.token, stmt=stmt)
         code.nextLabel(startlabel)
-        code.append(FrameOp(self.token, self.args), self.token, self.endtoken)
+        code.append(FrameOp(self.token, self.args), self.token, self.endtoken, stmt=stmt)
 
         (lexeme, file, line, column) = self.token
         ns = Scope(scope)
@@ -1435,19 +1467,19 @@ class LambdaAST(AST):
         R = ("result", file, line, column)
         ns.names["result"] = ("local-var", R)
         if self.atomically:
-            code.append(AtomicIncOp(True), self.atomically, self.atomically)
-        self.stat.compile(ns, code)
+            code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
+        self.stat.compile(ns, code, stmt)
         if self.atomically:
-            code.append(AtomicDecOp(), self.atomically, self.endtoken)
-        code.append(StoreVarOp(R), self.token, self.endtoken)
-        code.append(ReturnOp(), self.token, self.endtoken)
+            code.append(AtomicDecOp(), self.atomically, self.endtoken, stmt=stmt)
+        code.append(StoreVarOp(R), self.token, self.endtoken, stmt=stmt)
+        code.append(ReturnOp(), self.token, self.endtoken, stmt=stmt)
         code.nextLabel(endlabel)
         return startlabel
 
-    def compile(self, scope, code):
+    def compile(self, scope, code, stmt):
         startlabel = self.compile_body(scope, code)
         (lexeme, file, line, column) = self.token
-        code.append(PushOp((startlabel, file, line, column)), self.token, self.endtoken)
+        code.append(PushOp((startlabel, file, line, column)), self.token, self.endtoken, stmt=stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_lambda(self, *args, **kwargs)
@@ -1461,14 +1493,15 @@ class CallAST(AST):
     def __repr__(self):
         return "Call(" + str(self.expr) + ")"
 
-    def compile(self, scope, code):
+    def compile(self, scope, code, stmt):
+        stmt = self.stmt()
         if not self.expr.isConstant(scope):
             if self.atomically:
-                code.append(AtomicIncOp(True), self.atomically, self.atomically)
-            self.expr.compile(scope, code)
+                code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
+            self.expr.compile(scope, code, stmt)
             if self.atomically:
-                code.append(AtomicDecOp(), self.atomically, self.endtoken)
-            code.append(PopOp(), self.token, self.endtoken)
+                code.append(AtomicDecOp(), self.atomically, self.endtoken, stmt=stmt)
+            code.append(PopOp(), self.token, self.endtoken, stmt=stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_call(self, *args, **kwargs)
@@ -1486,14 +1519,15 @@ class SpawnAST(AST):
         return "Spawn(" + str(self.method) + ", " + str(self.arg) + ", " + str(self.this) + ", " + str(
             self.eternal) + ")"
 
-    def compile(self, scope, code):
-        self.method.compile(scope, code)
-        self.arg.compile(scope, code)
+    def compile(self, scope, code, stmt):
+        stmt = self.stmt()
+        self.method.compile(scope, code, stmt)
+        self.arg.compile(scope, code, stmt)
         if self.this == None:
-            code.append(PushOp((emptydict, None, None, None)), self.token, self.endtoken)
+            code.append(PushOp((emptydict, None, None, None)), self.token, self.endtoken, stmt=stmt)
         else:
-            self.this.compile(scope, code)
-        code.append(SpawnOp(self.eternal), self.token, self.endtoken)
+            self.this.compile(scope, code, stmt)
+        code.append(SpawnOp(self.eternal), self.token, self.endtoken, stmt=stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_spawn(self, *args, **kwargs)
@@ -1508,11 +1542,12 @@ class TrapAST(AST):
     def __repr__(self):
         return "Trap(" + str(self.method) + ", " + str(self.arg) + ")"
 
-    def compile(self, scope, code):
+    def compile(self, scope, code, stmt):
+        stmt = self.stmt()
         # TODO.  These should be swapped
-        self.arg.compile(scope, code)
-        self.method.compile(scope, code)
-        code.append(TrapOp(), self.token, self.endtoken)
+        self.arg.compile(scope, code, stmt)
+        self.method.compile(scope, code, stmt)
+        code.append(TrapOp(), self.token, self.endtoken, stmt=stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_trap(self, *args, **kwargs)
@@ -1529,14 +1564,15 @@ class GoAST(AST):
 
     # TODO.  Seems like context and argument are not evaluated in left to
     #        right order
-    def compile(self, scope, code):
+    def compile(self, scope, code, stmt):
+        stmt = self.stmt()
         if self.atomically:
-            code.append(AtomicIncOp(True), self.atomically, self.atomically)
-        self.result.compile(scope, code)
-        self.ctx.compile(scope, code)
+            code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
+        self.result.compile(scope, code, stmt)
+        self.ctx.compile(scope, code, stmt)
         if self.atomically:
-            code.append(AtomicDecOp(), self.atomically, self.endtoken)
-        code.append(GoOp(), self.token, self.endtoken)
+            code.append(AtomicDecOp(), self.atomically, self.endtoken, stmt=stmt)
+        code.append(GoOp(), self.token, self.endtoken, stmt=stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_go(self, *args, **kwargs)
@@ -1550,7 +1586,7 @@ class ImportAST(AST):
     def __repr__(self):
         return "Import(" + str(self.modlist) + ")"
 
-    def compile(self, scope, code):
+    def compile(self, scope, code, stmt):
         for module in self.modlist:
             self.doImport(scope, code, module)
 
@@ -1570,7 +1606,7 @@ class FromAST(AST):
     def __repr__(self):
         return "FromImport(" + str(self.module) + ", " + str(self.items) + ")"
 
-    def compile(self, scope, code):
+    def compile(self, scope, code, stmt):
         self.doImport(scope, code, self.module)
         (lexeme, file, line, column) = self.module
         names = imported[lexeme].names
@@ -1586,7 +1622,7 @@ class FromAST(AST):
                         filename=file,
                         lexeme=lexeme,
                         message="%s line %s: can't import %s from %s" % (file, line, lexeme, self.module[0]),
-                        line=line, column=column)
+                        stmt=stmt, column=column)
                 (t, v) = names[lexeme]
                 assert t == "constant", (lexeme, t, v)
                 scope.names[lexeme] = (t, v)
@@ -1608,9 +1644,9 @@ class LocationAST(AST):
     def __repr__(self):
         return "LocationAST(" + str(self.ast) + ")"
 
-    def compile(self, scope, code):
+    def compile(self, scope, code, stmt):
         code.location(self.file, self.line)
-        self.ast.compile(scope, code)
+        self.ast.compile(scope, code, stmt)
 
     def getLabels(self):
         return self.ast.getLabels()
@@ -1632,16 +1668,16 @@ class LabelStatAST(AST):
         return "LabelStatAST(" + str(self.labels) + ", " + str(self.ast) + ")"
 
     # TODO.  Update label stuff
-    def compile(self, scope, code):
+    def compile(self, scope, code, stmt):
         # root = scope
         # while root.parent != None:
         #     root = root.parent
         for ((lexeme, file, line, column), label) in self.labels.items():
             code.nextLabel(label)
             # root.names[lexeme] = ("constant", (label, file, line, column))
-        code.append(AtomicIncOp(False), self.token, self.endtoken)
-        self.ast.compile(scope, code)
-        code.append(AtomicDecOp(), self.token, self.endtoken)
+        code.append(AtomicIncOp(False), self.token, self.endtoken, stmt=stmt)
+        self.ast.compile(scope, code, stmt)
+        code.append(AtomicDecOp(), self.token, self.endtoken, stmt=stmt)
 
     def getLabels(self):
         return set(self.labels.items()) | self.ast.getLabels()
@@ -1661,10 +1697,11 @@ class SequentialAST(AST):
     def __repr__(self):
         return "Sequential(" + str(self.vars) + ")"
 
-    def compile(self, scope, code):
+    def compile(self, scope, code, stmt):
+        stmt = self.stmt()
         for lv in self.vars:
-            lv.ph1(scope, code)
-            code.append(SequentialOp(), self.token, self.endtoken)
+            lv.ph1(scope, code, stmt)
+            code.append(SequentialOp(), self.token, self.endtoken, stmt=stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_sequential(self, *args, **kwargs)
@@ -1679,9 +1716,10 @@ class BuiltinAST(AST):
     def __repr__(self):
         return "Builtin(" + str(self.name) + ", " + self.value + ")"
 
-    def compile(self, scope, code):
-        self.name.compile(scope, code)
-        code.append(BuiltinOp(self.value), self.token, self.endtoken)
+    def compile(self, scope, code, stmt):
+        stmt = self.stmt()
+        self.name.compile(scope, code, stmt)
+        code.append(BuiltinOp(self.value), self.token, self.endtoken, stmt=stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_builtin(self, *args, **kwargs)
@@ -1703,7 +1741,7 @@ class ConstAST(AST):
                 raise HarmonyCompilerError(
                     filename=file,
                     lexeme=lexeme,
-                    line=line,
+                    stmt=stmt,
                     column=column,
                     message="%s: Parse error: already defined" % lexeme
                 )
@@ -1720,13 +1758,14 @@ class ConstAST(AST):
             for i in range(len(const)):
                 self.set(scope, const[i], v.vals[i])
 
-    def compile(self, scope, code):
+    def compile(self, scope, code, stmt):
+        stmt = self.stmt()
         if not self.expr.isConstant(scope):
             lexeme, file, line, column = self.expr.token if isinstance(self.expr, AST) else self.token
             raise HarmonyCompilerError(
                 filename=file,
                 lexeme=lexeme,
-                line=line,
+                stmt=stmt,
                 column=column,
                 message="%s: Parse error: expression not a constant %s" % (self.const, self.expr),
             )
@@ -1735,7 +1774,7 @@ class ConstAST(AST):
             self.set(scope, self.const, PcValue(pc))
         else:
             code2 = Code()
-            self.expr.compile(scope, code2)
+            self.expr.compile(scope, code2, stmt)
             state = State(code2, scope.labels)
             ctx = ContextValue(("__const__", None, None, None), 0, emptytuple, emptydict)
             ctx.atomic = 1
