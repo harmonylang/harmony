@@ -1243,9 +1243,15 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
             if (line, column) < (line1, column1):
                 line = line1
                 column = column1
+            if (line, column) > (line2, column2):
+                line = line2
+                column = column2
             if (endline, endcolumn) > (line2, column2):
                 endline = line2
                 endcolumn = column2
+            if (endline, endcolumn) < (line1, column1):
+                endline = line1
+                endcolumn = column1
             if False:        # TODO: debugging
                 line = line1
                 column = column1
