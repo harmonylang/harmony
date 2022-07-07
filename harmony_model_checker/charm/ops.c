@@ -238,6 +238,7 @@ void interrupt_invoke(struct step *step){
     step->ctx->pc = VALUE_FROM_PC(step->ctx->ctx_trap_pc);
     step->ctx->ctx_trap_pc = 0;
     step->ctx->interruptlevel = true;
+    strbuf_printf(&step->explain, "operation aborted; interrupt invoked");
 }
 
 bool ind_tryload(struct engine *engine, hvalue_t dict, hvalue_t *indices, int n, hvalue_t *result){
