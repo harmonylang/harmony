@@ -1075,6 +1075,11 @@ hvalue_t twostep(
         struct op_info *oi = instrs[pc].oi;
         if (instrs[pc].choose) {
             assert(choice != 0);
+            char *set = value_string(ctx_stack(step.ctx)[step.ctx->sp - 1]);
+            char *sel = value_string(choice);
+            strbuf_printf(&step.explain, "replace top of stack (%s) with choice (%s)", set, sel);
+            free(set);
+            free(sel);
             ctx_stack(step.ctx)[step.ctx->sp - 1] = choice;
             step.ctx->pc++;
         }

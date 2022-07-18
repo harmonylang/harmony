@@ -90,6 +90,11 @@ static inline hvalue_t ctx_pop(struct context *ctx){
     return ctx_stack(ctx)[--ctx->sp];
 }
 
+static inline hvalue_t ctx_peep(struct context *ctx){
+    assert(ctx->sp > 0);
+    return ctx_stack(ctx)[ctx->sp - 1];
+}
+
 static bool is_sequential(hvalue_t seqvars, hvalue_t *indices, unsigned int n){
     assert(VALUE_TYPE(seqvars) == VALUE_SET);
     unsigned int size;
@@ -603,6 +608,11 @@ void op_Print(const void *env, struct state *state, struct step *step, struct gl
         printf("%s\n", s);
         free(s);
     }
+    if (step->keep_callstack) {
+        char *s = value_string(symbol);
+        strbuf_printf(&step->explain, "pop value (%s) and add to print log", s);
+        free(s);
+    }
     if (step->nlog == MAX_PRINT) {
         value_ctx_failure(step->ctx, &step->engine, "Print: too many prints");
         return;
@@ -912,7 +922,7 @@ void op_Bag_Bmin(const void *env, struct state *state, struct step *step, struct
     do_return(state, step, global, result);
 }
 
-// This operation expects on the top of the stack the set to iterate over
+// This operation expects on the top of the stack an enumerable value
 // and an integer index.  If the index is valid (not the size of the
 // collection), then it assigns the given element to key and value and
 // pushes True.  Otherwise it pops the two engine from the stack and
@@ -930,18 +940,44 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
     assert(ctx->sp > 0);
     hvalue_t v = ctx_stack(ctx)[ctx->sp - 1];        // the collection
 
+    if (step->keep_callstack) {
+        char *x = value_string(v);
+        char *y = value_string(index);
+        strbuf_printf(&step->explain, "pop index (%s) and value (%s); ", y, x);
+        free(x);
+        free(y);
+    }
+
     if (VALUE_TYPE(v) == VALUE_SET || VALUE_TYPE(v) == VALUE_LIST) {
         // Get the collection
         unsigned int size;
         hvalue_t *vals = value_get(v, &size);
         size /= sizeof(hvalue_t);
         if (idx >= size) {
+            if (step->keep_callstack) {
+                strbuf_printf(&step->explain, "out of range -> push False");
+            }
             ctx_stack(ctx)[ctx->sp - 1] = VALUE_FALSE;
         }
         else {
+            if (step->keep_callstack) {
+                char *val = value_string(vals[idx]);
+                char *var = vt_string(ec->value);
+                strbuf_printf(&step->explain, "assign value (%s) to %s; ", val, var);
+                free(val);
+                free(var);
+            }
             var_match(step->ctx, ec->value, &step->engine, vals[idx]);
             if (ec->key != NULL) {
+                if (step->keep_callstack) {
+                    char *key = vt_string(ec->key);
+                    strbuf_printf(&step->explain, "assign index (%u) to %s; ", idx, key);
+                    free(key);
+                }
                 var_match(step->ctx, ec->key, &step->engine, index);
+            }
+            if (step->keep_callstack) {
+                strbuf_printf(&step->explain, "push new index (%u) and True", idx + 1);
             }
             ctx_push(step->ctx, VALUE_TO_INT(idx + 1));
             ctx_push(step->ctx, VALUE_TRUE);
@@ -954,15 +990,42 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
         hvalue_t *vals = value_get(v, &size);
         size /= 2 * sizeof(hvalue_t);
         if (idx >= size) {
+            if (step->keep_callstack) {
+                strbuf_printf(&step->explain, "out of range -> push False");
+            }
             ctx_stack(ctx)[ctx->sp - 1] = VALUE_FALSE;
         }
         else {
             if (ec->key == NULL) {
+                if (step->keep_callstack) {
+                    char *val = value_string(vals[2*idx]);
+                    char *var = vt_string(ec->value);
+                    strbuf_printf(&step->explain, "assign value (%s) to %s; ", val, var);
+                    free(val);
+                    free(var);
+                }
                 var_match(step->ctx, ec->value, &step->engine, vals[2*idx]);
             }
             else {
+                if (step->keep_callstack) {
+                    char *val = value_string(vals[2*idx]);
+                    char *var = vt_string(ec->key);
+                    strbuf_printf(&step->explain, "assign key (%s) to %s; ", val, var);
+                    free(val);
+                    free(var);
+                }
                 var_match(step->ctx, ec->key, &step->engine, vals[2*idx]);
+                if (step->keep_callstack) {
+                    char *val = value_string(vals[2*idx + 1]);
+                    char *var = vt_string(ec->value);
+                    strbuf_printf(&step->explain, "assign value (%s) to %s; ", val, var);
+                    free(val);
+                    free(var);
+                }
                 var_match(step->ctx, ec->value, &step->engine, vals[2*idx + 1]);
+            }
+            if (step->keep_callstack) {
+                strbuf_printf(&step->explain, "push new index (%u) and True", idx + 1);
             }
             ctx_push(step->ctx, VALUE_TO_INT(idx + 1));
             ctx_push(step->ctx, VALUE_TRUE);
@@ -974,13 +1037,31 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
         unsigned int size;
         char *chars = value_get(v, &size);
         if (idx >= size) {
+            if (step->keep_callstack) {
+                strbuf_printf(&step->explain, "out of range -> push False");
+            }
             ctx_stack(ctx)[ctx->sp - 1] = VALUE_FALSE;
         }
         else {
             hvalue_t e = value_put_atom(&step->engine, &chars[idx], 1);
+            if (step->keep_callstack) {
+                char *val = value_string(e);
+                char *var = vt_string(ec->value);
+                strbuf_printf(&step->explain, "assign character (%s) to %s; ", val, var);
+                free(val);
+                free(var);
+            }
             var_match(step->ctx, ec->value, &step->engine, e);
             if (ec->key != NULL) {
+                if (step->keep_callstack) {
+                    char *key = vt_string(ec->key);
+                    strbuf_printf(&step->explain, "assign index (%u) to %s; ", idx, key);
+                    free(key);
+                }
                 var_match(step->ctx, ec->key, &step->engine, index);
+            }
+            if (step->keep_callstack) {
+                strbuf_printf(&step->explain, "push new index (%u) and True", idx + 1);
             }
             ctx_push(step->ctx, VALUE_TO_INT(idx + 1));
             ctx_push(step->ctx, VALUE_TRUE);
@@ -1203,6 +1284,13 @@ void op_JumpCond(const void *env, struct state *state, struct step *step, struct
     const struct env_JumpCond *ej = env;
 
     hvalue_t v = ctx_pop(step->ctx);
+    if (step->keep_callstack) {
+        char *x = value_string(v);
+        char *y = value_string(ej->cond);
+        strbuf_printf(&step->explain, "pop value (%s), compare to %s, and jump to %u if the same", x, y, ej->pc);
+        free(x);
+        free(y);
+    }
     if ((ej->cond == VALUE_FALSE || ej->cond == VALUE_TRUE) &&
                             !(v == VALUE_FALSE || v == VALUE_TRUE)) {
         value_ctx_failure(step->ctx, &step->engine, "JumpCond: not an boolean");
@@ -1433,6 +1521,11 @@ void op_Nary(const void *env, struct state *state, struct step *step, struct glo
 
 void op_Pop(const void *env, struct state *state, struct step *step, struct global *global){
     assert(step->ctx->sp > 0);
+    if (step->keep_callstack) {
+        char *s = value_string(ctx_peep(step->ctx));
+        strbuf_printf(&step->explain, "pop and discard value (%s)", s);
+        free(s);
+    }
     step->ctx->sp--;
     step->ctx->pc++;
 }
@@ -1502,6 +1595,12 @@ void op_ReadonlyInc(const void *env, struct state *state, struct step *step, str
 void op_Return(const void *env, struct state *state, struct step *step, struct global *global){
     hvalue_t result = value_dict_load(step->ctx->vars, result_atom);
 
+    if (step->keep_callstack) {
+        char *s = value_string(result);
+        strbuf_printf(&step->explain, "push result (%s) and restore method variables", s);
+        free(s);
+    }
+
     // Restore old variables
     hvalue_t oldvars = ctx_pop(step->ctx);
     assert(VALUE_TYPE(oldvars) == VALUE_DICT);
@@ -1531,6 +1630,13 @@ void op_Builtin(const void *env, struct state *state, struct step *step, struct 
 
     unsigned int len;
     char *p = value_get(eb->method, &len);
+
+    if (step->keep_callstack) {
+        char *x = value_string(pc);
+        strbuf_printf(&step->explain, "pop pc (%s) and bind to built-in method %.*s", x, len, p);
+        free(x);
+    }
+
     oi = dict_lookup(ops_map, p, len);
     if (oi == NULL) {
         value_ctx_failure(step->ctx, &step->engine, "Builtin: no method %.*s", len, p);
@@ -1628,8 +1734,18 @@ void op_Spawn(
 
     hvalue_t thisval = ctx_pop(step->ctx);
     hvalue_t arg = ctx_pop(step->ctx);
-
     hvalue_t pc = ctx_pop(step->ctx);
+
+    if (step->keep_callstack) {
+        char *x = value_string(thisval);
+        char *y = value_string(arg);
+        char *z = value_string(pc);
+        strbuf_printf(&step->explain, "pop thread-local state (%s), argument (%s), and program counter (%s), and spawn thread", x, y, z);
+        free(x);
+        free(y);
+        free(z);
+    }
+
     if (VALUE_TYPE(pc) != VALUE_PC) {
         value_ctx_failure(step->ctx, &step->engine, "spawn: not a method");
         return;
@@ -1926,7 +2042,7 @@ void op_StoreVar(const void *env, struct state *state, struct step *step, struct
         if (step->keep_callstack) {
             char *x = vt_string(es->args);
             char *val = value_string(v);
-            strbuf_printf(&step->explain, "pop value (%s) and store locally in %s", val, x);
+            strbuf_printf(&step->explain, "pop value (%s) and store locally in variable \"%s\"", val, x);
             free(x);
             free(val);
         }

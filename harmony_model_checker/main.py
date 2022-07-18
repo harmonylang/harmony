@@ -15,6 +15,7 @@ from harmony_model_checker.exception import HarmonyCompilerError, HarmonyCompile
 import harmony_model_checker.harmony.harmony as legacy_harmony
 from harmony_model_checker.harmony.genhtml import GenHTML
 from harmony_model_checker.harmony.brief import Brief
+from harmony_model_checker.harmony.verbose import Verbose
 from harmony_model_checker.compile import do_compile
 
 
@@ -136,6 +137,8 @@ def handle_hco(ns, output_files):
     
     b = Brief()
     b.run(output_files, behavior)
+    vb = Verbose()
+    vb.run(output_files, behavior)
     gh = GenHTML()
     gh.run(output_files)
     if not suppress_output:
@@ -194,6 +197,7 @@ def main():
     output_files: Dict[str, Optional[str]] = {
         "hfa": None,
         "htm": None,
+        "hvb": None,
         "hco": None,
         "hvm": None,
         "png": None,
@@ -231,6 +235,8 @@ def main():
         output_files["hco"] = stem + ".hco"
     if output_files["htm"] is None:
         output_files["htm"] = stem + ".htm"
+    if output_files["hvb"] is None:
+        output_files["hvb"] = stem + ".hvb"
     if output_files["png"] is not None and output_files["gv"] is None:
         output_files["gv"] = stem + ".gv"
 
