@@ -1736,14 +1736,18 @@ void op_Spawn(
     hvalue_t arg = ctx_pop(step->ctx);
     hvalue_t pc = ctx_pop(step->ctx);
 
-    if (step->keep_callstack) {
-        char *x = value_string(thisval);
-        char *y = value_string(arg);
-        char *z = value_string(pc);
-        strbuf_printf(&step->explain, "pop thread-local state (%s), argument (%s), and program counter (%s), and spawn thread", x, y, z);
-        free(x);
-        free(y);
-        free(z);
+    if (step->keep_callstack && VALUE_TYPE(pc) == VALUE_PC) {
+        unsigned int ip = VALUE_FROM_PC(pc);
+        if (strcmp(global->code.instrs[ip].oi->name, "Frame") == 0) {
+            const struct env_Frame *ef = global->code.instrs[ip].env;
+            char *m = value_string(ef->name);
+            char *x = value_string(thisval);
+            char *y = value_string(arg);
+            strbuf_printf(&step->explain, "pop thread-local state (%s), argument (%s), and program counter (%d: %s), and spawn thread", x, y, ip, m);
+            free(x);
+            free(y);
+            free(m);
+        }
     }
 
     if (VALUE_TYPE(pc) != VALUE_PC) {

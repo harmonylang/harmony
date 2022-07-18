@@ -54,6 +54,13 @@ def verbose_print_vars(f, d):
         print(" %s: %s"%(k, verbose_string(v)), end="", file=f)
     print(" }", file=f)
 
+def verbose_print_trace(f, trace):
+    for i, call in enumerate(trace):
+        if i != 0:
+            print(" --> ", end="", file=f)
+        print("%s"%call["method"], end="", file=f)
+    print(file=f)
+
 class Verbose:
     def __init__(self):
         self.tid = None
@@ -67,9 +74,11 @@ class Verbose:
     def print_macrostep(self, f, mas):
         mis = mas["microsteps"]
         if mas["tid"] != self.tid:
+            self.tid = mas["tid"]
             print(file=f)
             print("================================================", file=f)
-            print("Running thread T%s: %s "%(mas["tid"], mas["name"]), file=f)
+            print("Running thread T%s: "%mas["tid"], end="", file=f)
+            verbose_print_trace(f, mas["context"]["trace"])
             print("================================================", file=f)
             self.interrupted = False
             self.lastmis = mis[0]
@@ -98,6 +107,9 @@ class Verbose:
             if "local" in step:
                 print("  method variables:  ", end="", file=f)
                 verbose_print_vars(f, step["local"])
+            if "trace" in step:
+                print("  call trace:        ", end="", file=f)
+                verbose_print_trace(f, step["trace"])
             if "failure" in step:
                 print("  operation failed:  %s"%step["failure"], file=f)
             self.lastmis = step
