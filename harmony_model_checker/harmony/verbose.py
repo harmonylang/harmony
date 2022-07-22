@@ -61,15 +61,36 @@ def verbose_print_trace(f, trace):
         print("%s"%call["method"], end="", file=f)
     print(file=f)
 
+def get_mode(ctx):
+    mode = ctx["mode"]
+    if "atomic" in ctx and int(ctx["atomic"]) > 0:
+        mode += " atomic"
+    if "readonly" in ctx and int(ctx["readonly"]) > 0:
+        mode += " readonly"
+    if "interruptlevel" in ctx and int(ctx["interruptlevel"]) > 0:
+        mode += " interrupts-disabled"
+    return mode
+
 class Verbose:
     def __init__(self):
         self.tid = None
         self.name = None
         self.start = 0
-        self.interrupted = False
         self.lastmis = {}
         self.shared = {}
-        self.failure = ""
+        self.step = 0
+        self.stack = []
+        self.contexts = []
+        self.file = None
+        self.stmt = None
+        self.expr = None
+
+    def dump_contexts(self, f, exclude):
+        for ctx in self.contexts:
+            if ctx["tid"] != exclude:
+                mode = get_mode(ctx)
+                print("  T%s: pc=%s %s "%(ctx["tid"], ctx["pc"], mode), end="", file=f)
+                verbose_print_trace(f, ctx["trace"])
 
     def print_macrostep(self, f, mas):
         mis = mas["microsteps"]
@@ -78,25 +99,75 @@ class Verbose:
             print(file=f)
             print("================================================", file=f)
             print("Running thread T%s: "%mas["tid"], end="", file=f)
-            verbose_print_trace(f, mas["context"]["trace"])
+            ctx = mas["context"]
+            trace = ctx["trace"]
+            verbose_print_trace(f, trace)
+            # loc = self.locations[ctx["pc"]]
+            # print("file: %s"%loc["file"], file=f)
+            # self.file = loc["file"]
+            if len(trace) > 0:
+                vars = trace[-1]["vars"]
+                if len(vars) > 0:
+                    print("method variables:", file=f)
+                    for k, v in vars.items():
+                        print("  %s: %s"%(k, verbose_string(v)), file=f)
+            mode = get_mode(ctx)
+            print("mode: ", mode, file=f)
+            self.stack = [ verbose_string(v) for v in ctx["stack"] ]
+            print("stack:", self.stack, file=f)
+            if self.contexts != []:
+                print("other threads:", file=f)
+                self.dump_contexts(f, self.tid)
+            if len(self.shared) != 0:
+                print("shared variables:", file=f)
+                for k, v in self.shared.items():
+                    print("  %s: %s"%(k, verbose_string(v)), file=f)
             print("================================================", file=f)
-            self.interrupted = False
             self.lastmis = mis[0]
             self.start = int(self.lastmis["pc"])
             if "shared" in self.lastmis:
                 self.shared = self.lastmis["shared"]
             lastpc = 0
             self.steps = ""
+        self.contexts = mas["contexts"]
         for step in mis:
+            self.step += 1
             print(file=f)
+            print("Step %d:"%self.step, file=f)
             print("  program counter:  ", step["pc"], file=f)
-            print("  code:              %s"%step["code"], file=f)
+            print("  hvm code:          %s"%step["code"], file=f)
             # if (int(step["npc"]) != int(step["pc"]) + 1):
             #     print("  pc after:         ", step["npc"], file=f)
-            if self.interrupted:
+            if "interrupt" in step:
                 print("  interrupted:       jump to interrupt handler first", file=f)
             else:
                 print("  explanation:       %s"%step["explain"], file=f)
+            loc = self.locations[step["pc"]]
+            if loc["file"] != self.file:
+                print("  file:              %s"%loc["file"], file=f)
+                self.file = loc["file"]
+            stmt = loc["stmt"]
+            if stmt != self.stmt:
+                print("  start statement:   line=%d column=%d"%(stmt[0], stmt[1]), file=f)
+                print("  end statement:     line=%d column=%d"%(stmt[2], stmt[3]), file=f)
+                self.stmt = stmt
+            expr = tuple(int(loc[x]) for x in [ "line", "column", "endline", "endcolumn" ])
+            if expr != self.expr:
+                spaces = 0
+                code = loc["code"]
+                while spaces < len(code) and code[spaces] == ' ':
+                    spaces += 1
+                print("  source code:       %s"%code[spaces:], file=f)
+                if stmt[0] == stmt[2] == expr[0] == expr[2]:
+                    for _ in range(expr[1] + 20 - spaces):
+                        print(" ", end="", file=f)
+                    for _ in range(expr[3] - expr[1] + 1):
+                        print("^", end="", file=f)
+                    print(file=f)
+                self.expr = expr
+            else:
+                print("  start expression:  line=%d column=%d"%(expr[0], expr[1]), file=f)
+                print("  end expression:    line=%d column=%d"%(expr[2], expr[3]), file=f)
             # if "choose" in step:
             #     print("  chosen value:      %s"%verbose_string(step["choose"]), file=f)
             # if "print" in step:
@@ -104,12 +175,30 @@ class Verbose:
             if "shared" in step:
                 print("  shared variables:  ", end="", file=f)
                 verbose_print_vars(f, step["shared"])
+                self.shared = step["shared"]
             if "local" in step:
                 print("  method variables:  ", end="", file=f)
                 verbose_print_vars(f, step["local"])
             if "trace" in step:
                 print("  call trace:        ", end="", file=f)
                 verbose_print_trace(f, step["trace"])
+            if "mode" in step:
+                print("  new mode:          %s"%step["mode"], file=f)
+            if "interruptlevel" in step:
+                print("  interrupt level:   %s"%step["interruptlevel"], file=f)
+            stack_changed = False
+            if "pop" in step:
+                pop = int(step["pop"])
+                if pop > 0:
+                    stack_changed = True
+                    self.stack = self.stack[:-int(step["pop"])]
+            if "push" in step:
+                push = [ verbose_string(v) for v in step["push"] ]
+                if push != []:
+                    stack_changed = True
+                    self.stack += push
+            if stack_changed:
+                print("  stack:             [%s]"%", ".join(self.stack), file=f)
             if "failure" in step:
                 print("  operation failed:  %s"%step["failure"], file=f)
             self.lastmis = step
@@ -124,7 +213,16 @@ class Verbose:
 
             print("Issue:", top["issue"], file=output)
             assert isinstance(top["macrosteps"], list)
+            self.locations = top["locations"]
             for mes in top["macrosteps"]:
                 self.print_macrostep(output, mes)
-            print(self.failure, file=output)
-            return False
+
+            print(file=output)
+            print("================================================", file=output)
+            print("Final state", file=output)
+            print("================================================", file=output)
+            print("Threads:", file=output)
+            self.dump_contexts(output, None)
+            print("Variables:", file=output)
+            for k, v in self.shared.items():
+                print("  %s: %s"%(k, verbose_string(v)), file=output)
