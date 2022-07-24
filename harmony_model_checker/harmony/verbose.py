@@ -209,6 +209,7 @@ class Verbose:
             top = json.load(input)
             assert isinstance(top, dict)
             if top["issue"] == "No issues":
+                print("No issues were detected with this program.", file=output)
                 return True
 
             print("Issue:", top["issue"], file=output)
