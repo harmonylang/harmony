@@ -228,7 +228,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         cond = self.visit(ctx.expr())
         tkn = self.get_token(ctx.start, ctx.start.text)
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
-        return LetWhenAST(endtoken, tkn, False, [('cond', cond)], PassAST(endtoken, tkn, False))
+        return LetWhenAST(endtoken, tkn, False, [('cond', cond, tkn, endtoken)], PassAST(endtoken, tkn, False))
 
     # Visit a parse tree produced by HarmonyParser#trap_stmt.
     def visitTrap_stmt(self, ctx: HarmonyParser.Trap_stmtContext):
