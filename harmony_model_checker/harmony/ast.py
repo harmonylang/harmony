@@ -1269,38 +1269,41 @@ class LetWhenAST(AST):
         ns = Scope(scope)
         for var_or_cond in self.vars_and_conds:
             if var_or_cond[0] == 'var':
-                var, expr = var_or_cond[1:]
+                (_, var, expr, tkn, endtkn, op) = var_or_cond
+                stmt = self.range(token, endtkn)
                 expr.compile(ns, code, stmt)
-                code.append(StoreVarOp(var), self.token, self.endtoken, stmt=stmt)
+                code.append(StoreVarOp(var), token, op, stmt=stmt)
                 self.define(ns, var)
             elif var_or_cond[0] == 'cond':
-                cond = var_or_cond[1]
+                (_, cond, token, endtkn) = var_or_cond
+                stmt = self.range(token, endtkn)
                 cond.compile(ns, code, stmt)
-                code.append(JumpCondOp(False, label_condfailed), self.token, self.endtoken, stmt=stmt)
+                code.append(JumpCondOp(False, label_condfailed), token, endtkn, stmt=stmt)
             else:
                 assert var_or_cond[0] == 'exists'
-                (_, bv, expr) = var_or_cond
+                (_, bv, expr, token, endtkn) = var_or_cond
                 (_, file, line, column) = self.token
+                stmt = self.range(token, endtkn)
                 self.define(ns, bv)
                 expr.compile(ns, code, stmt)
-                code.append(DupOp(), self.token, self.endtoken, stmt=stmt)
-                code.append(PushOp((SetValue(set()), file, line, column)), self.token, self.endtoken, stmt=stmt)
-                code.append(NaryOp(("==", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
+                code.append(DupOp(), token, endtkn, stmt=stmt)
+                code.append(PushOp((SetValue(set()), file, line, column)), token, endtkn, stmt=stmt)
+                code.append(NaryOp(("==", file, line, column), 2), token, endtkn, stmt=stmt)
                 label_select = LabelValue(None, "LetWhenAST_select$%d" % labelcnt)
                 labelcnt += 1
-                code.append(JumpCondOp(False, label_select), self.token, self.endtoken, stmt=stmt)
+                code.append(JumpCondOp(False, label_select), token, endtkn, stmt=stmt)
 
                 # set is empty.  Try again
-                code.append(PopOp(), self.token, self.endtoken, stmt=stmt)
+                code.append(PopOp(), token, endtkn, stmt=stmt)
                 if self.atomically:
-                    code.append(ReadonlyDecOp(), self.token, self.endtoken, stmt=stmt)
-                    code.append(AtomicDecOp(), self.token, self.endtoken, stmt=stmt)
-                code.append(JumpOp(label_start), self.endtoken, self.endtoken, stmt=stmt)
+                    code.append(ReadonlyDecOp(), token, endtkn, stmt=stmt)
+                    code.append(AtomicDecOp(), token, endtkn, stmt=stmt)
+                code.append(JumpOp(label_start), endtkn, endtkn, stmt=stmt)
 
                 # select:
                 code.nextLabel(label_select)
-                code.append(ChooseOp(), self.token, self.endtoken, stmt=stmt)
-                code.append(StoreVarOp(bv), self.token, self.endtoken, stmt=stmt)
+                code.append(ChooseOp(), token, endtkn, stmt=stmt)
+                code.append(StoreVarOp(bv), token, endtkn, stmt=stmt)
         code.append(JumpOp(label_body), self.endtoken, self.endtoken, stmt=stmt)
 
         # condfailed:

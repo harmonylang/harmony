@@ -357,11 +357,13 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     # Visit a parse tree produced by HarmonyParser#when_decl.
     def visitWhen_decl(self, ctx:HarmonyParser.When_declContext):
         expr = self.visit(ctx.expr())
+        tkn = self.get_token(ctx.start, ctx.start.text)
+        endtoken = self.get_token(ctx.stop, ctx.stop.text)
         if ctx.EXISTS() is not None:
             bv = self.visit(ctx.bound())
-            return 'exists', bv, expr
+            return 'exists', bv, expr, tkn, endtoken
         else:
-            return 'cond', expr
+            return 'cond', expr, tkn, endtoken
 
     # Visit a parse tree produced by HarmonyParser#let_when_decl.
     def visitLet_when_decl(self, ctx:HarmonyParser.Let_when_declContext):

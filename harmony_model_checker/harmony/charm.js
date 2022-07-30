@@ -571,7 +571,7 @@ function run_microstep(t) {
   threadtable.rows[mis.tid].cells[3].innerHTML = mis.stack.slice(mis.fp);
 
   if (mis.invfails.length > 0) {
-    inv = mis.invfails[0];
+    var inv = mis.invfails[0];
     code = getCode(inv.pc);
     coderow.style.color = "red";
     coderow.innerHTML = code.file + ":" + code.line + "&nbsp;&nbsp;&nbsp;" + escapeHTML(code.code) + " (" + inv.reason + ")";
@@ -582,7 +582,19 @@ function run_microstep(t) {
     if (t+1 < microsteps.length) {
       var nmis = microsteps[t+1];
       code = getCode(nmis.pc);
-      coderow.innerHTML = code.file + ":" + code.line + "&nbsp;&nbsp;&nbsp;" + escapeHTML(code.code);
+      var l1 = parseInt(code.line);
+      var l2 = parseInt(code.endline);
+      if (l1 == l2 && l1 == code.stmt[0] && l2 == code.stmt[2]) {
+        var c1 = parseInt(code.column) - 1;
+        var c2 = parseInt(code.endcolumn);
+        var s1 = code.code.slice(0, c1);
+        var s2 = code.code.slice(c1, c2);
+        var s3 = code.code.slice(c2);
+        coderow.innerHTML = code.file + ":" + code.line + "&nbsp;&nbsp;&nbsp;" + escapeHTML(s1) + "<span style='color:green'>" + escapeHTML(s2) + "</span>" + escapeHTML(s3);
+      }
+      else {
+        coderow.innerHTML = code.file + ":" + code.line + "&nbsp;&nbsp;&nbsp;" + escapeHTML(code.code);
+      }
     }
   }
 
