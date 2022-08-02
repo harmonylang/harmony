@@ -1281,6 +1281,7 @@ void path_dump(
     fprintf(file, "\n      ],\n");
     // fprintf(file, "      \"NEWCTX\": \"%llx\",\n", global->processes[pid]);
 
+#ifdef notdef
     /* Match each context to a process.
      *
      * TODO.  Unnecessary???
@@ -1307,6 +1308,7 @@ void path_dump(
         }
     }
     free(matched);
+#endif
   
     print_state(global, file, node);
     fprintf(file, "    }");
