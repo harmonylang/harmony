@@ -640,6 +640,7 @@ void print_context(
     struct global *global,
     FILE *file,
     hvalue_t ctx,
+    struct callstack *cs,
     int tid,
     struct node *node,
     char *prefix
@@ -650,11 +651,6 @@ void print_context(
     unsigned int size;
     struct context *c = value_get(ctx, &size);
 
-    struct callstack *cs = dict_lookup(global->tracemap, &ctx, sizeof(ctx));
-    if (cs == NULL) {
-        printf(">>> %"PRIx64"\n", ctx);
-        panic("print_context: can't find context");
-    }
     fprintf(file, "%s\"fp\": \"%d\",\n", prefix, cs->sp + 1);
 
     struct callstack *ecs = cs;
@@ -840,7 +836,7 @@ void print_state(
     fprintf(file, "      \"contexts\": [\n");
     for (unsigned int i = 0; i < global->nprocesses; i++) {
         fprintf(file, "        {\n");
-        print_context(global, file, global->processes[i], i, node, "          ");
+        print_context(global, file, global->processes[i], global->callstacks[i], i, node, "          ");
         fprintf(file, "        }");
         if (i < global->nprocesses - 1) {
             fprintf(file, ",");
@@ -1017,17 +1013,19 @@ void diff_dump(
 }
 
 // similar to onestep.
-hvalue_t twostep(
+void twostep(
     struct global *global,
     FILE *file,
     struct node *node,
     hvalue_t ctx,
+    struct callstack *cs,
     hvalue_t choice,
     bool interrupt,
     struct state *oldstate,
     struct context *oldctx,
     hvalue_t nextvars,
-    unsigned int nsteps
+    unsigned int nsteps,
+    unsigned int pid
 ){
     // Make a copy of the state
     struct state *sc = calloc(1, sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1));
@@ -1038,12 +1036,8 @@ hvalue_t twostep(
     memset(&step, 0, sizeof(step));
     step.keep_callstack = true;
     step.engine.values = &global->values;
-    step.callstack = dict_lookup(global->tracemap, &ctx, sizeof(ctx));
+    step.callstack = cs;
     strbuf_init(&step.explain);
-    if (step.callstack == NULL) {
-        printf(">>> %"PRIx64"\n", ctx);
-        panic("can't find context");
-    }
 
     unsigned int size;
     struct context *cc = value_get(ctx, &size);
@@ -1052,8 +1046,6 @@ hvalue_t twostep(
     memcpy(step.ctx, cc, size);
     if (step.ctx->terminated || step.ctx->failed) {
         panic("twostep: already terminated???");
-        free(step.ctx);
-        return ctx;
     }
 
     struct callstack *oldcs = NULL;
@@ -1187,14 +1179,8 @@ hvalue_t twostep(
     strbuf_deinit(&step.explain);
     // TODO free(step.log);
 
-    bool new;
-    struct callstack **psc = dict_insert(global->tracemap, NULL,
-                &after, sizeof(after), &new);
-    if (new) {
-        *psc = step.callstack;
-    }
-
-    return after;
+    global->processes[pid] = after;
+    global->callstacks[pid] = step.callstack;
 }
 
 void path_dump(
@@ -1236,7 +1222,7 @@ void path_dump(
     struct context *context = value_get(ctx, &ctxsize);
     assert(!context->terminated);
 
-    struct callstack *cs = dict_lookup(global->tracemap, &ctx, sizeof(ctx));
+    struct callstack *cs = global->callstacks[pid];
     while (cs->parent != NULL) {
         cs = cs->parent;
     }
@@ -1262,7 +1248,7 @@ void path_dump(
     global->dumpfirst = true;
     // fprintf(file, "      \"ctxid\": \"%"PRI_HVAL"\",\n", ctx);
     fprintf(file, "      \"context\": {\n");
-    print_context(global, file, ctx, pid, node, "        ");
+    print_context(global, file, ctx, cs, pid, node, "        ");
     fprintf(file, "      },\n");
 
     fprintf(file, "      \"microsteps\": [");
@@ -1278,22 +1264,26 @@ void path_dump(
 #endif
 
     // Recreate the steps
-    global->processes[pid] = twostep(
+    twostep(
         global,
         file,
         parent,
         ctx,
+        global->callstacks[pid],
         e->choice,
         e->interrupt,
         oldstate,
         oldctx,
         node->state->vars,
-        e->nsteps
+        e->nsteps,
+        pid
     );
     fprintf(file, "\n      ],\n");
     // fprintf(file, "      \"NEWCTX\": \"%llx\",\n", global->processes[pid]);
 
     /* Match each context to a process.
+     *
+     * TODO.  Unnecessary???
      */
     bool *matched = calloc(global->nprocesses, sizeof(bool));
     for (unsigned int i = 0; i < node->state->bagsize; i++) {
@@ -1307,6 +1297,7 @@ void path_dump(
                 }
             }
             if (k == global->nprocesses) {
+                panic("SHOULD NOT GET HERE");
                 global->processes = realloc(global->processes, (global->nprocesses + 1) * sizeof(hvalue_t));
                 matched = realloc(matched, (global->nprocesses + 1) * sizeof(bool));
                 global->processes[global->nprocesses] = node->state->contexts[i];
@@ -1936,7 +1927,6 @@ int main(int argc, char **argv){
     global->failures = minheap_create(fail_cmp);
     global->seqs = VALUE_SET;
     global->invariants = VALUE_SET;
-    global->tracemap = dict_new("tracemap", sizeof(struct callstack *), 0, 0, NULL, NULL);
 
     // First read and parse the DFA if any
     if (dfafile != NULL) {
@@ -1994,8 +1984,16 @@ int main(int argc, char **argv){
     multiplicities(state)[0] = 1;
     state->stopbag = VALUE_DICT;
     state->dfa_state = global->dfa == NULL ? 0 : dfa_initial(global->dfa);
+
+    // Needed for second phase
     global->processes = new_alloc(hvalue_t);
+    global->callstacks = new_alloc(struct callstack *);
     *global->processes = ictx;
+    struct callstack *cs = new_alloc(struct callstack);
+    cs->arg = VALUE_LIST;
+    cs->vars = VALUE_DICT;
+    cs->return_address = CALLTYPE_PROCESS;
+    *global->callstacks = cs;
     global->nprocesses = 1;
 
     // Run direct
@@ -2476,14 +2474,6 @@ int main(int argc, char **argv){
         default:
             panic("main: bad fail type");
         }
-
-        struct callstack *cs = new_alloc(struct callstack);
-        cs->arg = VALUE_LIST;
-        cs->vars = VALUE_DICT;
-        cs->return_address = CALLTYPE_PROCESS;
-        struct callstack **psc = dict_insert(global->tracemap, NULL,
-                    &ictx, sizeof(ictx), NULL);
-        *psc = cs;
 
         fprintf(out, "  \"macrosteps\": [");
         struct state *oldstate = calloc(1, sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1));

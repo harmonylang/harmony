@@ -1790,17 +1790,16 @@ void op_Spawn(
         }
 
         if (step->keep_callstack) {
+            global->processes = realloc(global->processes, (global->nprocesses + 1) * sizeof(hvalue_t));
+            global->callstacks = realloc(global->callstacks, (global->nprocesses + 1) * sizeof(struct callstack *));
+            global->processes[global->nprocesses] = context;
             struct callstack *cs = new_alloc(struct callstack);
             cs->pc = pc;
             cs->arg = arg;
             cs->vars = VALUE_DICT;
             cs->return_address = (step->ctx->pc << CALLTYPE_BITS) | CALLTYPE_PROCESS;
-            bool new;
-            struct callstack **psc = dict_insert(global->tracemap, NULL,
-                        &context, sizeof(context), &new);
-            if (new) {
-                *psc = cs;
-            }
+            global->callstacks[global->nprocesses] = cs;
+            global->nprocesses++;
         }
     }
 

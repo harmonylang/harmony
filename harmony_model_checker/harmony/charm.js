@@ -348,12 +348,6 @@ function init_microstep(masidx, misidx) {
     else {
       previous.trace = [];
     }
-    if (ctx.hasOwnProperty("shared")) {
-      previous.shared = convert_vars(ctx.shared);
-    }
-    else {
-      previous.shared = {};
-    }
     if (ctx.hasOwnProperty("fp")) {
       previous.fp = ctx.fp;
     }
@@ -365,6 +359,12 @@ function init_microstep(masidx, misidx) {
     }
     else {
       previous.stack = [];
+    }
+    if (mas.hasOwnProperty("shared")) {
+      previous.shared = convert_vars(mas.shared);
+    }
+    else {
+      previous.shared = {};
     }
   }
   else {
