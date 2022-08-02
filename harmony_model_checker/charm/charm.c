@@ -475,7 +475,7 @@ static bool onestep(
     }
 
     // Weight of this step
-    int weight = (node->to_parent != NULL && ctx == node->to_parent->after) ? 0 : 1;
+    int weight = (node->to_parent == NULL || ctx == node->to_parent->after) ? 0 : 1;
 
     // Allocate edge now
     struct edge *edge = walloc(w, sizeof(struct edge) + step->nlog * sizeof(hvalue_t), false);
@@ -1190,6 +1190,7 @@ void path_dump(
     struct state *oldstate,
     struct context *oldctx
 ) {
+    static unsigned int oldpid = 0;
     struct node *node = e->dst;
     struct node *parent = e->src;
 
@@ -1205,14 +1206,21 @@ void path_dump(
     fprintf(file, "      \"id\": \"%d\",\n", node->id);
     fprintf(file, "      \"len\": \"%d\",\n", node->len);
 
-    /* Find the starting context in the list of processes.
+    /* Find the starting context in the list of processes.  Prefer
+     * sticking with the same pid if possible.
      */
     hvalue_t ctx = e->ctx;
     unsigned int pid;
-    for (pid = 0; pid < global->nprocesses; pid++) {
-        if (global->processes[pid] == ctx) {
-            break;
+    if (global->processes[oldpid] == ctx) {
+        pid = oldpid;
+    }
+    else {
+        for (pid = 0; pid < global->nprocesses; pid++) {
+            if (global->processes[pid] == ctx) {
+                break;
+            }
         }
+        oldpid = pid;
     }
     assert(pid < global->nprocesses);
     // fprintf(file, "      \"OLDPID\": \"%d\",\n", pid);
@@ -2269,7 +2277,7 @@ int main(int argc, char **argv){
     }
 
 #ifdef OBSOLETE
-    if (false) {
+    if (true) {
         FILE *df = fopen("charm.dump", "w");
         assert(df != NULL);
         for (unsigned int i = 0; i < global->graph.size; i++) {
@@ -2278,40 +2286,60 @@ int main(int argc, char **argv){
             fprintf(df, "\nNode %d:\n", node->id);
             fprintf(df, "    component: %d\n", node->component);
             if (node->to_parent != NULL) {
-                fprintf(df, "    parent: %d\n", node->to_parent->src->id);
+                fprintf(df, "    ancestors:");
+                for (struct node *n = node->to_parent->src;; n = n->to_parent->src) {
+                    fprintf(df, " %u", n->id);
+                    if (n->to_parent == NULL) {
+                        break;
+                    }
+                }
+                fprintf(df, "\n");
             }
             fprintf(df, "    vars: %s\n", value_string(node->state->vars));
+            fprintf(df, "    len: %u %u\n", node->len, node->steps);
             fprintf(df, "    fwd:\n");
             int eno = 0;
             for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext, eno++) {
                 fprintf(df, "        %d:\n", eno);
                 struct context *ctx = value_get(edge->ctx, NULL);
-                // fprintf(df, "            context: %s %s %d\n", value_string(ctx->name), value_string(ctx->arg), ctx->pc);
-                fprintf(df, "            choice: %s\n", value_string(edge->choice));
                 fprintf(df, "            node: %d (%d)\n", edge->dst->id, edge->dst->component);
-                fprintf(df, "            log:");
-                for (unsigned int j = 0; j < edge->nlog; j++) {
-                    char *p = value_string(edge->log[j]);
-                    fprintf(df, " %s", p);
-                    free(p);
+                fprintf(df, "            context before: %"PRIx64" %d\n", edge->ctx, ctx->pc);
+                ctx = value_get(edge->after, NULL);
+                fprintf(df, "            context after:  %"PRIx64" %d\n", edge->after, ctx->pc);
+                if (edge->choice != 0) {
+                    fprintf(df, "            choice: %s\n", value_string(edge->choice));
                 }
-                fprintf(df, "\n");
+                if (edge->nlog > 0) {
+                    fprintf(df, "            log:");
+                    for (unsigned int j = 0; j < edge->nlog; j++) {
+                        char *p = value_string(edge->log[j]);
+                        fprintf(df, " %s", p);
+                        free(p);
+                    }
+                    fprintf(df, "\n");
+                }
             }
             fprintf(df, "    bwd:\n");
             eno = 0;
             for (struct edge *edge = node->bwd; edge != NULL; edge = edge->bwdnext, eno++) {
                 fprintf(df, "        %d:\n", eno);
-                struct context *ctx = value_get(edge->ctx, NULL);
-                // fprintf(df, "            context: %s %s %d\n", value_string(ctx->name), value_string(ctx->arg), ctx->pc);
-                fprintf(df, "            choice: %s\n", value_string(edge->choice));
                 fprintf(df, "            node: %d (%d)\n", edge->src->id, edge->src->component);
-                fprintf(df, "            log:");
-                for (int j = 0; j < edge->nlog; j++) {
-                    char *p = value_string(edge->log[j]);
-                    fprintf(df, " %s", p);
-                    free(p);
+                struct context *ctx = value_get(edge->ctx, NULL);
+                fprintf(df, "            context before: %"PRIx64" %d\n", edge->ctx, ctx->pc);
+                ctx = value_get(edge->after, NULL);
+                fprintf(df, "            context after:  %"PRIx64" %d\n", edge->after, ctx->pc);
+                if (edge->choice != 0) {
+                    fprintf(df, "            choice: %s\n", value_string(edge->choice));
                 }
-                fprintf(df, "\n");
+                if (edge->nlog > 0) {
+                    fprintf(df, "            log:");
+                    for (int j = 0; j < edge->nlog; j++) {
+                        char *p = value_string(edge->log[j]);
+                        fprintf(df, " %s", p);
+                        free(p);
+                    }
+                    fprintf(df, "\n");
+                }
             }
         }
         fclose(df);
@@ -2442,6 +2470,9 @@ int main(int argc, char **argv){
         else {
             bad = minheap_getmin(global->failures);
         }
+
+        // printf("BAD: %d %"PRIx64" %"PRIx64"\n", bad->edge->dst->id,
+        //                    bad->edge->ctx, bad->edge->after);
 
         switch (bad->type) {
         case FAIL_SAFETY:

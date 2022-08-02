@@ -48,8 +48,6 @@ enum fail_type {
     FAIL_RACE
 };
 
-// TODO: node->state should be equivalent to ((struct state *) node) - 1
-//       This would save a little more memory.
 struct node {
 	struct node *next;		// for linked list
 
@@ -66,7 +64,6 @@ struct node {
     bool final : 1;         // only eternal threads left (TODO: need this?)
     bool visited : 1;       // for busy wait detection
 
-    // TODO.  Allocate the rest after model checking, or use union?
     // NFA compression
     bool reachable : 1;
 };
