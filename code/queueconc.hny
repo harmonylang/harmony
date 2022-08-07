@@ -2,7 +2,7 @@ from synch import Lock, acquire, release
 from alloc import malloc, free
 
 def Queue():
-    result = { .head: None, .tail: None, .lock: Lock(), .time: 0 }
+    result = { .head: None, .tail: None, .lock: Lock() }
 
 def put(q, v):
     let node = malloc({ .value: v, .next: None }):

@@ -475,7 +475,7 @@ static bool onestep(
     }
 
     // Weight of this step
-    int weight = (node->to_parent == NULL || ctx == node->to_parent->after) ? 0 : 1;
+    unsigned int weight = (node->to_parent == NULL || ctx == node->to_parent->after) ? 0 : 1;
 
     // Allocate edge now
     struct edge *edge = walloc(w, sizeof(struct edge) + step->nlog * sizeof(hvalue_t), false);
@@ -483,6 +483,7 @@ static bool onestep(
     edge->ctx = ctx;
     edge->choice = choice_copy;
     edge->interrupt = interrupt;
+    edge->weight = weight;
     edge->after = after;
     edge->ai = step->ai;
     memcpy(edge->log, step->log, step->nlog * sizeof(hvalue_t));
@@ -507,7 +508,9 @@ static bool onestep(
     else {
         unsigned int len = node->len + weight;
         unsigned int steps = node->steps + instrcnt;
-        if (len < next->len || (len == next->len && steps < next->steps)) {
+        // TODO: not sure how to minimize.  For some cases, this works better than
+        //   if (len < next->len || (len == next->len && steps < next->steps)) {
+        if (len < next->len || (len == next->len && steps <= next->steps)) {
             next->len = len;
             next->steps = steps;
             next->to_parent = edge;
@@ -2164,6 +2167,15 @@ int main(int argc, char **argv){
  
     printf("Phase 3: analysis\n");
     if (minheap_empty(global->failures)) {
+        double now = gettime();
+        global->phase2 = true;
+        global->scc_todo = scc_alloc(0, global->graph.size, NULL, NULL);
+        barrier_wait(&middle_barrier);
+        // Workers working on finding SCCs
+        barrier_wait(&end_barrier);
+
+        printf("%u components (%.3lf seconds)\n", global->ncomponents, gettime() - now);
+
 #ifdef DUMP_GRAPH
         printf("digraph Harmony {\n");
         for (unsigned int i = 0; i < global->graph.size; i++) {
@@ -2178,15 +2190,6 @@ int main(int argc, char **argv){
         }
         printf("}\n");
 #endif
-
-        double now = gettime();
-        global->phase2 = true;
-        global->scc_todo = scc_alloc(0, global->graph.size, NULL, NULL);
-        barrier_wait(&middle_barrier);
-        // Workers working on finding SCCs
-        barrier_wait(&end_barrier);
-
-        printf("%u components (%.3lf seconds)\n", global->ncomponents, gettime() - now);
 
         // mark the components that are "good" because they have a way out
         struct component *components = calloc(global->ncomponents, sizeof(*components));
@@ -2275,6 +2278,37 @@ int main(int argc, char **argv){
             }
         }
     }
+
+#ifdef DUMP_GRAPH
+    if (true) {
+        FILE *df = fopen("charm.gv", "w");
+        fprintf(df, "digraph Harmony {\n");
+        for (unsigned int i = 0; i < global->graph.size; i++) {
+            struct node *node = global->graph.nodes[i];
+            fprintf(df, " s%u [label=\"%u/%u\"]\n", i, i, node->len);
+        }
+        for (unsigned int i = 0; i < global->graph.size; i++) {
+            struct node *node = global->graph.nodes[i];
+            for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
+                struct state *state = node->state;
+                unsigned int j;
+                for (j = 0; j < state->bagsize; j++) {
+                    if (state->contexts[j] == edge->ctx) {
+                        break;
+                    }
+                }
+                assert(j < state->bagsize);
+                fprintf(df, " s%u -> s%u [style=%s label=\"%u/%u\"]\n",
+                        node->id, edge->dst->id,
+                        edge->dst->to_parent == edge ? "solid" : "dashed",
+                        multiplicities(state)[j],
+                        edge->weight);
+            }
+        }
+        fprintf(df, "}\n");
+        fclose(df);
+    }
+#endif
 
 #ifdef OBSOLETE
     if (true) {

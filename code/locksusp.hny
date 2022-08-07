@@ -6,7 +6,7 @@ def Lock():
 def acquire(lk):
     atomically:
         if lk->acquired:
-            stop lk->suspended[len lk->suspended]
+            stop ?lk->suspended[len lk->suspended]
             assert lk->acquired
         else:
             lk->acquired = True

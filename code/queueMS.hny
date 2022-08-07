@@ -1,4 +1,4 @@
-from synch import Lock, acquire, release
+from synch import Lock, acquire, release, atomic_load, atomic_store
 from alloc import malloc, free
 
 def Queue():
@@ -8,14 +8,14 @@ def Queue():
 def put(q, v):
     let node = malloc({ .value: v, .next: None }):
         acquire(?q->tllock)
-        q->tail->next = node
+        atomic_store(?q->tail->next,  node)
         q->tail = node
         release(?q->tllock)
 
 def get(q):
     acquire(?q->hdlock)
     let dummy = q->head
-    let node = dummy->next:
+    let node = atomic_load(?dummy->next):
         if node == None:
             result = None
             release(?q->hdlock)
