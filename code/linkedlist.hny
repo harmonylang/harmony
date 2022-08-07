@@ -2,7 +2,7 @@ from synch import Lock, acquire, release
 from alloc import malloc, free
 
 def _node(v, n):     # allocate and initialize a new list node
-    result = malloc({ .lock: Lock(), .value: (0, v), .next: n })
+    result = malloc({ .lock: Lock(), .value: v, .next: n })
 
 def _find(lst, v):
     var before = lst
@@ -22,7 +22,7 @@ def SetObject():
 def insert(lst, v):
     let before, after = _find(lst, v):
         if after->value != (0, v):
-            before->next = _node(v, after)
+            before->next = _node((0, v), after)
         release(?after->lock)
         release(?before->lock)
 

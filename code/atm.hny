@@ -16,12 +16,14 @@ def atm_check_balance(acct):    # return the balance on acct
     release(?accounts[acct].lock)
 
 def atm_withdraw(acct, amount): # withdraw amount from acct
+    assert amount >= 0
     acquire(?accounts[acct].lock)
     accounts[acct].balance -= amount
     result = True              # return success
     release(?accounts[acct].lock)
 
 def customer(atm, acct, amount):
+    assert amount >= 0
     let bal = atm_check_balance(acct):
         if amount <= bal:
             atm_withdraw(acct, amount)

@@ -34,7 +34,8 @@ struct edge {
     struct access_info *ai;  // to detect data races
     uint16_t nsteps;         // # microsteps
     bool interrupt : 1;      // set if state change is an interrupt
-    uint16_t nlog : 15;      // size of print history
+    uint8_t weight : 1;      // context switch or not
+    uint16_t nlog : 14;      // size of print history
     hvalue_t log[0];         // print history (immediately follows edge)
 };
 

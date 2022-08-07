@@ -1,4 +1,9 @@
 echo ==============
+echo triangle
+echo ==============
+./harmony --noweb code/triangle.hny
+
+echo ==============
 echo prog1
 echo ==============
 ./harmony --noweb code/prog1.hny
@@ -64,14 +69,29 @@ echo ==============
 ./harmony --noweb code/PetersonMethod.hny
 
 echo ==============
+echo hanoi
+echo ==============
+./harmony --noweb code/hanoi.hny
+
+echo ==============
 echo clock
 echo ==============
 ./harmony --noweb code/clock.hny
 
 echo ==============
-echo spinlock
+echo cssynch
 echo ==============
-./harmony --noweb code/spinlock.hny
+./harmony --noweb code/cssynch.hny
+
+echo ==============
+echo cssynch synchS
+echo ==============
+./harmony --noweb -msynch=synchS code/cssynch.hny
+
+echo ==============
+echo cssynch ticket
+echo ==============
+./harmony --noweb -msynch=ticket code/cssynch.hny
 
 echo ==============
 echo UpLock
@@ -82,6 +102,11 @@ echo ==============
 echo UpLock synchS
 echo ==============
 ./harmony --noweb -msynch=synchS code/UpLock.hny
+
+echo ==============
+echo spinlock
+echo ==============
+./harmony --noweb code/spinlock.hny
 
 echo ==============
 echo xy
@@ -99,9 +124,24 @@ echo ==============
 ./harmony --noweb code/queuedemo.hny
 
 echo ==============
+echo setobj
+echo ==============
+./harmony --noweb code/setobjtest.hny
+
+echo ==============
+echo setobj linkedlist
+echo ==============
+./harmony --noweb -msetobj=linkedlist code/setobjtest.hny
+
+echo ==============
 echo qtestseq
 echo ==============
 ./harmony --noweb code/qtestseq.hny
+
+echo ==============
+echo qtestseq queueMS
+echo ==============
+./harmony --noweb -mqueueconc=queueMS code/qtestseq.hny
 
 echo ==============
 echo qtest1
@@ -134,14 +174,21 @@ echo ==============
 ./harmony --noweb -msynch=synchS code/qtestconc.hny
 
 echo ==============
-echo queueMS.hny
+echo qtestpar.hny
 echo ==============
-./harmony --noweb -mqueue=queueMS code/queuedemo.hny
+./harmony --noweb -o queue4.hfa code/qtestpar.hny
+./harmony --noweb -B queue4.hfa -m queue=queueconc code/qtestpar.hny
 
 echo ==============
-echo queueMS.hny synchS
+echo qtestpar.hny queueMS
 echo ==============
-./harmony --noweb -mqueue=queueMS -msynch=synchS code/queuedemo.hny
+./harmony --noweb -o queue4.hfa code/qtestpar.hny
+./harmony --noweb -B queue4.hfa -m queue=queueMS code/qtestpar.hny
+
+echo ==============
+echo qtestpar.hny queuebroken
+echo ==============
+./harmony --noweb -mqueue=queuebroken code/qtestpar.hny
 
 echo ==============
 echo RWtest
@@ -149,24 +196,51 @@ echo ==============
 ./harmony --noweb code/RWtest.hny
 
 echo ==============
-echo RWsbs
+echo RWtest RWsbs
 echo ==============
 ./harmony --noweb -mRW=RWsbs code/RWtest.hny
 
 echo ==============
-echo RWsbs synchS
+echo RWtest RWcv
 echo ==============
-./harmony --noweb -mRW=RWsbs -msynch=synchS code/RWtest.hny
+./harmony --noweb -mRW=RWcv code/RWtest.hny
 
 echo ==============
-echo RWfair
+echo RWtest RWcv synchS
+echo ==============
+./harmony --noweb -mRW=RWcv -msynch=synchS code/RWtest.hny
+
+echo ==============
+echo RWtest RWfair
 echo ==============
 ./harmony --noweb -mRW=RWfair code/RWtest.hny
 
 echo ==============
-echo RWfair synchS
+echo RWtest RWfair synchS
 echo ==============
 ./harmony --noweb -mRW=RWfair -msynch=synchS code/RWtest.hny
+
+echo ==============
+echo RWbtest RWsbs
+echo ==============
+./harmony --noweb -o rw.hfa -cNOPS=2 code/RWbtest.hny
+./harmony --noweb -B rw.hfa -cNOPS=2 -m RW=RWsbs code/RWbtest.hny
+
+echo ==============
+echo RWbtest RWcv
+echo ==============
+./harmony --noweb -o rw.hfa -cNOPS=2 code/RWbtest.hny
+./harmony --noweb -B rw.hfa -cNOPS=2 -m RW=RWcv code/RWbtest.hny
+
+echo ==============
+echo rw RWbtest RWfair
+echo ==============
+./harmony --noweb -B rw.hfa -cNOPS=2 -m RW=RWfair code/RWbtest.hny
+
+echo ==============
+echo rw RWbtest RWcheat
+echo ==============
+./harmony --noweb -B rw.hfa -cNOPS=2 -m RW=RWcheat code/RWbtest.hny
 
 echo ==============
 echo BBtest
@@ -177,16 +251,6 @@ echo ==============
 echo BBtest synchS
 echo ==============
 ./harmony --noweb -mboundedbuffer=BBhoare -msynch=synchS code/BBtest.hny
-
-echo ==============
-echo RWcv
-echo ==============
-./harmony --noweb -mRW=RWcv code/RWtest.hny
-
-echo ==============
-echo RWcv synchS
-echo ==============
-./harmony --noweb -mRW=RWcv -msynch=synchS code/RWtest.hny
 
 echo ==============
 echo qsorttest
@@ -252,6 +316,16 @@ echo ==============
 echo barriertest synchS
 echo ==============
 ./harmony --noweb -msynch=synchS code/barriertest.hny
+
+echo ==============
+echo barriertest2
+echo ==============
+./harmony --noweb code/barriertest2.hny
+
+echo ==============
+echo barriertest2 synchS
+echo ==============
+./harmony --noweb -msynch=synchS code/barriertest2.hny
 
 echo ==============
 echo trap

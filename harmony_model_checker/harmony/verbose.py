@@ -122,6 +122,7 @@ class Verbose:
                 print("shared variables:", file=f)
                 for k, v in self.shared.items():
                     print("  %s: %s"%(k, verbose_string(v)), file=f)
+            print("state id: %s"%mas["id"], file=f)
             print("================================================", file=f)
             self.lastmis = mis[0]
             self.start = int(self.lastmis["pc"])

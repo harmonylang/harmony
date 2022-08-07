@@ -1,10 +1,10 @@
 from synch import Lock, acquire, release
 
-sequential done
+sequential t_done, i_done
 
 count = 0
 countlock = Lock()
-done = [ False, False ]
+t_done = i_done = [ False, False ]
 
 def increment():
     let prior = setintlevel(True):
@@ -15,13 +15,15 @@ def increment():
 
 def handler(self):
     increment()
-    done[self] = True
+    i_done[self] = True
 
 def thread(self):
     trap handler(self)
     increment()
-    await all(done)
-    assert count == 4, count
+    await i_done[self]
+    t_done[self] = True
+    await all(t_done)
+    assert count == 4
 
 spawn thread(0)
 spawn thread(1)

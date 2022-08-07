@@ -5,13 +5,16 @@ def fetch_and_increment(p):
         result = !p
         !p = (!p + 1) % MAX_THREADS
 
+def atomic_load(p):
+    atomically result = !p
+
 def Lock():
     result = { .counter: 0, .dispenser: 0 }
 
 def acquire(lk):
     let my_ticket = fetch_and_increment(?lk->dispenser):
-        atomically await lk->counter == my_ticket
+        while atomic_load(?lk->counter) != my_ticket:
+            pass
 
 def release(lk):
-    let next = (lk->counter + 1) % MAX_THREADS:
-        atomically lk->counter = next
+    fetch_and_increment(?lk->counter)
