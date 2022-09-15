@@ -71,15 +71,15 @@ For **Windows** users, when running the installer, make sure to select the optio
 After installing `python`, you should also be able to use the command `pip`. Run the following command to get the latest version of Harmony:
 
 ```sh
-pip install --user harmony-model-checker
+pip install --user harmony
 
 ## If pip fails try pip3
-pip3 install --user harmony-model-checker
+pip3 install --user harmony
 ```
 
 ### For Windows Users
 
-For **Windows** users: you may encounter the error message along the lines of the following when installing `harmony-model-checker`:
+For **Windows** users: you may encounter the error message along the lines of the following when installing `harmony`:
 
 ```sh
 error: Microsoft Visual C++ 14.0 or greater is required. Get it with
@@ -94,7 +94,7 @@ Select `Desktop development with C++` in the `Desktop & Mobile` section and then
 
 ![Select the workload and install](https://harmony.cs.cornell.edu/docs/textbook/figures/press-install-c%2B%2B-build-tools.png "Select the workload and install")
 
-Note that this will likely take a while. When it finishes installing, run `pip install harmony-model-checker` again.
+Note that this will likely take a while. When it finishes installing, run `pip install harmony` again.
 
 
 ### For CS Deparment Linux Machine Users
@@ -102,15 +102,15 @@ Note that this will likely take a while. When it finishes installing, run `pip i
 It may be possible that `pip` is not available on your Linux machine. In that case, you will need to download and build the source code directly. This can be done via the following commands:
 
 ```sh
-# Installs version 1.2.2386
-wget https://files.pythonhosted.org/packages/71/8b/49cad4c1c9b519fb1a479991fe23fb04892b77f17e045f11309bef424597/harmony_model_checker-1.2.2386.tar.gz
-gzip -d harmony_model_checker-1.2.2386.tar.gz
-tar -xf harmony_model_checker-1.2.2386.tar
-cd harmony_model_checker-1.2.2386
+# Installs version 1.2.2759
+wget https://files.pythonhosted.org/packages/71/8b/49cad4c1c9b519fb1a479991fe23fb04892b77f17e045f11309bef424597/harmony-1.2.2759.tar.gz
+gzip -d harmony-1.2.2759.tar.gz
+tar -xf harmony-1.2.2759.tar
+cd harmony-1.2.2759
 python3 setup.py install --user
 ```
 
-You can find the latest releases [here](https://pypi.org/project/harmony-model-checker/#files).
+You can find the latest releases [here](https://pypi.org/project/harmony/#files).
 
 
 Afterward, you will likely need to add the directory with the `harmony` command to your environment `PATH`. You can get the directory with the script by running `python3 -m site --user-base`, which will output something like `/home/<net-id>/.local`. Add this directory to your `PATH` (See [here](#modifying-your-path-variable) for more information on how to do so).
@@ -130,7 +130,7 @@ Otherwise, add that path displayed in the message to your `PATH` variable. See [
 
 ## Command-Line Harmony
 
-Once you have installed `harmony-model-checker`, you should be able to use the `harmony` command on your command line.
+Once you have installed `harmony`, you should be able to use the `harmony` command on your command line.
 
 You check which version you have by running `harmony --version`.
 
@@ -145,7 +145,7 @@ Please see [here](https://marketplace.visualstudio.com/items?itemName=kevinsun-d
 Harmony can be updated by running the following `pip` command on the command line:
 
 ```sh
-pip install --upgrade harmony-model-checker
+pip install --upgrade harmony
 ```
 
 In Harmony versions `1.2.0` and higher, the compiler will output a warning if the currently installed version of Harmony is outdated and an updated one can be installed.
