@@ -2512,7 +2512,7 @@ hvalue_t f_countLabel(struct state *state, struct step *step, hvalue_t *args, in
 
     unsigned int result = 0;
     for (unsigned int i = 0; i < state->bagsize; i++) {
-        assert(VALUE_TYPE(state->contexts[i]) == VALUE_CONTEXT);
+        assert(VALUE_TYPE(state_contexts(state)[i]) == VALUE_CONTEXT);
         struct context *ctx = value_get(state_contexts(state)[i], NULL);
         if ((hvalue_t) ctx->pc == e) {
             result += multiplicities(state)[i];

@@ -846,7 +846,7 @@ void print_state(
         if (i > 0) {
             fprintf(file, ",\n");
         }
-        assert(VALUE_TYPE(node->state->contexts[i]) == VALUE_CONTEXT);
+        assert(VALUE_TYPE(state_contexts(node->state)[i]) == VALUE_CONTEXT);
         fprintf(file, "          \"%"PRIx64"\": \"%u\"", state_contexts(node->state)[i],
                 multiplicities(node->state)[i]);
     }
@@ -1316,11 +1316,11 @@ void path_dump(
      */
     bool *matched = calloc(global->nprocesses, sizeof(bool));
     for (unsigned int i = 0; i < node->state->bagsize; i++) {
-        assert(VALUE_TYPE(node->state->contexts[i]) == VALUE_CONTEXT);
+        assert(VALUE_TYPE(state_contexts(node->state)[i]) == VALUE_CONTEXT);
         for (unsigned int j = 0; j < multiplicities(node->state)[i]; j++) {
             unsigned int k;
             for (k = 0; k < global->nprocesses; k++) {
-                if (!matched[k] && global->processes[k] == node->state->contexts[i]) {
+                if (!matched[k] && global->processes[k] == state_contexts(node->state)[i]) {
                     matched[k] = true;
                     break;
                 }
@@ -1329,7 +1329,7 @@ void path_dump(
                 panic("SHOULD NOT GET HERE");
                 global->processes = realloc(global->processes, (global->nprocesses + 1) * sizeof(hvalue_t));
                 matched = realloc(matched, (global->nprocesses + 1) * sizeof(bool));
-                global->processes[global->nprocesses] = node->state->contexts[i];
+                global->processes[global->nprocesses] = state_contexts(node->state)[i];
                 matched[global->nprocesses] = true;
                 global->nprocesses++;
             }
@@ -1588,7 +1588,7 @@ static void do_work(struct worker *w){
             }
             else {
                 for (unsigned int i = 0; i < state->bagsize; i++) {
-                    assert(VALUE_TYPE(state->contexts[i]) == VALUE_CONTEXT);
+                    assert(VALUE_TYPE(state_contexts(state)[i]) == VALUE_CONTEXT);
                     make_step(
                         w,
                         node,
@@ -2310,7 +2310,7 @@ int main(int argc, char **argv){
                 struct state *state = node->state;
                 unsigned int j;
                 for (j = 0; j < state->bagsize; j++) {
-                    if (state->contexts[j] == edge->ctx) {
+                    if (state_contexts(state)[j] == edge->ctx) {
                         break;
                     }
                 }
