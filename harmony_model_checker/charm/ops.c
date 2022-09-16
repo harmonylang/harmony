@@ -232,16 +232,16 @@ void interrupt_invoke(struct step *step){
     if (step->keep_callstack) {
         struct callstack *cs = new_alloc(struct callstack);
         cs->parent = step->callstack;
-        cs->pc = VALUE_FROM_PC(step->ctx->ctx_trap_pc);
-        cs->arg = step->ctx->ctx_trap_arg;
+        cs->pc = VALUE_FROM_PC(ctx_trap_pc(step->ctx));
+        cs->arg = ctx_trap_arg(step->ctx);
         cs->sp = step->ctx->sp;
         cs->vars = step->ctx->vars;
         cs->return_address = ((step->ctx->pc + 1) << CALLTYPE_BITS) | CALLTYPE_INTERRUPT;
         step->callstack = cs;
     }
-    ctx_push(step->ctx, step->ctx->ctx_trap_arg);
-    step->ctx->pc = VALUE_FROM_PC(step->ctx->ctx_trap_pc);
-    step->ctx->ctx_trap_pc = 0;
+    ctx_push(step->ctx, ctx_trap_arg(step->ctx));
+    step->ctx->pc = VALUE_FROM_PC(ctx_trap_pc(step->ctx));
+    ctx_trap_pc(step->ctx) = 0;
     step->ctx->interruptlevel = true;
     strbuf_printf(&step->explain, "operation aborted; interrupt invoked");
 }
@@ -286,10 +286,17 @@ static bool ind_trystore(hvalue_t root, hvalue_t *indices, int n, hvalue_t value
                     return true;
                 }
                 int n = size * sizeof(hvalue_t);
+#ifdef HEAP_ALLOC
+                hvalue_t *copy = malloc(n * sizeof(hvalue_t));
+#else
                 hvalue_t copy[n];
+#endif
                 memcpy(copy, vals, n);
                 copy[i + 1] = nd;
                 hvalue_t v = value_put_dict(engine, copy, n);
+#ifdef HEAP_ALLOC
+                free(copy);
+#endif
                 *result = v;
                 return true;
             }
@@ -324,10 +331,17 @@ static bool ind_trystore(hvalue_t root, hvalue_t *indices, int n, hvalue_t value
             return true;
         }
         int nsize = size * sizeof(hvalue_t);
+#ifdef HEAP_ALLOC
+        hvalue_t *copy = malloc(nsize * sizeof(hvalue_t));
+#else
         hvalue_t copy[nsize];
+#endif
         memcpy(copy, vals, nsize);
         copy[index] = nd;
         hvalue_t v = value_put_list(engine, copy, nsize);
+#ifdef HEAP_ALLOC
+        free(copy);
+#endif
         *result = v;
         return true;
     }
@@ -365,10 +379,17 @@ bool ind_remove(hvalue_t root, hvalue_t *indices, int n, struct engine *engine,
                     return true;
                 }
                 int n = size * sizeof(hvalue_t);
+#ifdef HEAP_ALLOC
+                hvalue_t *copy = malloc(n * sizeof(hvalue_t));
+#else
                 hvalue_t copy[n];
+#endif
                 memcpy(copy, vals, n);
                 copy[i + 1] = nd;
                 hvalue_t v = value_put_dict(engine, copy, n);
+#ifdef HEAP_ALLOC
+                free(copy);
+#endif
                 *result = v;
                 return true;
             }
@@ -402,10 +423,17 @@ bool ind_remove(hvalue_t root, hvalue_t *indices, int n, struct engine *engine,
             return true;
         }
         int n = size * sizeof(hvalue_t);
+#ifdef HEAP_ALLOC
+        hvalue_t *copy = malloc(n * sizeof(hvalue_t));
+#else
         hvalue_t copy[n];
+#endif
         memcpy(copy, vals, n);
         copy[index] = nd;
         hvalue_t v = value_put_list(engine, copy, n);
+#ifdef HEAP_ALLOC
+        free(copy);
+#endif
         *result = v;
         return true;
     }
@@ -428,10 +456,17 @@ void op_Address(const void *env, struct state *state, struct step *step, struct 
 
     unsigned int size;
     hvalue_t *indices_orig = value_get(av, &size);
+#ifdef HEAP_ALLOC
+    hvalue_t *indices = malloc((size / sizeof(hvalue_t) + 1) * sizeof(hvalue_t));
+#else
     hvalue_t indices[size / sizeof(hvalue_t) + 1];
+#endif
     memcpy(indices, indices_orig, size);
     indices[size / sizeof(hvalue_t)] = index;
     hvalue_t result = value_put_address(&step->engine, indices, size + sizeof(index));
+#ifdef HEAP_ALLOC
+    free(indices);
+#endif
     if (step->keep_callstack) {
         char *key = value_string(index);
         char *addr = value_string(av);
@@ -1148,11 +1183,11 @@ void op_DelVar(const void *env, struct state *state, struct step *step, struct g
                 value_ctx_failure(step->ctx, &step->engine, "DelVar: context does not have 'this'");
                 return;
             }
-            if (VALUE_TYPE(step->ctx->ctx_this) != VALUE_DICT) {
+            if (VALUE_TYPE(ctx_this(step->ctx)) != VALUE_DICT) {
                 value_ctx_failure(step->ctx, &step->engine, "DelVar: 'this' is not a dictionary");
                 return;
             }
-		    result = ind_remove(step->ctx->ctx_this, &indices[1], size - 1, &step->engine, &step->ctx->ctx_this);
+		    result = ind_remove(ctx_this(step->ctx), &indices[1], size - 1, &step->engine, &ctx_this(step->ctx));
         }
         else {
 		    result = ind_remove(step->ctx->vars, indices, size, &step->engine, &step->ctx->vars);
@@ -1246,13 +1281,19 @@ void op_Go(
     // Copy the context and reserve an extra hvalue_t
     unsigned int size;
     struct context *orig = value_get(ctx, &size);
+#ifdef HEAP_ALLOC
+    char *buffer = malloc(size + sizeof(hvalue_t));
+#else
     char buffer[size + sizeof(hvalue_t)];
+#endif
     memcpy(buffer, orig, size);
     struct context *copy = (struct context *) buffer;
-
     ctx_push(copy, result);
     copy->stopped = false;
     context_add(state, value_put_context(&step->engine, copy));
+#ifdef HEAP_ALLOC
+    free(buffer);
+#endif
     step->ctx->pc++;
 }
 
@@ -1399,11 +1440,11 @@ void op_LoadVar(const void *env, struct state *state, struct step *step, struct 
                 value_ctx_failure(step->ctx, &step->engine, "LoadVar: context does not have 'this'");
                 return;
             }
-            if (VALUE_TYPE(step->ctx->ctx_this) != VALUE_DICT) {
+            if (VALUE_TYPE(ctx_this(step->ctx)) != VALUE_DICT) {
                 value_ctx_failure(step->ctx, &step->engine, "LoadVar: 'this' is not a dictionary");
                 return;
             }
-            result = ind_tryload(&step->engine, step->ctx->ctx_this, &indices[1], size - 1, &v);
+            result = ind_tryload(&step->engine, ctx_this(step->ctx), &indices[1], size - 1, &v);
         }
         else {
             if (!check_stack(step->ctx, 1)) {
@@ -1435,11 +1476,11 @@ void op_LoadVar(const void *env, struct state *state, struct step *step, struct 
                 value_ctx_failure(step->ctx, &step->engine, "LoadVar: context does not have 'this'");
                 return;
             }
-            if (VALUE_TYPE(step->ctx->ctx_this) != VALUE_DICT) {
+            if (VALUE_TYPE(ctx_this(step->ctx)) != VALUE_DICT) {
                 value_ctx_failure(step->ctx, &step->engine, "LoadVar: 'this' is not a dictionary");
                 return;
             }
-            ctx_push(step->ctx, step->ctx->ctx_this);
+            ctx_push(step->ctx, ctx_this(step->ctx));
         }
         else if (value_tryload(&step->engine, step->ctx->vars, el->name, &v)) {
             if (step->keep_callstack) {
@@ -1766,7 +1807,7 @@ void op_Spawn(
 
     if (thisval != VALUE_DICT) {
         value_ctx_extend(ctx);
-        ctx->ctx_this = thisval;
+        ctx_this(ctx) = thisval;
     }
     ctx->pc = pc;
     ctx->vars = VALUE_DICT;
@@ -2023,11 +2064,11 @@ void op_StoreVar(const void *env, struct state *state, struct step *step, struct
             if (!step->ctx->extended) {
                 value_ctx_extend(step->ctx);
             }
-            if (VALUE_TYPE(step->ctx->ctx_this) != VALUE_DICT) {
+            if (VALUE_TYPE(ctx_this(step->ctx)) != VALUE_DICT) {
                 value_ctx_failure(step->ctx, &step->engine, "StoreVar: 'this' is not a dictionary");
                 return;
             }
-            result = ind_trystore(step->ctx->ctx_this, &indices[1], size - 1, v, &step->engine, &step->ctx->ctx_this);
+            result = ind_trystore(ctx_this(step->ctx), &indices[1], size - 1, v, &step->engine, &ctx_this(step->ctx));
         }
 
         else {
@@ -2053,11 +2094,11 @@ void op_StoreVar(const void *env, struct state *state, struct step *step, struct
             if (!step->ctx->extended) {
                 value_ctx_extend(step->ctx);
             }
-            if (VALUE_TYPE(step->ctx->ctx_this) != VALUE_DICT) {
+            if (VALUE_TYPE(ctx_this(step->ctx)) != VALUE_DICT) {
                 value_ctx_failure(step->ctx, &step->engine, "StoreVar: 'this' is not a dictionary");
                 return;
             }
-            step->ctx->ctx_this = v;
+            ctx_this(step->ctx) = v;
             step->ctx->pc++;
         }
         else {
@@ -2076,10 +2117,10 @@ void op_Trap(const void *env, struct state *state, struct step *step, struct glo
         return;
     }
     value_ctx_extend(step->ctx);
-    step->ctx->ctx_trap_pc = trap_pc;
+    ctx_trap_pc(step->ctx) = trap_pc;
     assert(VALUE_FROM_PC(trap_pc) < (hvalue_t) global->code.len);
     assert(strcmp(global->code.instrs[VALUE_FROM_PC(trap_pc)].oi->name, "Frame") == 0);
-    step->ctx->ctx_trap_arg = ctx_pop(step->ctx);
+    ctx_trap_arg(step->ctx) = ctx_pop(step->ctx);
     step->ctx->pc++;
 }
 
@@ -2472,7 +2513,7 @@ hvalue_t f_countLabel(struct state *state, struct step *step, hvalue_t *args, in
     unsigned int result = 0;
     for (unsigned int i = 0; i < state->bagsize; i++) {
         assert(VALUE_TYPE(state->contexts[i]) == VALUE_CONTEXT);
-        struct context *ctx = value_get(state->contexts[i], NULL);
+        struct context *ctx = value_get(state_contexts(state)[i], NULL);
         if ((hvalue_t) ctx->pc == e) {
             result += multiplicities(state)[i];
         }
@@ -2627,7 +2668,11 @@ hvalue_t f_intersection(
         }
         // get all the sets
 		assert(n > 0);
+#ifdef HEAP_ALLOC
+        struct val_info *vi = malloc(n * sizeof(struct val_info));
+#else
         struct val_info vi[n];
+#endif
 		vi[0].vals = value_get(args[0], &vi[0].size); 
 		vi[0].index = 0;
         unsigned int min_size = vi[0].size;     // minimum set size
@@ -2653,11 +2698,19 @@ hvalue_t f_intersection(
 
         // If any are empty lists, we're done.
         if (min_size == 0) {
+#ifdef HEAP_ALLOC
+            free(vi);
+#endif
             return VALUE_SET;
         }
 
         // Allocate sufficient memory.
-        hvalue_t vals[min_size / sizeof(hvalue_t)], *v = vals;
+#ifdef HEAP_ALLOC
+        hvalue_t *vals = malloc(min_size);
+#else
+        hvalue_t vals[min_size / sizeof(hvalue_t)];
+#endif
+        hvalue_t *v = vals;
 
         bool done = false;
         for (unsigned int i = 0; i < min_size; i++) {
@@ -2704,6 +2757,10 @@ hvalue_t f_intersection(
         }
 
         hvalue_t result = value_put_set(&step->engine, vals, (char *) v - (char *) vals);
+#ifdef HEAP_ALLOC
+        free(vals);
+        free(vi);
+#endif
         return result;
     }
 
@@ -2717,10 +2774,17 @@ hvalue_t f_intersection(
         return value_ctx_failure(step->ctx, &step->engine, "'&' can only be applied to ints and dicts");
     }
     // get all the dictionaries
+#ifdef HEAP_ALLOC
+    struct val_info *vi = malloc(n * sizeof(struct val_info));
+#else
     struct val_info vi[n];
+#endif
     int total = 0;
     for (int i = 0; i < n; i++) {
         if (VALUE_TYPE(args[i]) != VALUE_DICT) {
+#ifdef HEAP_ALLOC
+            free(vi);
+#endif
             return value_ctx_failure(step->ctx, &step->engine, "'&' applied to mix of dictionaries and other types");
         }
         if (args[i] == VALUE_DICT) {
@@ -2735,11 +2799,18 @@ hvalue_t f_intersection(
 
     // If all are empty dictionaries, we're done.
     if (total == 0) {
+#ifdef HEAP_ALLOC
+        free(vi);
+#endif
         return VALUE_DICT;
     }
 
     // Concatenate the dictionaries
+#ifdef HEAP_ALLOC
+    hvalue_t *vals = malloc(total);
+#else
     hvalue_t vals[total / sizeof(hvalue_t)];
+#endif
     total = 0;
     for (int i = 0; i < n; i++) {
         memcpy((char *) vals + total, vi[i].vals, vi[i].size);
@@ -2773,6 +2844,10 @@ hvalue_t f_intersection(
     }
 
     hvalue_t result = value_put_dict(&step->engine, vals, 2 * out * sizeof(hvalue_t));
+#ifdef HEAP_ALLOC
+    free(vals);
+    free(vi);
+#endif
     return result;
 }
 
@@ -2804,12 +2879,19 @@ hvalue_t f_keys(struct state *state, struct step *step, hvalue_t *args, int n){
 
     unsigned int size;
     hvalue_t *vals = value_get(v, &size);
+#ifdef HEAP_ALLOC
+    hvalue_t *keys = malloc(size / 2);
+#else
     hvalue_t keys[size / 2 / sizeof(hvalue_t)];
+#endif
     size /= 2 * sizeof(hvalue_t);
     for (unsigned int i = 0; i < size; i++) {
         keys[i] = vals[2*i];
     }
     hvalue_t result = value_put_set(&step->engine, keys, size * sizeof(hvalue_t));
+#ifdef HEAP_ALLOC
+    free(keys);
+#endif
     return result;
 }
 
@@ -3044,7 +3126,11 @@ hvalue_t f_minus(struct state *state, struct step *step, hvalue_t *args, int n){
         else {
             vals2 = value_get(e2, &size2);
         }
+#ifdef HEAP_ALLOC
+        hvalue_t *vals = malloc(size2);
+#else
         hvalue_t vals[size2 / sizeof(hvalue_t)];
+#endif
         size1 /= sizeof(hvalue_t);
         size2 /= sizeof(hvalue_t);
 
@@ -3069,6 +3155,9 @@ hvalue_t f_minus(struct state *state, struct step *step, hvalue_t *args, int n){
             *q++ = *p2++; size2--;
         }
         hvalue_t result = value_put_set(&step->engine, vals, (char *) q - (char *) vals);
+#ifdef HEAP_ALLOC
+        free(vals);
+#endif
         return result;
     }
 }
@@ -3153,10 +3242,17 @@ hvalue_t f_plus(struct state *state, struct step *step, hvalue_t *args, int n){
             strbuf_printf(&step->explain, "concatenate the lists; ");
         }
         // get all the lists
+#ifdef HEAP_ALLOC
+        struct val_info *vi = malloc(n * sizeof(struct val_info));
+#else
         struct val_info vi[n];
+#endif
         int total = 0;
         for (int i = 0; i < n; i++) {
             if (VALUE_TYPE(args[i]) != VALUE_LIST) {
+#ifdef HEAP_ALLOC
+                free(vi);
+#endif
                 value_ctx_failure(step->ctx, &step->engine, "+: applied to mix of value types");
                 return 0;
             }
@@ -3172,11 +3268,18 @@ hvalue_t f_plus(struct state *state, struct step *step, hvalue_t *args, int n){
 
         // If all are empty lists, we're done.
         if (total == 0) {
+#ifdef HEAP_ALLOC
+            free(vi);
+#endif
             return VALUE_LIST;
         }
 
         // Concatenate the lists
+#ifdef HEAP_ALLOC
+        hvalue_t *vals = malloc(total);
+#else
         hvalue_t vals[total / sizeof(hvalue_t)];
+#endif
         total = 0;
         for (int i = n; --i >= 0;) {
             memcpy((char *) vals + total, vi[i].vals, vi[i].size);
@@ -3184,6 +3287,10 @@ hvalue_t f_plus(struct state *state, struct step *step, hvalue_t *args, int n){
         }
 
         hvalue_t result = value_put_list(&step->engine, vals, total);
+#ifdef HEAP_ALLOC
+        free(vals);
+        free(vi);
+#endif
         return result;
     }
 
@@ -3252,11 +3359,18 @@ hvalue_t f_range(struct state *state, struct step *step, hvalue_t *args, int n){
     int cnt = (finish - start) + 1;
 	assert(cnt > 0);
 	assert(cnt < 1000);		// seems unlikely...
+#ifdef HEAP_ALLOC
+    hvalue_t *v = malloc(cnt * sizeof(hvalue_t));
+#else
     hvalue_t v[cnt];
+#endif
     for (int i = 0; i < cnt; i++) {
         v[i] = VALUE_TO_INT(start + i);
     }
     hvalue_t result = value_put_set(&step->engine, v, cnt * sizeof(hvalue_t));
+#ifdef HEAP_ALLOC
+    free(v);
+#endif
     return result;
 }
 
@@ -3269,10 +3383,17 @@ hvalue_t f_list_add(struct state *state, struct step *step, hvalue_t *args, int 
     assert(VALUE_TYPE(list) == VALUE_LIST);
     unsigned int size;
     hvalue_t *vals = value_get(list, &size);
+#ifdef HEAP_ALLOC
+    hvalue_t *nvals = malloc(size + sizeof(hvalue_t));
+#else
     hvalue_t nvals[size / sizeof(hvalue_t) + 1];
+#endif
     memcpy(nvals, vals, size);
     memcpy((char *) nvals + size, &args[0], sizeof(hvalue_t));
     hvalue_t result = value_put_list(&step->engine, nvals, size + sizeof(hvalue_t));
+#ifdef HEAP_ALLOC
+    free(nvals);
+#endif
     return result;
 }
 
@@ -3301,21 +3422,35 @@ hvalue_t f_dict_add(struct state *state, struct step *step, hvalue_t *args, int 
         if (cmp <= 0) {
             return dict;
         }
+#ifdef HEAP_ALLOC
+        hvalue_t *nvals = malloc(size);
+#else
         hvalue_t nvals[size / sizeof(hvalue_t)];
+#endif
         memcpy(nvals, vals, size);
         * (hvalue_t *) ((char *) nvals + (i + sizeof(hvalue_t))) = value;
 
         hvalue_t result = value_put_dict(&step->engine, nvals, size);
+#ifdef HEAP_ALLOC
+        free(nvals);
+#endif
         return result;
     }
     else {
+#ifdef HEAP_ALLOC
+        hvalue_t *nvals = malloc(size + 2 * sizeof(hvalue_t));
+#else
         hvalue_t nvals[size / sizeof(hvalue_t) + 2];
+#endif
         memcpy(nvals, vals, i);
         * (hvalue_t *) ((char *) nvals + i) = key;
         * (hvalue_t *) ((char *) nvals + (i + sizeof(hvalue_t))) = value;
         memcpy((char *) nvals + i + 2*sizeof(hvalue_t), v, size - i);
 
         hvalue_t result = value_put_dict(&step->engine, nvals, size + 2*sizeof(hvalue_t));
+#ifdef HEAP_ALLOC
+        free(nvals);
+#endif
         return result;
     }
 }
@@ -3341,12 +3476,19 @@ hvalue_t f_set_add(struct state *state, struct step *step, hvalue_t *args, int n
         }
     }
 
+#ifdef HEAP_ALLOC
+    hvalue_t *nvals = malloc(size + sizeof(hvalue_t));
+#else
     hvalue_t nvals[size / sizeof(hvalue_t) + 1];
+#endif
     memcpy(nvals, vals, i);
     * (hvalue_t *) ((char *) nvals + i) = elt;
     memcpy((char *) nvals + i + sizeof(hvalue_t), v, size - i);
 
     hvalue_t result = value_put_set(&step->engine, nvals, size + sizeof(hvalue_t));
+#ifdef HEAP_ALLOC
+    free(nvals);
+#endif
     return result;
 }
 
@@ -3451,11 +3593,18 @@ hvalue_t f_times(struct state *state, struct step *step, hvalue_t *args, int n){
             return VALUE_DICT;
         }
         unsigned int n = size / sizeof(hvalue_t);
+#ifdef HEAP_ALLOC
+        hvalue_t *r = malloc(result * size);
+#else
         hvalue_t r[result * size / sizeof(hvalue_t)];
+#endif
         for (unsigned int i = 0; i < result; i++) {
             memcpy(&r[i * n], vals, size);
         }
         hvalue_t v = value_put_list(&step->engine, r, result * size);
+#ifdef HEAP_ALLOC
+        free(r);
+#endif
         return v;
     }
     assert(VALUE_TYPE(args[list]) == VALUE_ATOM);
@@ -3497,10 +3646,17 @@ hvalue_t f_union(struct state *state, struct step *step, hvalue_t *args, int n){
             strbuf_printf(&step->explain, "union; ");
         }
         // get all the sets
+#ifdef HEAP_ALLOC
+        struct val_info *vi = malloc(n * sizeof(struct val_info));;
+#else
         struct val_info vi[n];
+#endif
         int total = 0;
         for (int i = 0; i < n; i++) {
             if (VALUE_TYPE(args[i]) != VALUE_SET) {
+#ifdef HEAP_ALLOC
+                free(vi);
+#endif
                 return value_ctx_failure(step->ctx, &step->engine, "'|' applied to mix of sets and other types");
             }
             if (args[i] == VALUE_SET) {
@@ -3515,11 +3671,18 @@ hvalue_t f_union(struct state *state, struct step *step, hvalue_t *args, int n){
 
         // If all are empty lists, we're done.
         if (total == 0) {
+#ifdef HEAP_ALLOC
+            free(vi);
+#endif
             return VALUE_SET;
         }
 
         // Concatenate the sets
+#ifdef HEAP_ALLOC
+        hvalue_t *vals = malloc(total);
+#else
         hvalue_t vals[total / sizeof(hvalue_t)];
+#endif
         total = 0;
         for (int i = 0; i < n; i++) {
             memcpy((char *) vals + total, vi[i].vals, vi[i].size);
@@ -3528,6 +3691,10 @@ hvalue_t f_union(struct state *state, struct step *step, hvalue_t *args, int n){
 
         n = sort(vals, total / sizeof(hvalue_t));
         hvalue_t result = value_put_set(&step->engine, vals, n * sizeof(hvalue_t));
+#ifdef HEAP_ALLOC
+        free(vals);
+        free(vi);
+#endif
         return result;
     }
 
@@ -3538,10 +3705,17 @@ hvalue_t f_union(struct state *state, struct step *step, hvalue_t *args, int n){
         strbuf_printf(&step->explain, "dictionary union; ");
     }
     // get all the dictionaries
+#ifdef HEAP_ALLOC
+    struct val_info *vi = malloc(n * sizeof(struct val_info));
+#else
     struct val_info vi[n];
+#endif
     int total = 0;
     for (int i = 0; i < n; i++) {
         if (VALUE_TYPE(args[i]) != VALUE_DICT) {
+#ifdef HEAP_ALLOC
+            free(vi);
+#endif
             return value_ctx_failure(step->ctx, &step->engine, "'|' applied to mix of dictionaries and other types");
         }
         if (args[i] == VALUE_DICT) {
@@ -3556,11 +3730,18 @@ hvalue_t f_union(struct state *state, struct step *step, hvalue_t *args, int n){
 
     // If all are empty dictionaries, we're done.
     if (total == 0) {
+#ifdef HEAP_ALLOC
+        free(vi);
+#endif
         return VALUE_DICT;
     }
 
     // Concatenate the dictionaries
+#ifdef HEAP_ALLOC
+    hvalue_t *vals = malloc(total);
+#else
     hvalue_t vals[total / sizeof(hvalue_t)];
+#endif
     total = 0;
     for (int i = 0; i < n; i++) {
         memcpy((char *) vals + total, vi[i].vals, vi[i].size);
@@ -3583,6 +3764,10 @@ hvalue_t f_union(struct state *state, struct step *step, hvalue_t *args, int n){
     n++;
 
     hvalue_t result = value_put_dict(&step->engine, vals, 2 * n * sizeof(hvalue_t));
+#ifdef HEAP_ALLOC
+    free(vals);
+    free(vi);
+#endif
     return result;
 }
 
@@ -3607,10 +3792,17 @@ hvalue_t f_xor(struct state *state, struct step *step, hvalue_t *args, int n){
     if (step->keep_callstack) {
         strbuf_printf(&step->explain, "excluded values: compute the values that are in an odd number of sets; ");
     }
+#ifdef HEAP_ALLOC
+    struct val_info *vi = malloc(n * sizeof(struct val_info));
+#else
     struct val_info vi[n];
+#endif
     int total = 0;
     for (int i = 0; i < n; i++) {
         if (VALUE_TYPE(args[i]) != VALUE_SET) {
+#ifdef HEAP_ALLOC
+            free(vi);
+#endif
             return value_ctx_failure(step->ctx, &step->engine, "'^' applied to mix of value types");
         }
         if (args[i] == VALUE_SET) {
@@ -3625,11 +3817,18 @@ hvalue_t f_xor(struct state *state, struct step *step, hvalue_t *args, int n){
 
     // If all are empty lists, we're done.
     if (total == 0) {
+#ifdef HEAP_ALLOC
+        free(vi);
+#endif
         return VALUE_SET;
     }
 
     // Concatenate the sets
+#ifdef HEAP_ALLOC
+    hvalue_t *vals = malloc(total);
+#else
     hvalue_t vals[total / sizeof(hvalue_t)];
+#endif
     total = 0;
     for (int i = 0; i < n; i++) {
         memcpy((char *) vals + total, vi[i].vals, vi[i].size);
@@ -3653,6 +3852,10 @@ hvalue_t f_xor(struct state *state, struct step *step, hvalue_t *args, int n){
     }
 
     hvalue_t result = value_put_set(&step->engine, vals, k * sizeof(hvalue_t));
+#ifdef HEAP_ALLOC
+    free(vals);
+    free(vi);
+#endif
     return result;
 }
 

@@ -36,8 +36,9 @@ struct edge {
     bool interrupt : 1;      // set if state change is an interrupt
     uint8_t weight : 1;      // context switch or not
     uint16_t nlog : 14;      // size of print history
-    hvalue_t log[0];         // print history (immediately follows edge)
+    // hvalue_t log[];       // print history (immediately follows edge)
 };
+#define edge_log(x)     ((hvalue_t *) ((x) + 1))
 
 enum fail_type {
     FAIL_NONE,

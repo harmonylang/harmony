@@ -2,6 +2,8 @@
 // Created by William Ma on 10/12/21.
 //
 
+#include "head.h"
+
 #include <stdio.h>
 #include <assert.h>
 #include <stdlib.h>

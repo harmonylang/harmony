@@ -108,6 +108,7 @@ hvalue_t value_put_context(struct engine *engine, struct context *ctx){
 }
 
 int value_cmp_bool(hvalue_t v1, hvalue_t v2){
+    assert(v1 != v2);
     return v1 == 0 ? -1 : 1;
 }
 
@@ -552,16 +553,16 @@ static void value_string_context(struct strbuf *sb, hvalue_t v) {
     strbuf_value_string(sb, ctx->vars);
     if (ctx->extended) {
         strbuf_printf(sb, ",this=");
-        strbuf_value_string(sb, ctx->ctx_this);
-        if (ctx->ctx_trap_pc != 0) {
+        strbuf_value_string(sb, ctx_this(ctx));
+        if (ctx_trap_pc(ctx) != 0) {
             strbuf_printf(sb, ",trap_pc=");
-            strbuf_value_string(sb, ctx->ctx_trap_pc);
+            strbuf_value_string(sb, ctx_trap_pc(ctx));
             strbuf_printf(sb, ",trap_arg=");
-            strbuf_value_string(sb, ctx->ctx_trap_arg);
+            strbuf_value_string(sb, ctx_trap_arg(ctx));
         }
-        if (ctx->ctx_failure != 0) {
+        if (ctx_failure(ctx) != 0) {
             strbuf_printf(sb, ",failure=");
-            strbuf_value_string(sb, ctx->ctx_failure);
+            strbuf_value_string(sb, ctx_failure(ctx));
         }
     }
 
@@ -746,24 +747,24 @@ static void value_json_context(struct strbuf *sb, hvalue_t v, struct global *glo
         strbuf_printf(sb, "\"eternal\": { \"type\": \"bool\", \"value\": \"True\" },");
     }
     if (ctx->extended) {
-        if (ctx->ctx_this != 0) {
+        if (ctx_this(ctx) != 0) {
             strbuf_printf(sb, "\"this\": ");
-            strbuf_value_json(sb, ctx->ctx_this, global);
+            strbuf_value_json(sb, ctx_this(ctx), global);
             strbuf_printf(sb, ", ");
         }
-        if (ctx->ctx_failure != 0) {
+        if (ctx_failure(ctx) != 0) {
             strbuf_printf(sb, "\"failure\": ");
-            strbuf_value_json(sb, ctx->ctx_failure, global);
+            strbuf_value_json(sb, ctx_failure(ctx), global);
             strbuf_printf(sb, ", ");
         }
-        if (ctx->ctx_trap_pc != 0) {
+        if (ctx_trap_pc(ctx) != 0) {
             strbuf_printf(sb, "\"trap_pc\": ");
-            strbuf_value_json(sb, ctx->ctx_trap_pc, global);
+            strbuf_value_json(sb, ctx_trap_pc(ctx), global);
             strbuf_printf(sb, ", ");
         }
-        if (ctx->ctx_trap_arg != 0) {
+        if (ctx_trap_arg(ctx) != 0) {
             strbuf_printf(sb, "\"trap_arg\": ");
-            strbuf_value_json(sb, ctx->ctx_trap_arg, global);
+            strbuf_value_json(sb, ctx_trap_arg(ctx), global);
             strbuf_printf(sb, ", ");
         }
     }
@@ -1139,10 +1140,17 @@ bool value_dict_trystore(struct engine *engine, hvalue_t dict, hvalue_t key, hva
                 return true;
             }
             int n = size * sizeof(hvalue_t);
+#ifdef HEAP_ALLOC
+            hvalue_t *copy = malloc(size * sizeof(hvalue_t));
+#else
             hvalue_t copy[size];
+#endif
             memcpy(copy, vals, n);
             copy[i + 1] = value;
             hvalue_t v = value_put_dict(engine, copy, n);
+#ifdef HEAP_ALLOC
+            free(copy);
+#endif
             *result = v;
             return true;
         }
@@ -1156,12 +1164,19 @@ bool value_dict_trystore(struct engine *engine, hvalue_t dict, hvalue_t key, hva
     }
 
     int n = (size + 2) * sizeof(hvalue_t);
+#ifdef HEAP_ALLOC
+    hvalue_t *nvals = malloc((size + 2) * sizeof(hvalue_t));
+#else
     hvalue_t nvals[size + 2];
+#endif
     memcpy(nvals, vals, i * sizeof(hvalue_t));
     nvals[i] = key;
     nvals[i+1] = value;
     memcpy(&nvals[i+2], &vals[i], (size - i) * sizeof(hvalue_t));
     hvalue_t v = value_put_dict(engine, nvals, n);
+#ifdef HEAP_ALLOC
+    free(nvals);
+#endif
     *result = v;
     return true;
 }
@@ -1192,10 +1207,17 @@ bool value_trystore(struct engine *engine, hvalue_t root, hvalue_t key, hvalue_t
                     *result = root;
                     return true;
                 }
+#ifdef HEAP_ALLOC
+                hvalue_t *nvals = malloc(n * sizeof(hvalue_t));
+#else
                 hvalue_t nvals[n];
+#endif
                 memcpy(nvals, vals, size);
                 nvals[i + 1] = value;
                 hvalue_t v = value_put_dict(engine, nvals, size);
+#ifdef HEAP_ALLOC
+                free(nvals);
+#endif
                 *result = v;
                 return true;
             }
@@ -1209,12 +1231,19 @@ bool value_trystore(struct engine *engine, hvalue_t root, hvalue_t key, hvalue_t
         }
 
         size += 2 * sizeof(hvalue_t);
+#ifdef HEAP_ALLOC
+        hvalue_t *nvals = malloc((n + 2) * sizeof(hvalue_t));
+#else
         hvalue_t nvals[n + 2];
+#endif
         memcpy(nvals, vals, i * sizeof(hvalue_t));
         nvals[i] = key;
         nvals[i+1] = value;
         memcpy(&nvals[i+2], &vals[i], (n - i) * sizeof(hvalue_t));
         hvalue_t v = value_put_dict(engine, nvals, size);
+#ifdef HEAP_ALLOC
+        free(nvals);
+#endif
         *result = v;
         return true;
     }
@@ -1241,10 +1270,17 @@ bool value_trystore(struct engine *engine, hvalue_t root, hvalue_t key, hvalue_t
             }
             nsize = size;
         }
+#ifdef HEAP_ALLOC
+        hvalue_t *nvals = malloc(nsize);
+#else
         hvalue_t nvals[nsize / sizeof(hvalue_t)];
+#endif
         memcpy(nvals, vals, size);
         nvals[index] = value;
         hvalue_t v = value_put_list(engine, nvals, nsize);
+#ifdef HEAP_ALLOC
+        free(nvals);
+#endif
         *result = v;
         return true;
     }
@@ -1311,11 +1347,18 @@ hvalue_t value_dict_remove(struct engine *engine, hvalue_t dict, hvalue_t key){
     for (unsigned int i = 0; i < size; i += 2) {
         if (vals[i] == key) {
             int n = (size - 2) * sizeof(hvalue_t);
+#ifdef HEAP_ALLOC
+            hvalue_t *copy = malloc((size - 2) * sizeof(hvalue_t));
+#else
             hvalue_t copy[size - 2];
+#endif
             memcpy(copy, vals, i * sizeof(hvalue_t));
             memcpy(&copy[i], &vals[i+2],
                    (size - i - 2) * sizeof(hvalue_t));
             hvalue_t v = value_put_dict(engine, copy, n);
+#ifdef HEAP_ALLOC
+            free(copy);
+#endif
             return v;
         }
         /*
@@ -1348,11 +1391,18 @@ hvalue_t value_remove(struct engine *engine, hvalue_t root, hvalue_t key){
         for (unsigned i = 0; i < n; i += 2) {
             if (vals[i] == key) {
                 size -= 2 * sizeof(hvalue_t);
+#ifdef HEAP_ALLOC
+                hvalue_t *copy = malloc(size);
+#else
                 hvalue_t copy[size / sizeof(hvalue_t)];
+#endif
                 memcpy(copy, vals, i * sizeof(hvalue_t));
                 memcpy(&copy[i], &vals[i+2],
                        (n - i - 2) * sizeof(hvalue_t));
                 hvalue_t v = value_put_dict(engine, copy, size);
+#ifdef HEAP_ALLOC
+                free(copy);
+#endif
                 return v;
             }
             /* Not worth it
@@ -1373,11 +1423,18 @@ hvalue_t value_remove(struct engine *engine, hvalue_t root, hvalue_t key){
             return root;
         }
         size -= sizeof(hvalue_t);
+#ifdef HEAP_ALLOC
+        hvalue_t *copy = malloc(size);
+#else
         hvalue_t copy[size / sizeof(hvalue_t)];
+#endif
         memcpy(copy, vals, index * sizeof(hvalue_t));
         memcpy(&copy[index], &vals[index+1],
                (n - index - 1) * sizeof(hvalue_t));
         hvalue_t v = value_put_list(engine, copy, size);
+#ifdef HEAP_ALLOC
+        free(copy);
+#endif
         return v;
     }
 
@@ -1487,9 +1544,9 @@ void value_ctx_extend(struct context *ctx){
     if (ctx->extended) {
         return;
     }
-    memmove(&ctx->thestack[ctx_extent], ctx->thestack, ctx->sp * sizeof(hvalue_t));
-    memset(ctx->thestack, 0, ctx_extent * sizeof(hvalue_t));
-    ctx->ctx_this = VALUE_DICT;
+    memmove(&context_stack(ctx)[ctx_extent], context_stack(ctx), ctx->sp * sizeof(hvalue_t));
+    memset(context_stack(ctx), 0, ctx_extent * sizeof(hvalue_t));
+    ctx_this(ctx) = VALUE_DICT;
     ctx->extended = true;
 }
 
@@ -1498,14 +1555,14 @@ hvalue_t value_ctx_failure(struct context *ctx, struct engine *engine, char *fmt
 
     assert(!ctx->failed);
     value_ctx_extend(ctx);
-    assert(ctx->ctx_failure == 0);
+    assert(ctx_failure(ctx) == 0);
 
     struct strbuf sb;
     strbuf_init(&sb);
     va_start(args, fmt);
     strbuf_vprintf(&sb, fmt, args);
     va_end(args);
-    ctx->ctx_failure = value_put_atom(engine, strbuf_getstr(&sb), strbuf_getlen(&sb));
+    ctx_failure(ctx) = value_put_atom(engine, strbuf_getstr(&sb), strbuf_getlen(&sb));
     ctx->failed = true;
     strbuf_deinit(&sb);
 
@@ -1517,8 +1574,8 @@ bool value_state_all_eternal(struct state *state) {
         return true;
     }
     for (unsigned int i = 0; i < state->bagsize; i++) {
-        assert(VALUE_TYPE(state->contexts[i]) == VALUE_CONTEXT);
-        struct context *ctx = value_get(state->contexts[i], NULL);
+        assert(VALUE_TYPE(state_contexts(state)[i]) == VALUE_CONTEXT);
+        struct context *ctx = value_get(state_contexts(state)[i], NULL);
         if (!ctx->eternal) {
             return false;
         }
@@ -1559,16 +1616,16 @@ char *json_escape_value(hvalue_t v){
 
 void context_remove(struct state *state, hvalue_t ctx){
     for (unsigned int i = 0; i < state->bagsize; i++) {
-        if (state->contexts[i] == ctx) {
+        if (state_contexts(state)[i] == ctx) {
             if (multiplicities(state)[i] > 1) {
                 multiplicities(state)[i]--;
             }
             else {
                 state->bagsize--;
-                memmove(&state->contexts[i], &state->contexts[i+1],
+                memmove(&state_contexts(state)[i], &state_contexts(state)[i+1],
                         (state->bagsize - i) * sizeof(hvalue_t) + i);
-                memmove((char *) &state->contexts[state->bagsize] + i,
-                        (char *) &state->contexts[state->bagsize + 1] + i + 1,
+                memmove((char *) &state_contexts(state)[state->bagsize] + i,
+                        (char *) &state_contexts(state)[state->bagsize + 1] + i + 1,
                         state->bagsize - i);
             }
             break;
@@ -1579,11 +1636,11 @@ void context_remove(struct state *state, hvalue_t ctx){
 bool context_add(struct state *state, hvalue_t ctx){
     unsigned int i;
     for (i = 0; i < state->bagsize; i++) {
-        if (state->contexts[i] == ctx) {
+        if (state_contexts(state)[i] == ctx) {
             multiplicities(state)[i]++;
             return true;
         }
-        if (state->contexts[i] > ctx) {
+        if (state_contexts(state)[i] > ctx) {
             break;
         }
     }
@@ -1593,16 +1650,16 @@ bool context_add(struct state *state, hvalue_t ctx){
     }
  
     // Move the last multiplicities
-    memmove((char *) &state->contexts[state->bagsize + 1] + i + 1,
-            (char *) &state->contexts[state->bagsize] + i,
+    memmove((char *) &state_contexts(state)[state->bagsize + 1] + i + 1,
+            (char *) &state_contexts(state)[state->bagsize] + i,
             state->bagsize - i);
 
     // Move the last contexts plus the first multiplicitkes
-    memmove(&state->contexts[i+1], &state->contexts[i],
+    memmove(&state_contexts(state)[i+1], &state_contexts(state)[i],
                     (state->bagsize - i) * sizeof(hvalue_t) + i);
 
     state->bagsize++;
-    state->contexts[i] = ctx;
+    state_contexts(state)[i] = ctx;
     multiplicities(state)[i] = 1;
     return true;
 }

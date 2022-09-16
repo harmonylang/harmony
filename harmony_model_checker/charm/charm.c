@@ -106,7 +106,7 @@ static void run_thread(struct global *global, struct state *state, struct contex
             break;
         }
         if (step.ctx->failed) {
-            char *s = value_string(step.ctx->ctx_failure);
+            char *s = value_string(ctx_failure(step.ctx));
             printf("Failure: %s\n", s);
             free(s);
             break;
@@ -187,7 +187,7 @@ bool check_invariants(struct worker *w, struct node *node, struct step *step){
         int end = invariant_cnt(global->code.instrs[step->ctx->pc].env);
         bool b = invariant_check(global, state, step, end);
         if (step->ctx->failed) {
-            printf("Invariant failed: %s\n", value_string(step->ctx->ctx_failure));
+            printf("Invariant failed: %s\n", value_string(ctx_failure(step->ctx)));
             b = false;
         }
         if (!b) {
@@ -227,7 +227,7 @@ static bool onestep(
     // See if we should also try an interrupt.
     if (interrupt) {
         assert(step->ctx->extended);
-		assert(step->ctx->ctx_trap_pc != 0);
+		assert(ctx_trap_pc(step->ctx) != 0);
         interrupt_invoke(step);
     }
 
@@ -237,7 +237,11 @@ static bool onestep(
     bool choosing = false, infinite_loop = false;
     struct dict *infloop = NULL;        // infinite loop detector
     unsigned int instrcnt = 0;
+#ifdef HEAP_ALLOC
+    char *as_state = malloc(sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1));
+#else
     char as_state[sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1)];
+#endif
     hvalue_t as_context = 0;
     unsigned int as_instrcnt = 0;
     bool rollback = false, failure = false, stopped = false;
@@ -411,7 +415,7 @@ static bool onestep(
             bool breakable = next_instr->breakable;
 
             // Deal with interrupts if enabled
-            if (step->ctx->extended && step->ctx->ctx_trap_pc != 0 &&
+            if (step->ctx->extended && ctx_trap_pc(step->ctx) != 0 &&
                                 !step->ctx->interruptlevel) {
                 // If this is a thread exit, break so we can invoke the
                 // interrupt handler one more time
@@ -458,6 +462,10 @@ static bool onestep(
         after = value_put_context(&step->engine, step->ctx);
     }
 
+#ifdef HEAP_ALLOC
+    free(as_state);
+#endif
+
     // Remove old context from the bag
     context_remove(sc, ctx);
 
@@ -486,7 +494,7 @@ static bool onestep(
     edge->weight = weight;
     edge->after = after;
     edge->ai = step->ai;
-    memcpy(edge->log, step->log, step->nlog * sizeof(hvalue_t));
+    memcpy(edge_log(edge), step->log, step->nlog * sizeof(hvalue_t));
     edge->nlog = step->nlog;
     edge->nsteps = instrcnt;
 
@@ -578,7 +586,11 @@ static void make_step(
     // Make a copy of the state
     unsigned int statesz = state_size(node->state);
     // Room to grown in copy for op_Spawn
+#ifdef HEAP_ALLOC
+    char *copy = malloc(statesz + 64*sizeof(hvalue_t));
+#else
     char copy[statesz + 64*sizeof(hvalue_t)];
+#endif
     struct state *sc = (struct state *) copy;
     memcpy(sc, node->state, statesz);
     assert(step.engine.allocator == &w->allocator);
@@ -592,7 +604,7 @@ static void make_step(
     step.ctx = &w->ctx;
 
     // See if we need to interrupt
-    if (sc->choosing == 0 && cc->extended && cc->ctx_trap_pc != 0 && !cc->interruptlevel) {
+    if (sc->choosing == 0 && cc->extended && ctx_trap_pc(cc) != 0 && !cc->interruptlevel) {
         bool succ = onestep(w, node, sc, ctx, &step, choice, true, false, multiplicity);
         assert(step.engine.allocator == &w->allocator);
         if (!succ) {        // ran into an infinite loop
@@ -618,6 +630,10 @@ static void make_step(
         (void) onestep(w, node, sc, ctx, &step, choice, false, true, multiplicity);
         assert(step.engine.allocator == &w->allocator);
     }
+
+#ifdef HEAP_ALLOC
+    free(copy);
+#endif
 }
 
 char *ctx_status(struct node *node, hvalue_t ctx) {
@@ -702,14 +718,14 @@ void print_context(
     fprintf(file, "%s],\n", prefix);
 
     if (c->failed) {
-        s = value_string(c->ctx_failure);
+        s = value_string(ctx_failure(c));
         fprintf(file, "%s\"failure\": %s,\n", prefix, s);
         free(s);
     }
 
-    if (c->extended && c->ctx_trap_pc != 0) {
-        s = value_string(c->ctx_trap_pc);
-        a = value_string(c->ctx_trap_arg);
+    if (c->extended && ctx_trap_pc(c) != 0) {
+        s = value_string(ctx_trap_pc(c));
+        a = value_string(ctx_trap_arg(c));
         if (*a == '(') {
             fprintf(file, "%s\"trap\": \"%s%s\",\n", prefix, s, a);
         }
@@ -725,7 +741,7 @@ void print_context(
     }
 
     if (c->extended) {
-        s = value_json(c->ctx_this, global);
+        s = value_json(ctx_this(c), global);
         fprintf(file, "%s\"this\": %s,\n", prefix, s);
         free(s);
     }
@@ -812,7 +828,7 @@ void print_state(
                 fprintf(file, "          \"reason\": \"invariant violated\"\n");
             }
             else {
-                char *val = value_string(inv_step.ctx->ctx_failure);
+                char *val = value_string(ctx_failure(inv_step.ctx));
 				int len = strlen(val);
                 fprintf(file, "          \"reason\": \"%.*s\"\n", len - 2, val + 1);
                 free(val);
@@ -831,7 +847,7 @@ void print_state(
             fprintf(file, ",\n");
         }
         assert(VALUE_TYPE(node->state->contexts[i]) == VALUE_CONTEXT);
-        fprintf(file, "          \"%"PRIx64"\": \"%u\"", node->state->contexts[i],
+        fprintf(file, "          \"%"PRIx64"\": \"%u\"", state_contexts(node->state)[i],
                 multiplicities(node->state)[i]);
     }
     fprintf(file, "\n      },\n");
@@ -925,8 +941,9 @@ void diff_state(
         fprintf(file, "\n");
         fprintf(file, "          ],\n");
     }
-    if (newctx->extended && newctx->ctx_this != oldctx->ctx_this) {
-        char *val = value_json(newctx->ctx_this, global);
+    // TODO.  Shouldn't this check if the oldctx is also extended?
+    if (newctx->extended && ctx_this(newctx) != ctx_this(oldctx)) {
+        char *val = value_json(ctx_this(newctx), global);
         fprintf(file, "          \"this\": %s,\n", val);
         free(val);
     }
@@ -945,7 +962,7 @@ void diff_state(
         fprintf(file, "          \"interruptlevel\": \"%d\",\n", newctx->interruptlevel ? 1 : 0);
     }
     if (newctx->failed) {
-        char *val = value_string(newctx->ctx_failure);
+        char *val = value_string(ctx_failure(newctx));
         fprintf(file, "          \"failure\": %s,\n", val);
         fprintf(file, "          \"mode\": \"failed\",\n");
         free(val);
@@ -976,7 +993,7 @@ void diff_state(
 
     unsigned int bs = oldstate->bagsize * (sizeof(hvalue_t) + 1);
     if (oldstate->bagsize != newstate->bagsize ||
-            memcmp(oldstate->contexts, newstate->contexts, bs) != 0) {
+            memcmp(state_contexts(oldstate), state_contexts(newstate), bs) != 0) {
         fprintf(file, "          \"contexts\": \"%d\",\n", newstate->bagsize);
     }
 
@@ -1055,7 +1072,7 @@ void twostep(
 
     if (interrupt) {
         assert(step.ctx->extended);
-		assert(step.ctx->ctx_trap_pc != 0);
+		assert(ctx_trap_pc(step.ctx) != 0);
         interrupt_invoke(&step);
         diff_dump(global, file, oldstate, sc, oldctx, step.ctx, &oldcs, step.callstack, true, false, 0, NULL, &step);
     }
@@ -1489,7 +1506,7 @@ static enum busywait is_stuck(
 
 static void detect_busywait(struct minheap *failures, struct node *node){
 	for (unsigned int i = 0; i < node->state->bagsize; i++) {
-		if (is_stuck(node, node, node->state->contexts[i], false) == BW_RETURN) {
+		if (is_stuck(node, node, state_contexts(node->state)[i], false) == BW_RETURN) {
 			struct failure *f = new_alloc(struct failure);
 			f->type = FAIL_BUSYWAIT;
 			f->edge = node->to_parent;
@@ -1575,7 +1592,7 @@ static void do_work(struct worker *w){
                     make_step(
                         w,
                         node,
-                        state->contexts[i],
+                        state_contexts(state)[i],
                         0,
                         multiplicities(state)[i]
                     );
@@ -1758,7 +1775,7 @@ static void destutter1(struct graph *graph){
                 // Fix the corresponding backwards edge
                 for (struct edge *f = e->dst->bwd; f != NULL; f = f->bwdnext) {
                     if (f->src == n && f->nlog == e->nlog &&
-                            memcmp(f->log, e->log, f->nlog * sizeof(*f->log)) == 0) {
+                            memcmp(edge_log(f), edge_log(e), f->nlog * sizeof(hvalue_t)) == 0) {
                         f->src = parent;
                         break;
                     }
@@ -1784,7 +1801,7 @@ static struct dict *collect_symbols(struct graph *graph){
         for (struct edge *e = n->fwd; e != NULL; e = e->fwdnext) {
             for (unsigned int j = 0; j < e->nlog; j++) {
                 bool new;
-                unsigned int *p = dict_insert(symbols, NULL, &e->log[j], sizeof(e->log[j]), &new);
+                unsigned int *p = dict_insert(symbols, NULL, &edge_log(e)[j], sizeof(hvalue_t), &new);
                 if (new) {
                     *p = ++symbol_id;
                 }
@@ -1854,7 +1871,7 @@ static void print_transitions(FILE *out, struct dict *symbols, struct edge *edge
     fprintf(out, "      \"transitions\": [\n");
     for (struct edge *e = edges; e != NULL; e = e->fwdnext) {
         bool new;
-        struct strbuf *sb = dict_insert(d, NULL, e->log, e->nlog * sizeof(*e->log), &new);
+        struct strbuf *sb = dict_insert(d, NULL, edge_log(e), e->nlog * sizeof(hvalue_t), &new);
         if (new) {
             strbuf_init(sb);
             strbuf_printf(sb, "%d", e->dst->id);
@@ -1993,7 +2010,7 @@ int main(int argc, char **argv){
     state->vars = VALUE_DICT;
     hvalue_t ictx = value_put_context(&engine, init_ctx);
     state->bagsize = 1;
-    state->contexts[0] = ictx;
+    state_contexts(state)[0] = ictx;
     multiplicities(state)[0] = 1;
     state->stopbag = VALUE_DICT;
     state->dfa_state = global->dfa == NULL ? 0 : dfa_initial(global->dfa);
@@ -2346,7 +2363,7 @@ int main(int argc, char **argv){
                 if (edge->nlog > 0) {
                     fprintf(df, "            log:");
                     for (unsigned int j = 0; j < edge->nlog; j++) {
-                        char *p = value_string(edge->log[j]);
+                        char *p = value_string(edge_log(edge)[j]);
                         fprintf(df, " %s", p);
                         free(p);
                     }
@@ -2368,7 +2385,7 @@ int main(int argc, char **argv){
                 if (edge->nlog > 0) {
                     fprintf(df, "            log:");
                     for (int j = 0; j < edge->nlog; j++) {
-                        char *p = value_string(edge->log[j]);
+                        char *p = value_string(edge_log(edge)[j]);
                         fprintf(df, " %s", p);
                         free(p);
                     }

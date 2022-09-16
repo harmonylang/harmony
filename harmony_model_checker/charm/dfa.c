@@ -11,7 +11,7 @@
 struct dfa_transition {
     struct dfa_transition *next; // linked list maintenance
     hvalue_t symbol;             // transition symbol
-    int dst;                     // destination state
+    unsigned int dst;            // destination state
 };
 
 struct dfa_state {
@@ -137,7 +137,7 @@ struct dfa *dfa_read(struct engine *engine, char *fname){
 
         struct json_value *src = dict_lookup(edge->u.map, "src", 3);
         assert(src->type == JV_ATOM);
-        int src_state = int_parse(src->u.atom.base, src->u.atom.len);
+        unsigned int src_state = int_parse(src->u.atom.base, src->u.atom.len);
         assert(src_state < dfa->nstates);
 
         struct json_value *dst = dict_lookup(edge->u.map, "dst", 3);
@@ -147,8 +147,8 @@ struct dfa *dfa_read(struct engine *engine, char *fname){
 
         struct json_value *symbol = dict_lookup(edge->u.map, "sym", 3);
         assert(symbol->type == JV_MAP);
-        int sym = int_parse(symbol->u.atom.base, symbol->u.atom.len);
-        assert((unsigned int) sym < dfa->nsymbols);
+        unsigned int sym = int_parse(symbol->u.atom.base, symbol->u.atom.len);
+        assert(sym < dfa->nsymbols);
         dt->symbol = dfa->symbols[sym];
 
         dt->next = dfa->states[src_state].transitions;

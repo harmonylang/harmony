@@ -19,10 +19,10 @@ typedef struct state {
     // by an array of contexts of type hvalue_t, which is followed by an array
     // of multiplicities (of type uint8_t) with the same number of elements.
     uint32_t bagsize;
-    hvalue_t contexts[0];   // context/multiplicity pairs
+    // hvalue_t contexts[VAR_SIZE];   // context/multiplicity pairs
 } state;
-
-#define multiplicities(s)   ((uint8_t *) &(s)->contexts[(s)->bagsize])
+#define state_contexts(s)   ((hvalue_t *) ((s) + 1))
+#define multiplicities(s)   ((uint8_t *) &state_contexts(s)[(s)->bagsize])
 #define state_size(s)       (sizeof(struct state) + (s)->bagsize * (sizeof(hvalue_t) + 1))
 
 typedef struct context {   // context value
@@ -39,19 +39,19 @@ typedef struct context {   // context value
     uint8_t atomic;           // atomic counter
     uint16_t pc;              // program counter
     uint16_t sp;              // stack size
-    hvalue_t thestack[0];     // growing stack
+    // hvalue_t thestack[VAR_SIZE];     // growing stack
 
 // Context can be extended with the following additional values
-#define ctx_this        thestack[0]
-#define ctx_failure     thestack[1]
-#define ctx_trap_pc     thestack[2]
-#define ctx_trap_arg    thestack[3]
+#define ctx_this(c)     (context_stack(c)[0])
+#define ctx_failure(c)  (context_stack(c)[1])
+#define ctx_trap_pc(c)  (context_stack(c)[2])
+#define ctx_trap_arg(c) (context_stack(c)[3])
 #define ctx_extent      4
 
 } context;
-
+#define context_stack(c)    ((hvalue_t *) ((c) + 1))
 #define ctx_size(c)     (sizeof(struct context) + (c)->sp * sizeof(hvalue_t) + ((c)->extended ? (ctx_extent*sizeof(hvalue_t)) : 0))
-#define ctx_stack(c)    ((c)->extended ? &(c)->thestack[ctx_extent] : (c)->thestack)
+#define ctx_stack(c)    ((c)->extended ? &context_stack(c)[ctx_extent] : context_stack(c))
 
 void value_init(struct values *values, unsigned int nworkers);
 void value_set_concurrent(struct values *values);
