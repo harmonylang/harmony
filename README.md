@@ -99,14 +99,23 @@ Note that this will likely take a while. When it finishes installing, run `pip i
 
 ### For CS Deparment Linux Machine Users
 
-It may be possible that `pip` is not available on your Linux machine. In that case, you will need to download and build the source code directly. This can be done via the following commands:
+It may be possible that `pip` is not available on your Linux machine. In that case, you will need to download and build the source code directly.
+
+Go to [https://pypi.org/project/harmony/#files](https://pypi.org/project/harmony/#files). There, you should find a `harmony-1.2.x.tar.gz` for the latest version of Harmony. Download the file onto your local machine and then send it to the Linux machine via `scp`.
+
+Alternatively, you can download the file directly from the Linux machine via `wget`. Right click on the download link to the file and copy the link address. Then on the Linux machine, run the following:
 
 ```sh
-# Installs version 1.2.2759
-wget https://files.pythonhosted.org/packages/71/8b/49cad4c1c9b519fb1a479991fe23fb04892b77f17e045f11309bef424597/harmony-1.2.2759.tar.gz
-gzip -d harmony-1.2.2759.tar.gz
-tar -xf harmony-1.2.2759.tar
-cd harmony-1.2.2759
+wget <link copied from pypi.org>
+```
+
+Once you have the `tar.gz` file on your Linux machine, run the following commands:
+
+```sh
+# Change the version number accordingly if necessary
+gzip -d harmony-1.2.2763.tar.gz
+tar -xf harmony-1.2.2763.tar
+cd harmony-1.2.2763
 python3 setup.py install --user
 ```
 
