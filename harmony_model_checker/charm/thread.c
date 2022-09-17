@@ -22,7 +22,7 @@ void mutex_init(mutex_t *mutex){
         NULL,    // default security attributes
         1,       // initial count
         1,       // maximum count
-        NULL)    // unnamed
+        NULL);    // unnamed
 #endif
     assert(*mutex != NULL);
 }
@@ -39,7 +39,7 @@ void mutex_release(mutex_t *mutex){
     ReleaseSemaphore( 
         *mutex,  // handle to semaphore
         1,       // increase count by one
-        NULL)    // previous count return value
+        NULL);   // previous count return value
 #endif
 }
 
