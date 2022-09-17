@@ -15,7 +15,15 @@ void thread_create(void (*f)(void *arg), void *arg){
 }
 
 void mutex_init(mutex_t *mutex){
+#ifdef WINMUTEX
     *mutex = CreateMutex(NULL, FALSE, NULL);
+#else
+    *mutex = CreateSemaphore( 
+        NULL,    // default security attributes
+        1,       // initial count
+        1,       // maximum count
+        NULL)    // unnamed
+#endif
     assert(*mutex != NULL);
 }
 
@@ -25,7 +33,14 @@ void mutex_acquire(mutex_t *mutex){
 }
 
 void mutex_release(mutex_t *mutex){
+#ifdef WINMUTEX
     ReleaseMutex(*mutex);
+#else
+    ReleaseSemaphore( 
+        *mutex,  // handle to semaphore
+        1,       // increase count by one
+        NULL)    // previous count return value
+#endif
 }
 
 void mutex_destroy(mutex_t *mutex){
