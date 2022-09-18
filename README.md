@@ -113,9 +113,9 @@ Once you have the `tar.gz` file on your Linux machine, run the following command
 
 ```sh
 # Change the version number accordingly if necessary
-gzip -d harmony-1.2.2763.tar.gz
-tar -xf harmony-1.2.2763.tar
-cd harmony-1.2.2763
+gzip -d harmony-1.2.2766.tar.gz
+tar -xf harmony-1.2.2766.tar
+cd harmony-1.2.2766
 python3 setup.py install --user
 ```
 
