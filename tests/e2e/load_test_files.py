@@ -13,7 +13,7 @@ def load_dir(dir: pathlib.Path, modules=None, constants=None):
     return [
         Params(
             filename=f,
-            max_time=timedelta(seconds=1),
+            max_time=timedelta(seconds=3),
             modules=modules or [],
             constants=constants or [],
         ) for f in dir.glob("*.hny")

@@ -46,6 +46,7 @@ class GenHtmlTestCase(unittest.TestCase):
                 "htm": _replace_ext(param.filename, 'htm'),
                 "hco": _replace_ext(param.filename, 'hco'),
                 "hvm": _replace_ext(param.filename, 'hvm'),
+                "hvb": _replace_ext(param.filename, 'hvb'),
                 "png": None,
                 "tla": None,
                 "gv":  None
