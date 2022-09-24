@@ -1270,9 +1270,9 @@ class LetWhenAST(AST):
         for var_or_cond in self.vars_and_conds:
             if var_or_cond[0] == 'var':
                 (_, var, expr, tkn, endtkn, op) = var_or_cond
-                stmt = self.range(token, endtkn)
+                stmt = self.range(tkn, endtkn)
                 expr.compile(ns, code, stmt)
-                code.append(StoreVarOp(var), token, op, stmt=stmt)
+                code.append(StoreVarOp(var), tkn, op, stmt=stmt)
                 self.define(ns, var)
             elif var_or_cond[0] == 'cond':
                 (_, cond, token, endtkn) = var_or_cond
