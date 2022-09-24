@@ -81,7 +81,6 @@ class AST:
                 message='constant evaluation failed: %s %s' % (self, ctx.failure),
                 lexeme=lexeme,
                 filename=file,
-                stmt=stmt,
                 column=column
             )
         return ctx.pop()
@@ -379,7 +378,6 @@ class TupleAST(AST):
             message="Cannot index into tuple in assignment",
             lexeme=lexeme,
             filename=file,
-            stmt=stmt,
             column=column
         )
 
@@ -652,7 +650,6 @@ class ApplyAST(AST):
                         message="Cannot assign to constant %s %s" % (self.method.name, self.arg.const),
                         lexeme=lexeme,
                         filename=file,
-                        stmt=stmt,
                         column=column
                     )
         self.method.ph1(scope, code, stmt)
@@ -733,11 +730,11 @@ class AssignmentAST(AST):
             skip -= 1
             if isinstance(lvs, NameAST):
                 (t, v) = scope.lookup(lvs.name)
+                lexeme, file, line, column = self.token
                 if t == "module":
                     raise HarmonyCompilerError(
                         lexeme=lexeme,
                         filename=file,
-                        stmt=stmt,
                         column=column,
                         message='Cannot assign to module %s' % str(lvs.name),
                     )
@@ -745,7 +742,6 @@ class AssignmentAST(AST):
                     raise HarmonyCompilerError(
                         lexeme=lexeme,
                         filename=file,
-                        stmt=stmt,
                         column=column,
                         message='Cannot assign to constant %s' % str(lvs.name),
                     )
@@ -790,7 +786,6 @@ class AuxAssignmentAST(AST):
                 raise HarmonyCompilerError(
                     filename=file,
                     lexeme=lexeme,
-                    stmt=stmt,
                     column=column,
                     message='Cannot operate on module %s' % str(lv.name),
                 )
@@ -798,7 +793,6 @@ class AuxAssignmentAST(AST):
                 raise HarmonyCompilerError(
                     filename=file,
                     lexeme=lexeme,
-                    stmt=stmt,
                     column=column,
                     message='Cannot operate on constant %s' % str(lv.name),
                 )
@@ -919,7 +913,6 @@ class AddressAST(AST):
                 raise HarmonyCompilerError(
                     filename=file,
                     lexeme=lexeme,
-                    stmt=stmt,
                     column=column,
                     message="Can't take address of local variable %s" % str(lv),
                 )
@@ -927,7 +920,6 @@ class AddressAST(AST):
                 raise HarmonyCompilerError(
                     filename=file,
                     lexeme=lexeme,
-                    stmt=stmt,
                     column=column,
                     message="Can't take address of constant %s" % str(lv),
                 )
@@ -935,7 +927,6 @@ class AddressAST(AST):
                 raise HarmonyCompilerError(
                     filename=file,
                     lexeme=lexeme,
-                    stmt=stmt,
                     column=column,
                     message="Can't take address of imported %s" % str(lv),
                 )
@@ -948,7 +939,6 @@ class AddressAST(AST):
             raise HarmonyCompilerError(
                 filename=file,
                 lexeme=lexeme,
-                stmt=stmt,
                 column=column,
                 message="Can't take address of %s" % str(lv),
             )
@@ -1469,6 +1459,7 @@ class LambdaAST(AST):
     def compile_body(self, scope, code):
         startlabel = LabelValue(None, "lambda")
         endlabel = LabelValue(None, "lambda")
+        stmt = self.stmt()
         code.append(JumpOp(endlabel, reason="jump over lambda definition"), self.token, self.token, stmt=stmt)
         code.nextLabel(startlabel)
         code.append(FrameOp(self.token, self.args), self.token, self.endtoken, stmt=stmt)
@@ -1634,7 +1625,7 @@ class FromAST(AST):
                         filename=file,
                         lexeme=lexeme,
                         message="%s line %s: can't import %s from %s" % (file, line, lexeme, self.module[0]),
-                        stmt=stmt, column=column)
+                        column=column)
                 (t, v) = names[lexeme]
                 assert t == "constant", (lexeme, t, v)
                 scope.names[lexeme] = (t, v)
@@ -1753,7 +1744,6 @@ class ConstAST(AST):
                 raise HarmonyCompilerError(
                     filename=file,
                     lexeme=lexeme,
-                    stmt=stmt,
                     column=column,
                     message="%s: Parse error: already defined" % lexeme
                 )
@@ -1777,7 +1767,6 @@ class ConstAST(AST):
             raise HarmonyCompilerError(
                 filename=file,
                 lexeme=lexeme,
-                stmt=stmt,
                 column=column,
                 message="%s: Parse error: expression not a constant %s" % (self.const, self.expr),
             )
