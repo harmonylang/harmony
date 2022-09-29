@@ -114,6 +114,20 @@ function json_string(obj) {
   }
 }
 
+var noloc = { file: "", line: "", code: "" };
+
+function getCode(pc) {
+  var locs = state.locations;
+  while (pc >= 0) {
+    s = "" + pc;
+    if (locs.hasOwnProperty(s)) {
+      return locs[s];
+    }
+    pc--;
+  }
+  return noloc;
+}
+
 function drawTimeLine(mes) {
   var c = mes.canvas.getContext("2d");
   c.beginPath();
@@ -149,10 +163,12 @@ function drawTimeLine(mes) {
             mes.nextstep.innerHTML = "about to load variable " + c.next.var;
             break;
           case "Assert":
-            mes.nextstep.innerHTML = "assertion failed";
+            var loc = getCode(c.pc);
+            mes.nextstep.innerHTML = "assertion failed in " + loc.file + ":" + loc.line;
             break;
           case "AtomicInc":
-            mes.nextstep.innerHTML = "about to execute atomic section";
+            var loc = getCode(c.pc);
+            mes.nextstep.innerHTML = "about to execute atomic section in " + loc.file + ":" + loc.line;
             break;
           case "Print":
             mes.nextstep.innerHTML = "about to print " + json_string(c.next.value);
@@ -264,20 +280,6 @@ function handleClick(e, mesIdx) {
   var y = Math.floor(e.offsetY / boxSize);
   currentTime = megasteps[mesIdx].startTime + y*30 + x + 1;
   run_microsteps()
-}
-
-var noloc = { file: "", line: "", code: "" };
-
-function getCode(pc) {
-  var locs = state.locations;
-  while (pc >= 0) {
-    s = "" + pc;
-    if (locs.hasOwnProperty(s)) {
-      return locs[s];
-    }
-    pc--;
-  }
-  return noloc;
 }
 
 function handleKeyPress(e) {
