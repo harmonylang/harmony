@@ -636,6 +636,13 @@ void op_Assert2(const void *env, struct state *state, struct step *step, struct 
     }
 }
 
+void next_Print(const void *env, struct context *ctx, struct global *global, FILE *fp){
+    hvalue_t symbol = ctx_peep(ctx);
+    char *s = value_json(symbol, global);
+    fprintf(fp, "{ \"type\": \"Print\", \"value\": %s }", s);
+    free(s);
+}
+
 void op_Print(const void *env, struct state *state, struct step *step, struct global *global){
     hvalue_t symbol = ctx_pop(step->ctx);
     if (global->run_direct) {
@@ -711,8 +718,8 @@ void next_Choose(const void *env, struct context *ctx, struct global *global, FI
     hvalue_t choices = ctx_peep(ctx);
     assert(VALUE_TYPE(choices) == VALUE_SET);
     assert(av != VALUE_SET);
-    char *val = value_string(choices);
-    fprintf(fp, "{ \"type\": \"Choose\", \"value\": \"%s\" }", val);
+    char *val = value_json(choices, global);
+    fprintf(fp, "{ \"type\": \"Choose\", \"value\": %s }", val);
     free(val);
 }
 
@@ -1225,6 +1232,20 @@ void op_Dup(const void *env, struct state *state, struct step *step, struct glob
     ctx_push(step->ctx, v);
     ctx_push(step->ctx, v);
     step->ctx->pc++;
+}
+
+void next_Frame(const void *env, struct context *ctx, struct global *global, FILE *fp){
+    const struct env_Frame *ef = env;
+
+    hvalue_t arg = ctx_peep(ctx);
+    char *name = value_string(ef->name);
+    char *args = vt_string(ef->args);
+    char *val = value_json(arg, global);
+    fprintf(fp, "{ \"type\": \"Frame\", \"name\": %s, \"args\": \"%s\", \"value\": %s }",
+                name, args, val);
+    free(name);
+    free(args);
+    free(val);
 }
 
 void op_Frame(const void *env, struct state *state, struct step *step, struct global *global){
@@ -1998,16 +2019,16 @@ void next_Store(const void *env, struct context *ctx, struct global *global, FIL
         size /= sizeof(hvalue_t);
         char *x = indices_string(indices, size);
         assert(x[0] == '?');
-        char *val = value_string(v);
-        fprintf(fp, "{ \"type\": \"Store\", \"var\": \"%s\", \"value\": \"%s\" }", x + 1, val);
+        char *val = value_json(v, global);
+        fprintf(fp, "{ \"type\": \"Store\", \"var\": \"%s\", \"value\": %s }", x + 1, val);
         free(x);
         free(val);
     }
     else {
         char *x = indices_string(es->indices, es->n);
         assert(x[0] == '?');
-        char *val = value_string(v);
-        fprintf(fp, "{ \"type\": \"Store\", \"var\": \"%s\", \"value\": \"%s\" }", x + 1, val);
+        char *val = value_json(v, global);
+        fprintf(fp, "{ \"type\": \"Store\", \"var\": \"%s\", \"value\": %s }", x + 1, val);
         free(x);
         free(val);
     }
@@ -3940,7 +3961,7 @@ struct op_info op_table[] = {
 	{ "Del", init_Del, op_Del },
 	{ "DelVar", init_DelVar, op_DelVar },
 	{ "Dup", init_Dup, op_Dup },
-	{ "Frame", init_Frame, op_Frame },
+	{ "Frame", init_Frame, op_Frame, next_Frame },
 	{ "Go", init_Go, op_Go },
 	{ "Invariant", init_Invariant, op_Invariant },
 	{ "Jump", init_Jump, op_Jump },
@@ -3950,7 +3971,7 @@ struct op_info op_table[] = {
 	{ "Move", init_Move, op_Move },
 	{ "Nary", init_Nary, op_Nary },
 	{ "Pop", init_Pop, op_Pop },
-	{ "Print", init_Print, op_Print },
+	{ "Print", init_Print, op_Print, next_Print },
 	{ "Push", init_Push, op_Push },
 	{ "ReadonlyDec", init_ReadonlyDec, op_ReadonlyDec },
 	{ "ReadonlyInc", init_ReadonlyInc, op_ReadonlyInc },
