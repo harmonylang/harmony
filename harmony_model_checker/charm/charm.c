@@ -756,14 +756,27 @@ void print_context(
     if (c->terminated) {
         fprintf(file, "%s\"mode\": \"terminated\"\n", prefix);
     }
-    else if (c->failed) {
-        fprintf(file, "%s\"mode\": \"failed\"\n", prefix);
-    }
-    else if (c->stopped) {
-        fprintf(file, "%s\"mode\": \"stopped\"\n", prefix);
-    }
     else {
-        fprintf(file, "%s\"mode\": \"%s\"\n", prefix, ctx_status(node, ctx));
+        if (c->failed) {
+            fprintf(file, "%s\"mode\": \"failed\"", prefix);
+        }
+        else if (c->stopped) {
+            fprintf(file, "%s\"mode\": \"stopped\"", prefix);
+        }
+        else {
+            fprintf(file, "%s\"mode\": \"%s\"", prefix, ctx_status(node, ctx));
+        }
+        fprintf(file, ",\n");
+        struct instr *instr = &global->code.instrs[c->pc];
+        struct op_info *oi = instr->oi;
+        if (oi->next == NULL) {
+            fprintf(file, "%s\"next\": { \"type\": \"%s\" }\n", prefix, oi->name);
+        }
+        else {
+            fprintf(file, "%s\"next\": ", prefix);
+            (*oi->next)(instr->env, c, global, file);
+            fprintf(file, "\n");
+        }
     }
 
 #ifdef notdef

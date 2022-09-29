@@ -707,6 +707,15 @@ void op_AtomicInc(const void *env, struct state *state, struct step *step, struc
     }
 }
 
+void next_Choose(const void *env, struct context *ctx, struct global *global, FILE *fp){
+    hvalue_t choices = ctx_peep(ctx);
+    assert(VALUE_TYPE(choices) == VALUE_SET);
+    assert(av != VALUE_SET);
+    char *val = value_string(choices);
+    fprintf(fp, "{ \"type\": \"Choose\", \"value\": \"%s\" }", val);
+    free(val);
+}
+
 void op_Choose(const void *env, struct state *state, struct step *step, struct global *global){
     if (global->run_direct) {
         hvalue_t choices = ctx_pop(step->ctx);
@@ -1345,6 +1354,32 @@ void op_JumpCond(const void *env, struct state *state, struct step *step, struct
     }
 }
 
+void next_Load(const void *env, struct context *ctx, struct global *global, FILE *fp){
+    const struct env_Load *el = env;
+
+    if (el == 0) {
+        assert(ctx->sp > 0);
+        hvalue_t av = ctx_peep(ctx);
+        assert(VALUE_TYPE(av) == VALUE_ADDRESS);
+        assert(av != VALUE_ADDRESS);
+
+        unsigned int size;
+        hvalue_t *indices = value_get(av, &size);
+        size /= sizeof(hvalue_t);
+
+        char *x = indices_string(indices, size);
+        assert(x[0] == '?');
+        fprintf(fp, "{ \"type\": \"Load\", \"var\": \"%s\" }", x + 1);
+        free(x);
+    }
+    else {
+        char *x = indices_string(el->indices, el->n);
+        assert(x[0] == '?');
+        fprintf(fp, "{ \"type\": \"Load\", \"var\": \"%s\" }", x + 1);
+        free(x);
+    }
+}
+
 void op_Load(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_Load *el = env;
 
@@ -1943,6 +1978,38 @@ void op_Stop(const void *env, struct state *state, struct step *step, struct glo
         if (!ind_trystore(state->vars, es->indices, es->n, v, &step->engine, &state->vars)) {
             value_ctx_failure(step->ctx, &step->engine, "Stop: bad variable");
         }
+    }
+}
+
+void next_Store(const void *env, struct context *ctx, struct global *global, FILE *fp){
+    const struct env_Store *es = env;
+
+    assert(ctx->sp > 0);
+    hvalue_t v = ctx_stack(ctx)[ctx->sp - 1];
+
+    if (es == 0) {
+        assert(ctx->sp > 1);
+        hvalue_t av = ctx_stack(ctx)[ctx->sp - 2];
+        assert (VALUE_TYPE(av) == VALUE_ADDRESS);
+        assert (av != VALUE_ADDRESS);
+
+        unsigned int size;
+        hvalue_t *indices = value_get(av, &size);
+        size /= sizeof(hvalue_t);
+        char *x = indices_string(indices, size);
+        assert(x[0] == '?');
+        char *val = value_string(v);
+        fprintf(fp, "{ \"type\": \"Store\", \"var\": \"%s\", \"value\": \"%s\" }", x + 1, val);
+        free(x);
+        free(val);
+    }
+    else {
+        char *x = indices_string(es->indices, es->n);
+        assert(x[0] == '?');
+        char *val = value_string(v);
+        fprintf(fp, "{ \"type\": \"Store\", \"var\": \"%s\", \"value\": \"%s\" }", x + 1, val);
+        free(x);
+        free(val);
     }
 }
 
@@ -3867,7 +3934,7 @@ struct op_info op_table[] = {
 	{ "AtomicDec", init_AtomicDec, op_AtomicDec },
 	{ "AtomicInc", init_AtomicInc, op_AtomicInc },
 	{ "Builtin", init_Builtin, op_Builtin },
-	{ "Choose", init_Choose, op_Choose },
+	{ "Choose", init_Choose, op_Choose, next_Choose },
 	{ "Continue", init_Continue, op_Continue },
 	{ "Cut", init_Cut, op_Cut },
 	{ "Del", init_Del, op_Del },
@@ -3878,7 +3945,7 @@ struct op_info op_table[] = {
 	{ "Invariant", init_Invariant, op_Invariant },
 	{ "Jump", init_Jump, op_Jump },
 	{ "JumpCond", init_JumpCond, op_JumpCond },
-	{ "Load", init_Load, op_Load },
+	{ "Load", init_Load, op_Load, next_Load },
 	{ "LoadVar", init_LoadVar, op_LoadVar },
 	{ "Move", init_Move, op_Move },
 	{ "Nary", init_Nary, op_Nary },
@@ -3894,7 +3961,7 @@ struct op_info op_table[] = {
 	{ "Spawn", init_Spawn, op_Spawn },
 	{ "Split", init_Split, op_Split },
 	{ "Stop", init_Stop, op_Stop },
-	{ "Store", init_Store, op_Store },
+	{ "Store", init_Store, op_Store, next_Store },
 	{ "StoreVar", init_StoreVar, op_StoreVar },
 	{ "Trap", init_Trap, op_Trap },
 

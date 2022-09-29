@@ -28,6 +28,7 @@ struct op_info {
     const char *name;
     void *(*init)(struct dict *, struct engine *engine);
     void (*op)(const void *env, struct state *state, struct step *step, struct global *global);
+    void (*next)(const void *env, struct context *ctx, struct global *global, FILE *fp);
 };
 
 struct env_Builtin {
