@@ -165,6 +165,7 @@ function drawTimeLine(mes) {
           case "Assert":
             var loc = getCode(c.pc);
             mes.nextstep.innerHTML = "assertion failed in " + loc.file + ":" + loc.line;
+            mes.nextstep.style.color = "red";
             break;
           case "AtomicInc":
             var loc = getCode(c.pc);
