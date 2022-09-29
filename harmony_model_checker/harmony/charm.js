@@ -13,33 +13,6 @@ var container = document.getElementById('table-scroll');
 var currOffset = 0;
 var currCloc = null;
 
-function drawTimeLine(mes) {
-  var c = mes.canvas.getContext("2d");
-  c.beginPath();
-  c.clearRect(0, 0, mes.canvas.width, mes.canvas.height);
-  var t = mes.startTime;
-  var yboxes = Math.floor((mes.nsteps + 29) / 30);
-  var nsteps = mes.nsteps;
-  for (var y = 0; y < yboxes; y++) {
-    var xboxes = nsteps > 30 ? 30 : nsteps;
-    for (var x = 0; x < xboxes; x++) {
-      c.fillStyle = t < currentTime ? "orange" : "white";
-      c.fillRect(x * boxSize, y * boxSize, boxSize, boxSize);
-      c.rect(x * boxSize, y * boxSize, boxSize, boxSize);
-      c.stroke();
-      t += 1;
-    }
-    nsteps -= xboxes;
-  }
-}
-
-function currentMegaStep() {
-  if (currentTime == totalTime) {
-    return microsteps[currentTime - 1].mesidx;
-  }
-  return microsteps[currentTime].mesidx;
-}
-
 function json_string_list(obj) {
   var result = "";
   for (var i = 0; i < obj.length; i++) {
@@ -139,6 +112,66 @@ function json_string(obj) {
   default:
     return JSON.stringify(obj);
   }
+}
+
+function drawTimeLine(mes) {
+  var c = mes.canvas.getContext("2d");
+  c.beginPath();
+  c.clearRect(0, 0, mes.canvas.width, mes.canvas.height);
+  var t = mes.startTime;
+  var yboxes = Math.floor((mes.nsteps + 29) / 30);
+  var nsteps = mes.nsteps;
+  for (var y = 0; y < yboxes; y++) {
+    var xboxes = nsteps > 30 ? 30 : nsteps;
+    for (var x = 0; x < xboxes; x++) {
+      c.fillStyle = t < currentTime ? "orange" : "white";
+      c.fillRect(x * boxSize, y * boxSize, boxSize, boxSize);
+      c.rect(x * boxSize, y * boxSize, boxSize, boxSize);
+      c.stroke();
+      t += 1;
+    }
+    nsteps -= xboxes;
+  }
+  mes.nextstep.innerHTML = "";
+  if (currentTime >= t) {
+    for (var i = 0; i < mes.contexts.length; i++) {
+      var c = mes.contexts[i];
+      if (c.tid == mes.tid) {
+        if (c.mode == "terminated") {
+          mes.nextstep.innerHTML = "terminated"
+        }
+        else if (c.hasOwnProperty("next")) {
+          switch (c.next.type) {
+          case "Store":
+            mes.nextstep.innerHTML = "about to store " + json_string(c.next.value) + " in variable " + c.next.var;
+            break;
+          case "Load":
+            mes.nextstep.innerHTML = "about to load variable " + c.next.var;
+            break;
+          case "Assert":
+            mes.nextstep.innerHTML = "assertion failed";
+            break;
+          case "AtomicInc":
+            mes.nextstep.innerHTML = "about to execute atomic section";
+            break;
+          case "Print":
+            mes.nextstep.innerHTML = "about to print " + json_string(c.next.value);
+            break;
+          default:
+            mes.nextstep.innerHTML = c.next.type;
+          }
+        }
+        break;
+      }
+    }
+  }
+}
+
+function currentMegaStep() {
+  if (currentTime == totalTime) {
+    return microsteps[currentTime - 1].mesidx;
+  }
+  return microsteps[currentTime].mesidx;
 }
 
 function stringify_vars(obj) {
@@ -304,9 +337,11 @@ function init_microstep(masidx, misidx) {
   var mas = state.macrosteps[masidx];
   var mis = mas.microsteps[misidx];
   var t = microsteps.length;
+  megasteps[curMegaStep].contexts = mas.contexts;
   if (t > 0 && microsteps[t - 1].tid != mas.tid) {
     curMegaStep++;
     megasteps[curMegaStep].startTime = t;
+    megasteps[curMegaStep].tid = mas.tid;
   }
   var mes = megasteps[curMegaStep];
   mes.nsteps++;
@@ -685,11 +720,14 @@ for (var tid = 0; tid < nthreads; tid++) {
 threads[0].stack = [ "()" ]
 for (let i = 0; i < nmegasteps; i++) {
   var canvas = document.getElementById("timeline" + i);
+  var nextstep = document.getElementById("nextstep" + i); 
   megasteps[i] = {
     canvas: canvas,
+    nextstep: nextstep,
     startTime: 0,
     nsteps: 0,
     contexts: [],
+    tid: 0,
     log: document.getElementById("log" + i)
   };
   canvas.addEventListener('mousedown', function(e){handleClick(e, i)});

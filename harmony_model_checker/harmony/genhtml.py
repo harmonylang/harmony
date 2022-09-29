@@ -30,10 +30,13 @@ class GenHTML:
         print("  </td>", file=f)
 
         print("  <td>", file=f)
+        print("    <table border='0'>", file=f)
         time = nmicrosteps
         nrows = (time + 29) // 30
-        print("    <canvas id='timeline%d' width='300px' height='%dpx'>"%(step-1, 10*nrows), file=f)
-        print("    </canvas>", file=f)
+        print("      <tr><td><canvas id='timeline%d' width='300px' height='%dpx'>"%(step-1, 10*nrows), file=f)
+        print("      </canvas></td></tr>", file=f)
+        print("      <tr><td id='nextstep%d'></td></tr>"%(step-1), file=f)
+        print("    </table>", file=f)
         print("  </td>", file=f)
 
         print("  <td align='center'>", file=f)
