@@ -1,5 +1,5 @@
-from antlr4.Token import Token
-from antlr_denter.DenterHelper import DenterHelper
+from antlr4.Token import Token  # type: ignore
+from antlr_denter.DenterHelper import DenterHelper  # type: ignore
 
 
 class ModifiedDenterHelper(DenterHelper):

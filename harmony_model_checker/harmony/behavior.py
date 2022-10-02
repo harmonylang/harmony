@@ -5,14 +5,14 @@ import json
 from harmony_model_checker.harmony.jsonstring import json_string
 
 try:
-    import pydot
+    import pydot  # type: ignore
     got_pydot = True
 except Exception as e:
     got_pydot = False
 
 try:
-    from automata.fa.nfa import NFA
-    from automata.fa.dfa import DFA
+    from automata.fa.nfa import NFA  # type: ignore
+    from automata.fa.dfa import DFA  # type: ignore
     got_automata = True
 except Exception as e:
     got_automata = False

@@ -1,4 +1,4 @@
-from antlr4 import *
+from antlr4 import * # type: ignore
 
 from harmony_model_checker.exception import HarmonyCompilerError, HarmonyCompilerErrorCollection
 
