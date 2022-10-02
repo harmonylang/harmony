@@ -1,6 +1,5 @@
-import re
 from typing import List
-from antlr4.error.ErrorListener import ErrorListener
+from antlr4.error.ErrorListener import ErrorListener  # type: ignore
 
 from harmony_model_checker.exception import ErrorToken
 from harmony_model_checker.parser.HarmonyParser import HarmonyParser

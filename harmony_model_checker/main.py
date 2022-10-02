@@ -5,7 +5,7 @@ import webbrowser
 import sys
 import argparse
 
-from antlr4 import *
+from antlr4 import * # type: ignore
 
 import harmony_model_checker
 from harmony_model_checker.config import settings

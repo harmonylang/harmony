@@ -22,6 +22,7 @@ dist/
 compiler_integration_results/
 compiler_integration_results.md
 
+mypy-report/
 
 *.aux
 *.glo

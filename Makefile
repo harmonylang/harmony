@@ -2,6 +2,29 @@ all: dependencies gen parser
 	rm -rf build/  # Remove previous build files
 	python3 setup.py build_ext -i
 
+type-check:
+	# Excluding DumpASTVisitor because mypy cannot infer inheritance where a derived class
+	# uses named arguments while the base class uses kwargs.
+	mypy harmony \
+		harmony_model_checker/compile.py \
+		harmony_model_checker/config.py \
+		harmony_model_checker/dfacmp.py \
+		harmony_model_checker/exception.py \
+		harmony_model_checker/iface.py \
+		harmony_model_checker/main.py \
+		harmony_model_checker/harmony \
+		harmony_model_checker/util \
+		harmony_model_checker/parser/antlr_rule_visitor.py \
+		harmony_model_checker/parser/custom_denter.py \
+		harmony_model_checker/parser/HarmonyErrorListener.py \
+		--exclude harmony_model_checker/harmony/DumpASTVisitor.py \
+		--follow-imports silent \
+		--check-untyped-defs \
+		--allow-untyped-defs \
+		--python-version 3.6 \
+		--html-report mypy-report \
+		--txt-report mypy-report
+
 parser:
 	java -jar antlr-4.9.3-complete.jar -Dlanguage=Python3 -visitor Harmony.g4 -o harmony_model_checker/parser -no-listener
 

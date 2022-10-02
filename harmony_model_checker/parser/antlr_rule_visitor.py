@@ -1,10 +1,9 @@
 from typing import Any, Union
-from antlr4.Token import CommonToken
+from antlr4.Token import CommonToken  # type: ignore
 
 from harmony_model_checker.parser.HarmonyVisitor import HarmonyVisitor
 from harmony_model_checker.parser.HarmonyParser import HarmonyParser
 from harmony_model_checker.harmony.harmony import *
-import math
 
 class HarmonyVisitorImpl(HarmonyVisitor):
 

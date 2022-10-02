@@ -23,10 +23,10 @@ class HarmonyCompilerError(Exception):
         super().__init__()
         self.message = message
         self.token = ErrorToken(
-            line=line,
             message=message,
-            column=column,
+            filename=filename or "",
+            line=line or 0,
+            column=column or 0,
             lexeme=str(lexeme),
-            filename=filename,
             is_eof_error=is_eof_error
         )
