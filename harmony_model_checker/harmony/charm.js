@@ -169,7 +169,7 @@ function drawTimeLine(mes) {
             break;
           case "AtomicInc":
             var loc = getCode(c.pc);
-            mes.nextstep.innerHTML = "about to execute atomic section in " + loc.file + ":" + loc.line;
+            mes.nextstep.innerHTML = "about to execute in " + loc.file + ":" + loc.line;
             break;
           case "Print":
             mes.nextstep.innerHTML = "about to print " + json_string(c.next.value);
