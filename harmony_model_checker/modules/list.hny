@@ -52,3 +52,10 @@ def sorted(d):
 def reversed(d):
     let n = len(d):
         result = [ d[n-i] for i in { 1..n } ]
+
+# like Python index()
+def index(d, e):
+    var i = 0
+    while d[i] != e:
+        i += 1
+    result = i
