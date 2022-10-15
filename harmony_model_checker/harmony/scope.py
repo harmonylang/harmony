@@ -46,9 +46,10 @@ class Scope:
     # pretty printing.
     # TODO: come up with a better solution
     def pset(self, lexeme, tv):
-        pmap[lexeme] = tv
+        self.pmap[lexeme] = tv
         if self.parent != None:
             self.parent.pset(lexeme, tv);
 
     def set(self, lexeme, tv):
         self.names[lexeme] = tv
+        self.pset(lexeme, tv)

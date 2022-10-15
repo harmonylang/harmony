@@ -1192,6 +1192,11 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
                         print('    "%s$%s": %d,'%(label.module, label.label, pc), file=f)
         print('    "__end__": %d'%len(code.labeled_ops), file=f)
         print('  },', file=f)
+        print('  "identifiers": {', file=f);
+        for k,(t,_) in scope.pmap.items():
+            print('      "%s": "%s",'%(k,t), file=f)
+        print('      "___": "___"', file=f)
+        print('  },', file=f)
         print('  "code": [', file=f)
     for pc in range(len(code.labeled_ops)):
         if printCode == "verbose":

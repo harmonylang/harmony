@@ -1883,7 +1883,6 @@ static void print_transitions(FILE *out, struct dict *symbols, struct edge *edge
 
     fprintf(out, "      \"transitions\": [\n");
     for (struct edge *e = edges; e != NULL; e = e->fwdnext) {
-printf("GOT HERE\n");
         bool new;
         struct strbuf *sb = dict_insert(d, NULL, edge_log(e), e->nlog * sizeof(hvalue_t), &new);
         if (new) {
