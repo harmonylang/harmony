@@ -247,6 +247,9 @@ def behavior_parse(js, minify, outputfiles, behavior):
         elif s["type"] == "terminal":
             final_states.add(idx)
         states.add(idx)
+    assert initial_state != None
+    if len(final_states) == 0:
+        final_states = { initial_state }
 
     def add_edge(src, val, dst):
         assert dst != initial_state

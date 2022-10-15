@@ -5,6 +5,7 @@ class Scope:
         self.labels = {} if parent == None else parent.labels
         self.prefix = None if parent == None else parent.prefix
         self.inherit = False
+        self.pmap = {}      # hack for pretty-printing
 
     def copy(self):
         c = Scope(self.parent)
@@ -41,3 +42,13 @@ class Scope:
         self.names[lexeme] = ("global", name)
         return ("global", name)
 
+    # This is a hack to create a map of identifiers to types for
+    # pretty printing.
+    # TODO: come up with a better solution
+    def pset(self, lexeme, tv):
+        pmap[lexeme] = tv
+        if self.parent != None:
+            self.parent.pset(lexeme, tv);
+
+    def set(self, lexeme, tv):
+        self.names[lexeme] = tv

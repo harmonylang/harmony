@@ -1883,6 +1883,7 @@ static void print_transitions(FILE *out, struct dict *symbols, struct edge *edge
 
     fprintf(out, "      \"transitions\": [\n");
     for (struct edge *e = edges; e != NULL; e = e->fwdnext) {
+printf("GOT HERE\n");
         bool new;
         struct strbuf *sb = dict_insert(d, NULL, edge_log(e), e->nlog * sizeof(hvalue_t), &new);
         if (new) {
@@ -2470,46 +2471,45 @@ int main(int argc, char **argv){
         fprintf(out, "  },\n");
 
         // Only output nodes if there are symbols
-        if (!se.first) {
-            fprintf(out, "  \"nodes\": [\n");
-            bool first = true;
-            for (unsigned int i = 0; i < global->graph.size; i++) {
-                struct node *node = global->graph.nodes[i];
-                assert(node->id == i);
-                if (node->reachable) {
-                    if (first) {
-                        first = false;
-                    }
-                    else {
-                        fprintf(out, ",\n");
-                    }
-                    fprintf(out, "    {\n");
-                    fprintf(out, "      \"idx\": %d,\n", node->id);
-                    fprintf(out, "      \"component\": %d,\n", node->component);
-#ifdef notdef
-                    if (node->parent != NULL) {
-                        fprintf(out, "      \"parent\": %d,\n", node->parent->id);
-                    }
-                    char *val = json_escape_value(node->state->vars);
-                    fprintf(out, "      \"value\": \"%s:%d\",\n", val, node->state->choosing != 0);
-                    free(val);
-#endif
-                    print_transitions(out, symbols, node->fwd);
-                    if (i == 0) {
-                        fprintf(out, "      \"type\": \"initial\"\n");
-                    }
-                    else if (node->final) {
-                        fprintf(out, "      \"type\": \"terminal\"\n");
-                    }
-                    else {
-                        fprintf(out, "      \"type\": \"normal\"\n");
-                    }
-                    fprintf(out, "    }");
+        fprintf(out, "  \"nodes\": [\n");
+        bool first = true;
+        for (unsigned int i = 0; i < global->graph.size; i++) {
+            struct node *node = global->graph.nodes[i];
+            assert(node->id == i);
+            if (node->reachable) {
+                if (first) {
+                    first = false;
                 }
+                else {
+                    fprintf(out, ",\n");
+                }
+                fprintf(out, "    {\n");
+                fprintf(out, "      \"idx\": %d,\n", node->id);
+                fprintf(out, "      \"component\": %d,\n", node->component);
+#ifdef notdef
+                if (node->parent != NULL) {
+                    fprintf(out, "      \"parent\": %d,\n", node->parent->id);
+                }
+                char *val = json_escape_value(node->state->vars);
+                fprintf(out, "      \"value\": \"%s:%d\",\n", val, node->state->choosing != 0);
+                free(val);
+#endif
+                print_transitions(out, symbols, node->fwd);
+                if (i == 0) {
+                    fprintf(out, "      \"type\": \"initial\"\n");
+                }
+                else if (node->final) {
+                    fprintf(out, "      \"type\": \"terminal\"\n");
+                }
+                else {
+                    fprintf(out, "      \"type\": \"normal\"\n");
+                }
+                fprintf(out, "    }");
             }
-            fprintf(out, "\n");
-            fprintf(out, "  ],\n");
         }
+        fprintf(out, "\n");
+        fprintf(out, "  ],\n");
+
         fprintf(out, "  \"profile\": [\n");
         for (unsigned int pc = 0; pc < global->code.len; pc++) {
             unsigned int count = 0;

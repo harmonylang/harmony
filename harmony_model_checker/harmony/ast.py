@@ -46,7 +46,7 @@ class AST:
         if isinstance(const, tuple):
             scope.checkUnused(const)
             (lexeme, file, line, column) = const
-            scope.names[lexeme] = ("local-const", const)
+            scope.set(lexeme, ("local-const", const))
         else:
             assert isinstance(const, list)
             for c in const:
@@ -57,7 +57,7 @@ class AST:
         if isinstance(var, tuple):
             scope.checkUnused(var)
             (lexeme, file, line, column) = var
-            scope.names[lexeme] = ("local-var", var)
+            scope.set(lexeme, ("local-var", var))
         else:
             assert isinstance(var, list)
             for v in var:
@@ -119,7 +119,7 @@ class AST:
         # assert lexeme not in scope.names        # TODO
         assert lexeme in imported, "Attempted to import " + str(lexeme) + ", but it is not found in imports: " + str(imported)
 
-        scope.names[lexeme] = ("module", imported[lexeme])
+        scope.set(lexeme, ("module", imported[lexeme]))
 
     def getLabels(self):
         return set()
@@ -989,7 +989,7 @@ class BlockAST(AST):
             code.append(AtomicDecOp(), self.atomically, self.endtoken, stmt=stmt)
         if scope.inherit:
             for name, x in ns.names.items():
-                scope.names[name] = x
+                scope.set(name, x)
 
     def getLabels(self):
         labels = [x.getLabels() for x in self.b]
@@ -1414,7 +1414,7 @@ class MethodAST(AST):
         code.append(JumpOp(endlabel, reason="jump over method definition"), self.token, self.token, stmt=stmt)
         code.nextLabel(self.label)
         code.append(FrameOp(self.name, self.args), self.token, self.colon, stmt=stmt)
-        # scope.names[lexeme] = ("constant", (self.label, file, line, column))
+        # scope.set(lexeme, ("constant", (self.label, file, line, column)))
 
         ns = Scope(scope)
         for ((lexeme, file, line, column), lb) in self.stat.getLabels():
@@ -1432,7 +1432,7 @@ class MethodAST(AST):
         # promote global variables
         for name, (t, v) in ns.names.items():
             if t == "global" and name not in scope.names:
-                scope.names[name] = (t, v)
+                scope.set(name, (t, v))
 
     def getLabels(self):
         return {(self.name, self.label)} | self.stat.getLabels()
@@ -1617,7 +1617,7 @@ class FromAST(AST):
         if self.items == []:  # from module import *
             for (item, (t, v)) in names.items():
                 if t == "constant":
-                    scope.names[item] = (t, v)
+                    scope.set(item, (t, v))
         else:
             for (lexeme, file, line, column) in self.items:
                 if lexeme not in names:
@@ -1628,7 +1628,7 @@ class FromAST(AST):
                         column=column)
                 (t, v) = names[lexeme]
                 assert t == "constant", (lexeme, t, v)
-                scope.names[lexeme] = (t, v)
+                scope.set(lexeme, (t, v))
 
     def getImports(self):
         return [self.module]
@@ -1752,7 +1752,7 @@ class ConstAST(AST):
                 used_constants.add(lexeme)
             else:
                 value = v
-            scope.names[lexeme] = ("constant", (value, file, line, column))
+            scope.set(lexeme, ("constant", (value, file, line, column)))
         else:
             assert isinstance(const, list), const
             assert isinstance(v, ListValue), v
