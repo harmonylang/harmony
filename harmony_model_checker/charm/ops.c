@@ -717,7 +717,7 @@ void op_AtomicInc(const void *env, struct state *state, struct step *step, struc
 void next_Choose(const void *env, struct context *ctx, struct global *global, FILE *fp){
     hvalue_t choices = ctx_peep(ctx);
     assert(VALUE_TYPE(choices) == VALUE_SET);
-    assert(av != VALUE_SET);
+    assert(choices != VALUE_SET);
     char *val = value_json(choices, global);
     fprintf(fp, "{ \"type\": \"Choose\", \"value\": %s }", val);
     free(val);
