@@ -268,7 +268,7 @@ class NameAST(AST):
             raise HarmonyCompilerError(
                 filename=file,
                 lexeme=lexeme,
-                stmt=stmt,
+                # stmt=stmt,
                 column=column,
                 message="constant cannot be an lvalue: %s" % str(self.name),
             )
