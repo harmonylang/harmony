@@ -1272,9 +1272,11 @@ void path_dump(
     char *name = value_string(ef->name);
 	int len = strlen(name);
     char *c = e->choice == 0 ? NULL : value_json(e->choice, global);
-    fprintf(file, "      \"shared\": ");
-    print_vars(global, file, oldstate->vars);
-    fprintf(file, ",\n");
+    if (oldstate->vars != 0) {
+        fprintf(file, "      \"shared\": ");
+        print_vars(global, file, oldstate->vars);
+        fprintf(file, ",\n");
+    }
     fprintf(file, "      \"tid\": \"%d\",\n", pid);
     char *arg = json_escape_value(cs->arg);
     if (*arg == '(') {

@@ -518,7 +518,7 @@ void op_Apply(const void *env, struct state *state, struct step *step, struct gl
             }
             unsigned int index = VALUE_FROM_INT(e), size;
             hvalue_t *vals = value_get(method, &size);
-            if (index >= (hvalue_t) size) {
+            if (index >= (hvalue_t) size / sizeof(hvalue_t)) {
                 value_ctx_failure(step->ctx, &step->engine, "Index out of range");
                 return;
             }
