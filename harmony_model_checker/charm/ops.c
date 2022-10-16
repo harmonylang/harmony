@@ -1390,13 +1390,19 @@ void next_Load(const void *env, struct context *ctx, struct global *global, FILE
 
         char *x = indices_string(indices, size);
         assert(x[0] == '?');
-        fprintf(fp, "{ \"type\": \"Load\", \"var\": \"%s\" }", x + 1);
+        int n = strlen(x);
+        char *json = json_escape(x+1, n-1);
+        fprintf(fp, "{ \"type\": \"Load\", \"var\": \"%s\" }", json);
+        free(json);
         free(x);
     }
     else {
         char *x = indices_string(el->indices, el->n);
         assert(x[0] == '?');
-        fprintf(fp, "{ \"type\": \"Load\", \"var\": \"%s\" }", x + 1);
+        int n = strlen(x);
+        char *json = json_escape(x+1, n-1);
+        fprintf(fp, "{ \"type\": \"Load\", \"var\": \"%s\" }", json);
+        free(json);
         free(x);
     }
 }
@@ -2019,16 +2025,22 @@ void next_Store(const void *env, struct context *ctx, struct global *global, FIL
         size /= sizeof(hvalue_t);
         char *x = indices_string(indices, size);
         assert(x[0] == '?');
+        int n = strlen(x);
+        char *json = json_escape(x+1, n-1);
         char *val = value_json(v, global);
-        fprintf(fp, "{ \"type\": \"Store\", \"var\": \"%s\", \"value\": %s }", x + 1, val);
+        fprintf(fp, "{ \"type\": \"Store\", \"var\": \"%s\", \"value\": %s }", json, val);
         free(x);
+        free(json);
         free(val);
     }
     else {
         char *x = indices_string(es->indices, es->n);
         assert(x[0] == '?');
+        int n = strlen(x);
+        char *json = json_escape(x+1, n-1);
         char *val = value_json(v, global);
-        fprintf(fp, "{ \"type\": \"Store\", \"var\": \"%s\", \"value\": %s }", x + 1, val);
+        fprintf(fp, "{ \"type\": \"Store\", \"var\": \"%s\", \"value\": %s }", json, val);
+        free(json);
         free(x);
         free(val);
     }
