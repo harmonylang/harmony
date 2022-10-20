@@ -1,0 +1,239 @@
+"""
+types:
+    Value: { v, ... }
+    Processor: { p, q, ... }
+    Operation: { CLIENT_UPDATE(Value), ADD_PROC(Processor) }
+    Log: sequence of Operation
+    
+state:
+    processors: set of Processor
+        - each processor is in the set processors
+        - each processor p has the following fields:
+            p.mode: { FETAL, LIVE, CRASHED } initially FETAL
+            p.log: Log initially empty
+            p.detected: set of Processor initially empty
+            p.received: set of Log received over the network
+
+    values: set of Value
+        - set of values proposed by clients
+
+invariants:
+    invariant1:
+        forall p \in processors:
+            (p.mode != FETAL) => (ADD_PROC(p) \in p.log)
+
+    invariant2:
+        forall p \in processors, q \in processors:
+            p.mode = q.mode = LIVE => (p.log <= q.log \/ q.log <= p.log)
+
+    invariant3:
+        forall p \in processors, q \in processors:
+            /\ p.mode = q.mode = LIVE
+            /\ ADD_PROC(p) appears before ADD_PROC(q) in q.log
+            ==> q.log <= p.log
+
+functions:
+    // returns TRUE if all q such that ADDPROC(q) appear before
+    // ADDPROC(p) in p.log are in p.detected. Returns FALSE otherwise.
+    function p.isHead(p: Processor): Boolean
+
+    // returns TRUE iff q is the successor of p according to p.log and
+    // p.detected.  This is the case if ADD_PROC(q) appears after
+    // ADD_PROC(p) in p.log, and for every z such that ADD_PROC(z) is
+    // in between the two in p.log, z is also in p.detected
+    function p.isSuccessor(p: Processor, q: Processor): Boolean
+
+transitions:
+    // start things by making p the first server
+    transition start(p: Processor):
+        precondition:
+            \forall q \in processors: q.mode = FETAL
+        action:
+            p.mode := LIVE
+            p.log := [ ADDPROC(p) ]
+
+    // server p handles client update request v
+    transition gotClientUpdate(p: Processor, v: Value):
+        precondition:
+            /\ p.mode = LIVE
+            /\ p.isHead(p)
+            /\ CLIENT_UPDATE(v) \notin p.log
+        action:
+            p.log := p.log :: [ CLIENT_UPDATE(v) ]
+
+    // server p handles join request for processor q.  Almost the
+    // same as gotClientUpdate except sends log to q
+    transition gotJoinRequest(p: Processor, q: Processor):
+        precondition:
+            /\ p.mode = LIVE
+            /\ p.isHead(p)
+            /\ ADD_PROC(q) \notin p.log
+        action:
+            p.log := p.log :: [ ADD_PROC(q) ]
+
+    // p sends its log to its successor q
+    transition sendLog(p: Processor, q: Processor):
+        precondition:
+            /\ p.mode = LIVE
+            /\ p.isSuccessor(p, q)
+            /\ p.log \notin q.received
+        action:
+            q.received := q.received | { p.log }
+
+    // handle receipt of a log
+    transition gotLog(p: Processor, log: Log):
+        precondition:
+            /\ p.mode \in { FETAL, LIVE }
+            /\ p.log < log          // strict prefix
+        action:
+            p.mode := LIVE
+            p.log := log
+
+    // p crashes.  The only surviving server is not allowed to crash.
+    transition crash(p: Processor):
+        precondition:
+            \/ p.mode = FETAL
+            \/ /\ p.mode = LIVE
+               /\ \exists q \in processors: q \ne p /\ q.mode = LIVE
+        action:
+            p.mode := CRASHED
+
+    // p detects the failure of q
+    transition detect(p: Processor, q: Processor):
+        precondition:
+            /\ q.mode = CRASHED
+            /\ q \not \in p.detected
+        action:
+            p.detected := p.detected | { q }
+
+    any_transition ===
+        \/ \exists p \in processors: start(p)
+        \/ \exists p \in processors, v \in values: gotClientUpdate(p, v)
+        \/ \exists p \in processors, q \in processors: gotJoinRequest(p, q)
+        \/ \exists p \in processors, q \in processors: sendLog(p, q)
+        \/ \exists p \in processors, log \in p.received: gotLog(p, log)
+        \/ \exists p \in processors: crash(p)
+        \/ \exists p \in processors, q \in processors: detect(p, q)
+"""
+
+import list
+
+const N = 2
+const VALUES = { "a", "b", "c" }
+
+procs = [{
+                .mode: "fetal",
+                .log: [],
+                .detected: {},
+                .received: {}
+            },] * N
+
+def get_conf(self):
+    result = [ p for (t, p) in procs[self].log
+                    where (t == "add_proc")
+                    and (p not in procs[self].detected) ]
+
+def is_head(self):
+    let conf = get_conf(self):
+        result = conf[0] == self
+
+def is_successor(self, p):
+    let conf = get_conf(self)
+    let me = list.index(conf, self):
+        result = (me < (len(conf) - 1)) and (p == conf[me + 1])
+
+def is_prefix(l1, l2):
+    result = (len(l1) < len(l2)) and
+        all(l1[i] == l2[i] for i in { 0 .. len(l1) - 1 })
+
+def do_start(self):
+    procs[self].mode = "live"
+    procs[self].log = [ ("add_proc", self), ]
+
+def opt_start():
+    if all(procs[p].mode == "fetal" for p in {0..N-1}):
+        result = { (do_start, p) for p in {0..N-1} }
+    else:
+        result = {}
+
+def do_gotClientUpdate(self, v):
+    procs[self].log += [("clt_update", v),]
+
+def opt_gotClientUpdate():
+    result = { (do_gotClientUpdate, (p, v))
+        for p in {0..N-1}
+          where (procs[p].mode == "live") and is_head(p)
+        for v in VALUES
+          where ("clt_update", v) not in procs[p].log
+      }
+
+def do_gotJoinRequest(self, p):
+    procs[self].log += [("add_proc", p),]
+
+def opt_gotJoinRequest():
+    result = { (do_gotJoinRequest, (p, q))
+        for p in {0..N-1}
+          where (procs[p].mode == "live") and is_head(p)
+        for q in {0..N-1}
+          where ("add_proc", q) not in procs[p].log
+      }
+
+def do_sendLog(self, p):
+    procs[p].received |= { procs[self].log }
+
+def opt_sendLog():
+    result = { (do_sendLog, (p, q))
+        for p in {0..N-1}
+          where (procs[p].mode == "live") and is_head(p)
+        for q in {0..N-1}
+          where is_successor(p, q) and (procs[p].log not in procs[q].received)
+      }
+
+def do_gotLog(self, log):
+    procs[self].mode = "live"
+    procs[self].log = log
+
+def opt_gotLog():
+    result = { (do_gotLog, (p, log))
+        for p in {0..N-1}
+          where (procs[p].mode in { "fetal", "live" })
+        for log in procs[p].received
+          where is_prefix(procs[p].log, log)
+      }
+
+def do_crash(self):
+    procs[self].mode = "crashed"
+
+def opt_crash():
+    result = { (do_crash, p)
+        for p in {0..N-1}
+          where (procs[p].mode == "fetal") or
+            ((procs[p].mode == "live") and
+                not all(procs[q].mode != "live"
+                            for q in {0..N-1} where (q != p)))
+      }
+
+def do_detect(self, p):
+    procs[self].detected |= { p }
+
+def opt_detect():
+    result = { (do_detect, (p, q))
+        for p in {0..N-1} for q in {0..N-1}
+          where (procs[q].mode == "crashed") and
+                    (q not in procs[p].detected)
+      }
+
+going = True
+while going:
+    let options = opt_start()
+            | opt_gotClientUpdate()
+            | opt_gotJoinRequest()
+            | opt_sendLog()
+            | opt_gotLog()
+            | opt_crash()
+            | opt_detect():
+        if options == {}:
+            going = False
+        else:
+            let f, x = choose(options):
+                f(x)
