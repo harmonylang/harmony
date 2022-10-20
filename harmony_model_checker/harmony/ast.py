@@ -11,6 +11,9 @@ imported = {}           # imported modules
 constants = {}          # constants modified with -c
 used_constants = set()  # constants modified and used
 
+def getImported():
+    return imported
+
 class AST:
     def __init__(self, endtoken, token, atomically):
         # Check that token is of the form (lexeme, file, line, column)

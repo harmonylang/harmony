@@ -133,6 +133,7 @@ def _do_import(scope: Scope, code: Code, module):
         for directory in [os.path.dirname(legacy_harmony.namestack[-1]), os.path.join(install_path, "modules"), "."]:
             filename = os.path.join(directory, modname + ".hny")
             if os.path.exists(filename):
+                scope2.file = filename
                 _load_file(filename, scope2, code, False)
                 found = True
                 break
@@ -231,6 +232,7 @@ def do_compile(fname: str, consts: List[str], mods: List[str], interface: List[s
             )
 
     scope = Scope(None)
+    scope.file = str(fname)
     scope.inherit = True
     code = Code()
     _load_file(str(fname), scope, code, True)

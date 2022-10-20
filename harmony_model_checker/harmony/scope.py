@@ -6,6 +6,7 @@ class Scope:
         self.prefix = None if parent == None else parent.prefix
         self.inherit = False
         self.pmap = {}      # hack for pretty-printing
+        self.file = "__nofile__"        # file name
 
     def copy(self):
         c = Scope(self.parent)

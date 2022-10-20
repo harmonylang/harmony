@@ -63,7 +63,7 @@ from harmony_model_checker import __version__
 # TODO.  These should not be global ideally
 files = {}              # files that have been read already
 modules = {}            # modules modified with -m
-used_modules = set()    # modules modified and used
+# used_modules = set()  # modules modified and used
 namestack = []          # stack of module names being compiled
 node_uid = 1            # unique node identifier
 silent = False          # not printing periodic status updates
@@ -1175,6 +1175,16 @@ table td, table th {
 def explanation(lop):
     return lop.op.explain()
 
+def dumpModule(name, scope, f):
+    print('    "%s": {'%name, file=f)
+    print('      "file": "%s",'%scope.file, file=f)
+    print('      "identifiers": {', file=f)
+    for k,(t,_) in scope.pmap.items():
+        print('        "%s": "%s",'%(k,t), file=f)
+    print('        "___": "___"', file=f)
+    print('      }', file=f)
+    print('    },', file=f)
+
 def dumpCode(printCode, code, scope, f=sys.stdout):
     lastloc = None
     if printCode == "json":
@@ -1192,10 +1202,11 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
                         print('    "%s$%s": %d,'%(label.module, label.label, pc), file=f)
         print('    "__end__": %d'%len(code.labeled_ops), file=f)
         print('  },', file=f)
-        print('  "identifiers": {', file=f);
-        for k,(t,_) in scope.pmap.items():
-            print('      "%s": "%s",'%(k,t), file=f)
-        print('      "___": "___"', file=f)
+        print('  "modules": {', file=f);
+        imported = getImported()
+        for m, s in imported.items():
+            dumpModule(m, s, f)
+        dumpModule("__main__", scope, f)
         print('  },', file=f)
         print('  "code": [', file=f)
     for pc in range(len(code.labeled_ops)):
