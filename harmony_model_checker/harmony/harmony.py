@@ -1175,7 +1175,7 @@ table td, table th {
 def explanation(lop):
     return lop.op.explain()
 
-def dumpModule(name, scope, f):
+def dumpModule(name, scope, f, last):
     print('    "%s": {'%name, file=f)
     print('      "file": "%s",'%scope.file, file=f)
     print('      "identifiers": {', file=f)
@@ -1183,7 +1183,10 @@ def dumpModule(name, scope, f):
         print('        "%s": "%s",'%(k,t), file=f)
     print('        "___": "___"', file=f)
     print('      }', file=f)
-    print('    },', file=f)
+    if last:
+        print('    }', file=f)
+    else:
+        print('    },', file=f)
 
 def dumpCode(printCode, code, scope, f=sys.stdout):
     lastloc = None
@@ -1205,8 +1208,8 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
         print('  "modules": {', file=f);
         imported = getImported()
         for m, s in imported.items():
-            dumpModule(m, s, f)
-        dumpModule("__main__", scope, f)
+            dumpModule(m, s, f, False)
+        dumpModule("__main__", scope, f, True)
         print('  },', file=f)
         print('  "code": [', file=f)
     for pc in range(len(code.labeled_ops)):
