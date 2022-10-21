@@ -384,7 +384,10 @@ static bool onestep(
                 break;
             }
             unsigned int size;
-            hvalue_t *vals = value_get(s, &size);
+#ifdef OBSOLETE
+            hvalue_t *vals =
+#endif
+            value_get(s, &size);
             size /= sizeof(hvalue_t);
             if (size == 0) {
                 value_ctx_failure(step->ctx, &step->engine, "choose operation requires a non-empty set");
@@ -392,10 +395,13 @@ static bool onestep(
                 failure = true;
                 break;
             }
-            if (0 && size == 1) {            // TODO.  This optimization is probably not worth it
+#ifdef OBSOLETE
+            if (size == 1) {            // TODO.  This optimization is probably not worth it
                 choice = vals[0];
             }
-            else {
+            else
+#endif
+            {
                 choosing = true;
                 break;
             }
@@ -2342,7 +2348,7 @@ int main(int argc, char **argv){
     }
 #endif
 
-#ifndef OBSOLETE
+#ifdef OBSOLETE
     if (true) {
         FILE *df = fopen("charm.dump", "w");
         assert(df != NULL);
@@ -2461,7 +2467,7 @@ int main(int argc, char **argv){
     if (no_issues) {
         fprintf(out, "  \"issue\": \"No issues\",\n");
 
-        // destutter1(&global->graph);
+        destutter1(&global->graph);
 
         // Output the symbols;
         struct dict *symbols = collect_symbols(&global->graph);
