@@ -392,7 +392,7 @@ static bool onestep(
                 failure = true;
                 break;
             }
-            if (size == 1) {            // TODO.  This optimization is probably not worth it
+            if (0 && size == 1) {            // TODO.  This optimization is probably not worth it
                 choice = vals[0];
             }
             else {
@@ -1756,7 +1756,7 @@ char *state_string(struct state *state){
     return strbuf_convert(&sb);
 }
 
-// This routine removes all node that have a single incoming edge and it's
+// This routine removes all nodes that have a single incoming edge and it's
 // an "epsilon" edge (empty print log).  These are essentially useless nodes.
 // Typically about half of the nodes can be removed this way.
 static void destutter1(struct graph *graph){
@@ -2342,7 +2342,7 @@ int main(int argc, char **argv){
     }
 #endif
 
-#ifdef OBSOLETE
+#ifndef OBSOLETE
     if (true) {
         FILE *df = fopen("charm.dump", "w");
         assert(df != NULL);

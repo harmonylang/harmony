@@ -118,8 +118,8 @@ transitions:
 
 import list
 
-const N = 2
-const VALUES = { "a", "b", "c" }
+const N = 3
+const VALUES = { "a" }
 
 procs = [{
                 .mode: "fetal",
