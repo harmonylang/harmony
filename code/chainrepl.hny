@@ -152,7 +152,7 @@ def do_start(self):
 
 def opt_start():
     if all(procs[p].mode == "fetal" for p in {0..N-1}):
-        result = { (do_start, p) for p in {0..N-1} }
+        result = { (do_start, 0) }
     else:
         result = {}
 
@@ -207,10 +207,9 @@ def do_crash(self):
 def opt_crash():
     result = { (do_crash, p)
         for p in {0..N-1}
-          where (procs[p].mode == "fetal") or
-            ((procs[p].mode == "live") and
+          where (procs[p].mode == "live") and
                 not all(procs[q].mode != "live"
-                            for q in {0..N-1} where (q != p)))
+                            for q in {0..N-1} where (q != p))
       }
 
 def do_detect(self, p):
@@ -218,8 +217,10 @@ def do_detect(self, p):
 
 def opt_detect():
     result = { (do_detect, (p, q))
-        for p in {0..N-1} for q in {0..N-1}
-          where (procs[q].mode == "crashed") and
+        for p in {0..N-1}
+            where procs[p].mode == "live"
+        for q in {0..N-1}
+            where (procs[q].mode == "crashed") and
                     (q not in procs[p].detected)
       }
 

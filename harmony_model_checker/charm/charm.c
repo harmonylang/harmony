@@ -2461,7 +2461,7 @@ int main(int argc, char **argv){
     if (no_issues) {
         fprintf(out, "  \"issue\": \"No issues\",\n");
 
-        destutter1(&global->graph);
+        // destutter1(&global->graph);
 
         // Output the symbols;
         struct dict *symbols = collect_symbols(&global->graph);
