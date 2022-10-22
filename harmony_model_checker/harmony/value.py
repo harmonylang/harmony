@@ -83,6 +83,9 @@ class PcValue(Value):
     def jdump(self):
         return '{ "type": "pc", "value": "%d" }'%self.pc
 
+    def substitute(self, map):
+        return substValue(self.pc, map)
+
 class _LabelIdGenerator:
 
     _next_id = 0

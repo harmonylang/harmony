@@ -118,7 +118,7 @@ transitions:
 
 import list
 
-const N = 3
+const N = 2
 const VALUES = { "a", "b" }
 
 procs = [{
@@ -127,6 +127,23 @@ procs = [{
                 .detected: {},
                 .received: {}
             },] * N
+
+invariant all((is_prefix(procs[p].log, procs[q].log)
+                or is_prefix(procs[q].log, procs[p].log)
+                or (procs[p].log == procs[q].log))
+                    for p in {0..N-1} where procs[p].mode == "live"
+                    for q in {p+1..N-1} where procs[q].mode == "live")
+
+invariant all(("add_proc", p) in procs[q].log
+                    for p in {0..N-1} where procs[p].mode == "live"
+                    for q in {0..N-1} where procs[q].mode == "live")
+
+invariant all((list.index(procs[q].log, ("add_proc", p)) <
+                list.index(procs[q].log, ("add_proc", q))) =>
+                    (is_prefix(procs[q].log, procs[p].log) or
+                        (procs[q].log == procs[p].log))
+                    for p in {0..N-1} where procs[p].mode == "live"
+                    for q in {0..N-1} where procs[q].mode == "live")
 
 def get_conf(self):
     result = [ p for (t, p) in procs[self].log
@@ -142,6 +159,7 @@ def is_successor(self, p):
     let me = list.index(conf, self):
         result = (me < (len(conf) - 1)) and (p == conf[me + 1])
 
+# Check if l1 is a strict prefix of l2
 def is_prefix(l1, l2):
     result = (len(l1) < len(l2)) and
         all(l1[i] == l2[i] for i in { 0 .. len(l1) - 1 })
@@ -170,13 +188,11 @@ def opt_gotClientUpdate():
 def do_gotJoinRequest(self, p):
     procs[self].log += [("add_proc", p),]
 
-def opt_gotJoinRequest():
-    result = { (do_gotJoinRequest, (p, q))
-        for p in {0..N-1}
-          where (procs[p].mode == "live") and is_head(p)
+const opt_gotJoinRequest = lambda(): { (do_gotJoinRequest, (p, q))
+    for p in {0..N-1}
+      where (procs[p].mode == "live") and is_head(p)
         for q in {0..N-1}
-          where ("add_proc", q) not in procs[p].log
-      }
+          where ("add_proc", q) not in procs[p].log } end
 
 def do_sendLog(self, p):
     procs[p].received |= { procs[self].log }
