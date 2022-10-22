@@ -145,24 +145,22 @@ invariant all((list.index(procs[q].log, ("add_proc", p)) <
                     for p in {0..N-1} where procs[p].mode == "live"
                     for q in {0..N-1} where procs[q].mode == "live")
 
-def get_conf(self):
-    result = [ p for (t, p) in procs[self].log
-                    where (t == "add_proc")
-                    and (p not in procs[self].detected) ]
+# get_conf(p) returns the configuration according to process p
+const get_conf = lambda(p): [ q for (t, q) in procs[p].log
+    where (t == "add_proc") and (q not in procs[p].detected) ] end
 
-def is_head(self):
-    let conf = get_conf(self):
-        result = conf[0] == self
+# is_head(p) returns whether process p thinks it's the head
+const is_head = lambda(p): get_conf(p)[0] == p end
 
+# is_successor(self, p) returns whether self thinks p is its successor
 def is_successor(self, p):
     let conf = get_conf(self)
     let me = list.index(conf, self):
         result = (me < (len(conf) - 1)) and (p == conf[me + 1])
 
 # Check if l1 is a strict prefix of l2
-def is_prefix(l1, l2):
-    result = (len(l1) < len(l2)) and
-        all(l1[i] == l2[i] for i in { 0 .. len(l1) - 1 })
+const is_prefix = lambda(l1, l2): (len(l1) < len(l2)) and
+        all(l1[i] == l2[i] for i in { 0 .. len(l1) - 1 }) end
 
 def do_start(self):
     procs[self].mode = "live"
