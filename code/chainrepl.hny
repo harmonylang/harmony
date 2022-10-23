@@ -164,13 +164,13 @@ def do_start(self):
     procs[self].mode = "live"
     procs[self].log = [ ("add_proc", self), ]
 
-const opt_start = lambda(): { (do_start, 0) } \
+const start = lambda(): { (do_start, 0) } \
     if all(procs[p].mode == "fetal" for p in {0..N-1}) else {} end
 
 def do_gotClientUpdate(self, v):
     procs[self].log += [("clt_update", v),]
 
-const opt_gotClientUpdate = lambda(): { (do_gotClientUpdate, (p, v))
+const gotClientUpdate = lambda(): { (do_gotClientUpdate, (p, v))
     for p in {0..N-1}
       where (procs[p].mode == "live") and is_head(p)
     for v in VALUES
@@ -179,7 +179,7 @@ const opt_gotClientUpdate = lambda(): { (do_gotClientUpdate, (p, v))
 def do_gotJoinRequest(self, p):
     procs[self].log += [("add_proc", p),]
 
-const opt_gotJoinRequest = lambda(): { (do_gotJoinRequest, (p, q))
+const gotJoinRequest = lambda(): { (do_gotJoinRequest, (p, q))
     for p in {0..N-1}
       where (procs[p].mode == "live") and is_head(p)
         for q in {0..N-1}
@@ -188,7 +188,7 @@ const opt_gotJoinRequest = lambda(): { (do_gotJoinRequest, (p, q))
 def do_sendLog(self, p):
     procs[p].received |= { procs[self].log }
 
-const opt_sendLog = lambda(): { (do_sendLog, (p, q))
+const sendLog = lambda(): { (do_sendLog, (p, q))
     for p in {0..N-1}
       where (procs[p].mode == "live") and is_head(p)
     for q in {0..N-1}
@@ -199,7 +199,7 @@ def do_gotLog(self, log):
     procs[self].mode = "live"
     procs[self].log = log
 
-const opt_gotLog = lambda(): { (do_gotLog, (p, log))
+const gotLog = lambda(): { (do_gotLog, (p, log))
     for p in {0..N-1}
       where (procs[p].mode in { "fetal", "live" })
     for log in procs[p].received
@@ -208,7 +208,7 @@ const opt_gotLog = lambda(): { (do_gotLog, (p, log))
 def do_crash(self):
     procs[self].mode = "crashed"
 
-const opt_crash = lambda(): { (do_crash, p)
+const crash = lambda(): { (do_crash, p)
     for p in {0..N-1} where (procs[p].mode == "live") and
         not all(procs[q].mode != "live"
     for q in {0..N-1} where (q != p)) } end
@@ -216,7 +216,7 @@ const opt_crash = lambda(): { (do_crash, p)
 def do_detect(self, p):
     procs[self].detected |= { p }
 
-const opt_detect = lambda(): { (do_detect, (p, q))
+const detect = lambda(): { (do_detect, (p, q))
     for p in {0..N-1} where procs[p].mode == "live"
     for q in {0..N-1} where (procs[q].mode == "crashed") and
                 (q not in procs[p].detected) } end
@@ -235,5 +235,5 @@ def explore(s):
             else:
                 let f, x = choose(options): f(x)
 
-explore({opt_start, opt_gotClientUpdate, opt_gotJoinRequest,
-            opt_sendLog, opt_gotLog, opt_crash, opt_detect})
+explore({start, gotClientUpdate, gotJoinRequest,
+                    sendLog, gotLog, crash, detect})
