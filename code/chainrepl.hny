@@ -117,6 +117,7 @@ transitions:
 """
 
 import list
+import action
 
 const N = 2
 const VALUES = { "a", "b" }
@@ -221,19 +222,5 @@ const detect = lambda(): { (do_detect, (p, q))
     for q in {0..N-1} where (procs[q].mode == "crashed") and
                 (q not in procs[p].detected) } end
 
-def union(s):
-    result = {}
-    for opt in s:
-        result |= opt()
-
-def explore(s):
-    var going = True
-    while going:
-        let options = union(s):
-            if options == {}:
-                going = False
-            else:
-                let f, x = choose(options): f(x)
-
-explore({start, gotClientUpdate, gotJoinRequest,
+action.explore({start, gotClientUpdate, gotJoinRequest,
                     sendLog, gotLog, crash, detect})

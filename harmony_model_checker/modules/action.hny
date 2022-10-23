@@ -1,0 +1,13 @@
+def _union(s):
+    result = {}
+    for opt in s:
+        result |= opt()
+
+def explore(s):
+    var going = True
+    while going:
+        let options = _union(s):
+            if options == {}:
+                going = False
+            else:
+                let f, x = choose(options): f(x)
