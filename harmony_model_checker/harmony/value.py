@@ -124,7 +124,7 @@ class LabelValue(Value):
         assert False
 
     def substitute(self, map):
-        return map[self]
+        return map[self] if self in map else self
 
 class ListValue(Value):
     def __init__(self, vals):

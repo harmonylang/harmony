@@ -121,23 +121,21 @@ import list
 const N = 2
 const VALUES = { "a", "b" }
 
-procs = [{
-                .mode: "fetal",
-                .log: [],
-                .detected: {},
-                .received: {}
-            },] * N
+# Global state: initially each process is "fetal"
+procs = [{ .mode: "fetal", .log: [], .detected: {}, .received: {} },] * N
 
-invariant all((is_prefix(procs[p].log, procs[q].log)
-                or is_prefix(procs[q].log, procs[p].log)
-                or (procs[p].log == procs[q].log))
-                    for p in {0..N-1} where procs[p].mode == "live"
-                    for q in {p+1..N-1} where procs[q].mode == "live")
+# invariant all((is_prefix(procs[p].log, procs[q].log)
+#                 or is_prefix(procs[q].log, procs[p].log)
+#                 or (procs[p].log == procs[q].log))
+#                     for p in {0..N-1} where procs[p].mode == "live"
+#                     for q in {p+1..N-1} where procs[q].mode == "live")
 
+# Every live processor knows about every other live processor
 invariant all(("add_proc", p) in procs[q].log
                     for p in {0..N-1} where procs[p].mode == "live"
                     for q in {0..N-1} where procs[q].mode == "live")
 
+# If p appears before q in q's log, then q's log is a prefix of p's
 invariant all((list.index(procs[q].log, ("add_proc", p)) <
                 list.index(procs[q].log, ("add_proc", q))) =>
                     (is_prefix(procs[q].log, procs[p].log) or
@@ -223,12 +221,19 @@ const opt_detect = lambda(): { (do_detect, (p, q))
     for q in {0..N-1} where (procs[q].mode == "crashed") and
                 (q not in procs[p].detected) } end
 
-going = True
-while going:
-    let options = opt_start() | opt_gotClientUpdate()
-            | opt_gotJoinRequest() | opt_sendLog()
-            | opt_gotLog() | opt_crash() | opt_detect():
-        if options == {}:
-            going = False
-        else:
-            let f, x = choose(options): f(x)
+def union(s):
+    result = {}
+    for opt in s:
+        result |= opt()
+
+def explore(s):
+    var going = True
+    while going:
+        let options = union(s):
+            if options == {}:
+                going = False
+            else:
+                let f, x = choose(options): f(x)
+
+explore({opt_start, opt_gotClientUpdate, opt_gotJoinRequest,
+            opt_sendLog, opt_gotLog, opt_crash, opt_detect})
