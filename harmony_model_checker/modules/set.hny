@@ -1,16 +1,44 @@
+import list
+
 def issubset(s, t):
     result = (s & t) == s
+
+def issubseteq(s, t):
+    result = (s & t) == s
+
+def issubsetstrict(s, t):
+    result = (s != t) and ((s & t) == s)
 
 def issuperset(s, t):
     result = (s & t) == t
 
+def issuperseteq(s, t):
+    result = (s & t) == t
+
+def issupersetstrict(s, t):
+    result = (s != t) and ((s & t) == t)
+
 def add(s, elt):
-    return s | {elt}
+    result =  s | {elt}
 
 def remove(s, elt):
-    return s - {elt}
+    result = s - {elt}
 
-# Return set of all subsets of s of length k
+# Return the set of all subsets of S
+def subsets(s):
+    result = {s} | union { subsets(s - {e}) for e in s }
+
+# s is a set of sets.  Return the union of the sets
+def union(s):
+    result = {}
+    for e in s:
+        result |= e
+
+# d is a list of sets.  Return the Cartesian product.
+def cartesian(d):
+    result = { [] } if d == [] else { [e,] + t for t in cartesian(list.tail(d)) for e in d[0] }
+
+# return set of all subsets of s of size k
 def combinations(s, k):
     if k == 0:
         result = { {} }
