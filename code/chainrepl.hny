@@ -119,17 +119,11 @@ transitions:
 import list
 import action
 
-const N = 2
-const VALUES = { "a", "b" }
+const N = 3
+const VALUES = { "a" }
 
 # Global state: initially each process is "fetal"
 procs = [{ .mode: "fetal", .log: [], .detected: {}, .received: {} },] * N
-
-# invariant all((is_prefix(procs[p].log, procs[q].log)
-#                 or is_prefix(procs[q].log, procs[p].log)
-#                 or (procs[p].log == procs[q].log))
-#                     for p in {0..N-1} where procs[p].mode == "live"
-#                     for q in {p+1..N-1} where procs[q].mode == "live")
 
 # Every live processor knows about every other live processor
 invariant all(("add_proc", p) in procs[q].log
@@ -139,8 +133,7 @@ invariant all(("add_proc", p) in procs[q].log
 # If p appears before q in q's log, then q's log is a prefix of p's
 invariant all((list.index(procs[q].log, ("add_proc", p)) <
                 list.index(procs[q].log, ("add_proc", q))) =>
-                    (is_prefix(procs[q].log, procs[p].log) or
-                        (procs[q].log == procs[p].log))
+                        list.startswith(procs[p].log, procs[q].log)
                     for p in {0..N-1} where procs[p].mode == "live"
                     for q in {0..N-1} where procs[q].mode == "live")
 
@@ -156,10 +149,6 @@ def is_successor(self, p):
     let conf = get_conf(self)
     let me = list.index(conf, self):
         result = (me < (len(conf) - 1)) and (p == conf[me + 1])
-
-# Check if l1 is a strict prefix of l2
-const is_prefix = lambda(l1, l2): (len(l1) < len(l2)) and
-        all(l1[i] == l2[i] for i in { 0 .. len(l1) - 1 }) end
 
 def do_start(self):
     procs[self].mode = "live"
@@ -204,7 +193,7 @@ const gotLog = lambda(): { (do_gotLog, (p, log))
     for p in {0..N-1}
       where (procs[p].mode in { "fetal", "live" })
     for log in procs[p].received
-      where is_prefix(procs[p].log, log) } end
+      where (len(procs[p].log) < len(log)) and list.startswith(log, procs[p].log) } end
 
 def do_crash(self):
     procs[self].mode = "crashed"

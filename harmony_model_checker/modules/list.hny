@@ -59,3 +59,7 @@ def index(d, e):
     while d[i] != e:
         i += 1
     result = i
+
+# like Python startswith (only defined for strings)
+def startswith(d, prefix):
+    result = (len(prefix) <= len(d)) and all(d[i] == prefix[i] for i in { 0 .. len(prefix) - 1 })
