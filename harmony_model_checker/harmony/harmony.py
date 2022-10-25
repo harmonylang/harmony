@@ -1215,7 +1215,7 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
     for pc in range(len(code.labeled_ops)):
         if printCode == "verbose":
             lop = code.labeled_ops[pc]
-            file, line = lop.file, lop.line
+            file, line = code.curFile, code.curLine
             if file != None and (file, line) != lastloc:
                 lines = files.get(file)
                 if lines != None and line <= len(lines):

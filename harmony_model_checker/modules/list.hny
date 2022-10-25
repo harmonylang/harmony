@@ -63,3 +63,7 @@ def index(d, e):
 # like Python startswith (only defined for strings)
 def startswith(d, prefix):
     result = (len(prefix) <= len(d)) and all(d[i] == prefix[i] for i in { 0 .. len(prefix) - 1 })
+
+# right fold.  Compute f(d[0], f(d[1], ..., f(d[n-1], z)))
+def foldr(d, f, z):
+    result = z if len d == 0 else f(d[0], foldr(tail(d), f, z))

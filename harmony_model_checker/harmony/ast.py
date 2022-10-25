@@ -90,7 +90,7 @@ class AST:
 
     def compile(self, scope, code, stmt):
         if self.isConstant(scope):
-            code2 = Code()
+            code2 = Code(code)
             self.gencode(scope, code2, stmt)
             code2.append(ContinueOp(), self.token, self.endtoken, stmt=stmt)      # Hack: get endlabels evaluated
             code2.link()
@@ -1460,6 +1460,9 @@ class LambdaAST(AST):
         return True
 
     def compile_body(self, scope, code):
+        # lambda's should be compiled into root code
+        while code.parent != None:
+            code = code.parent
         startlabel = LabelValue(None, "lambda")
         endlabel = LabelValue(None, "lambda")
         stmt = self.stmt()
@@ -1773,11 +1776,13 @@ class ConstAST(AST):
                 column=column,
                 message="%s: Parse error: expression not a constant %s" % (self.const, self.expr),
             )
-        if isinstance(self.expr, LambdaAST):
-            pc = self.expr.compile_body(scope, code)
-            self.set(scope, self.const, PcValue(pc))
+        # TODO.  This exception is probably no longer necessary
+        #        once I fix some other lambda stuff
+        if False and isinstance(self.expr, LambdaAST):
+            lbl = self.expr.compile_body(scope, code)
+            self.set(scope, self.const, lbl)
         else:
-            code2 = Code()
+            code2 = Code(code)
             self.expr.compile(scope, code2, stmt)
             state = State(code2, scope.labels)
             ctx = ContextValue(("__const__", None, None, None), 0, emptytuple, emptydict)

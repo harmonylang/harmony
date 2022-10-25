@@ -11,11 +11,12 @@ class Labeled_Op:
         self.live_out = set()
 
 class Code:
-    def __init__(self):
+    def __init__(self, parent=None):
         self.labeled_ops = []
         self.endlabels = set()
         self.curFile = None
         self.curLine = 0
+        self.parent = parent
 
     def location(self, file, line):
         self.curFile = file

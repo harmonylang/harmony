@@ -1346,7 +1346,7 @@ class NaryOp(Op):
 
     def eval(self, state, context):
         (op, file, line, column) = self.op
-        assert len(context.stack) >= self.n
+        assert len(context.stack) >= self.n, (context.stack, self.n, self.op)
         sa = context.stack[-self.n:]
         if op in { "+", "*", "&", "|", "^" }:
             assert self.n > 1
@@ -1523,6 +1523,8 @@ class NaryOp(Op):
             elif op == "len":
                 if isinstance(e, SetValue):
                     context.push(len(e.s))
+                elif isinstance(e, ListValue):
+                    context.push(len(e.vals))
                 elif isinstance(e, str):
                     context.push(len(e))
                 else:

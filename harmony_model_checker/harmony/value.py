@@ -63,6 +63,7 @@ class Value:
 
 class PcValue(Value):
     def __init__(self, pc):
+        assert isinstance(pc, int), pc
         self.pc = pc
 
     def __repr__(self):
@@ -84,7 +85,8 @@ class PcValue(Value):
         return '{ "type": "pc", "value": "%d" }'%self.pc
 
     def substitute(self, map):
-        return substValue(self.pc, map)
+        # return substValue(self.pc, map)
+        return self
 
 class _LabelIdGenerator:
 
