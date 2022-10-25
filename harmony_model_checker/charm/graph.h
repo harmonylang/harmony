@@ -32,7 +32,7 @@ struct edge {
     struct node *dst;        // destination node
     hvalue_t after;          // resulting context
     struct access_info *ai;  // to detect data races
-    uint16_t nsteps;         // # microsteps
+    uint32_t nsteps;         // # microsteps
     bool interrupt : 1;      // set if state change is an interrupt
     uint8_t weight : 1;      // context switch or not
     uint16_t nlog : 14;      // size of print history
