@@ -64,6 +64,16 @@ def index(d, e):
 def startswith(d, prefix):
     result = (len(prefix) <= len(d)) and all(d[i] == prefix[i] for i in { 0 .. len(prefix) - 1 })
 
+# left fold.  Compute f(f(f(z, d[0]), d[1]), d[2] ...)
+def foldl(d, f, z):
+    result = z
+    for e in d:
+        result = f(result, e)
+
 # right fold.  Compute f(d[0], f(d[1], ..., f(d[n-1], z)))
 def foldr(d, f, z):
     result = z if len d == 0 else f(d[0], foldr(tail(d), f, z))
+
+# Python functools reduce operator
+def reduce(f, d, z):
+    result = foldl(d, f, z)
