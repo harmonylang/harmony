@@ -12,12 +12,28 @@ invariant all(("add_proc", p) in procs[q].log
                     for p in {0..N-1} where procs[p].mode == "live"
                     for q in {0..N-1} where procs[q].mode == "live")
 
+# Logs are consistently ordered
+invariant all((list.startswith(procs[p].log, procs[q].log) or
+                        list.startswith(procs[q].log, procs[p].log))
+                    for p in {0..N-1} where procs[p].mode == "live"
+                    for q in {0..N-1} where procs[q].mode == "live")
+
 # If p appears before q in q's log, then q's log is a prefix of p's
 invariant all((list.index(procs[q].log, ("add_proc", p)) <
                 list.index(procs[q].log, ("add_proc", q))) =>
                         list.startswith(procs[p].log, procs[q].log)
                     for p in {0..N-1} where procs[p].mode == "live"
                     for q in {0..N-1} where procs[q].mode == "live")
+
+# Logs do not contain duplicates
+invariant all((x == y) => (i == j) for p in {0..N-1}
+                    for i:x in procs[p].log for j:y in procs[p].log)
+
+# Logs do not contain bad entries
+invariant all((t == "add_proc") => (v in {0..N-1})
+                    for p in {0..N-1} for (t, v) in procs[p].log)
+invariant all((t == "clt_update") => (v in VALUES)
+                    for p in {0..N-1} for (t, v) in procs[p].log)
 
 # get_conf(p) returns the configuration according to process p
 const get_conf = lambda(p): [ q for (t, q) in procs[p].log
@@ -80,10 +96,19 @@ const gotLog = lambda(): { (do_gotLog, (p, log))
 def do_crash(self):
     procs[self].mode = "crashed"
 
-const crash = lambda(): { (do_crash, p)
-    for p in {0..N-1} where (procs[p].mode == "live") and
-        not all(procs[q].mode != "live"
-            for q in {0..N-1} where (q != p)) } end
+# Only live processors can crash, but only if there are more than one.
+# We also prevent processors from crashing once all values are stable
+# otherwise we're always left with a single processor in the end
+def crash():
+    if all(("clt_update", v) in procs[p].log
+                    for p in {0..N-1} where procs[p].mode == "live"
+                    for v in VALUES):
+        result = {}
+    else:
+        result = { (do_crash, p)
+            for p in {0..N-1} where (procs[p].mode == "live") and
+                not all(procs[q].mode != "live"
+                    for q in {0..N-1} where (q != p)) }
 
 def do_detect(self, p):
     procs[self].detected |= { p }
@@ -95,3 +120,18 @@ const detect = lambda(): { (do_detect, (p, q))
 
 action.explore({start, gotClientUpdate, gotJoinRequest,
                     sendLog, gotLog, crash, detect})
+
+# At the end, the following conditions must hold:
+
+# Some processor must be live
+assert any(procs[p].mode == "live" for p in {0..N-1})
+
+# All live logs must be the same
+assert all(procs[p].log == procs[q].log
+                    for p in {0..N-1} where procs[p].mode == "live"
+                    for q in {0..N-1} where procs[q].mode == "live")
+
+# All values must be on all live logs
+assert all(("clt_update", v) in procs[p].log
+                    for p in {0..N-1} where procs[p].mode == "live"
+                    for v in VALUES)
