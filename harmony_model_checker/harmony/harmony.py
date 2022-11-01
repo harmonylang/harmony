@@ -1812,15 +1812,23 @@ OpCut(self, v) ==
     LET index    == self.stack[1]
         iterable == self.stack[2]
     IN
-        CASE iterable.ctype = "list" ->
-            /\\ IF index.cval < Len(iterable.cval)
+        /\\ CASE iterable.ctype = "list" ->
+                IF index.cval < Len(iterable.cval)
                 THEN
                     LET next == [self EXCEPT !.pc = @ + 1, !.stack = << HBool(TRUE), HInt(index.cval + 1) >> \\o Tail(@), !.vs = UpdateVars(@, v, iterable.cval[index.cval + 1])]
                     IN UpdateContext(self, next)
                 ELSE
                     LET next == [self EXCEPT !.pc = @ + 1, !.stack = << HBool(FALSE) >> \\o Tail(Tail(@))]
                     IN UpdateContext(self, next)
-            /\\ UNCHANGED shared
+            [] iterable.ctype = "str" ->
+                IF index.cval < Len(iterable.cval)
+                THEN
+                    LET next == [self EXCEPT !.pc = @ + 1, !.stack = << HBool(TRUE), HInt(index.cval + 1) >> \\o Tail(@), !.vs = UpdateVars(@, v, HStr(SubSeq(iterable.cval, index.cval + 1, index.cval + 1)))]
+                    IN UpdateContext(self, next)
+                ELSE
+                    LET next == [self EXCEPT !.pc = @ + 1, !.stack = << HBool(FALSE) >> \\o Tail(Tail(@))]
+                    IN UpdateContext(self, next)
+        /\\ UNCHANGED shared
 
 \* Much like OpCut, but there are two variables that must be assigned: the key k
 \* and the value v.
@@ -2006,7 +2014,7 @@ StackFold(first, stack, op(_,_), n) ==
     THEN
         <<first>> \o stack
     ELSE
-        StackFold(op(first, Head(stack)), Tail(stack), op, n - 1)
+        StackFold(op(Head(stack), first), Tail(stack), op, n - 1)
 
 \* Like OpBin, but perform for top n elements of the stack
 OpNary(self, op(_,_), n) ==
