@@ -2298,12 +2298,10 @@ FunIn(x, y) ==
 
 \* Concatenate n copies of list
 ListTimes(list, n) ==
-    LET odom == { x.cval : x \\in DOMAIN list.cval }
-        max  == CHOOSE x \in odom: \A y \in odom: y <= x
-        card == max + 1
-        ndom == { HInt(x): x \\in 0..(n.cval * card - 1) }
+    LET card == Len(list.cval)
+        ndom == { HInt(x): x \\in 1..(n.cval * card) }
     IN
-        HDict([ x \\in ndom |-> list.cval[HInt(x.cval % card)] ])
+        HDict([ x \\in ndom |-> list.cval[((x.cval - 1) % card) + 1] ])
 
 \* Multiply two integers, or concatenate copies of a list
 FunMult(e1, e2) ==
