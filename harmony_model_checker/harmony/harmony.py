@@ -1828,6 +1828,23 @@ OpCut(self, v) ==
                 ELSE
                     LET next == [self EXCEPT !.pc = @ + 1, !.stack = << HBool(FALSE) >> \\o Tail(Tail(@))]
                     IN UpdateContext(self, next)
+            [] iterable.ctype = "set" ->
+                IF index.cval < Cardinality(iterable.cval)
+                THEN
+                    LET next == [self EXCEPT !.pc = @ + 1, !.stack = << HBool(TRUE), HInt(index.cval + 1) >> \\o Tail(@), !.vs = UpdateVars(@, v, HSort(iterable.cval)[index.cval + 1])]
+                    IN UpdateContext(self, next)
+                ELSE
+                    LET next == [self EXCEPT !.pc = @ + 1, !.stack = << HBool(FALSE) >> \\o Tail(Tail(@))]
+                    IN UpdateContext(self, next)
+            [] iterable.ctype = "dict" ->
+                IF index.cval < Cardinality(DOMAIN iterable.cval)
+                THEN
+                    LET items == DictSeq(iterable.cval)
+                        next  == [self EXCEPT !.pc = @ + 1, !.stack = << HBool(TRUE), HInt(index.cval + 1) >> \\o Tail(@), !.vs = UpdateVars(@, v, items[index.cval + 1][1])]
+                    IN UpdateContext(self, next)
+                ELSE
+                    LET next == [self EXCEPT !.pc = @ + 1, !.stack = << HBool(FALSE) >> \\o Tail(Tail(@))]
+                    IN UpdateContext(self, next)
         /\\ UNCHANGED shared
 
 \* Much like OpCut, but there are two variables that must be assigned: the key k
