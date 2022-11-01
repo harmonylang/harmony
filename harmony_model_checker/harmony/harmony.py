@@ -1849,18 +1849,48 @@ OpCut(self, v) ==
 
 \* Much like OpCut, but there are two variables that must be assigned: the key k
 \* and the value v.
-\* OpCut2(self, v, k) ==
-\*    LET dvar == HStr(d)
-\*        dval == self.vs.cval[dvar]
-\*    IN
-\*        LET pick == HMin(DOMAIN dval.cval)
-\*            intm == UpdateVars(UpdateVars(self.vs, v, dval.cval[pick]), k, pick)
-\*            next == [self EXCEPT !.pc = @ + 1,
-\*                !.vs = UpdateDict(intm, dvar, HDict(DictCut(dval.cval, pick)))]
-\*        IN
-\*            /\\ dval.ctype = "dict"
-\*            /\\ UpdateContext(self, next)
-\*            /\\ UNCHANGED shared
+OpCut2(self, v, k) ==
+    LET index    == self.stack[1]
+        iterable == self.stack[2]
+    IN
+        /\\ CASE iterable.ctype = "list" ->
+                IF index.cval < Len(iterable.cval)
+                THEN
+                    LET intm == UpdateVars(self.vs, k, index)
+                        next == [self EXCEPT !.pc = @ + 1, !.stack = << HBool(TRUE), HInt(index.cval + 1) >> \\o Tail(@), !.vs = UpdateVars(intm, v, iterable.cval[index.cval + 1])]
+                    IN UpdateContext(self, next)
+                ELSE
+                    LET next == [self EXCEPT !.pc = @ + 1, !.stack = << HBool(FALSE) >> \\o Tail(Tail(@))]
+                    IN UpdateContext(self, next)
+            [] iterable.ctype = "str" ->
+                IF index.cval < Len(iterable.cval)
+                THEN
+                    LET intm == UpdateVars(self.vs, k, index)
+                        next == [self EXCEPT !.pc = @ + 1, !.stack = << HBool(TRUE), HInt(index.cval + 1) >> \\o Tail(@), !.vs = UpdateVars(intm, v, HStr(SubSeq(iterable.cval, index.cval + 1, index.cval + 1)))]
+                    IN UpdateContext(self, next)
+                ELSE
+                    LET next == [self EXCEPT !.pc = @ + 1, !.stack = << HBool(FALSE) >> \\o Tail(Tail(@))]
+                    IN UpdateContext(self, next)
+            [] iterable.ctype = "set" ->
+                IF index.cval < Cardinality(iterable.cval)
+                THEN
+                    LET intm == UpdateVars(self.vs, k, index)
+                        next == [self EXCEPT !.pc = @ + 1, !.stack = << HBool(TRUE), HInt(index.cval + 1) >> \\o Tail(@), !.vs = UpdateVars(intm, v, HSort(iterable.cval)[index.cval + 1])]
+                    IN UpdateContext(self, next)
+                ELSE
+                    LET next == [self EXCEPT !.pc = @ + 1, !.stack = << HBool(FALSE) >> \\o Tail(Tail(@))]
+                    IN UpdateContext(self, next)
+            [] iterable.ctype = "dict" ->
+                IF index.cval < Cardinality(DOMAIN iterable.cval)
+                THEN
+                    LET items == DictSeq(iterable.cval)
+                        intm  == UpdateVars(self.vs, k, items[index.cval + 1][1])
+                        next  == [self EXCEPT !.pc = @ + 1, !.stack = << HBool(TRUE), HInt(index.cval + 1) >> \\o Tail(@), !.vs = UpdateVars(intm, v, items[index.cval + 1][2])]
+                    IN UpdateContext(self, next)
+                ELSE
+                    LET next == [self EXCEPT !.pc = @ + 1, !.stack = << HBool(FALSE) >> \\o Tail(Tail(@))]
+                    IN UpdateContext(self, next)
+        /\\ UNCHANGED shared
 
 \* Delete the shared variable pointed to be v.  v is a sequence of Harmony
 \* values acting as an address (path in hierarchy of dicts)
