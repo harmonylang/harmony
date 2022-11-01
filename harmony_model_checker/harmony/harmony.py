@@ -1644,55 +1644,55 @@ RemoveDictAddr(dict, addr) ==
     )
 
 \* This is to implement !addr = value, where addr is a Harmony address
-\* (a sequence of Harmony values representing a path in dict, a tree of
-\* dictionaries), and value is the new value.  It is a recursive operator
-\* that returns the new dictionary.
-RECURSIVE UpdateDictAddr(_, _, _)
-UpdateDictAddr(dict, addr, value) ==
+\* (a sequence of Harmony values representing a path in dir, a directory
+\* (tree where the internal nodes are dictionaries or lists), and value
+\* is the new value.  It is a recursive operator that returns the new directory.
+RECURSIVE UpdateDirAddr(_, _, _)
+UpdateDirAddr(dir, addr, value) ==
     IF addr.cval = <<>>
     THEN
         value
     ELSE
         LET next == AddrHead(addr)
         IN
-            CASE dict.ctype = "dict" ->
+            CASE dir.ctype = "dict" ->
                 HDict(
-                    [ x \\in (DOMAIN dict.cval) \\union {next} |->
+                    [ x \\in (DOMAIN dir.cval) \\union {next} |->
                         IF x = next
                         THEN
-                            UpdateDictAddr(dict.cval[x], AddrTail(addr), value)
+                            UpdateDirAddr(dir.cval[x], AddrTail(addr), value)
                         ELSE
-                            dict.cval[x]
+                            dir.cval[x]
                     ]
                 )
-            [] dict.ctype = "list" ->
+            [] dir.ctype = "list" ->
                 HList(
                     CASE next.ctype = "int" ->
                         \* TODO.  Check if next.cval in range
-                        [ x \\in (DOMAIN dict.cval) \\union {next.cval + 1} |->
+                        [ x \\in (DOMAIN dir.cval) \\union {next.cval + 1} |->
                             IF x = next.cval + 1
                             THEN
-                                UpdateDictAddr(dict.cval[x], AddrTail(addr), value)
+                                UpdateDirAddr(dir.cval[x], AddrTail(addr), value)
                             ELSE
-                                dict.cval[x]
+                                dir.cval[x]
                         ]
                 )
 
-\* This is to compute the value of !addr in dict, which is a simple
+\* This is to compute the value of !addr in dir, which is a simple
 \* recursive function
-RECURSIVE LoadDictAddr(_, _)
-LoadDictAddr(dict, addr) ==
+RECURSIVE LoadDirAddr(_, _)
+LoadDirAddr(dir, addr) ==
     IF addr.cval = <<>>
     THEN
-        dict
+        dir
     ELSE
         LET next == AddrHead(addr)
         IN
-            CASE dict.ctype = "dict" ->
-                LoadDictAddr(dict.cval[next], AddrTail(addr))
-            [] dict.ctype = "list" ->
+            CASE dir.ctype = "dict" ->
+                LoadDirAddr(dir.cval[next], AddrTail(addr))
+            [] dir.ctype = "list" ->
                 CASE next.ctype = "int" ->
-                    LoadDictAddr(dict.cval[next.cval + 1], AddrTail(addr))
+                    LoadDirAddr(dir.cval[next.cval + 1], AddrTail(addr))
 
 \* This is a helper operator for UpdateVars.
 \* Harmony allows statements of the form: x,(y,z) = v.  For example,
@@ -2353,7 +2353,7 @@ OpStore(self, v) ==
     IN
         /\\ Assert(self.readonly = 0, "Store in readonly mode")
         /\\ UpdateContext(self, next)
-        /\\ shared' = UpdateDictAddr(shared, HAddress(v), Head(self.stack))
+        /\\ shared' = UpdateDirAddr(shared, HAddress(v), Head(self.stack))
 
 \* Pop a value and an address and store the value at the given address
 OpStoreInd(self) ==
@@ -2363,14 +2363,14 @@ OpStoreInd(self) ==
     IN
         /\\ Assert(self.readonly = 0, "StoreInd in readonly mode")
         /\\ UpdateContext(self, next)
-        /\\ shared' = UpdateDictAddr(shared, addr, val)
+        /\\ shared' = UpdateDirAddr(shared, addr, val)
 
 \* Pop a value and an address and store the *local* value at the given address
 OpStoreVarInd(self) ==
     LET val  == self.stack[1]
         addr == self.stack[2]
         next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(Tail(@)),
-                                    !.vs = UpdateDictAddr(@, addr, val)]
+                                    !.vs = UpdateDirAddr(@, addr, val)]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
@@ -2379,7 +2379,7 @@ OpStoreVarInd(self) ==
 OpLoadInd(self) ==
     LET
         addr == Head(self.stack)
-        val  == LoadDictAddr(shared, addr)
+        val  == LoadDirAddr(shared, addr)
         next == [self EXCEPT !.pc = @ + 1, !.stack = <<val>> \\o Tail(@)]
     IN
         /\\ UpdateContext(self, next)
@@ -2389,7 +2389,7 @@ OpLoadInd(self) ==
 OpLoadVarInd(self) ==
     LET
         addr == Head(self.stack)
-        val  == LoadDictAddr(self.vs, addr)
+        val  == LoadDirAddr(self.vs, addr)
         next == [self EXCEPT !.pc = @ + 1, !.stack = <<val>> \\o Tail(@)]
     IN
         /\\ UpdateContext(self, next)
@@ -2399,7 +2399,7 @@ OpLoadVarInd(self) ==
 \* is a sequence of Harmony values acting as an address
 OpLoad(self, v) ==
     LET next == [ self EXCEPT !.pc = @ + 1,
-                    !.stack = << LoadDictAddr(shared, HAddress(v)) >> \\o @ ]
+                    !.stack = << LoadDirAddr(shared, HAddress(v)) >> \\o @ ]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
@@ -2429,7 +2429,7 @@ OpStopInd(self) ==
             THEN
                 UNCHANGED shared
             ELSE
-                shared' = UpdateDictAddr(shared, addr, HContext(next))
+                shared' = UpdateDirAddr(shared, addr, HContext(next))
 
 \* What Return should do depends on whether the methods was spawned
 \* or called as an ordinary method.  To indicate this, Spawn pushes the
