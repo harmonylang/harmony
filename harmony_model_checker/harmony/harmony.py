@@ -1667,8 +1667,7 @@ UpdateDirAddr(dir, addr, value) ==
                 )
             [] dir.ctype = "list" ->
                 HList(
-                    CASE next.ctype = "int" ->
-                        \* TODO.  Check if next.cval in range
+                    CASE next.ctype = "int" /\ 0 <= next.cval /\ next.cval <= Len(dir.cval) ->
                         [ x \\in (DOMAIN dir.cval) \\union {next.cval + 1} |->
                             IF x = next.cval + 1
                             THEN
