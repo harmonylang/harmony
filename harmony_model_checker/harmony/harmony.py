@@ -1624,24 +1624,41 @@ BitsAnd(x, y) ==
     [ neg  |-> x.neg /\\ y.neg, bits |-> BitsAndHelp(x, y) ]
 
 \* This is to implement del !addr, where addr is a Harmony address
-\* (a sequence of Harmony values representing a path in dict, a tree of
-\* dictionaries).  It is a recursive operator that returns the new dictionary.
-\* TODO: deal with lists
-RECURSIVE RemoveDictAddr(_, _)
-RemoveDictAddr(dict, addr) ==
-    HDict(
-        IF Len(addr.cval) = 1
-        THEN
-            [ x \\in (DOMAIN dict.cval) \\ {AddrHead(addr)} |-> dict.cval[x] ]
-        ELSE
-            [ x \\in (DOMAIN dict.cval) |->
-                IF x = AddrHead(addr)
+\* (a sequence of Harmony values representing a path in dir, a directory.
+\* It is a recursive operator that returns the new directory.
+RECURSIVE RemoveDirAddr(_, _)
+RemoveDirAddr(dir, addr) ==
+    LET next == AddrHead(addr) IN
+        CASE dir.ctype = "dict" ->
+            HDict(
+                IF Len(addr.cval) = 1
                 THEN
-                      RemoveDictAddr(dict.cval[x], AddrTail(addr))
+                    [ x \\in (DOMAIN dir.cval) \\ {next} |-> dir.cval[x] ]
                 ELSE
-                    dict.cval[x]
-            ]
-    )
+                    [ x \\in (DOMAIN dir.cval) |->
+                        IF x = next
+                        THEN
+                            RemoveDirAddr(dir.cval[x], AddrTail(addr))
+                        ELSE
+                            dir.cval[x]
+                    ]
+            )
+        [] dir.ctype = "list" ->
+            HList(
+                CASE next.ctype = "int" /\ 0 <= next.cval /\ next.cval < Len(dir.cval) ->
+                    IF Len(addr.cval) = 1
+                    THEN
+                        SubSeq(dir.cval, 1, next.cval) \\o
+                        SubSeq(dir.cval, next.cval + 2, Len(dir.cval))
+                    ELSE
+                        [ x \\in (DOMAIN dir.cval) |->
+                            IF x = next.cval + 1
+                            THEN
+                                RemoveDirAddr(dir.cval[x], AddrTail(addr))
+                            ELSE
+                                dir.cval[x]
+                        ]
+            )
 
 \* This is to implement !addr = value, where addr is a Harmony address
 \* (a sequence of Harmony values representing a path in dir, a directory
@@ -1841,7 +1858,7 @@ OpCut3(self, d, v, k) ==
 OpDel(self, v) ==
     /\\ Assert(self.readonly = 0, "Del in readonly mode")
     /\\ UpdateContext(self, [self EXCEPT !.pc = @ + 1])
-    /\\ shared' = RemoveDictAddr(shared, HAddress(v))
+    /\\ shared' = RemoveDirAddr(shared, HAddress(v))
 
 \* Delete the shared variable whose address is pushed on the stack
 OpDelInd(self) ==
@@ -1849,7 +1866,7 @@ OpDelInd(self) ==
         next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
     IN
         /\\ UpdateContext(self, next)
-        /\\ shared' = RemoveDictAddr(shared, addr)
+        /\\ shared' = RemoveDirAddr(shared, addr)
 
 \* Delete the given local variable
 OpDelVar(self, v) ==
@@ -1863,7 +1880,7 @@ OpDelVar(self, v) ==
 OpDelVarInd(self) ==
     LET addr == Head(self.stack)
         next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@),
-                                    !.vs = RemoveDictAddr(@, addr)]
+                                    !.vs = RemoveDirAddr(@, addr)]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
