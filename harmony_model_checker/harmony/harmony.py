@@ -2356,6 +2356,19 @@ OpDictAdd(self) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
+\* Pop a value and a list, and a dict, and pushes a new list with the
+\* value appended.
+OpListAdd(self) ==
+    LET value == self.stack[1]
+        list  == self.stack[2]
+        newl  == HList(Append(list.cval, value))
+        next  == [self EXCEPT !.pc = @ + 1,
+            !.stack = << newl >> \\o Tail(Tail(@))]
+    IN
+        /\\ list.ctype = "list"
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
 \* Push Harmony constant c onto the stack.
 OpPush(self, c) ==
     LET next == [self EXCEPT !.pc = @ + 1, !.stack = << c >> \\o @]
