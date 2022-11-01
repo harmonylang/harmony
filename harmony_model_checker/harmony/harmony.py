@@ -1723,7 +1723,7 @@ CollectVars(args, value) ==
     THEN << [ var |-> HStr(args.vname), val |-> value ] >>
     ELSE
         Flatten([ i \\in DOMAIN args.vlist |->
-            CollectVars(args.vlist[i], value.cval[HInt(i-1)])
+            CollectVars(args.vlist[i], value.cval[i])
         ])
 
 \* Another helper operator for UpdateVars.  dict is a Harmony dictionary,
@@ -2299,9 +2299,8 @@ FunIn(x, y) ==
 \* Concatenate n copies of list
 ListTimes(list, n) ==
     LET card == Len(list.cval)
-        ndom == { HInt(x): x \\in 1..(n.cval * card) }
     IN
-        HDict([ x \\in ndom |-> list.cval[((x.cval - 1) % card) + 1] ])
+        HList([ x \\in 1..(n.cval * card) |-> list.cval[((x - 1) % card) + 1] ])
 
 \* Multiply two integers, or concatenate copies of a list
 FunMult(e1, e2) ==
