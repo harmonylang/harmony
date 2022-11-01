@@ -1626,6 +1626,7 @@ BitsAnd(x, y) ==
 \* This is to implement del !addr, where addr is a Harmony address
 \* (a sequence of Harmony values representing a path in dict, a tree of
 \* dictionaries).  It is a recursive operator that returns the new dictionary.
+\* TODO: deal with lists
 RECURSIVE RemoveDictAddr(_, _)
 RemoveDictAddr(dict, addr) ==
     HDict(
@@ -1652,15 +1653,30 @@ UpdateDictAddr(dict, addr, value) ==
     THEN
         value
     ELSE
-        HDict(
-            [ x \\in (DOMAIN dict.cval) \\union {AddrHead(addr)} |->
-                IF x = AddrHead(addr)
-                THEN
-                      UpdateDictAddr(dict.cval[x], AddrTail(addr), value)
-                ELSE
-                    dict.cval[x]
-            ]
-        )
+        LET next == AddrHead(addr)
+        IN
+            CASE dict.ctype = "dict" ->
+                HDict(
+                    [ x \\in (DOMAIN dict.cval) \\union {next} |->
+                        IF x = next
+                        THEN
+                            UpdateDictAddr(dict.cval[x], AddrTail(addr), value)
+                        ELSE
+                            dict.cval[x]
+                    ]
+                )
+            [] dict.ctype = "list" ->
+                HList(
+                    CASE next.ctype = "int" ->
+                        \* TODO.  Check if next.cval in range
+                        [ x \\in (DOMAIN dict.cval) \\union {next.cval + 1} |->
+                            IF x = next.cval + 1
+                            THEN
+                                UpdateDictAddr(dict.cval[x], AddrTail(addr), value)
+                            ELSE
+                                dict.cval[x]
+                        ]
+                )
 
 \* This is to compute the value of !addr in dict, which is a simple
 \* recursive function
@@ -1670,7 +1686,13 @@ LoadDictAddr(dict, addr) ==
     THEN
         dict
     ELSE
-        LoadDictAddr(dict.cval[AddrHead(addr)], AddrTail(addr))
+        LET next == AddrHead(addr)
+        IN
+            CASE dict.ctype = "dict" ->
+                LoadDictAddr(dict.cval[next], AddrTail(addr))
+            [] dict.ctype = "list" ->
+                CASE next.ctype = "int" ->
+                    LoadDictAddr(dict.cval[next.cval + 1], AddrTail(addr))
 
 \* This is a helper operator for UpdateVars.
 \* Harmony allows statements of the form: x,(y,z) = v.  For example,

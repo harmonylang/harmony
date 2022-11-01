@@ -381,7 +381,7 @@ class LoadOp(Op):
             return "OpLoadInd(self)"
         else:
             (lexeme, file, line, column) = self.name
-            return 'OpLoad(self, <<"%s">>)'%_prefix_name(self.prefix, lexeme)
+            return 'OpLoad(self, <<HStr("%s")>>)'%_prefix_name(self.prefix, lexeme)
 
     def explain(self):
         if self.name == None:
@@ -432,7 +432,7 @@ class StoreOp(Op):
             return "OpStoreInd(self)"
         else:
             (lexeme, file, line, column) = self.name
-            return 'OpStore(self, <<"%s">>)'%_prefix_name(self.prefix, lexeme)
+            return 'OpStore(self, <<HStr("%s")>>)'%_prefix_name(self.prefix, lexeme)
 
     def explain(self):
         if self.name == None:
