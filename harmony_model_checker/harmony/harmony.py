@@ -1802,56 +1802,40 @@ OpPop(self) ==
 \* Remove key from the given map
 DictCut(dict, key) == [ x \in (DOMAIN dict) \ { key } |-> dict[x] ]
 
-\* s contains the name of a local variable containing a set, a dict, or a string
-\* v contains the name of another local variable.  v can be a "variable tree"
-\* (see UpdateVars).  The objective is to take the "smallest" element of s,
-\* remove it from s, and assign it to v
-\* TODO.  Outdated
-OpCut(self, s, v) ==
-    LET svar == HStr(s)
-        sval == self.vs.cval[svar]
+\* v contains the name of a local variable.  v can be a "variable tree"
+\* (see UpdateVars).  The stack contains an index on top with an iterable
+\* value below it.  OpCut should assign the value at that index to v.
+\* If the index is valid, OpCut should also increment the index on top
+\* of the stack (leaving the iterable value) and push True.  If not,
+\* OpCut should pop both the index and the iterable value and push False.
+OpCut(self, v) ==
+    LET index    == self.stack[1]
+        iterable == self.stack[2]
     IN
-        CASE sval.ctype = "set" ->
-            LET pick == HMin(sval.cval)
-                intm == UpdateVars(self.vs, v, pick)
-                next == [self EXCEPT !.pc = @ + 1,
-                    !.vs = UpdateDict(intm, svar, HSet(sval.cval \\ {pick}))]
-            IN
-                /\\ UpdateContext(self, next)
-                /\\ UNCHANGED shared
-        [] sval.ctype = "dict" ->
-            LET pick == HMin(DOMAIN sval.cval)
-                intm == UpdateVars(self.vs, v, sval.cval[pick])
-                next == [self EXCEPT !.pc = @ + 1,
-                    !.vs = UpdateDict(intm, svar, HDict(DictCut(sval.cval, pick)))]
-            IN
-                /\\ UpdateContext(self, next)
-                /\\ UNCHANGED shared
-        [] sval.ctype = "str" ->
-            LET intm == UpdateVars(self.vs, v, HStr(Head(sval.cval)))
-                next == [self EXCEPT !.pc = @ + 1,
-                    !.vs = UpdateDict(intm, svar, HStr(Tail(sval.cval)))]
-            IN
-                /\\ UpdateContext(self, next)
-                /\\ UNCHANGED shared
-
-\* d contains the name of a local variable containing a dict
-\* v contains the name of another local variable.  v can be a "variable tree"
-\* k contains the name of another local variable.  v can be a "variable tree"
-\* (see UpdateVars).  The objective is to take the "smallest" element of d,
-\* remove it from d, and assign it to k:v
-OpCut3(self, d, v, k) ==
-    LET dvar == HStr(d)
-        dval == self.vs.cval[dvar]
-    IN
-        LET pick == HMin(DOMAIN dval.cval)
-            intm == UpdateVars(UpdateVars(self.vs, v, dval.cval[pick]), k, pick)
-            next == [self EXCEPT !.pc = @ + 1,
-                !.vs = UpdateDict(intm, dvar, HDict(DictCut(dval.cval, pick)))]
-        IN
-            /\\ dval.ctype = "dict"
-            /\\ UpdateContext(self, next)
+        CASE iterable.ctype = "list" ->
+            /\\ IF index.cval < Len(iterable.cval)
+                THEN
+                    LET next == [self EXCEPT !.pc = @ + 1, !.stack = << HBool(TRUE), HInt(index.cval + 1) >> \\o Tail(@), !.vs = UpdateVars(@, v, iterable.cval[index.cval + 1])]
+                    IN UpdateContext(self, next)
+                ELSE
+                    LET next == [self EXCEPT !.pc = @ + 1, !.stack = << HBool(FALSE) >> \\o Tail(Tail(@))]
+                    IN UpdateContext(self, next)
             /\\ UNCHANGED shared
+
+\* Much like OpCut, but there are two variables that must be assigned: the key k
+\* and the value v.
+\* OpCut2(self, v, k) ==
+\*    LET dvar == HStr(d)
+\*        dval == self.vs.cval[dvar]
+\*    IN
+\*        LET pick == HMin(DOMAIN dval.cval)
+\*            intm == UpdateVars(UpdateVars(self.vs, v, dval.cval[pick]), k, pick)
+\*            next == [self EXCEPT !.pc = @ + 1,
+\*                !.vs = UpdateDict(intm, dvar, HDict(DictCut(dval.cval, pick)))]
+\*        IN
+\*            /\\ dval.ctype = "dict"
+\*            /\\ UpdateContext(self, next)
+\*            /\\ UNCHANGED shared
 
 \* Delete the shared variable pointed to be v.  v is a sequence of Harmony
 \* values acting as an address (path in hierarchy of dicts)

@@ -135,9 +135,9 @@ class CutOp(Op):
 
     def tladump(self):
         if self.key == None:
-            return 'OpCut(%s, %s)'%(self.tlaconvert(self.value))
+            return 'OpCut(self, %s)'%(self.tlaconvert(self.value))
         else:
-            return 'OpCut2(%s, %s)'%(
+            return 'OpCut2(self, %s, %s)'%(
                         self.tlaconvert(self.value), self.tlaconvert(self.key))
 
     def explain(self):
