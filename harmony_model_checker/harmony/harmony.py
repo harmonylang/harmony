@@ -1296,7 +1296,11 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
                     print(",", file=f)
                 if endlexeme in { "indent", "dedent" }:     # Hack...
                     endlexeme = endlexeme[0]
-                print("    \"%d\": { \"file\": %s, \"line\": %d, \"column\": %d, \"endline\": %d, \"endcolumn\": %d, \"stmt\": [%d,%d,%d,%d], \"code\": %s }"%(pc, json.dumps(file, ensure_ascii=False), line, column, endline, endcolumn, line1, column1, line2, column2, json.dumps(files[file][line-1], ensure_ascii=False)), file=f, end="")
+                if lop.module == None:
+                    module = "__None__"
+                else:
+                    module = lop.module
+                print("    \"%d\": { \"module\": \"%s\", \"file\": %s, \"line\": %d, \"column\": %d, \"endline\": %d, \"endcolumn\": %d, \"stmt\": [%d,%d,%d,%d], \"code\": %s }"%(pc, module, json.dumps(file, ensure_ascii=False), line, column, endline, endcolumn, line1, column1, line2, column2, json.dumps(files[file][line-1], ensure_ascii=False)), file=f, end="")
         print(file=f)
         print("  }", file=f)
         print("}", file=f)

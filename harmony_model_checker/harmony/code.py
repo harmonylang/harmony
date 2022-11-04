@@ -15,10 +15,18 @@ class Code:
     def __init__(self, parent=None):
         self.labeled_ops = []
         self.endlabels = set()
+        self.modstack = []      # module stack
         self.curModule = None
         self.curFile = None
         self.curLine = 0
         self.parent = parent
+
+    def modpush(self, module):
+        self.modstack.append(self.curModule)
+        self.curModule = module
+
+    def modpop(self):
+        self.curModule = self.modstack.pop()
 
     def location(self, file, line):
         self.curFile = file
@@ -27,6 +35,7 @@ class Code:
     def append(self, op, start, stop, labels=set(), stmt=None):
         assert len(start) == 4
         assert len(stop) == 4
+        assert self.curModule != None
         self.labeled_ops.append(Labeled_Op(self.curModule, op, start, stop, stmt, labels | self.endlabels))
         self.endlabels = set()
 
@@ -103,6 +112,7 @@ class Code:
                 lop.pre_del |= live_out - lop.live_in
 
             labels = lop.labels
+            newcode.curModule = lop.module
             for d in sorted(lop.pre_del - { 'this' }):
                 newcode.append(DelVarOp((d, None, None, None)), lop.start, lop.stop, labels=labels, stmt=lop.stmt)
                 labels = set()

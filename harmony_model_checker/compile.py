@@ -117,6 +117,7 @@ def _load_file(filename: str, scope: Scope, code: Code, init: bool):
 
 def _do_import(scope: Scope, code: Code, module):
     (lexeme, file, line, column) = module
+    code.modpush(lexeme)
     # assert lexeme not in scope.names        # TODO
     if lexeme not in legacy_harmony.imported:
         # module name replacement with -m flag
@@ -149,7 +150,7 @@ def _do_import(scope: Scope, code: Code, module):
         legacy_harmony.imported[lexeme] = scope2
 
     scope.names[lexeme] = ("module", legacy_harmony.imported[lexeme])
-
+    code.modpop()
 
 def _parse_constant(name: str, value: str):
     filename = "<constant argument>"
@@ -235,6 +236,7 @@ def do_compile(fname: str, consts: List[str], mods: List[str], interface: List[s
     scope.file = str(fname)
     scope.inherit = True
     code = Code()
+    code.modpush("__main__")
     _load_file(str(fname), scope, code, True)
     # if interface is not None:
     #     _load_string("def __iface__(): result = (%s)" %

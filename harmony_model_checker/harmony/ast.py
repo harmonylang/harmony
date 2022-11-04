@@ -91,6 +91,7 @@ class AST:
     def compile(self, scope, code, stmt):
         if self.isConstant(scope):
             code2 = Code(code)
+            code2.modpush(code.curModule)
             self.gencode(scope, code2, stmt)
             code2.append(ContinueOp(), self.token, self.endtoken, stmt=stmt)      # Hack: get endlabels evaluated
             code2.link()
@@ -1777,6 +1778,7 @@ class ConstAST(AST):
                 message="%s: Parse error: expression not a constant %s" % (self.const, self.expr),
             )
         code2 = Code(code)
+        code2.modpush(code.curModule)
         self.expr.compile(scope, code2, stmt)
         state = State(code2, scope.labels)
         ctx = ContextValue(("__const__", None, None, None), 0, emptytuple, emptydict)
