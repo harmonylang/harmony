@@ -1178,6 +1178,18 @@ def explanation(lop):
 def dumpModule(name, scope, f, last):
     print('    "%s": {'%name, file=f)
     print('      "file": "%s",'%scope.file, file=f)
+    print('      "lines": [', file=f)
+    with open(scope.file, encoding='utf-8') as fdx:
+        lines = fdx.read().splitlines()
+        first = True
+        for line in lines:
+            if first:
+                first = False
+            else:
+                print(",", file=f)
+            print('        %s'%json.dumps(line), end="", file=f)
+    print(file=f)
+    print('      ],', file=f)
     print('      "identifiers": {', file=f)
     for k,(t,_) in scope.pmap.items():
         print('        "%s": "%s",'%(k,t), file=f)
