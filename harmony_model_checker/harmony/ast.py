@@ -1776,21 +1776,15 @@ class ConstAST(AST):
                 column=column,
                 message="%s: Parse error: expression not a constant %s" % (self.const, self.expr),
             )
-        # TODO.  This exception is probably no longer necessary
-        #        once I fix some other lambda stuff
-        if False and isinstance(self.expr, LambdaAST):
-            lbl = self.expr.compile_body(scope, code)
-            self.set(scope, self.const, lbl)
-        else:
-            code2 = Code(code)
-            self.expr.compile(scope, code2, stmt)
-            state = State(code2, scope.labels)
-            ctx = ContextValue(("__const__", None, None, None), 0, emptytuple, emptydict)
-            ctx.atomic = 1
-            while ctx.pc != len(code2.labeled_ops):
-                code2.labeled_ops[ctx.pc].op.eval(state, ctx)
-            v = ctx.pop()
-            self.set(scope, self.const, v)
+        code2 = Code(code)
+        self.expr.compile(scope, code2, stmt)
+        state = State(code2, scope.labels)
+        ctx = ContextValue(("__const__", None, None, None), 0, emptytuple, emptydict)
+        ctx.atomic = 1
+        while ctx.pc != len(code2.labeled_ops):
+            code2.labeled_ops[ctx.pc].op.eval(state, ctx)
+        v = ctx.pop()
+        self.set(scope, self.const, v)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_const(self, *args, **kwargs)

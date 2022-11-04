@@ -1,10 +1,11 @@
 from harmony_model_checker.harmony.ops import *
 
 class Labeled_Op:
-    def __init__(self, op, start, stop, stmt, labels):
-        self.op = op
-        self.start = start
-        self.stop = stop
+    def __init__(self, module, op, start, stop, stmt, labels):
+        self.module = module    # module
+        self.op = op            # operation
+        self.start = start      # first token
+        self.stop = stop        # last token
         self.stmt = stmt
         self.labels = labels
         self.live_in = set()
@@ -14,6 +15,7 @@ class Code:
     def __init__(self, parent=None):
         self.labeled_ops = []
         self.endlabels = set()
+        self.curModule = None
         self.curFile = None
         self.curLine = 0
         self.parent = parent
@@ -25,7 +27,7 @@ class Code:
     def append(self, op, start, stop, labels=set(), stmt=None):
         assert len(start) == 4
         assert len(stop) == 4
-        self.labeled_ops.append(Labeled_Op(op, start, stop, stmt, labels | self.endlabels))
+        self.labeled_ops.append(Labeled_Op(self.curModule, op, start, stop, stmt, labels | self.endlabels))
         self.endlabels = set()
 
     def nextLabel(self, endlabel):
