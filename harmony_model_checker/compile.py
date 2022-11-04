@@ -163,6 +163,7 @@ def _parse_constant(name: str, value: str):
 
     scope = Scope(None)
     code = Code()
+    code.modpush("__const__")
     ast.compile(scope, code, None)
     state = State(code, scope.labels)
     ctx = ContextValue(("__arg__", None, None, None), 0,
