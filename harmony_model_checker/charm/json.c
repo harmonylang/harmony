@@ -70,6 +70,7 @@ static bool is_atom_char(char c){
 static void json_parse_atom(json_buf_t *buf, json_buf_t *atom){
 	assert(buf->len > 0);
 	assert(is_atom_char(*buf->base));
+    atom->quoted = false;
 	while (buf->len > 0) {
 		if (!is_atom_char(*buf->base)) {
 			return;
@@ -165,6 +166,7 @@ static struct json_value *json_parse_string(json_buf_t *buf){
 
 	struct json_value *jv = new_alloc(struct json_value);
 	jv->type = JV_ATOM;
+    jv->u.atom.quoted = true;
 
 	while (buf->len > 0) {
 		if (*buf->base == '\\') {
@@ -236,7 +238,9 @@ struct json_value *json_parse_value(json_buf_t *buf){
 		return json_parse_string(buf);
 	default:
 		if (!is_atom_char(*buf->base)) {
-			fprintf(stderr, "--> '%.*s'\n", (int) buf->len, buf->base);
+            int n = buf->len;
+            if (n > 100) n = 100;
+			fprintf(stderr, "JSON PROBLEM --> '%.*s'\n", n, buf->base);
 		}
 		assert(is_atom_char(*buf->base));
 		struct json_value *jv = new_alloc(struct json_value);
@@ -249,6 +253,7 @@ struct json_value *json_parse_value(json_buf_t *buf){
 struct json_value *json_string(char *s, unsigned int len){
 	struct json_value *jv = new_alloc(struct json_value);
 	jv->type = JV_ATOM;
+    jv->u.atom.quoted = true;
 	jv->u.atom.len = len;
 	jv->u.atom.base = malloc(len);
 	memcpy(jv->u.atom.base, s, len);
@@ -262,37 +267,30 @@ static void json_indent(FILE *fp, unsigned int ind){
 	}
 }
 
-static void json_dump_ind(struct json_value *jv, FILE *fp, unsigned int ind);
-
 struct json_dump_map_env {
     FILE *fp;
     unsigned int ind;       // indent
+    bool first;
 };
 
 static void json_dump_map(void *env, const void *key, unsigned int keylen, void *val){
     struct json_dump_map_env *jdme = env;
+    if (jdme->first) {
+        jdme->first = false;
+    }
+    else {
+        fprintf(jdme->fp, ",\n");
+    }
 	json_indent(jdme->fp, jdme->ind);
-	fprintf(jdme->fp, "%.*s: ", keylen, (char *) key);
+	fprintf(jdme->fp, "\"%.*s\": ", keylen, (char *) key);
     struct json_value **pjv = val;
-	json_dump_ind(*pjv, jdme->fp, jdme->ind + 2);
+	json_dump(*pjv, jdme->fp, jdme->ind + 2);
 }
 
 static void json_dump_string(json_buf_t buf, FILE *fp){
 	unsigned int i;
 
-	/* See if we should quote it.
-	 */
-	for (i = 0; i < buf.len; i++) {
-		if (!is_atom_char(buf.base[i])) {
-			break;
-		}
-	}
-	if (i == buf.len) {
-		fprintf(fp, "%.*s\n", (int) buf.len, buf.base);
-		return;
-	}
-
-	putc('"', fp);
+    if (buf.quoted) putc('"', fp);
 	for (i = 0; i < buf.len; i++) {
 		switch (buf.base[i]) {
 		case 0:
@@ -305,35 +303,34 @@ static void json_dump_string(json_buf_t buf, FILE *fp){
 			putc(buf.base[i], fp);
 		}
 	}
-	fprintf(fp, "\"\n");
+	if (buf.quoted) putc('"', fp);
 }
 
-static void json_dump_ind(struct json_value *jv, FILE *fp, unsigned int ind){
+void json_dump(struct json_value *jv, FILE *fp, unsigned int ind){
 	switch (jv->type) {
 	case JV_ATOM:
 		json_dump_string(jv->u.atom, fp);
 		break;
 	case JV_MAP:
 		fprintf(fp, "{\n");
-        struct json_dump_map_env jdme = { .ind = ind + 1, .fp = fp };
+        struct json_dump_map_env jdme = { .ind = ind + 2, .fp = fp, .first = true };
 		dict_iter(jv->u.map, json_dump_map, &jdme);
-		json_indent(fp, ind); fprintf(fp, "}\n");
+		putc('\n', fp); json_indent(fp, ind); fprintf(fp, "}");
 		break;
 	case JV_LIST:
 		fprintf(fp, "[\n");
 		for (unsigned int i = 0; i < jv->u.list.nvals; i++) {
+            if (i > 0) {
+                fprintf(fp, ",\n");
+            }
 			json_indent(fp, ind + 2);
-			json_dump_ind(jv->u.list.vals[i], fp, ind + 4);
+			json_dump(jv->u.list.vals[i], fp, ind + 4);
 		}
-		json_indent(fp, ind); fprintf(fp, "]\n");
+		putc('\n', fp); json_indent(fp, ind); fprintf(fp, "]");
 		break;
 	default:
 		assert(0);
 	}
-}
-
-void json_dump(struct json_value *jv, FILE *fp){
-	json_dump_ind(jv, fp, 0);
 }
 
 /* Allocate and get a string out of an atom identified by string key.

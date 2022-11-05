@@ -2466,6 +2466,9 @@ int main(int argc, char **argv){
 
     if (no_issues) {
         fprintf(out, "  \"issue\": \"No issues\",\n");
+        fprintf(out, "  \"hvm\": ");
+        json_dump(jv, out, 2);
+        fprintf(out, ",\n");
 
         destutter1(&global->graph);
 
@@ -2578,6 +2581,10 @@ int main(int argc, char **argv){
         default:
             panic("main: bad fail type");
         }
+
+        fprintf(out, "  \"hvm\": ");
+        json_dump(jv, out, 2);
+        fprintf(out, ",\n");
 
         fprintf(out, "  \"macrosteps\": [");
         struct state *oldstate = calloc(1, sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1));
