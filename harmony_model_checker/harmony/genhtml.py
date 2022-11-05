@@ -159,16 +159,17 @@ class GenHTML:
         print("    <table border='1'>", file=f)
         print("      <tbody>", file=f)
         alter = False
-        for pc, instr in enumerate(self.top["code"]):
-            if str(pc) in self.top["locations"]:
-                alter = not alter
+        pretty = self.top["hvm"]["pretty"]
+        for pc, instr in enumerate(pretty):
+            # if str(pc) in self.top["locations"]:  TODO: why was this here??
+            alter = not alter
             print("        <tr id='P%d'>"%pc, file=f)
             print("          <td align='right'>", file=f)
             print("            <a name='P%d'>%d</a>&nbsp;"%(pc, pc), file=f)
             print("          </td>", file=f)
             print("          <td style='background-color: %s;'>"%("#E6E6E6" if alter else "white"), file=f)
-            print("            <span title='%s' id='C%d'>"%(self.top["explain"][pc], pc), file=f)
-            print("              %s"%instr, file=f)
+            print("            <span title='%s' id='C%d'>"%(instr[1], pc), file=f)
+            print("              %s"%instr[0], file=f)
             print("            </span>", file=f)
             print("          </td>", file=f)
             print("        </tr>", file=f)

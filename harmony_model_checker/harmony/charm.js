@@ -117,15 +117,20 @@ function json_string(obj) {
 var noloc = { file: "", line: "", code: "" };
 
 function getCode(pc) {
-  var locs = state.locations;
-  while (pc >= 0) {
-    s = "" + pc;
-    if (locs.hasOwnProperty(s)) {
-      return locs[s];
-    }
-    pc--;
-  }
-  return noloc;
+  var loc = state.hvm.locs[pc];
+  var module = state.hvm.modules[loc.module];
+  loc.file = module.file;
+  loc.code = module.lines[loc.line - 1];
+  return loc;
+//  var locs = state.locations;
+//  while (pc >= 0) {
+//    s = "" + pc;
+//    if (locs.hasOwnProperty(s)) {
+//      return locs[s];
+//    }
+//    pc--;
+//  }
+//  return noloc;
 }
 
 function drawTimeLine(mes) {
@@ -164,12 +169,12 @@ function drawTimeLine(mes) {
             break;
           case "Assert":
             var loc = getCode(c.pc);
-            mes.nextstep.innerHTML = "assertion failed in " + loc.file + ":" + loc.line;
+            mes.nextstep.innerHTML = "assertion failed in " + '<a href="' + loc.file + '">' + loc.module + "</a>:" + loc.line + ":" + loc.code;
             mes.nextstep.style.color = "red";
             break;
           case "AtomicInc":
             var loc = getCode(c.pc);
-            mes.nextstep.innerHTML = "about to execute in " + loc.file + ":" + loc.line;
+            mes.nextstep.innerHTML = "about to execute in " + '<a href="' + loc.file + '">' + loc.module + "</a>:" + loc.line + ":" + loc.code;
             break;
           case "Print":
             mes.nextstep.innerHTML = "about to print " + json_string(c.next.value);
@@ -612,7 +617,7 @@ function run_microstep(t) {
     var inv = mis.invfails[0];
     code = getCode(inv.pc);
     coderow.style.color = "red";
-    coderow.innerHTML = code.file + ":" + code.line + "&nbsp;&nbsp;&nbsp;" + escapeHTML(code.code) + " (" + inv.reason + ")";
+    coderow.innerHTML = '<a href="' + code.file + '">' + code.module + "</a>:" + code.line + "&nbsp;&nbsp;&nbsp;" + escapeHTML(code.code) + " (" + inv.reason + ")";
     mis.cloc = null;
   }
   else {
@@ -628,10 +633,10 @@ function run_microstep(t) {
         var s1 = code.code.slice(0, c1);
         var s2 = code.code.slice(c1, c2);
         var s3 = code.code.slice(c2);
-        coderow.innerHTML = code.file + ":" + code.line + "&nbsp;&nbsp;&nbsp;" + escapeHTML(s1) + "<span style='color:green'>" + escapeHTML(s2) + "</span>" + escapeHTML(s3);
+        coderow.innerHTML = '<a href="' + code.file + '">' + code.module + "</a>:" + code.line + "&nbsp;&nbsp;&nbsp;" + escapeHTML(s1) + "<span style='color:green'>" + escapeHTML(s2) + "</span>" + escapeHTML(s3);
       }
       else {
-        coderow.innerHTML = code.file + ":" + code.line + "&nbsp;&nbsp;&nbsp;" + escapeHTML(code.code);
+        coderow.innerHTML = '<a href="' + code.file + '">' + code.module + "</a>:" + code.line + "&nbsp;&nbsp;&nbsp;" + escapeHTML(code.code);
       }
     }
   }

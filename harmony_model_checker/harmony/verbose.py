@@ -81,7 +81,7 @@ class Verbose:
         self.step = 0
         self.stack = []
         self.contexts = []
-        self.file = None
+        self.module = None
         self.stmt = None
         self.expr = None
 
@@ -125,13 +125,14 @@ class Verbose:
         print("print %s"%verbose_string(nxt["value"]), file=f)
 
     def aboutAtomicInc(self, pc, f):
-        loc = self.locations[pc]
-        print("execute %s:%s: %s"%(loc["file"], loc["line"], loc["code"]), file=f)
+        loc = self.locations[int(pc)]
+        module = self.hvm["modules"][loc["module"]]
+        print("execute %s:%s: %s"%(loc["module"], loc["line"], module["lines"][int(loc["line"]) - 1]), file=f)
 
     def aboutAssert(self, pc, f):
-        loc = self.locations[pc]
-        print("fail assertion %s:%s: %s"%(loc["file"], loc["line"], loc["code"]), file=f)
-
+        loc = self.locations[int(pc)]
+        module = self.hvm["modules"][loc["module"]]
+        print("fail assertion %s:%s: %s"%(loc["module"], loc["line"], module["lines"][int(loc["line"]) - 1]), file=f)
     def print_macrostep(self, f, mas):
         mis = mas["microsteps"]
         if mas["tid"] != self.tid:
@@ -142,9 +143,6 @@ class Verbose:
             ctx = mas["context"]
             trace = ctx["trace"]
             verbose_print_trace(f, trace)
-            # loc = self.locations[ctx["pc"]]
-            # print("file: %s"%loc["file"], file=f)
-            # self.file = loc["file"]
             if len(trace) > 0:
                 vars = trace[-1]["vars"]
                 if len(vars) > 0:
@@ -183,10 +181,10 @@ class Verbose:
                 print("  interrupted:       jump to interrupt handler first", file=f)
             else:
                 print("  explanation:       %s"%step["explain"], file=f)
-            loc = self.locations[step["pc"]]
-            if loc["file"] != self.file:
-                print("  file:              %s"%loc["file"], file=f)
-                self.file = loc["file"]
+            loc = self.locations[int(step["pc"])]
+            if loc["module"] != self.module:
+                print("  module:            %s"%loc["module"], file=f)
+                self.module = loc["module"]
             stmt = loc["stmt"]
             if stmt != self.stmt:
                 print("  start statement:   line=%d column=%d"%(stmt[0], stmt[1]), file=f)
@@ -254,9 +252,6 @@ class Verbose:
             ctx = mas["context"]
             trace = ctx["trace"]
             verbose_print_trace(f, trace)
-            # loc = self.locations[ctx["pc"]]
-            # print("file: %s"%loc["file"], file=f)
-            # self.file = loc["file"]
             if len(trace) > 0:
                 vars = trace[-1]["vars"]
                 if len(vars) > 0:
@@ -295,10 +290,10 @@ class Verbose:
                 print("  interrupted:       jump to interrupt handler first", file=f)
             else:
                 print("  explanation:       %s"%step["explain"], file=f)
-            loc = self.locations[step["pc"]]
-            if loc["file"] != self.file:
-                print("  file:              %s"%loc["file"], file=f)
-                self.file = loc["file"]
+            loc = self.locations[int(step["pc"])]
+            if loc["module"] != self.module:
+                print("  module:            %s"%loc["module"], file=f)
+                self.module = loc["module"]
             stmt = loc["stmt"]
             if stmt != self.stmt:
                 print("  start statement:   line=%d column=%d"%(stmt[0], stmt[1]), file=f)
@@ -307,7 +302,8 @@ class Verbose:
             expr = tuple(int(loc[x]) for x in [ "line", "column", "endline", "endcolumn" ])
             if expr != self.expr:
                 spaces = 0
-                code = loc["code"]
+                module = self.hvm["modules"][loc["module"]]
+                code = module["lines"][int(loc["line"]) - 1]
                 while spaces < len(code) and code[spaces] == ' ':
                     spaces += 1
                 print("  source code:       %s"%code[spaces:], file=f)
@@ -367,7 +363,14 @@ class Verbose:
 
             print("Issue:", top["issue"], file=output)
             assert isinstance(top["macrosteps"], list)
-            self.locations = top["locations"]
+            self.hvm = top["hvm"]
+
+            print(file=output)
+            print("Modules:", file=output)
+            for modname, mod in self.hvm["modules"].items():
+                print("  %s: %s"%(modname, mod["file"]), file=output)
+
+            self.locations = self.hvm["locs"]
             for mes in top["macrosteps"]:
                 self.print_macrostep(output, mes)
 
