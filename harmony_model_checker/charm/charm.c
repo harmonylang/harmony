@@ -2533,7 +2533,7 @@ int main(int argc, char **argv){
             fprintf(out, "    %u", count);
         }
         fprintf(out, "\n");
-        fprintf(out, "  ],\n");
+        fprintf(out, "  ]\n");
     }
     else {
         // Find shortest "bad" path
@@ -2594,9 +2594,10 @@ int main(int argc, char **argv){
         path_dump(global, out, bad->edge, oldstate, oldctx);
         fprintf(out, "\n");
         free(oldctx);
-        fprintf(out, "  ],\n");
+        fprintf(out, "  ]\n");
     }
 
+#ifdef notdef
     fprintf(out, "  \"code\": [\n");
     for (unsigned int i = 0; i < global->pretty->u.list.nvals; i++) {
         struct json_value *next = global->pretty->u.list.vals[i];
@@ -2640,6 +2641,7 @@ int main(int argc, char **argv){
     dict_iter(jc->u.map, enum_loc, &enum_loc_env);
     fprintf(out, "\n  }\n");
 
+#endif // notdef
     fprintf(out, "}\n");
 	fclose(out);
 
