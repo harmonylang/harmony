@@ -12,6 +12,7 @@ var hvmrow = document.getElementById("hvmrow");
 var container = document.getElementById('table-scroll');
 var currOffset = 0;
 var currCloc = null;
+var laststep = {};
 
 function json_string_list(obj) {
   var result = "";
@@ -344,12 +345,13 @@ function handleKeyPress(e) {
 function init_microstep(masidx, misidx) {
   var mas = state.macrosteps[masidx];
   var mis = mas.microsteps[misidx];
+  var tid = mas.tid;
   var t = microsteps.length;
   megasteps[curMegaStep].contexts = mas.contexts;
-  if (t > 0 && microsteps[t - 1].tid != mas.tid) {
+  if (t > 0 && microsteps[t - 1].tid != tid) {
     curMegaStep++;
     megasteps[curMegaStep].startTime = t;
-    megasteps[curMegaStep].tid = mas.tid;
+    megasteps[curMegaStep].tid = tid;
   }
   var mes = megasteps[curMegaStep];
   mes.nsteps++;
@@ -357,14 +359,17 @@ function init_microstep(masidx, misidx) {
     mesidx: curMegaStep,
     masidx: masidx,
     misidx: misidx,
-    tid: parseInt(mas.tid),
+    tid: parseInt(tid),
     pc: parseInt(mis.pc),
     invfails: misidx == mas.microsteps.length - 1 ? mas.invfails : [],
     contexts: mas.contexts,
     hvm: mis.code,
     explain: mis.explain
   };
-  if (misidx == 0) {
+  if (tid in laststep) {
+    previous = microsteps[laststep[tid]];
+  }
+  else {
     ctx = mas.context;
     previous = { mode: ctx.mode, };
     if (ctx.hasOwnProperty("atomic")) {
@@ -410,9 +415,7 @@ function init_microstep(masidx, misidx) {
       previous.shared = {};
     }
   }
-  else {
-    previous = microsteps[t-1];
-  }
+  laststep[tid] = t;
 
   if (mis.hasOwnProperty("npc")) {
     microsteps[t].npc = mis.npc;
@@ -602,10 +605,11 @@ function run_microstep(t) {
   }
 
   for (var ctx = 0; ctx < mis.contexts.length; ctx++) {
-    var tid = parseInt(mis.contexts[ctx].tid);
-    threads[tid].name = mis.contexts[ctx].name;
-    threadtable.rows[tid].cells[1].innerHTML = get_status(mis.contexts[ctx]);
-    threadtable.rows[tid].cells[3].innerHTML = mis.contexts[ctx].stack.map(x => json_string(x));
+    var cv = mis.contexts[ctx];
+    var tid = parseInt(cv.tid);
+    threads[tid].name = cv.name;
+    threadtable.rows[tid].cells[1].innerHTML = get_status(cv);
+    threadtable.rows[tid].cells[3].innerHTML = cv.stack.slice(cv.fp).map(x => json_string(x));
   }
   var mes = megasteps[mis.mesidx];
   if (t != mes.startTime + mes.nsteps - 1) {

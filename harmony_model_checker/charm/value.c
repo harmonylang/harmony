@@ -732,7 +732,7 @@ static void value_json_context(struct strbuf *sb, hvalue_t v, struct global *glo
         strbuf_printf(sb, "\"atomicFlag\": { \"type\": \"bool\", \"value\": \"True\" },");
     }
     if (ctx->interruptlevel) {
-        strbuf_printf(sb, "\"interruptlevel\": { \"type\": \"bool\", \"value\": \"1\" },");
+        strbuf_printf(sb, "\"interruptlevel\": { \"type\": \"int\", \"value\": \"1\" },");
     }
     if (ctx->stopped) {
         strbuf_printf(sb, "\"stopped\": { \"type\": \"bool\", \"value\": \"True\" },");
