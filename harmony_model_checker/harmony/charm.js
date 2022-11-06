@@ -12,7 +12,6 @@ var hvmrow = document.getElementById("hvmrow");
 var container = document.getElementById('table-scroll');
 var currOffset = 0;
 var currCloc = null;
-var laststep = {};
 
 function json_string_list(obj) {
   var result = "";
@@ -366,8 +365,8 @@ function init_microstep(masidx, misidx) {
     hvm: mis.code,
     explain: mis.explain
   };
-  if (tid in laststep) {
-    previous = microsteps[laststep[tid]];
+  if (misidx != 0) {
+    previous = microsteps[t-1];
   }
   else {
     ctx = mas.context;
@@ -415,7 +414,6 @@ function init_microstep(masidx, misidx) {
       previous.shared = {};
     }
   }
-  laststep[tid] = t;
 
   if (mis.hasOwnProperty("npc")) {
     microsteps[t].npc = mis.npc;
