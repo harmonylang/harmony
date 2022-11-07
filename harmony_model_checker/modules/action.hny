@@ -10,4 +10,5 @@ def explore(s):
             if options == {}:
                 going = False
             else:
-                let f, x = choose(options): f(x)
+                let f, x = choose(options):
+                    atomically f(x)

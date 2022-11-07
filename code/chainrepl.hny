@@ -1,7 +1,7 @@
 import list
 import action
 
-const N = 3
+const N = 2
 const VALUES = { "a", "b" }
 
 # Global state: initially each process is "fetal"
