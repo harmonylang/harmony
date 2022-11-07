@@ -299,6 +299,9 @@ static void json_dump_string(json_buf_t buf, FILE *fp){
 		case '"':
 			fprintf(fp, "\\\"");
 			break;
+		case '\\':
+			fprintf(fp, "\\\\");
+			break;
 		default:
 			putc(buf.base[i], fp);
 		}

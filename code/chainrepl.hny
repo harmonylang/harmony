@@ -118,20 +118,23 @@ const detect = lambda(): { (do_detect, (p, q))
     for q in {0..N-1} where (procs[q].mode == "crashed") and
                 (q not in procs[p].detected) } end
 
-action.explore({start, gotClientUpdate, gotJoinRequest,
+def run():
+    action.explore({start, gotClientUpdate, gotJoinRequest,
                     sendLog, gotLog, crash, detect})
 
-# At the end, the following conditions must hold:
+    # At the end, the following conditions must hold:
 
-# Some processor must be live
-assert any(procs[p].mode == "live" for p in {0..N-1})
+    # Some processor must be live
+    assert any(procs[p].mode == "live" for p in {0..N-1})
 
-# All live logs must be the same
-assert all(procs[p].log == procs[q].log
-                    for p in {0..N-1} where procs[p].mode == "live"
-                    for q in {0..N-1} where procs[q].mode == "live")
+    # All live logs must be the same
+    assert all(procs[p].log == procs[q].log
+                        for p in {0..N-1} where procs[p].mode == "live"
+                        for q in {0..N-1} where procs[q].mode == "live")
 
-# All values must be on all live logs
-assert all(("clt_update", v) in procs[p].log
-                    for p in {0..N-1} where procs[p].mode == "live"
-                    for v in VALUES)
+    # All values must be on all live logs
+    assert all(("clt_update", v) in procs[p].log
+                        for p in {0..N-1} where procs[p].mode == "live"
+                        for v in VALUES)
+
+spawn run()
