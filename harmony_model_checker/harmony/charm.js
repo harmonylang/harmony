@@ -360,7 +360,7 @@ function init_microstep(masidx, misidx) {
     misidx: misidx,
     tid: parseInt(tid),
     pc: parseInt(mis.pc),
-    invfails: misidx == mas.microsteps.length - 1 ? mas.invfails : [],
+    // invfails: misidx == mas.microsteps.length - 1 ? mas.invfails : [],
     contexts: mas.contexts,
     hvm: mis.code,
     explain: mis.explain
@@ -615,14 +615,15 @@ function run_microstep(t) {
   }
   threadtable.rows[mis.tid].cells[3].innerHTML = mis.stack.slice(mis.fp);
 
-  if (mis.invfails.length > 0) {
-    var inv = mis.invfails[0];
-    code = getCode(inv.pc);
-    coderow.style.color = "red";
-    coderow.innerHTML = '<a href="' + code.file + '">' + code.module + "</a>:" + code.line + "&nbsp;&nbsp;&nbsp;" + escapeHTML(code.code) + " (" + inv.reason + ")";
-    mis.cloc = null;
-  }
-  else {
+//  if (mis.invfails.length > 0) {
+//    var inv = mis.invfails[0];
+//    code = getCode(inv.pc);
+//    coderow.style.color = "red";
+//    coderow.innerHTML = '<a href="' + code.file + '">' + code.module + "</a>:" + code.line + "&nbsp;&nbsp;&nbsp;" + escapeHTML(code.code) + " (" + inv.reason + ")";
+//    mis.cloc = null;
+//  }
+//  else
+    {
     coderow.style.color = "blue";
     if (t+1 < microsteps.length) {
       var nmis = microsteps[t+1];

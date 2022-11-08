@@ -1115,7 +1115,10 @@ class InvariantAST(AST):
         label = LabelValue(None, "$%d" % labelcnt)
         labelcnt += 1
         code.append(InvariantOp(label, self.token), self.token, self.endtoken, stmt=stmt)
-        self.cond.compile(scope, code, stmt)
+        ns = Scope(scope)
+        (_, file, line, column) = self.token
+        ns.names["before"] = ("local-var", ("before", file, line, column))
+        self.cond.compile(ns, code, stmt)
 
         # TODO. The following is a workaround for a bug.
         # When you do "invariant 0 <= count <= 1", it inserts

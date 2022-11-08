@@ -29,6 +29,8 @@
 
 #define WALLOC_CHUNK    (1024 * 1024)
 
+static hvalue_t before_atom;
+
 // For -d option
 unsigned int run_count;  // counter of #threads
 mutex_t run_mutex;       // to protect count
@@ -170,13 +172,29 @@ bool invariant_check(struct global *global, struct state *state, struct step *st
     return VALUE_FROM_BOOL(b);
 }
 
-bool check_invariants(struct worker *w, struct node *node, struct step *step){
+// Returns 0 if there are no issues, or the pc of the invariant if it failed.
+hvalue_t check_invariants(struct worker *w, struct node *node,
+                        struct node *before, struct step *step){
     struct global *global = w->global;
     struct state *state = node->state;
     extern int invariant_cnt(const void *env);
 
     assert(VALUE_TYPE(global->invariants) == VALUE_SET);
     assert(step->ctx->sp == 0);
+
+    if (before != NULL) {
+        // TODO.  Not a good test for whether state is initial.
+        if (before->id == 0) {
+            step->ctx->vars = value_dict_store(&step->engine, VALUE_DICT, before_atom, state->vars);
+        }
+        else {
+            step->ctx->vars = value_dict_store(&step->engine, VALUE_DICT, before_atom, before->state->vars);
+        }
+    }
+    else {
+        step->ctx->vars = value_dict_store(&step->engine, VALUE_DICT, before_atom, VALUE_ADDRESS);
+    }
+
     unsigned int size;
     hvalue_t *vals = value_get(global->invariants, &size);
     size /= sizeof(hvalue_t);
@@ -187,14 +205,14 @@ bool check_invariants(struct worker *w, struct node *node, struct step *step){
         int end = invariant_cnt(global->code.instrs[step->ctx->pc].env);
         bool b = invariant_check(global, state, step, end);
         if (step->ctx->failed) {
-            printf("Invariant failed: %s\n", value_string(ctx_failure(step->ctx)));
+            printf("Invariant evaluation failed: %s\n", value_string(ctx_failure(step->ctx)));
             b = false;
         }
         if (!b) {
-            return false;
+            return vals[i];
         }
     }
-    return true;
+    return 0;
 }
 
 // For tracking data races
@@ -395,16 +413,8 @@ static bool onestep(
                 failure = true;
                 break;
             }
-#ifdef OBSOLETE
-            if (size == 1) {            // TODO.  This optimization is probably not worth it
-                choice = vals[0];
-            }
-            else
-#endif
-            {
-                choosing = true;
-                break;
-            }
+            choosing = true;
+            break;
         }
 
         // See if we need to break out of this step.  If the atomicFlag is
@@ -560,11 +570,13 @@ static bool onestep(
         w->failures = f;
     }
     else if (sc->choosing == 0 && global->invariants != VALUE_SET) {
-        if (!check_invariants(w, next, &w->inv_step)) {
+        hvalue_t inv = check_invariants(w, next, node, &w->inv_step);
+        if (inv != 0) {
             struct failure *f = new_alloc(struct failure);
             f->type = FAIL_INVARIANT;
             f->edge = edge;
             f->next = w->failures;
+            f->address = inv;
             w->failures = f;
         }
     }
@@ -806,7 +818,6 @@ void print_state(
     FILE *file,
     struct node *node
 ) {
-    struct state *state = node->state;
     extern int invariant_cnt(const void *env);
 
     struct step inv_step;
@@ -815,6 +826,8 @@ void print_state(
     inv_step.ctx = calloc(1, sizeof(struct context) +
                         MAX_CONTEXT_STACK * sizeof(hvalue_t));
 
+#ifdef INVARIANTS
+    struct state *state = node->state;
     // hvalue_t inv_nv = value_put_atom("name", 4);
     // hvalue_t inv_tv = value_put_atom("tag", 3);
     // inv_step.ctx->name = value_put_atom(&inv_step.engine, "__invariant__", 13);
@@ -859,6 +872,7 @@ void print_state(
     }
     fprintf(file, "\n      ],\n");
     free(inv_step.ctx);
+#endif // INVARIANTS
 
     fprintf(file, "      \"ctxbag\": {\n");
     for (unsigned int i = 0; i < node->state->bagsize; i++) {
@@ -1396,6 +1410,8 @@ static char *json_string_encode(char *s, int len){
     return result;
 }
 
+#ifdef notdef
+
 struct enum_loc_env_t {
     FILE *out;
     struct dict *code_map;
@@ -1474,6 +1490,8 @@ static void enum_loc(
     fprintf(out, "\"code\": \"%s\"", json_string_encode(code->u.atom.base, code->u.atom.len));
     fprintf(out, " }");
 }
+
+#endif // notdef
 
 enum busywait { BW_ESCAPE, BW_RETURN, BW_VISITED };
 static enum busywait is_stuck(
@@ -1973,6 +1991,8 @@ int main(int argc, char **argv){
     engine.allocator = NULL;
     engine.values = &global->values;
     ops_init(global, &engine);
+
+    before_atom = value_put_atom(&engine, "before", 6);
 
     graph_init(&global->graph, 1024*1024);
     global->failures = minheap_create(fail_cmp);
@@ -2554,8 +2574,12 @@ int main(int argc, char **argv){
             fprintf(out, "  \"issue\": \"Safety violation\",\n");
             break;
         case FAIL_INVARIANT:
-            printf("Invariant Violation\n");
-            fprintf(out, "  \"issue\": \"Invariant violation\",\n");
+            {
+                printf("Invariant Violation\n");
+                assert(VALUE_TYPE(bad->address) == VALUE_PC);
+                fprintf(out, "  \"issue\": \"Invariant violation\",\n");
+                fprintf(out, "  \"invpc\": %d,\n", (int) VALUE_FROM_PC(bad->address));
+            }
             break;
         case FAIL_BEHAVIOR:
             printf("Behavior Violation: terminal state not final\n");
