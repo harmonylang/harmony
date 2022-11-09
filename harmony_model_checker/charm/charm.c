@@ -29,7 +29,7 @@
 
 #define WALLOC_CHUNK    (1024 * 1024)
 
-static hvalue_t old_atom;
+static hvalue_t pre_atom, post_atom;
 
 // For -d option
 unsigned int run_count;  // counter of #threads
@@ -184,11 +184,12 @@ hvalue_t check_invariants(struct worker *w, struct node *node,
 
     // pre == 0 means it is a non-initialized state.
     if (before->state->pre == 0) {
-        step->ctx->vars = value_dict_store(&step->engine, VALUE_DICT, old_atom, state->vars);
+        step->ctx->vars = value_dict_store(&step->engine, VALUE_DICT, pre_atom, state->vars);
     }
     else {
-        step->ctx->vars = value_dict_store(&step->engine, VALUE_DICT, old_atom, before->state->pre);
+        step->ctx->vars = value_dict_store(&step->engine, VALUE_DICT, pre_atom, before->state->pre);
     }
+    step->ctx->vars = value_dict_store(&step->engine, step->ctx->vars, post_atom, state->vars);
 
     unsigned int size;
     hvalue_t *vals = value_get(global->invariants, &size);
@@ -1997,7 +1998,8 @@ int main(int argc, char **argv){
     engine.values = &global->values;
     ops_init(global, &engine);
 
-    old_atom = value_put_atom(&engine, "old", 3);
+    pre_atom = value_put_atom(&engine, "pre", 3);
+    post_atom = value_put_atom(&engine, "post", 4);
 
     graph_init(&global->graph, 1024*1024);
     global->failures = minheap_create(fail_cmp);
