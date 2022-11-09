@@ -29,7 +29,7 @@
 
 #define WALLOC_CHUNK    (1024 * 1024)
 
-static hvalue_t before_atom;
+static hvalue_t old_atom;
 
 // For -d option
 unsigned int run_count;  // counter of #threads
@@ -182,17 +182,12 @@ hvalue_t check_invariants(struct worker *w, struct node *node,
     assert(VALUE_TYPE(global->invariants) == VALUE_SET);
     assert(step->ctx->sp == 0);
 
-    if (before != NULL) {
-        // TODO.  Not a good test for whether state is initial.
-        if (before->id == 0) {
-            step->ctx->vars = value_dict_store(&step->engine, VALUE_DICT, before_atom, state->vars);
-        }
-        else {
-            step->ctx->vars = value_dict_store(&step->engine, VALUE_DICT, before_atom, before->state->vars);
-        }
+    // pre == 0 means it is a non-initialized state.
+    if (before->state->pre == 0) {
+        step->ctx->vars = value_dict_store(&step->engine, VALUE_DICT, old_atom, state->vars);
     }
     else {
-        step->ctx->vars = value_dict_store(&step->engine, VALUE_DICT, before_atom, VALUE_ADDRESS);
+        step->ctx->vars = value_dict_store(&step->engine, VALUE_DICT, old_atom, before->state->pre);
     }
 
     unsigned int size;
@@ -488,6 +483,10 @@ static bool onestep(
     // If choosing, save in state
     if (choosing) {
         sc->choosing = after;
+        sc->pre = node->state->pre;
+    }
+    else {
+        sc->pre = sc->vars;
     }
 
     // Add new context to state unless it's terminated or stopped
@@ -570,7 +569,13 @@ static bool onestep(
         w->failures = f;
     }
     else if (sc->choosing == 0 && global->invariants != VALUE_SET) {
-        hvalue_t inv = check_invariants(w, next, node, &w->inv_step);
+        hvalue_t inv = 0;
+        if (new) {      // try self-loop if a new node
+            inv = check_invariants(w, next, next, &w->inv_step);
+        }
+        if (inv == 0) { // try new edge
+            inv = check_invariants(w, next, node, &w->inv_step);
+        }
         if (inv != 0) {
             struct failure *f = new_alloc(struct failure);
             f->type = FAIL_INVARIANT;
@@ -1992,7 +1997,7 @@ int main(int argc, char **argv){
     engine.values = &global->values;
     ops_init(global, &engine);
 
-    before_atom = value_put_atom(&engine, "before", 6);
+    old_atom = value_put_atom(&engine, "old", 3);
 
     graph_init(&global->graph, 1024*1024);
     global->failures = minheap_create(fail_cmp);
@@ -2621,51 +2626,6 @@ int main(int argc, char **argv){
         fprintf(out, "  ]\n");
     }
 
-#ifdef notdef
-    fprintf(out, "  \"code\": [\n");
-    for (unsigned int i = 0; i < global->pretty->u.list.nvals; i++) {
-        struct json_value *next = global->pretty->u.list.vals[i];
-        assert(next->type == JV_LIST);
-        assert(next->u.list.nvals == 2);
-        struct json_value *codestr = next->u.list.vals[0];
-        assert(codestr->type == JV_ATOM);
-		char *v = json_escape(codestr->u.atom.base, codestr->u.atom.len);
-        fprintf(out, "    \"%s\"", v);
-		free(v);
-        if (i < global->pretty->u.list.nvals - 1) {
-            fprintf(out, ",");
-        }
-        fprintf(out, "\n");
-    }
-    fprintf(out, "  ],\n");
-
-    fprintf(out, "  \"explain\": [\n");
-    for (unsigned int i = 0; i < global->pretty->u.list.nvals; i++) {
-        struct json_value *next = global->pretty->u.list.vals[i];
-        assert(next->type == JV_LIST);
-        assert(next->u.list.nvals == 2);
-        struct json_value *codestr = next->u.list.vals[1];
-        assert(codestr->type == JV_ATOM);
-		char *v = json_escape(codestr->u.atom.base, codestr->u.atom.len);
-        fprintf(out, "    \"%s\"", v);
-		free(v);
-        if (i < global->pretty->u.list.nvals - 1) {
-            fprintf(out, ",");
-        }
-        fprintf(out, "\n");
-    }
-    fprintf(out, "  ],\n");
-
-    fprintf(out, "  \"locations\": {");
-    jc = dict_lookup(jv->u.map, "locations", 9);
-    assert(jc->type == JV_MAP);
-    struct enum_loc_env_t enum_loc_env;
-    enum_loc_env.out = out;
-    enum_loc_env.code_map = global->code.code_map;
-    dict_iter(jc->u.map, enum_loc, &enum_loc_env);
-    fprintf(out, "\n  }\n");
-
-#endif // notdef
     fprintf(out, "}\n");
 	fclose(out);
 

@@ -11,6 +11,7 @@
 
 typedef struct state {
     hvalue_t vars;        // shared variables
+    hvalue_t pre;         // "pre" state (same as vars in non-choosing states)
     hvalue_t choosing;    // context that is choosing if non-zero
     hvalue_t stopbag;     // bag of stopped contexts (to detect deadlock)
     uint32_t dfa_state;

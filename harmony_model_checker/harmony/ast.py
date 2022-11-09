@@ -1117,7 +1117,7 @@ class InvariantAST(AST):
         code.append(InvariantOp(label, self.token), self.token, self.endtoken, stmt=stmt)
         ns = Scope(scope)
         (_, file, line, column) = self.token
-        ns.names["before"] = ("local-var", ("before", file, line, column))
+        ns.names["old"] = ("local-var", ("old", file, line, column))
         self.cond.compile(ns, code, stmt)
 
         # TODO. The following is a workaround for a bug.
