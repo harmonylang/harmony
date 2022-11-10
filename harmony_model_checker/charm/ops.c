@@ -1330,13 +1330,16 @@ void op_Go(
 void op_Invariant(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_Invariant *ei = env;
 
-    // TODO workers could race on global->invariants
-    assert(VALUE_TYPE(global->invariants) == VALUE_SET);
-    unsigned int size;
-    hvalue_t *vals = value_copy_extend(global->invariants, sizeof(hvalue_t), &size);
-    * (hvalue_t *) ((char *) vals + size) = VALUE_TO_PC(step->ctx->pc);
-    global->invariants = value_put_set(&step->engine, vals, size + sizeof(hvalue_t));
-    free(vals);
+    mutex_acquire(&global->inv_lock);
+    global->invs = realloc(global->invs, (global->ninvs + 1) * sizeof(*global->invs));
+    struct invariant *inv = &global->invs[global->ninvs++];
+    inv->pc = step->ctx->pc;
+    inv->pre = ei->pre;
+    if (ei->pre) {
+        global->inv_pre = true;
+    }
+    mutex_release(&global->inv_lock);
+
     step->ctx->pc = ei->end + 1;
 }
 

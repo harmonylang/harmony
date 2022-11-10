@@ -173,13 +173,12 @@ bool invariant_check(struct global *global, struct state *state, struct step *st
 }
 
 // Returns 0 if there are no issues, or the pc of the invariant if it failed.
-hvalue_t check_invariants(struct worker *w, struct node *node,
+unsigned int check_invariants(struct worker *w, struct node *node,
                         struct node *before, struct step *step){
     struct global *global = w->global;
     struct state *state = node->state;
     extern int invariant_cnt(const void *env);
 
-    assert(VALUE_TYPE(global->invariants) == VALUE_SET);
     assert(step->ctx->sp == 0);
 
     // pre == 0 means it is a non-initialized state.
@@ -191,12 +190,15 @@ hvalue_t check_invariants(struct worker *w, struct node *node,
     }
     step->ctx->vars = value_dict_store(&step->engine, step->ctx->vars, post_atom, state->vars);
 
-    unsigned int size;
-    hvalue_t *vals = value_get(global->invariants, &size);
-    size /= sizeof(hvalue_t);
-    for (unsigned int i = 0; i < size; i++) {
-        assert(VALUE_TYPE(vals[i]) == VALUE_PC);
-        step->ctx->pc = VALUE_FROM_PC(vals[i]);
+    // Check each invariant
+    for (unsigned int i = 0; i < global->ninvs; i++) {
+        step->ctx->pc = global->invs[i].pc;
+
+        // No need to check edges other than self-loops
+        if (!global->invs[i].pre && node != before) {
+            continue;
+        }
+
         assert(strcmp(global->code.instrs[step->ctx->pc].oi->name, "Invariant") == 0);
         int end = invariant_cnt(global->code.instrs[step->ctx->pc].env);
         bool b = invariant_check(global, state, step, end);
@@ -205,7 +207,8 @@ hvalue_t check_invariants(struct worker *w, struct node *node,
             b = false;
         }
         if (!b) {
-            return vals[i];
+            printf("INV %u %u failed\n", i, global->invs[i].pc);
+            return global->invs[i].pc;
         }
     }
     return 0;
@@ -481,10 +484,11 @@ static bool onestep(
     // Remove old context from the bag
     context_remove(sc, ctx);
 
-    // If choosing, save in state
+    // If choosing, save in state.  If some invariant uses "pre", then
+    // also keep track of "pre" state.
     if (choosing) {
         sc->choosing = after;
-        sc->pre = node->state->pre;
+        sc->pre = global->inv_pre ? node->state->pre : sc->vars;
     }
     else {
         sc->pre = sc->vars;
@@ -569,8 +573,8 @@ static bool onestep(
         f->next = w->failures;
         w->failures = f;
     }
-    else if (sc->choosing == 0 && global->invariants != VALUE_SET) {
-        hvalue_t inv = 0;
+    else if (sc->choosing == 0 && global->ninvs != 0) {
+        unsigned int inv = 0;
         if (new) {      // try self-loop if a new node
             inv = check_invariants(w, next, next, &w->inv_step);
         }
@@ -582,7 +586,7 @@ static bool onestep(
             f->type = FAIL_INVARIANT;
             f->edge = edge;
             f->next = w->failures;
-            f->address = inv;
+            f->address = VALUE_TO_PC(inv);
             w->failures = f;
         }
     }
@@ -1988,6 +1992,7 @@ int main(int argc, char **argv){
     barrier_init(&end_barrier, global->nworkers + 1);
 
     // initialize modules
+    mutex_init(&global->inv_lock);
     mutex_init(&global->todo_lock);
     mutex_init(&global->todo_wait);
     mutex_acquire(&global->todo_wait);          // Split Binary Semaphore
@@ -2004,7 +2009,6 @@ int main(int argc, char **argv){
     graph_init(&global->graph, 1024*1024);
     global->failures = minheap_create(fail_cmp);
     global->seqs = VALUE_SET;
-    global->invariants = VALUE_SET;
 
     // First read and parse the DFA if any
     if (dfafile != NULL) {

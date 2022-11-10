@@ -20,11 +20,22 @@ struct values {
     struct dict *contexts;
 };
 
+struct invariant {
+    unsigned int pc;                // location of invariant code
+    bool pre;                       // uses "pre" or not
+};
+
 struct global {
     struct code code;               // code of the Harmony program
     struct values values;           // dictionaries of values
     hvalue_t seqs;                  // sequential variables
-    hvalue_t invariants;            // set of invariants that must hold
+
+    // invariants
+    mutex_t inv_lock;               // lock on list of invariants
+    unsigned int ninvs;             // number of invariants
+    struct invariant *invs;         // list of invariants
+    bool inv_pre;                   // some invariant uses "pre"
+
     struct graph graph;             // the Kripke structure
     unsigned int todo;              // points into graph->nodes
     unsigned int goal;              // points into graph->nodes
