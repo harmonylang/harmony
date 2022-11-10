@@ -713,7 +713,7 @@ class AssignmentAST(AST):
     def compile(self, scope, code, stmt):
         stmt = self.stmt()
         if self.atomically:
-            code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
+            code.append(AtomicIncOp(False), self.atomically, self.atomically, stmt=stmt)
 
         # Compute the addresses of lhs expressions
         for lvs in self.lhslist:
@@ -779,7 +779,7 @@ class AuxAssignmentAST(AST):
     def compile(self, scope, code, stmt):
         stmt = self.stmt()
         if self.atomically:
-            code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
+            code.append(AtomicIncOp(False), self.atomically, self.atomically, stmt=stmt)
         lv = self.lhs
         lvar = lv.localVar(scope)
         if isinstance(lv, NameAST):
@@ -832,7 +832,7 @@ class DelAST(AST):
     def compile(self, scope, code, stmt):
         stmt = self.stmt()
         if self.atomically:
-            code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
+            code.append(AtomicIncOp(False), self.atomically, self.atomically, stmt=stmt)
         lvar = self.lv.localVar(scope)
         if isinstance(self.lv, NameAST):
             op = DelOp(self.lv.name, scope.prefix) if lvar == None else DelVarOp(self.lv.name)
@@ -986,7 +986,7 @@ class BlockAST(AST):
             for ((lexeme, file, line, column), lb) in s.getLabels():
                 ns.names[lexeme] = ("constant", (lb, file, line, column))
         if self.atomically:
-            code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
+            code.append(AtomicIncOp(False), self.atomically, self.atomically, stmt=stmt)
         for s in self.b:
             s.compile(ns, code, stmt)
         if self.atomically:
@@ -1024,7 +1024,7 @@ class IfAST(AST):
         sublabel = 0
         endlabel = LabelValue(None, "$%d_end" % label)
         if self.atomically:
-            code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
+            code.append(AtomicIncOp(False), self.atomically, self.atomically, stmt=stmt)
         last = len(self.alts) - 1
         for i, alt in enumerate(self.alts):
             (rest, stat, starttoken, endtoken, colontoken) = alt
@@ -1075,7 +1075,7 @@ class WhileAST(AST):
     def compile(self, scope, code, stmt):
         stmt = self.range(self.token, self.colon)
         if self.atomically:
-            code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
+            code.append(AtomicIncOp(False), self.atomically, self.atomically, stmt=stmt)
         negate = isinstance(self.cond, NaryAST) and self.cond.op[0] == "not"
         cond = self.cond.args[0] if negate else self.cond
         global labelcnt
@@ -1146,7 +1146,7 @@ class LetAST(AST):
     def compile(self, scope, code, stmt):
         stmt = self.stmt()
         if self.atomically:
-            code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
+            code.append(AtomicIncOp(False), self.atomically, self.atomically, stmt=stmt)
         ns = Scope(scope)
         for (var, expr, token, endtoken, op) in self.vars:
             stmt = self.range(token, endtoken)
@@ -1175,7 +1175,7 @@ class VarAST(AST):
     def compile(self, scope, code, stmt):
         stmt = self.stmt()
         if self.atomically:
-            code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
+            code.append(AtomicIncOp(False), self.atomically, self.atomically, stmt=stmt)
         for (var, expr) in self.vars:
             expr.compile(scope, code, stmt)
             code.append(StoreVarOp(var), self.token, self.endtoken, stmt=stmt)
@@ -1197,7 +1197,7 @@ class ForAST(ComprehensionAST):
     def compile(self, scope, code, stmt):
         stmt = self.stmt()
         if self.atomically:
-            code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
+            code.append(AtomicIncOp(False), self.atomically, self.atomically, stmt=stmt)
         ns = Scope(scope)
         self.comprehension(ns, code, "for", stmt)
         if self.atomically:
@@ -1262,7 +1262,7 @@ class LetWhenAST(AST):
         # start:
         code.nextLabel(label_start)
         if self.atomically:
-            code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
+            code.append(AtomicIncOp(False), self.atomically, self.atomically, stmt=stmt)
             code.append(ReadonlyIncOp(), self.atomically, self.atomically, stmt=stmt)
         ns = Scope(scope)
         for var_or_cond in self.vars_and_conds:
@@ -1340,7 +1340,7 @@ class AtomicAST(AST):
 
     def compile(self, scope, code, stmt):
         stmt = self.range(self.atomically, self.colon)
-        code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
+        code.append(AtomicIncOp(False), self.atomically, self.atomically, stmt=stmt)
         self.stat.compile(scope, code, stmt)
         code.append(AtomicDecOp(), self.atomically, self.endtoken, stmt=stmt)
 
@@ -1390,7 +1390,7 @@ class PrintAST(AST):
     def compile(self, scope, code, stmt):
         stmt = self.stmt()
         if self.atomically:
-            code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
+            code.append(AtomicIncOp(False), self.atomically, self.atomically, stmt=stmt)
         self.expr.compile(scope, code, stmt)
         code.append(PrintOp(self.token), self.token, self.endtoken, stmt=stmt)
         if self.atomically:
@@ -1430,7 +1430,7 @@ class MethodAST(AST):
         self.define(ns, self.args)
         ns.names["result"] = ("local-var", ("result", file, line, column))
         if self.atomically:
-            code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
+            code.append(AtomicIncOp(False), self.atomically, self.atomically, stmt=stmt)
         self.stat.compile(ns, code, stmt)
         if self.atomically:
             code.append(AtomicDecOp(), self.atomically, self.endtoken, stmt=stmt)
@@ -1481,7 +1481,7 @@ class LambdaAST(AST):
         R = ("result", file, line, column)
         ns.names["result"] = ("local-var", R)
         if self.atomically:
-            code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
+            code.append(AtomicIncOp(False), self.atomically, self.atomically, stmt=stmt)
         self.stat.compile(ns, code, stmt)
         if self.atomically:
             code.append(AtomicDecOp(), self.atomically, self.endtoken, stmt=stmt)
@@ -1511,7 +1511,7 @@ class CallAST(AST):
         stmt = self.stmt()
         if not self.expr.isConstant(scope):
             if self.atomically:
-                code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
+                code.append(AtomicIncOp(False), self.atomically, self.atomically, stmt=stmt)
             self.expr.compile(scope, code, stmt)
             if self.atomically:
                 code.append(AtomicDecOp(), self.atomically, self.endtoken, stmt=stmt)
@@ -1581,7 +1581,7 @@ class GoAST(AST):
     def compile(self, scope, code, stmt):
         stmt = self.stmt()
         if self.atomically:
-            code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
+            code.append(AtomicIncOp(False), self.atomically, self.atomically, stmt=stmt)
         self.result.compile(scope, code, stmt)
         self.ctx.compile(scope, code, stmt)
         if self.atomically:
