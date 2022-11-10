@@ -2409,6 +2409,12 @@ void *init_Invariant(struct dict *map, struct engine *engine){
     copy[end->u.atom.len] = 0;
     env->end = atoi(copy);
     free(copy);
+
+    struct json_value *pre = dict_lookup(map, "pre", 3);
+    assert(pre->type == JV_ATOM);
+    assert(pre->u.atom.len > 0);
+    env->pre = pre->u.atom.base[0] != 'F';
+
     return env;
 }
 

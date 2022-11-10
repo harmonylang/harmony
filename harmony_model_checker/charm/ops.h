@@ -59,6 +59,7 @@ struct env_AtomicInc {
 
 struct env_Invariant {
     int end;
+    bool pre;
 };
 
 struct env_Jump {
