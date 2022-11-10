@@ -251,6 +251,8 @@ class NameAST(AST):
         (t, v) = scope.lookup(self.name)
         if t in {"local-var", "local-const"}:
             code.append(LoadVarOp(self.name), self.token, self.endtoken, stmt=stmt)
+            if self.name[0] == "pre":
+                scope.uses_pre = True
         elif t == "constant":
             (lexeme, file, line, column) = self.name
             code.append(PushOp(v), self.token, self.endtoken, stmt=stmt)
@@ -1114,12 +1116,14 @@ class InvariantAST(AST):
         global labelcnt
         label = LabelValue(None, "$%d" % labelcnt)
         labelcnt += 1
-        code.append(InvariantOp(label, self.token), self.token, self.endtoken, stmt=stmt)
+        invop = InvariantOp(label, self.token)
+        code.append(invop, self.token, self.endtoken, stmt=stmt)
         ns = Scope(scope)
         (_, file, line, column) = self.token
         ns.names["pre"] = ("local-var", ("pre", file, line, column))
         ns.names["post"] = ("local-var", ("post", file, line, column))
         self.cond.compile(ns, code, stmt)
+        invop.uses_pre = ns.uses_pre       # Invariant optimization
 
         # TODO. The following is a workaround for a bug.
         # When you do "invariant 0 <= count <= 1", it inserts

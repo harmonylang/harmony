@@ -1124,15 +1124,16 @@ class InvariantOp(Op):
     def __init__(self, end, token):
         self.end = end
         self.token = token
+        self.uses_pre = True        # invariant optimization
 
     def __repr__(self):
         return "Invariant " + str(self.end)
 
     def jdump(self):
-        return '{ "op": "Invariant", "end": "%d" }'%self.end
+        return '{ "op": "Invariant", "pre": "%s", "end": "%d" }'%(self.uses_pre, self.end)
 
     def tladump(self):
-        return 'OpInvariant(self, %d)'%self.end
+        return 'OpInvariant(self, %s, %d)'%(self.pre, self.end)
 
     def explain(self):
         return "test invariant"

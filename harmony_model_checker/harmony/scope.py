@@ -7,6 +7,7 @@ class Scope:
         self.inherit = False
         self.pmap = {}      # hack for pretty-printing
         self.file = "__nofile__"        # file name
+        self.uses_pre = False           # for invariant optimization
 
     def copy(self):
         c = Scope(self.parent)
