@@ -168,6 +168,7 @@ bool invariant_check(struct global *global, struct state *state, struct step *st
     assert(step->ctx->sp == 1);
     step->ctx->sp = 0;
     hvalue_t b = ctx_stack(step->ctx)[0];
+    // TODO.  Report a failure
     assert(VALUE_TYPE(b) == VALUE_BOOL);
     return VALUE_FROM_BOOL(b);
 }
