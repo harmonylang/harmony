@@ -208,16 +208,35 @@ bool invariant_check(struct worker *w, struct state *sc, struct step *step, int 
                 sc, size, &new, &lock);
     struct state *state = (struct state *) &da[1];
     struct node *next = (struct node *) ((char *) state + size);
-    if (!new) {
-        fprintf(stderr, "NOT NEW..........\n");
-        assert(false);
+    if (new) {
+        memset(next, 0, sizeof(*next));
+        next->len = node->len;
+        next->steps = node->steps + instrcnt;
+        next->to_parent = edge;
+        next->state = state;
+        edge->dst = next;
     }
-    memset(next, 0, sizeof(*next));
-    next->len = node->len;
-    next->steps = node->steps + instrcnt;
-    next->to_parent = edge;
-    next->state = state;
+    else {
+        fprintf(stderr, "NOT NEW..........\n");
+    }
+ 
+    // Backward edge from node to parent.
+    edge->bwdnext = next->bwd;
+    next->bwd = edge;
+
+    mutex_release(lock);
+
+    struct edge **pe = &w->edges[node->id % w->nworkers];
+    edge->fwdnext = *pe;
+    *pe = edge;
     edge->dst = next;
+
+    if (new) {
+        next->next = w->results;
+        w->results = next;
+        w->count++;
+        w->enqueued++;
+    }
 
     struct failure *f = new_alloc(struct failure);
     f->type = FAIL_INVARIANT;
@@ -225,6 +244,9 @@ bool invariant_check(struct worker *w, struct state *sc, struct step *step, int 
     f->next = w->failures;
     f->address = VALUE_TO_PC(inv);
     w->failures = f;
+
+    step->ai = NULL;
+    step->nlog = 0;
 
     return true;
 }
