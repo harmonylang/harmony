@@ -150,14 +150,24 @@ void spawn_thread(struct global *global, struct state *state, struct context *ct
     thread_create(wrap_thread, si);
 }
 
-bool invariant_check(struct global *global, struct state *state, struct step *step, int end){
+// Similar to onestep, but just for some invariant
+bool invariant_check(struct worker *w, struct state *sc, struct step *step, int end, struct node *node){
+    struct global *global = w->global;
+
+    unsigned int inv = step->ctx->pc;
+
+    // TODO.  Don't recompute each time
+    hvalue_t ctx = value_put_context(&step->engine, step->ctx);
+
     assert(step->ctx->sp == 0);
     assert(!step->ctx->failed);
     step->ctx->pc++;
+    unsigned int instrcnt = 1;
     while (step->ctx->pc != end) {
+        instrcnt++;
         struct op_info *oi = global->code.instrs[step->ctx->pc].oi;
         int oldpc = step->ctx->pc;
-        (*oi->op)(global->code.instrs[oldpc].env, state, step, global);
+        (*oi->op)(global->code.instrs[oldpc].env, sc, step, global);
         if (step->ctx->failed) {
             step->ctx->sp = 0;
             return false;
@@ -168,9 +178,55 @@ bool invariant_check(struct global *global, struct state *state, struct step *st
     assert(step->ctx->sp == 1);
     step->ctx->sp = 0;
     hvalue_t b = ctx_stack(step->ctx)[0];
+ 
     // TODO.  Report a failure
     assert(VALUE_TYPE(b) == VALUE_BOOL);
-    return VALUE_FROM_BOOL(b);
+
+    if (VALUE_FROM_BOOL(b)) {
+        return true;
+    }
+
+    hvalue_t after = value_put_context(&step->engine, step->ctx);
+
+    // Allocate edge now
+    struct edge *edge = walloc(w, sizeof(struct edge) + step->nlog * sizeof(hvalue_t), false);
+    edge->src = node;
+    edge->ctx = ctx;
+    edge->choice = 0;
+    edge->interrupt = false;
+    edge->weight = 0;
+    edge->after = after;
+    edge->ai = NULL;
+    memcpy(edge_log(edge), step->log, step->nlog * sizeof(hvalue_t));
+    edge->nlog = step->nlog;
+    edge->nsteps = instrcnt;
+
+    bool new;
+    mutex_t *lock;
+    unsigned int size = state_size(sc);
+    struct dict_assoc *da = dict_find_lock(w->visited, &w->allocator,
+                sc, size, &new, &lock);
+    struct state *state = (struct state *) &da[1];
+    struct node *next = (struct node *) ((char *) state + size);
+    if (!new) {
+        fprintf(stderr, "NOT NEW..........\n");
+        assert(false);
+    }
+    memset(next, 0, sizeof(*next));
+    next->len = node->len;
+    next->steps = node->steps + instrcnt;
+    next->to_parent = edge;
+    next->state = state;
+    edge->dst = next;
+
+    struct failure *f = new_alloc(struct failure);
+    f->type = FAIL_INVARIANT;
+    f->edge = edge;
+    f->next = w->failures;
+    f->address = VALUE_TO_PC(inv);
+    w->failures = f;
+
+    return true;
 }
 
 // Returns 0 if there are no issues, or the pc of the invariant if it failed.
@@ -202,7 +258,7 @@ unsigned int check_invariants(struct worker *w, struct node *node,
 
         assert(strcmp(global->code.instrs[step->ctx->pc].oi->name, "Invariant") == 0);
         int end = invariant_cnt(global->code.instrs[step->ctx->pc].env);
-        bool b = invariant_check(global, state, step, end);
+        bool b = invariant_check(w, state, step, end, node);
         if (step->ctx->failed) {
             printf("Invariant evaluation failed: %s\n", value_string(ctx_failure(step->ctx)));
             b = false;
@@ -582,7 +638,7 @@ static bool onestep(
         if (inv == 0) { // try new edge
             inv = check_invariants(w, next, node, &w->inv_step);
         }
-        if (inv != 0) {
+        if (false && inv != 0) {
             struct failure *f = new_alloc(struct failure);
             f->type = FAIL_INVARIANT;
             f->edge = edge;
@@ -836,54 +892,6 @@ void print_state(
     inv_step.engine.values = &global->values;
     inv_step.ctx = calloc(1, sizeof(struct context) +
                         MAX_CONTEXT_STACK * sizeof(hvalue_t));
-
-#ifdef INVARIANTS
-    struct state *state = node->state;
-    // hvalue_t inv_nv = value_put_atom("name", 4);
-    // hvalue_t inv_tv = value_put_atom("tag", 3);
-    // inv_step.ctx->name = value_put_atom(&inv_step.engine, "__invariant__", 13);
-    inv_step.ctx->vars = VALUE_DICT;
-    inv_step.ctx->atomic = inv_step.ctx->readonly = 1;
-    inv_step.ctx->interruptlevel = false;
-
-    fprintf(file, "      \"invfails\": [");
-    assert(VALUE_TYPE(global->invariants) == VALUE_SET);
-    unsigned int size;
-    hvalue_t *vals = value_get(global->invariants, &size);
-    size /= sizeof(hvalue_t);
-    int nfailures = 0;
-    for (unsigned int i = 0; i < size; i++) {
-        assert(VALUE_TYPE(vals[i]) == VALUE_PC);
-        inv_step.ctx->pc = VALUE_FROM_PC(vals[i]);
-        assert(strcmp(global->code.instrs[inv_step.ctx->pc].oi->name, "Invariant") == 0);
-        int end = invariant_cnt(global->code.instrs[inv_step.ctx->pc].env);
-        bool b = invariant_check(global, state, &inv_step, end);
-        if (inv_step.ctx->failed) {
-            b = false;
-        }
-        if (!b) {
-            if (nfailures != 0) {
-                fprintf(file, ",");
-            }
-            fprintf(file, "\n        {\n");
-            fprintf(file, "          \"pc\": \"%u\",\n", (unsigned int) VALUE_FROM_PC(vals[i]));
-            if (!inv_step.ctx->failed) {
-                fprintf(file, "          \"reason\": \"invariant violated\"\n");
-            }
-            else {
-                char *val = value_string(ctx_failure(inv_step.ctx));
-				int len = strlen(val);
-                fprintf(file, "          \"reason\": \"%.*s\"\n", len - 2, val + 1);
-                free(val);
-            }
-            nfailures++;
-            fprintf(file, "        }");
-            break;
-        }
-    }
-    fprintf(file, "\n      ],\n");
-    free(inv_step.ctx);
-#endif // INVARIANTS
 
     fprintf(file, "      \"ctxbag\": {\n");
     for (unsigned int i = 0; i < node->state->bagsize; i++) {

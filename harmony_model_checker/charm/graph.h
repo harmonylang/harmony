@@ -54,6 +54,7 @@ struct node {
 	struct node *next;		// for linked list
 
     // Information about state
+    // TODO.  state points to end of this node??
     struct state *state;    // state corresponding to this node
     struct edge *fwd;       // forward edges
     struct edge *bwd;       // backward edges
