@@ -2581,6 +2581,11 @@ setbuf(out, NULL);
             value_ctx_push(inv_ctx, VALUE_LIST);
             value_ctx_push(inv_ctx, VALUE_TO_INT(CALLTYPE_NORMAL));
 
+            hvalue_t args[2];
+            args[0] = bad->edge->src->state->vars;
+            args[1] = bad->edge->src->state->vars;
+            value_ctx_push(inv_ctx, value_put_list(&engine, args, sizeof(args)));
+
             hvalue_t inv_context = value_put_context(&engine, inv_ctx);
 
             edge = calloc(1, sizeof(struct edge));
