@@ -30,6 +30,7 @@
 #define WALLOC_CHUNK    (1024 * 1024)
 
 static hvalue_t pre_atom, post_atom;
+static unsigned int oldpid = 0;
 
 // For -d option
 unsigned int run_count;  // counter of #threads
@@ -151,14 +152,7 @@ void spawn_thread(struct global *global, struct state *state, struct context *ct
 }
 
 // Similar to onestep, but just for some invariant
-bool invariant_check(struct worker *w, struct state *sc, struct step *step, int end, struct node *node){
-    struct global *global = w->global;
-
-    unsigned int inv = step->ctx->pc;
-
-    // TODO.  Don't recompute each time
-    hvalue_t ctx = value_put_context(&step->engine, step->ctx);
-
+bool invariant_check(struct global *global, struct state *sc, struct step *step, int end){
     assert(step->ctx->sp == 0);
     assert(!step->ctx->failed);
     step->ctx->pc++;
@@ -181,74 +175,7 @@ bool invariant_check(struct worker *w, struct state *sc, struct step *step, int 
  
     // TODO.  Report a failure
     assert(VALUE_TYPE(b) == VALUE_BOOL);
-
-    if (VALUE_FROM_BOOL(b)) {
-        return true;
-    }
-
-    hvalue_t after = value_put_context(&step->engine, step->ctx);
-
-    // Allocate edge now
-    struct edge *edge = walloc(w, sizeof(struct edge) + step->nlog * sizeof(hvalue_t), false);
-    edge->src = node;
-    edge->ctx = ctx;
-    edge->choice = 0;
-    edge->interrupt = false;
-    edge->weight = 0;
-    edge->after = after;
-    edge->ai = NULL;
-    memcpy(edge_log(edge), step->log, step->nlog * sizeof(hvalue_t));
-    edge->nlog = step->nlog;
-    edge->nsteps = instrcnt;
-
-    bool new;
-    mutex_t *lock;
-    unsigned int size = state_size(sc);
-    struct dict_assoc *da = dict_find_lock(w->visited, &w->allocator,
-                sc, size, &new, &lock);
-    struct state *state = (struct state *) &da[1];
-    struct node *next = (struct node *) ((char *) state + size);
-    if (new) {
-        memset(next, 0, sizeof(*next));
-        next->len = node->len;
-        next->steps = node->steps + instrcnt;
-        next->to_parent = edge;
-        next->state = state;
-        edge->dst = next;
-    }
-    else {
-        fprintf(stderr, "NOT NEW..........\n");
-    }
- 
-    // Backward edge from node to parent.
-    edge->bwdnext = next->bwd;
-    next->bwd = edge;
-
-    mutex_release(lock);
-
-    struct edge **pe = &w->edges[node->id % w->nworkers];
-    edge->fwdnext = *pe;
-    *pe = edge;
-    edge->dst = next;
-
-    if (new) {
-        next->next = w->results;
-        w->results = next;
-        w->count++;
-        w->enqueued++;
-    }
-
-    struct failure *f = new_alloc(struct failure);
-    f->type = FAIL_INVARIANT;
-    f->edge = edge;
-    f->next = w->failures;
-    f->address = VALUE_TO_PC(inv);
-    w->failures = f;
-
-    step->ai = NULL;
-    step->nlog = 0;
-
-    return true;
+    return VALUE_FROM_BOOL(b);
 }
 
 // Returns 0 if there are no issues, or the pc of the invariant if it failed.
@@ -280,7 +207,7 @@ unsigned int check_invariants(struct worker *w, struct node *node,
 
         assert(strcmp(global->code.instrs[step->ctx->pc].oi->name, "Invariant") == 0);
         int end = invariant_cnt(global->code.instrs[step->ctx->pc].env);
-        bool b = invariant_check(w, state, step, end, node);
+        bool b = invariant_check(global, state, step, end);
         if (step->ctx->failed) {
             printf("Invariant evaluation failed: %s\n", value_string(ctx_failure(step->ctx)));
             b = false;
@@ -660,7 +587,7 @@ static bool onestep(
         if (inv == 0) { // try new edge
             inv = check_invariants(w, next, node, &w->inv_step);
         }
-        if (false && inv != 0) {
+        if (inv != 0) {
             struct failure *f = new_alloc(struct failure);
             f->type = FAIL_INVARIANT;
             f->edge = edge;
@@ -907,14 +834,6 @@ void print_state(
     FILE *file,
     struct node *node
 ) {
-    extern int invariant_cnt(const void *env);
-
-    struct step inv_step;
-    memset(&inv_step, 0, sizeof(inv_step));
-    inv_step.engine.values = &global->values;
-    inv_step.ctx = calloc(1, sizeof(struct context) +
-                        MAX_CONTEXT_STACK * sizeof(hvalue_t));
-
     fprintf(file, "      \"ctxbag\": {\n");
     for (unsigned int i = 0; i < node->state->bagsize; i++) {
         if (i > 0) {
@@ -1284,7 +1203,6 @@ void path_dump(
     struct state *oldstate,
     struct context *oldctx
 ) {
-    static unsigned int oldpid = 0;
     struct node *node = e->dst;
     struct node *parent = e->src;
 
@@ -2652,12 +2570,48 @@ int main(int argc, char **argv){
         json_dump(jv, out, 2);
         fprintf(out, ",\n");
 
+        // If it was an invariant failure, add one more macrostep
+        // to replay the invariant code.
+        struct edge *edge;
+        if (bad->type == FAIL_INVARIANT) {
+            struct context *inv_ctx = calloc(1, sizeof(struct context) +
+                                MAX_CONTEXT_STACK * sizeof(hvalue_t));
+            inv_ctx->pc = VALUE_FROM_PC(bad->address) + 1;
+            hvalue_t inv_context = value_put_context(&engine, inv_ctx);
+
+            edge = calloc(1, sizeof(struct edge));
+            edge->src = bad->edge->dst;
+            edge->ctx = inv_context;
+            edge->choice = 0;
+            edge->interrupt = false;
+            edge->weight = 0;
+            edge->after = inv_context;
+            edge->ai = NULL;
+            edge->nlog = 0;
+            edge->nsteps = 10000000;
+
+            global->processes = realloc(global->processes, (global->nprocesses + 1) * sizeof(hvalue_t));
+            global->callstacks = realloc(global->callstacks, (global->nprocesses + 1) * sizeof(struct callstack *));
+            global->processes[global->nprocesses] = inv_context;
+            struct callstack *cs = new_alloc(struct callstack);
+            cs->pc = inv_ctx->pc;
+            cs->arg = VALUE_LIST;
+            cs->vars = VALUE_DICT;
+            cs->return_address = (inv_ctx->pc << CALLTYPE_BITS) | CALLTYPE_PROCESS;
+            global->callstacks[global->nprocesses] = cs;
+            global->nprocesses++;
+        }
+        else {
+            edge = bad->edge;
+        }
+
         fprintf(out, "  \"macrosteps\": [");
         struct state *oldstate = calloc(1, sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1));
         struct context *oldctx = calloc(1, sizeof(struct context) +
                         MAX_CONTEXT_STACK * sizeof(hvalue_t));
         global->dumpfirst = true;
-        path_dump(global, out, bad->edge, oldstate, oldctx);
+        path_dump(global, out, edge, oldstate, oldctx);
+
         fprintf(out, "\n");
         free(oldctx);
         fprintf(out, "  ]\n");

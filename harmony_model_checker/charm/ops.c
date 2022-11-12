@@ -1896,6 +1896,11 @@ void op_Spawn(
         }
 
         if (step->keep_callstack) {
+            // TODO. Should require some kind of lock, although
+            //       usually all spawns are done sequentially by
+            //       the first thread
+            // TODO. What if a spawn can be done from more than one
+            //       state.  Does that create more processes than needed?
             global->processes = realloc(global->processes, (global->nprocesses + 1) * sizeof(hvalue_t));
             global->callstacks = realloc(global->callstacks, (global->nprocesses + 1) * sizeof(struct callstack *));
             global->processes[global->nprocesses] = context;
