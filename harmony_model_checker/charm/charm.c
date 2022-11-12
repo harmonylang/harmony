@@ -156,7 +156,6 @@ bool invariant_check(struct global *global, struct state *sc, struct step *step)
 
     assert(step->ctx->sp == 2);
     while (step->ctx->pc != 0) {
-        printf("PC %d SP %d\n", step->ctx->pc, step->ctx->sp);
         struct op_info *oi = global->code.instrs[step->ctx->pc].oi;
         int oldpc = step->ctx->pc;
         (*oi->op)(global->code.instrs[oldpc].env, sc, step, global);
@@ -172,8 +171,6 @@ bool invariant_check(struct global *global, struct state *sc, struct step *step)
     hvalue_t b = value_ctx_pop(step->ctx);
     assert(step->ctx->sp == 0);
 
-    printf("AFTER %d SP %d %s\n", step->ctx->pc, step->ctx->sp, value_string(b));
- 
     // TODO.  Report a failure
     assert(VALUE_TYPE(b) == VALUE_BOOL);
     return VALUE_FROM_BOOL(b);
@@ -199,6 +196,7 @@ unsigned int check_invariants(struct worker *w, struct node *node,
 
     // Check each invariant
     for (unsigned int i = 0; i < global->ninvs; i++) {
+        assert(step->ctx->sp == 0);
         step->ctx->pc = global->invs[i].pc;
         value_ctx_push(step->ctx, VALUE_TO_INT(CALLTYPE_NORMAL));
         value_ctx_push(step->ctx, value_put_list(&step->engine, args, sizeof(args)));
@@ -2076,6 +2074,7 @@ int main(int argc, char **argv){
         // w->inv_step.ctx->name = value_put_atom(&engine, "__invariant__", 13);
         w->inv_step.ctx->vars = VALUE_DICT;
         w->inv_step.ctx->atomic = w->inv_step.ctx->readonly = 1;
+        w->inv_step.ctx->atomicFlag = true;
         w->inv_step.ctx->interruptlevel = false;
         w->inv_step.engine.allocator = &w->allocator;
         w->inv_step.engine.values = &global->values;
@@ -2428,6 +2427,7 @@ int main(int argc, char **argv){
     }
 
     FILE *out = fopen(outfile, "w");
+setbuf(out, NULL);
     if (out == NULL) {
         fprintf(stderr, "charm: can't create %s\n", outfile);
         exit(1);
@@ -2578,11 +2578,13 @@ int main(int argc, char **argv){
             inv_ctx->atomic = 1;
             inv_ctx->atomicFlag = true;
             inv_ctx->readonly = 1;
+            value_ctx_push(inv_ctx, VALUE_LIST);
+            value_ctx_push(inv_ctx, VALUE_TO_INT(CALLTYPE_NORMAL));
 
             hvalue_t inv_context = value_put_context(&engine, inv_ctx);
 
             edge = calloc(1, sizeof(struct edge));
-            edge->src = bad->edge->dst;
+            edge->src = edge->dst = bad->edge->dst;
             edge->ctx = inv_context;
             edge->choice = 0;
             edge->interrupt = false;
