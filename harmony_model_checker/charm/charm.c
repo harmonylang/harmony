@@ -2583,7 +2583,7 @@ setbuf(out, NULL);
 
             hvalue_t args[2];
             args[0] = bad->edge->src->state->vars;
-            args[1] = bad->edge->src->state->vars;
+            args[1] = bad->edge->dst->state->vars;
             value_ctx_push(inv_ctx, value_put_list(&engine, args, sizeof(args)));
 
             hvalue_t inv_context = value_put_context(&engine, inv_ctx);
