@@ -29,7 +29,6 @@
 
 #define WALLOC_CHUNK    (1024 * 1024)
 
-static hvalue_t pre_atom, post_atom;
 static unsigned int oldpid = 0;
 
 // For -d option
@@ -153,14 +152,11 @@ void spawn_thread(struct global *global, struct state *state, struct context *ct
 
 // Similar to onestep, but just for some invariant
 bool invariant_check(struct global *global, struct state *sc, struct step *step){
-    assert(step->ctx->sp == 0);
     assert(!step->ctx->failed);
-    step->ctx->pc++;
-    unsigned int instrcnt = 1;
-    printf("IC\n");
-    assert(false);
+
+    assert(step->ctx->sp == 2);
     while (step->ctx->pc != 0) {
-        instrcnt++;
+        printf("PC %d SP %d\n", step->ctx->pc, step->ctx->sp);
         struct op_info *oi = global->code.instrs[step->ctx->pc].oi;
         int oldpc = step->ctx->pc;
         (*oi->op)(global->code.instrs[oldpc].env, sc, step, global);
@@ -171,9 +167,12 @@ bool invariant_check(struct global *global, struct state *sc, struct step *step)
         assert(step->ctx->pc != oldpc);
         assert(!step->ctx->terminated);
     }
+
     assert(step->ctx->sp == 1);
-    step->ctx->sp = 0;
-    hvalue_t b = ctx_stack(step->ctx)[0];
+    hvalue_t b = value_ctx_pop(step->ctx);
+    assert(step->ctx->sp == 0);
+
+    printf("AFTER %d SP %d %s\n", step->ctx->pc, step->ctx->sp, value_string(b));
  
     // TODO.  Report a failure
     assert(VALUE_TYPE(b) == VALUE_BOOL);
@@ -189,17 +188,20 @@ unsigned int check_invariants(struct worker *w, struct node *node,
     assert(step->ctx->sp == 0);
 
     // pre == 0 means it is a non-initialized state.
+    hvalue_t args[2];   // (pre, post)
     if (before->state->pre == 0) {
-        step->ctx->vars = value_dict_store(&step->engine, VALUE_DICT, pre_atom, state->vars);
+        args[0] = state->vars;
     }
     else {
-        step->ctx->vars = value_dict_store(&step->engine, VALUE_DICT, pre_atom, before->state->pre);
+        args[0] = before->state->pre;
     }
-    step->ctx->vars = value_dict_store(&step->engine, step->ctx->vars, post_atom, state->vars);
+    args[1] = state->vars;
 
     // Check each invariant
     for (unsigned int i = 0; i < global->ninvs; i++) {
         step->ctx->pc = global->invs[i].pc;
+        value_ctx_push(step->ctx, VALUE_TO_INT(CALLTYPE_NORMAL));
+        value_ctx_push(step->ctx, value_put_list(&step->engine, args, sizeof(args)));
 
         // No need to check edges other than self-loops
         if (!global->invs[i].pre && node != before) {
@@ -1953,9 +1955,6 @@ int main(int argc, char **argv){
     engine.values = &global->values;
     ops_init(global, &engine);
 
-    pre_atom = value_put_atom(&engine, "pre", 3);
-    post_atom = value_put_atom(&engine, "post", 4);
-
     graph_init(&global->graph, 1024*1024);
     global->failures = minheap_create(fail_cmp);
     global->seqs = VALUE_SET;
@@ -2003,9 +2002,6 @@ int main(int argc, char **argv){
     init_ctx->atomic = 1;
     init_ctx->initial = true;
     init_ctx->atomicFlag = true;
-#ifdef ZZZ
-    value_ctx_push(init_ctx, VALUE_TO_INT(CALLTYPE_PROCESS));
-#endif
     value_ctx_push(init_ctx, VALUE_LIST);
 
     struct state *state = calloc(1, sizeof(struct state) + sizeof(hvalue_t) + 1);

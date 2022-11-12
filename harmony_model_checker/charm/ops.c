@@ -2404,7 +2404,7 @@ void *init_Nary(struct dict *map, struct engine *engine){
 void *init_Invariant(struct dict *map, struct engine *engine){
     struct env_Invariant *env = new_alloc(struct env_Invariant);
 
-    struct json_value *pc = dict_lookup(map, "pc", 3);
+    struct json_value *pc = dict_lookup(map, "pc", 2);
     assert(pc->type == JV_ATOM);
     char *copy = malloc(pc->u.atom.len + 1);
     memcpy(copy, pc->u.atom.base, pc->u.atom.len);
