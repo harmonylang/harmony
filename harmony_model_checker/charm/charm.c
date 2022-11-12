@@ -208,7 +208,7 @@ unsigned int check_invariants(struct worker *w, struct node *node,
             continue;
         }
 
-        assert(strcmp(global->code.instrs[step->ctx->pc].oi->name, "Invariant") == 0);
+        assert(strcmp(global->code.instrs[step->ctx->pc].oi->name, "Frame") == 0);
         // int end = invariant_cnt(global->code.instrs[step->ctx->pc].env);
         bool b = invariant_check(global, state, step);
         if (step->ctx->failed) {
@@ -2573,7 +2573,12 @@ int main(int argc, char **argv){
         if (bad->type == FAIL_INVARIANT) {
             struct context *inv_ctx = calloc(1, sizeof(struct context) +
                                 MAX_CONTEXT_STACK * sizeof(hvalue_t));
-            inv_ctx->pc = VALUE_FROM_PC(bad->address) + 1;
+            inv_ctx->pc = VALUE_FROM_PC(bad->address);
+            inv_ctx->vars = VALUE_DICT;
+            inv_ctx->atomic = 1;
+            inv_ctx->atomicFlag = true;
+            inv_ctx->readonly = 1;
+
             hvalue_t inv_context = value_put_context(&engine, inv_ctx);
 
             edge = calloc(1, sizeof(struct edge));
