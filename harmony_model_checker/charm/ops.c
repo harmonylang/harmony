@@ -1333,20 +1333,14 @@ void op_Invariant(const void *env, struct state *state, struct step *step, struc
     mutex_acquire(&global->inv_lock);
     global->invs = realloc(global->invs, (global->ninvs + 1) * sizeof(*global->invs));
     struct invariant *inv = &global->invs[global->ninvs++];
-    inv->pc = step->ctx->pc;
+    inv->pc = ei->pc;
     inv->pre = ei->pre;
     if (ei->pre) {
         global->inv_pre = true;
     }
     mutex_release(&global->inv_lock);
 
-    step->ctx->pc = ei->end + 1;
-}
-
-int invariant_cnt(const void *env){
-    const struct env_Invariant *ei = env;
-
-    return ei->end;
+    step->ctx->pc += 1;
 }
 
 void op_Jump(const void *env, struct state *state, struct step *step, struct global *global){
@@ -2410,12 +2404,12 @@ void *init_Nary(struct dict *map, struct engine *engine){
 void *init_Invariant(struct dict *map, struct engine *engine){
     struct env_Invariant *env = new_alloc(struct env_Invariant);
 
-    struct json_value *end = dict_lookup(map, "end", 3);
-    assert(end->type == JV_ATOM);
-    char *copy = malloc(end->u.atom.len + 1);
-    memcpy(copy, end->u.atom.base, end->u.atom.len);
-    copy[end->u.atom.len] = 0;
-    env->end = atoi(copy);
+    struct json_value *pc = dict_lookup(map, "pc", 3);
+    assert(pc->type == JV_ATOM);
+    char *copy = malloc(pc->u.atom.len + 1);
+    memcpy(copy, pc->u.atom.base, pc->u.atom.len);
+    copy[pc->u.atom.len] = 0;
+    env->pc = atoi(copy);
     free(copy);
 
     struct json_value *pre = dict_lookup(map, "pre", 3);

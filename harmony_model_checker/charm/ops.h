@@ -58,7 +58,7 @@ struct env_AtomicInc {
 };
 
 struct env_Invariant {
-    int end;
+    int pc;
     bool pre;
 };
 

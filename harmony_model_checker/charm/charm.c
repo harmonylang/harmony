@@ -152,12 +152,14 @@ void spawn_thread(struct global *global, struct state *state, struct context *ct
 }
 
 // Similar to onestep, but just for some invariant
-bool invariant_check(struct global *global, struct state *sc, struct step *step, int end){
+bool invariant_check(struct global *global, struct state *sc, struct step *step){
     assert(step->ctx->sp == 0);
     assert(!step->ctx->failed);
     step->ctx->pc++;
     unsigned int instrcnt = 1;
-    while (step->ctx->pc != end) {
+    printf("IC\n");
+    assert(false);
+    while (step->ctx->pc != 0) {
         instrcnt++;
         struct op_info *oi = global->code.instrs[step->ctx->pc].oi;
         int oldpc = step->ctx->pc;
@@ -183,7 +185,6 @@ unsigned int check_invariants(struct worker *w, struct node *node,
                         struct node *before, struct step *step){
     struct global *global = w->global;
     struct state *state = node->state;
-    extern int invariant_cnt(const void *env);
 
     assert(step->ctx->sp == 0);
 
@@ -206,8 +207,8 @@ unsigned int check_invariants(struct worker *w, struct node *node,
         }
 
         assert(strcmp(global->code.instrs[step->ctx->pc].oi->name, "Invariant") == 0);
-        int end = invariant_cnt(global->code.instrs[step->ctx->pc].env);
-        bool b = invariant_check(global, state, step, end);
+        // int end = invariant_cnt(global->code.instrs[step->ctx->pc].env);
+        bool b = invariant_check(global, state, step);
         if (step->ctx->failed) {
             printf("Invariant evaluation failed: %s\n", value_string(ctx_failure(step->ctx)));
             b = false;

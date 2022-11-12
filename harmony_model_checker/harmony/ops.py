@@ -1121,32 +1121,32 @@ class ReadonlyDecOp(Op):
         context.pc += 1
 
 class InvariantOp(Op):
-    def __init__(self, end, token):
-        self.end = end
-        self.token = token
+    def __init__(self, pc):
+        self.pc = pc
         self.uses_pre = True        # invariant optimization
 
     def __repr__(self):
-        return "Invariant " + str(self.end)
+        return "Invariant " + str(self.pc)
 
     def jdump(self):
-        return '{ "op": "Invariant", "pre": "%s", "end": "%d" }'%(self.uses_pre, self.end)
+        return '{ "op": "Invariant", "pre": "%s", "pc": "%d" }'%(self.uses_pre, self.pc)
 
     def tladump(self):
-        return 'OpInvariant(self, %s, %d)'%(self.pre, self.end)
+        return 'OpInvariant(self, %s, %d)'%(self.pre, self.pc)
 
     def explain(self):
         return "test invariant"
 
     def eval(self, state, context):
+        assert False
         assert self.end > 0
         state.invariants |= {context.pc}
         context.pc += (self.end + 1)
 
     def substitute(self, map):
-        if isinstance(self.end, LabelValue):
-            assert isinstance(map[self.end], PcValue)
-            self.end = map[self.end].pc
+        if isinstance(self.pc, LabelValue):
+            assert isinstance(map[self.pc], PcValue)
+            self.pc = map[self.pc].pc
 
 class JumpOp(Op):
     def __init__(self, pc, reason=None):

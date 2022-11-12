@@ -1111,6 +1111,36 @@ class InvariantAST(AST):
     def __repr__(self):
         return "Invariant(" + str(self.cond) + ")"
 
+    # Compile similar to a lambda
+    def compile(self, scope, code, stmt):
+        startlabel = LabelValue(None, "invariant")
+        endlabel = LabelValue(None, "invariant")
+        stmt = self.stmt()
+        code.append(JumpOp(endlabel, reason="jump over invariant definition"), self.token, self.token, stmt=stmt)
+        code.nextLabel(startlabel)
+        (_, file, line, column) = self.token
+        args = [ ("pre", file, line, column), ("post", file, line, column) ]
+        code.append(FrameOp(self.token, args), self.token, self.endtoken, stmt=stmt)
+
+        ns = Scope(scope)
+        self.define(ns, args)
+        R = ("result", file, line, column)
+        ns.names["result"] = ("local-var", R)
+        if self.atomically:
+            code.append(AtomicIncOp(False), self.atomically, self.atomically, stmt=stmt)
+        self.cond.compile(ns, code, stmt)
+        if self.atomically:
+            code.append(AtomicDecOp(), self.atomically, self.endtoken, stmt=stmt)
+        code.append(StoreVarOp(R), self.token, self.endtoken, stmt=stmt)
+        code.append(ReturnOp(), self.token, self.endtoken, stmt=stmt)
+        code.nextLabel(endlabel)
+        (lexeme, file, line, column) = self.token
+        code.append(InvariantOp(startlabel), self.token, self.endtoken, stmt=stmt)
+
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_lambda(self, *args, **kwargs)
+
+"""
     def compile(self, scope, code, stmt):
         stmt = self.stmt()
         global labelcnt
@@ -1136,7 +1166,7 @@ class InvariantAST(AST):
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_invariant(self, *args, **kwargs)
-
+"""
 
 class LetAST(AST):
     def __init__(self, endtoken, token, atomically, vars, stat):
