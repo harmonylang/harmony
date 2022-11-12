@@ -154,7 +154,7 @@ void spawn_thread(struct global *global, struct state *state, struct context *ct
 bool invariant_check(struct global *global, struct state *sc, struct step *step){
     assert(!step->ctx->failed);
 
-    assert(step->ctx->sp == 2);
+    assert(step->ctx->sp == 1);
     while (step->ctx->pc != 0) {
         struct op_info *oi = global->code.instrs[step->ctx->pc].oi;
         int oldpc = step->ctx->pc;
@@ -167,13 +167,12 @@ bool invariant_check(struct global *global, struct state *sc, struct step *step)
         assert(!step->ctx->terminated);
     }
 
-    assert(step->ctx->sp == 1);
-    hvalue_t b = value_ctx_pop(step->ctx);
     assert(step->ctx->sp == 0);
+    assert(step->ctx->terminated);
 
     // TODO.  Report a failure
-    assert(VALUE_TYPE(b) == VALUE_BOOL);
-    return VALUE_FROM_BOOL(b);
+    assert(VALUE_TYPE(step->ctx->vars) == VALUE_BOOL);
+    return VALUE_FROM_BOOL(step->ctx->vars);
 }
 
 // Returns 0 if there are no issues, or the pc of the invariant if it failed.
@@ -196,15 +195,16 @@ unsigned int check_invariants(struct worker *w, struct node *node,
 
     // Check each invariant
     for (unsigned int i = 0; i < global->ninvs; i++) {
-        assert(step->ctx->sp == 0);
-        step->ctx->pc = global->invs[i].pc;
-        value_ctx_push(step->ctx, VALUE_TO_INT(CALLTYPE_NORMAL));
-        value_ctx_push(step->ctx, value_put_list(&step->engine, args, sizeof(args)));
-
         // No need to check edges other than self-loops
         if (!global->invs[i].pre && node != before) {
             continue;
         }
+
+        assert(step->ctx->sp == 0);
+        step->ctx->terminated = step->ctx->failed = false;
+        step->ctx->pc = global->invs[i].pc;
+        step->ctx->vars = VALUE_DICT;
+        value_ctx_push(step->ctx, value_put_list(&step->engine, args, sizeof(args)));
 
         assert(strcmp(global->code.instrs[step->ctx->pc].oi->name, "Frame") == 0);
         // int end = invariant_cnt(global->code.instrs[step->ctx->pc].env);
@@ -213,6 +213,7 @@ unsigned int check_invariants(struct worker *w, struct node *node,
             printf("Invariant evaluation failed: %s\n", value_string(ctx_failure(step->ctx)));
             b = false;
         }
+        assert(step->ctx->terminated);
         if (!b) {
             printf("INV %u %u failed\n", i, global->invs[i].pc);
             return global->invs[i].pc;
