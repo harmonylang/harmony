@@ -1350,6 +1350,7 @@ class LetWhenAST(AST):
         code.nextLabel(label_body)
         if self.atomically:
             code.append(ReadonlyDecOp(), self.atomically, self.endtoken, stmt=stmt)
+            code.append(AtomicDecOp(), self.atomically, self.endtoken, stmt=stmt)
         self.stat.compile(ns, code, stmt)
         if self.atomically:
             code.append(AtomicDecOp(), self.atomically, self.endtoken, stmt=stmt)
@@ -1401,13 +1402,12 @@ class AssertAST(AST):
 
     def compile(self, scope, code, stmt):
         stmt = self.stmt()
+        code.append(AtomicIncOp(True), self.atomically, self.atomically, stmt=stmt)
         code.append(ReadonlyIncOp(), self.token, self.endtoken, stmt=stmt)
-        code.append(AtomicIncOp(True), self.token, self.endtoken, stmt=stmt)
         self.cond.compile(scope, code, stmt)
         if self.expr != None:
             self.expr.compile(scope, code, stmt)
         code.append(AssertOp(self.token, self.expr != None), self.token, self.token, stmt=stmt)
-        code.append(AtomicDecOp(), self.token, self.endtoken, stmt=stmt)
         code.append(ReadonlyDecOp(), self.token, self.endtoken, stmt=stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
