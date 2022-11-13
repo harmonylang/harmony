@@ -1409,6 +1409,7 @@ class AssertAST(AST):
             self.expr.compile(scope, code, stmt)
         code.append(AssertOp(self.token, self.expr != None), self.token, self.token, stmt=stmt)
         code.append(ReadonlyDecOp(), self.token, self.endtoken, stmt=stmt)
+        code.append(AtomicDecOp(), self.token, self.endtoken, stmt=stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_assert(self, *args, **kwargs)
