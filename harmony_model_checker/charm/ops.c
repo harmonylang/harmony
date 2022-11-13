@@ -1442,6 +1442,14 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
 
         unsigned int k = ind_tryload(&step->engine, state->vars, indices, size, &v);
         if (k != size) {
+            if (VALUE_TYPE(v) == VALUE_PC && k == size - 1) {
+                printf("LAMBDA!\n");
+                ctx_push(step->ctx, VALUE_TO_INT(((step->ctx->pc + 1) << CALLTYPE_BITS) | CALLTYPE_NORMAL));
+                ctx_push(step->ctx, indices[k]);
+                assert(VALUE_FROM_PC(v) != step->ctx->pc);
+                step->ctx->pc = VALUE_FROM_PC(v);
+                return;
+            }
             char *x = indices_string(indices, size);
             value_ctx_failure(step->ctx, &step->engine, "Load: bad address %s", x);
             free(x);
