@@ -787,6 +787,18 @@ void print_context(
     if (c->readonly != 0) {
         fprintf(file, "%s\"readonly\": \"%d\",\n", prefix, c->readonly);
     }
+    if (!c->terminated && !c->failed) {
+        struct instr *instr = &global->code.instrs[c->pc];
+        struct op_info *oi = instr->oi;
+        if (oi->next == NULL) {
+            fprintf(file, "%s\"next\": { \"type\": \"%s\" },\n", prefix, oi->name);
+        }
+        else {
+            fprintf(file, "%s\"next\": ", prefix);
+            (*oi->next)(instr->env, c, global, file);
+            fprintf(file, ",\n");
+        }
+    }
 
     if (c->terminated) {
         fprintf(file, "%s\"mode\": \"terminated\"\n", prefix);
@@ -800,17 +812,6 @@ void print_context(
         }
         else {
             fprintf(file, "%s\"mode\": \"%s\"", prefix, ctx_status(node, ctx));
-        }
-        fprintf(file, ",\n");
-        struct instr *instr = &global->code.instrs[c->pc];
-        struct op_info *oi = instr->oi;
-        if (oi->next == NULL) {
-            fprintf(file, "%s\"next\": { \"type\": \"%s\" }\n", prefix, oi->name);
-        }
-        else {
-            fprintf(file, "%s\"next\": ", prefix);
-            (*oi->next)(instr->env, c, global, file);
-            fprintf(file, "\n");
         }
     }
 
