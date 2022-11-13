@@ -644,6 +644,10 @@ void next_Print(const void *env, struct context *ctx, struct global *global, FIL
 }
 
 void op_Print(const void *env, struct state *state, struct step *step, struct global *global){
+    if (step->ctx->readonly > 0) {
+        value_ctx_failure(step->ctx, &step->engine, "Can't print in read-only mode");
+        return;
+    }
     hvalue_t symbol = ctx_pop(step->ctx);
     if (global->run_direct) {
         char *s = value_string(symbol);
@@ -1814,6 +1818,10 @@ static int sort(hvalue_t *vals, int n){
 }
 
 void op_SetIntLevel(const void *env, struct state *state, struct step *step, struct global *global){
+    if (step->ctx->readonly > 0) {
+        value_ctx_failure(step->ctx, &step->engine, "Can't set interrupt level in read-only mode");
+        return;
+    }
 	bool oldlevel = step->ctx->interruptlevel;
 	hvalue_t newlevel =  ctx_pop(step->ctx);
     if (VALUE_TYPE(newlevel) != VALUE_BOOL) {
@@ -1832,6 +1840,11 @@ void op_Spawn(
     struct global *global
 ) {
     const struct env_Spawn *se = env;
+
+    if (step->ctx->readonly > 0) {
+        value_ctx_failure(step->ctx, &step->engine, "Can't spawn in read-only mode");
+        return;
+    }
 
     hvalue_t thisval = ctx_pop(step->ctx);
     hvalue_t arg = ctx_pop(step->ctx);
@@ -2214,6 +2227,10 @@ void op_StoreVar(const void *env, struct state *state, struct step *step, struct
 }
 
 void op_Trap(const void *env, struct state *state, struct step *step, struct global *global){
+    if (step->ctx->readonly > 0) {
+        value_ctx_failure(step->ctx, &step->engine, "Can't trap in read-only mode");
+        return;
+    }
     hvalue_t trap_pc = ctx_pop(step->ctx);
     if (VALUE_TYPE(trap_pc) != VALUE_PC) {
         value_ctx_failure(step->ctx, &step->engine, "trap: not a method");
