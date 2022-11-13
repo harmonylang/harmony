@@ -592,23 +592,27 @@ static void value_string_context(struct strbuf *sb, hvalue_t v) {
 }
 
 void strbuf_print_vars(struct global *global, struct strbuf *sb, hvalue_t v){
-    assert(VALUE_TYPE(v) == VALUE_DICT);
-    unsigned int size;
-    hvalue_t *vars = value_get(v, &size);
-    size /= sizeof(hvalue_t);
-    strbuf_printf(sb, "{");
-    for (unsigned int i = 0; i < size; i += 2) {
-        if (i > 0) {
-            strbuf_printf(sb, ",");
+    if (VALUE_TYPE(v) == VALUE_DICT) {
+        unsigned int size;
+        hvalue_t *vars = value_get(v, &size);
+        size /= sizeof(hvalue_t);
+        strbuf_printf(sb, "{");
+        for (unsigned int i = 0; i < size; i += 2) {
+            if (i > 0) {
+                strbuf_printf(sb, ",");
+            }
+            char *k = value_string(vars[i]);
+            int len = strlen(k);
+            char *v = value_json(vars[i+1], global);
+            strbuf_printf(sb, " \"%.*s\": %s", len - 2, k + 1, v);
+            free(k);
+            free(v);
         }
-        char *k = value_string(vars[i]);
-		int len = strlen(k);
-        char *v = value_json(vars[i+1], global);
-        strbuf_printf(sb, " \"%.*s\": %s", len - 2, k + 1, v);
-        free(k);
-        free(v);
+        strbuf_printf(sb, " }");
     }
-    strbuf_printf(sb, " }");
+    else {
+        strbuf_value_string(sb, v);
+    }
 }
 
 void print_vars(struct global *global, FILE *file, hvalue_t v){

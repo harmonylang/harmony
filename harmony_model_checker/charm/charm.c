@@ -155,20 +155,16 @@ bool invariant_check(struct global *global, struct state *sc, struct step *step)
     assert(!step->ctx->failed);
 
     assert(step->ctx->sp == 1);
-    while (step->ctx->pc != 0) {
+    while (!step->ctx->terminated) {
         struct op_info *oi = global->code.instrs[step->ctx->pc].oi;
-        int oldpc = step->ctx->pc;
-        (*oi->op)(global->code.instrs[oldpc].env, sc, step, global);
+        (*oi->op)(global->code.instrs[step->ctx->pc].env, sc, step, global);
         if (step->ctx->failed) {
             step->ctx->sp = 0;
             return false;
         }
-        assert(step->ctx->pc != oldpc);
-        assert(!step->ctx->terminated);
     }
 
     assert(step->ctx->sp == 0);
-    assert(step->ctx->terminated);
 
     // TODO.  Report a failure
     assert(VALUE_TYPE(step->ctx->vars) == VALUE_BOOL);
@@ -920,7 +916,7 @@ void diff_state(
         fprintf(file, "          \"print\": %s,\n", print);
     }
     fprintf(file, "          \"npc\": \"%d\",\n", newctx->pc);
-    if (newcs != oldcs) {
+    if (newcs != NULL && newcs != oldcs) {
         fprintf(file, "          \"fp\": \"%d\",\n", newcs->sp + 1);
 #ifdef notdef
         {
@@ -2579,8 +2575,6 @@ setbuf(out, NULL);
             inv_ctx->atomic = 1;
             inv_ctx->atomicFlag = true;
             inv_ctx->readonly = 1;
-            value_ctx_push(inv_ctx, VALUE_LIST);
-            value_ctx_push(inv_ctx, VALUE_TO_INT(CALLTYPE_NORMAL));
 
             hvalue_t args[2];
             args[0] = bad->edge->src->state->vars;
