@@ -246,15 +246,16 @@ void interrupt_invoke(struct step *step){
     strbuf_printf(&step->explain, "operation aborted; interrupt invoked");
 }
 
-bool ind_tryload(struct engine *engine, hvalue_t dict, hvalue_t *indices, int n, hvalue_t *result){
+static unsigned int ind_tryload(struct engine *engine, hvalue_t dict, hvalue_t *indices, unsigned int n, hvalue_t *result){
     hvalue_t d = dict;
-    for (int i = 0; i < n; i++) {
+    for (unsigned int i = 0; i < n; i++) {
         if (!value_tryload(engine, d, indices[i], &d)) {
-            return false;
+            *result = d;
+            return i;
         }
     }
     *result = d;
-    return true;
+    return n;
 }
 
 static bool ind_trystore(hvalue_t root, hvalue_t *indices, int n, hvalue_t value, struct engine *engine, hvalue_t *result){
@@ -450,7 +451,7 @@ void op_Address(const void *env, struct state *state, struct step *step, struct 
         return;
     }
     if (av == VALUE_ADDRESS) {
-        value_ctx_failure(step->ctx, &step->engine, "None unexpected");
+        value_ctx_failure(step->ctx, &step->engine, "Address: None unexpected");
         return;
     }
 
@@ -1431,15 +1432,18 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
         unsigned int size;
         hvalue_t *indices = value_get(av, &size);
         size /= sizeof(hvalue_t);
+
         if (step->ai != NULL) {
             step->ai->indices = indices;
             step->ai->n = size;
             step->ai->load = true;
         }
+        assert(size > 0);
 
-        if (!ind_tryload(&step->engine, state->vars, indices, size, &v)) {
+        unsigned int k = ind_tryload(&step->engine, state->vars, indices, size, &v);
+        if (k != size) {
             char *x = indices_string(indices, size);
-            value_ctx_failure(step->ctx, &step->engine, "Load: unknown address %s", x);
+            value_ctx_failure(step->ctx, &step->engine, "Load: bad address %s", x);
             free(x);
             return;
         }
@@ -1459,12 +1463,14 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
             value_ctx_failure(step->ctx, &step->engine, "Load: out of stack");
             return;
         }
+
         if (step->ai != NULL) {
             step->ai->indices = el->indices;
             step->ai->n = el->n;
             step->ai->load = true;
         }
-        if (!ind_tryload(&step->engine, state->vars, el->indices, el->n, &v)) {
+        unsigned int k = ind_tryload(&step->engine, state->vars, el->indices, el->n, &v);
+        if (k != el->n) {
             char *x = indices_string(el->indices, el->n);
             value_ctx_failure(step->ctx, &step->engine, "Load: unknown variable %s", x);
             free(x);
@@ -1508,14 +1514,16 @@ void op_LoadVar(const void *env, struct state *state, struct step *step, struct 
                 value_ctx_failure(step->ctx, &step->engine, "LoadVar: 'this' is not a dictionary");
                 return;
             }
-            result = ind_tryload(&step->engine, ctx_this(step->ctx), &indices[1], size - 1, &v);
+            unsigned int k = ind_tryload(&step->engine, ctx_this(step->ctx), &indices[1], size - 1, &v);
+            result = k == (size - 1);
         }
         else {
             if (!check_stack(step->ctx, 1)) {
                 value_ctx_failure(step->ctx, &step->engine, "LoadVar: out of stack");
                 return;
             }
-            result = ind_tryload(&step->engine, step->ctx->vars, indices, size, &v);
+            unsigned int k = ind_tryload(&step->engine, step->ctx->vars, indices, size, &v);
+            result = k == size;
         }
 
         if (step->keep_callstack) {
