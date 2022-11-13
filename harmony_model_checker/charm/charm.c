@@ -2425,7 +2425,6 @@ int main(int argc, char **argv){
     }
 
     FILE *out = fopen(outfile, "w");
-setbuf(out, NULL);
     if (out == NULL) {
         fprintf(stderr, "charm: can't create %s\n", outfile);
         exit(1);
