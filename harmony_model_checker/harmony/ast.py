@@ -1350,7 +1350,6 @@ class LetWhenAST(AST):
         code.nextLabel(label_body)
         if self.atomically:
             code.append(ReadonlyDecOp(), self.atomically, self.endtoken, stmt=stmt)
-            code.append(AtomicDecOp(), self.token, self.endtoken, stmt=stmt)
         self.stat.compile(ns, code, stmt)
         if self.atomically:
             code.append(AtomicDecOp(), self.token, self.endtoken, stmt=stmt)
