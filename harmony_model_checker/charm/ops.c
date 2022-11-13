@@ -481,6 +481,26 @@ void op_Address(const void *env, struct state *state, struct step *step, struct 
     step->ctx->pc++;
 }
 
+static void update_callstack(struct global *global, struct step *step, hvalue_t method, hvalue_t arg) {
+    unsigned int pc = VALUE_FROM_PC(method);
+    assert(strcmp(global->code.instrs[pc].oi->name, "Frame") == 0);
+    struct callstack *cs = new_alloc(struct callstack);
+    cs->parent = step->callstack;
+    cs->pc = pc;
+    cs->arg = arg;
+    cs->sp = step->ctx->sp;
+    cs->vars = step->ctx->vars;
+    cs->return_address = ((step->ctx->pc + 1) << CALLTYPE_BITS) | CALLTYPE_NORMAL;
+    step->callstack = cs;
+
+    const struct env_Frame *ef = global->code.instrs[pc].env;
+    char *m = value_string(ef->name);
+    char *key = value_string(arg);
+    strbuf_printf(&step->explain, "pop an argument (%s) and a program counter value (%u: %s) and call the method", key, pc, m);
+    free(m);
+    free(key);
+}
+
 void op_Apply(const void *env, struct state *state, struct step *step, struct global *global){
     hvalue_t e = ctx_pop(step->ctx);
     hvalue_t method = ctx_pop(step->ctx);
@@ -568,23 +588,7 @@ void op_Apply(const void *env, struct state *state, struct step *step, struct gl
 
         // see if we need to keep track of the call stack
         if (step->keep_callstack) {
-            unsigned int pc = VALUE_FROM_PC(method);
-            assert(strcmp(global->code.instrs[pc].oi->name, "Frame") == 0);
-            struct callstack *cs = new_alloc(struct callstack);
-            cs->parent = step->callstack;
-            cs->pc = pc;
-            cs->arg = e;
-            cs->sp = step->ctx->sp;
-            cs->vars = step->ctx->vars;
-            cs->return_address = ((step->ctx->pc + 1) << CALLTYPE_BITS) | CALLTYPE_NORMAL;
-            step->callstack = cs;
-
-            const struct env_Frame *ef = global->code.instrs[pc].env;
-            char *m = value_string(ef->name);
-            char *key = value_string(e);
-            strbuf_printf(&step->explain, "pop an argument (%s) and a program counter value (%u: %s) and call the method", key, pc, m);
-            free(m);
-            free(key);
+            update_callstack(global, step, method, e);
         }
 
         ctx_push(step->ctx, e);
@@ -1443,8 +1447,11 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
         unsigned int k = ind_tryload(&step->engine, state->vars, indices, size, &v);
         if (k != size) {
             if (VALUE_TYPE(v) == VALUE_PC && k == size - 1) {
-                printf("LAMBDA!\n");
                 ctx_push(step->ctx, VALUE_TO_INT(((step->ctx->pc + 1) << CALLTYPE_BITS) | CALLTYPE_NORMAL));
+                // see if we need to keep track of the call stack
+                if (step->keep_callstack) {
+                    update_callstack(global, step, v, indices[k]);
+                }
                 ctx_push(step->ctx, indices[k]);
                 assert(VALUE_FROM_PC(v) != step->ctx->pc);
                 step->ctx->pc = VALUE_FROM_PC(v);
