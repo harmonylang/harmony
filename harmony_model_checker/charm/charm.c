@@ -414,7 +414,12 @@ static bool onestep(
                 failure = true;
                 break;
             }
-            choosing = true;
+            if (step->ctx->atomic > 0 && !step->ctx->atomicFlag) {
+                rollback = true;
+            }
+            else {
+                choosing = true;
+            }
             break;
         }
 
@@ -455,7 +460,7 @@ static bool onestep(
                 // If the step is breakable and we're in an atomic section,
                 // we should have broken at the beginning of the atomic
                 // section.  Restore that state.
-                if (step->ctx->atomic > 0 && !step->ctx->atomicFlag) {
+                if (step->ctx->atomic > 0) {
                     rollback = true;
                 }
                 break;
