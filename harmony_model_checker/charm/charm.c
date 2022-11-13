@@ -153,7 +153,6 @@ void spawn_thread(struct global *global, struct state *state, struct context *ct
 // Similar to onestep, but just for some invariant
 bool invariant_check(struct global *global, struct state *sc, struct step *step){
     assert(!step->ctx->failed);
-
     assert(step->ctx->sp == 1);
     while (!step->ctx->terminated) {
         struct op_info *oi = global->code.instrs[step->ctx->pc].oi;
@@ -166,10 +165,8 @@ bool invariant_check(struct global *global, struct state *sc, struct step *step)
 
     assert(step->ctx->sp == 1);
     hvalue_t result = value_ctx_pop(step->ctx);
-
-    // TODO.  Report a failure if not bool
     assert(VALUE_TYPE(result) == VALUE_BOOL);
-    return VALUE_FROM_BOOL(result);
+    return !VALUE_FROM_BOOL(result);
 }
 
 // Returns 0 if there are no issues, or the pc of the invariant if it failed.
@@ -212,7 +209,7 @@ unsigned int check_invariants(struct worker *w, struct node *node,
         }
         assert(step->ctx->terminated);
         if (!b) {
-            printf("INV %u %u failed\n", i, global->invs[i].pc);
+            // printf("INV %u %u failed\n", i, global->invs[i].pc);
             return global->invs[i].pc;
         }
     }

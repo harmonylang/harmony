@@ -1131,6 +1131,7 @@ class InvariantAST(AST):
         self.cond.compile(ns, code, stmt)
         if self.atomically:
             code.append(AtomicDecOp(), self.atomically, self.endtoken, stmt=stmt)
+        code.append(NaryOp(("not", file, line, column), 1), self.token, self.endtoken, stmt=stmt)
         code.append(StoreVarOp(R), self.token, self.endtoken, stmt=stmt)
         code.append(ReturnOp(), self.token, self.endtoken, stmt=stmt)
         code.nextLabel(endlabel)
