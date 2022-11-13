@@ -760,7 +760,7 @@ void op_Continue(const void *env, struct state *state, struct step *step, struct
 
 static void do_return(struct state *state, struct step *step, struct global *global, hvalue_t result){
     if (step->ctx->sp == 0) {
-        step->ctx->vars = result;
+        ctx_push(step->ctx, result);
         step->ctx->terminated = true;
         return;
     }

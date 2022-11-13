@@ -164,11 +164,12 @@ bool invariant_check(struct global *global, struct state *sc, struct step *step)
         }
     }
 
-    assert(step->ctx->sp == 0);
+    assert(step->ctx->sp == 1);
+    hvalue_t result = value_ctx_pop(step->ctx);
 
-    // TODO.  Report a failure
-    assert(VALUE_TYPE(step->ctx->vars) == VALUE_BOOL);
-    return VALUE_FROM_BOOL(step->ctx->vars);
+    // TODO.  Report a failure if not bool
+    assert(VALUE_TYPE(result) == VALUE_BOOL);
+    return VALUE_FROM_BOOL(result);
 }
 
 // Returns 0 if there are no issues, or the pc of the invariant if it failed.

@@ -611,7 +611,7 @@ void strbuf_print_vars(struct global *global, struct strbuf *sb, hvalue_t v){
         strbuf_printf(sb, " }");
     }
     else {
-        strbuf_value_string(sb, v);
+        strbuf_value_json(sb, v, global);
     }
 }
 
