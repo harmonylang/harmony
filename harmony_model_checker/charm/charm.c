@@ -1198,6 +1198,8 @@ void twostep(
     global->callstacks[pid] = step.callstack;
 }
 
+// Recursively dump the path as a sequence of macrosteps.  The steps are
+// recreated using the twostep() function.  Edge e points to the last edge.
 void path_dump(
     struct global *global,
     FILE *file,
@@ -1216,10 +1218,6 @@ void path_dump(
         fprintf(file, ",\n");
     }
 
-    fprintf(file, "    {\n");
-    fprintf(file, "      \"id\": \"%d\",\n", node->id);
-    fprintf(file, "      \"len\": \"%d\",\n", node->len);
-
     /* Find the starting context in the list of processes.  Prefer
      * sticking with the same pid if possible.
      */
@@ -1237,8 +1235,10 @@ void path_dump(
         oldpid = pid;
     }
     assert(pid < global->nprocesses);
-    // fprintf(file, "      \"OLDPID\": \"%d\",\n", pid);
-    // fprintf(file, "      \"OLDCTX\": \"%llx\",\n", ctx);
+
+    fprintf(file, "    {\n");
+    fprintf(file, "      \"id\": \"%d\",\n", node->id);
+    fprintf(file, "      \"len\": \"%d\",\n", node->len);
 
     unsigned int ctxsize;
     struct context *context = value_get(ctx, &ctxsize);
@@ -1270,7 +1270,6 @@ void path_dump(
         fprintf(file, "      \"choice\": %s,\n", c);
     }
     global->dumpfirst = true;
-    // fprintf(file, "      \"ctxid\": \"%"PRI_HVAL"\",\n", ctx);
     fprintf(file, "      \"context\": {\n");
     print_context(global, file, ctx, cs, pid, node, "        ");
     fprintf(file, "      },\n");
@@ -1281,11 +1280,7 @@ void path_dump(
     free(c);
     memset(oldctx, 0, sizeof(struct context) +
                         MAX_CONTEXT_STACK * sizeof(hvalue_t));
-#ifdef ORIG
-    (*oldctx)->pc = context->pc;
-#else
     memcpy(oldctx, context, ctxsize);
-#endif
 
     // Recreate the steps
     twostep(
@@ -1303,36 +1298,6 @@ void path_dump(
         pid
     );
     fprintf(file, "\n      ],\n");
-    // fprintf(file, "      \"NEWCTX\": \"%llx\",\n", global->processes[pid]);
-
-#ifdef notdef
-    /* Match each context to a process.
-     *
-     * TODO.  Unnecessary???
-     */
-    bool *matched = calloc(global->nprocesses, sizeof(bool));
-    for (unsigned int i = 0; i < node->state->bagsize; i++) {
-        assert(VALUE_TYPE(state_contexts(node->state)[i]) == VALUE_CONTEXT);
-        for (unsigned int j = 0; j < multiplicities(node->state)[i]; j++) {
-            unsigned int k;
-            for (k = 0; k < global->nprocesses; k++) {
-                if (!matched[k] && global->processes[k] == state_contexts(node->state)[i]) {
-                    matched[k] = true;
-                    break;
-                }
-            }
-            if (k == global->nprocesses) {
-                panic("SHOULD NOT GET HERE");
-                global->processes = realloc(global->processes, (global->nprocesses + 1) * sizeof(hvalue_t));
-                matched = realloc(matched, (global->nprocesses + 1) * sizeof(bool));
-                global->processes[global->nprocesses] = state_contexts(node->state)[i];
-                matched[global->nprocesses] = true;
-                global->nprocesses++;
-            }
-        }
-    }
-    free(matched);
-#endif
   
     print_state(global, file, node);
     fprintf(file, "    }");

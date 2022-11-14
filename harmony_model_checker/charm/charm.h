@@ -46,8 +46,8 @@ struct global {
     unsigned int scc_nwaiting;      // # workers waiting for SCC work
     unsigned int ncomponents;       // to generate component identifiers
     struct minheap *failures;       // queue of "struct failure"  (TODO: make part of struct node "issues")
-    hvalue_t *processes;            // list of contexts of processes
-    struct callstack **callstacks;  // list of callstacks of processes
+    hvalue_t *processes;            // array of contexts of processes
+    struct callstack **callstacks;  // array of callstacks of processes
     unsigned int nprocesses;        // the number of processes in the list
     double lasttime;                // since last report printed
     unsigned int last_nstates;      // to measure #states / second
