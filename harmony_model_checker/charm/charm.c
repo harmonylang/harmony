@@ -1299,6 +1299,7 @@ void path_dump(
     );
     fprintf(file, "\n      ],\n");
   
+    // Print the resulting state
     print_state(global, file, node);
     fprintf(file, "    }");
 }
