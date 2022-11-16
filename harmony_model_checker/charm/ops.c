@@ -793,6 +793,7 @@ static void do_return(struct state *state, struct step *step, struct global *glo
         step->ctx->pc = pc;
         break;
     default:
+        fprintf(stderr, "CT: %x %x\n", call, call & CALLTYPE_MASK);
         panic("Return: bad call type");
     }
 
@@ -1935,6 +1936,7 @@ void op_Spawn(
             cs->pc = pc;
             cs->arg = arg;
             cs->vars = VALUE_DICT;
+            // TODO.  What's the purpose of the next line exactly
             cs->return_address = (step->ctx->pc << CALLTYPE_BITS) | CALLTYPE_PROCESS;
             global->callstacks[global->nprocesses] = cs;
             global->nprocesses++;

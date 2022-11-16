@@ -1111,7 +1111,6 @@ class InvariantAST(AST):
     def __repr__(self):
         return "Invariant(" + str(self.cond) + ")"
 
-    # Compile similar to a lambda
     def compile(self, scope, code, stmt):
         startlabel = LabelValue(None, "invariant")
         endlabel = LabelValue(None, "invariant")
@@ -1124,18 +1123,10 @@ class InvariantAST(AST):
 
         ns = Scope(scope)
         self.define(ns, args)
-        R = ("result", file, line, column)
-        ns.names["result"] = ("local-var", R)
-        if self.atomically:
-            code.append(AtomicIncOp(False), self.token, self.endtoken, stmt=stmt)
         self.cond.compile(ns, code, stmt)
-        if self.atomically:
-            code.append(AtomicDecOp(), self.token, self.endtoken, stmt=stmt)
-        code.append(NaryOp(("not", file, line, column), 1), self.token, self.endtoken, stmt=stmt)
-        code.append(StoreVarOp(R), self.token, self.endtoken, stmt=stmt)
+        code.append(AssertOp(self.token, False), self.token, self.token, stmt=stmt)
         code.append(ReturnOp(), self.token, self.endtoken, stmt=stmt)
         code.nextLabel(endlabel)
-        (lexeme, file, line, column) = self.token
         code.append(InvariantOp(startlabel), self.token, self.endtoken, stmt=stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):

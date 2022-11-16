@@ -36,6 +36,24 @@ unsigned int run_count;  // counter of #threads
 mutex_t run_mutex;       // to protect count
 mutex_t run_waiting;     // for main thread to wait on
 
+struct microstep {
+    struct microstep *next;
+    struct state *oldstate, *newstate;
+    struct context *oldctx, *newctx;
+    bool interrupt, choose;
+    hvalue_t choice, print;
+    struct callstack *cs;
+};
+
+struct macrostep {
+    struct macrostep *next;
+    struct node *node;
+    unsigned int tid;
+    hvalue_t shared, name, arg, choice, ctx;
+    struct callstack *cs;
+    struct microstep *first, **last;
+};
+
 // One of these per worker thread
 struct worker {
     struct global *global;     // global state
@@ -153,7 +171,7 @@ void spawn_thread(struct global *global, struct state *state, struct context *ct
 // Similar to onestep, but just for some invariant
 bool invariant_check(struct global *global, struct state *sc, struct step *step){
     assert(!step->ctx->failed);
-    assert(step->ctx->sp == 1);
+    assert(step->ctx->sp == 1);     // just the (pre, post) argument
     while (!step->ctx->terminated) {
         struct op_info *oi = global->code.instrs[step->ctx->pc].oi;
         (*oi->op)(global->code.instrs[step->ctx->pc].env, sc, step, global);
@@ -162,11 +180,9 @@ bool invariant_check(struct global *global, struct state *sc, struct step *step)
             return false;
         }
     }
-
-    assert(step->ctx->sp == 1);
-    hvalue_t result = value_ctx_pop(step->ctx);
-    assert(VALUE_TYPE(result) == VALUE_BOOL);
-    return !VALUE_FROM_BOOL(result);
+    assert(step->ctx->sp == 1);     // result
+    value_ctx_pop(step->ctx);
+    return true;
 }
 
 // Returns 0 if there are no issues, or the pc of the invariant if it failed.
@@ -201,13 +217,11 @@ unsigned int check_invariants(struct worker *w, struct node *node,
         value_ctx_push(step->ctx, value_put_list(&step->engine, args, sizeof(args)));
 
         assert(strcmp(global->code.instrs[step->ctx->pc].oi->name, "Frame") == 0);
-        // int end = invariant_cnt(global->code.instrs[step->ctx->pc].env);
         bool b = invariant_check(global, state, step);
         if (step->ctx->failed) {
-            printf("Invariant evaluation failed: %s\n", value_string(ctx_failure(step->ctx)));
+            // printf("Invariant evaluation failed: %s\n", value_string(ctx_failure(step->ctx)));
             b = false;
         }
-        assert(step->ctx->terminated);
         if (!b) {
             // printf("INV %u %u failed\n", i, global->invs[i].pc);
             return global->invs[i].pc;
@@ -441,6 +455,7 @@ static bool onestep(
                                 !step->ctx->interruptlevel) {
                 // If this is a thread exit, break so we can invoke the
                 // interrupt handler one more time
+                // TODO.  DOES THIS STILL WORK???
                 if (next_instr->retop) {
                     hvalue_t ct = ctx_stack(step->ctx)[step->ctx->sp - 4];
                     assert(VALUE_TYPE(ct) == VALUE_INT);
@@ -997,6 +1012,46 @@ void diff_state(
     fprintf(file, "        }");
 }
 
+// Deep-copy a callstack
+struct callstack *callstack_copy(struct callstack *cs){
+    if (cs == NULL) {
+        return NULL;
+    }
+    struct callstack *ncs = malloc(sizeof(*ncs));
+    memcpy(ncs, cs, sizeof(*cs));
+    ncs->parent = callstack_copy(cs->parent);
+    return ncs;
+}
+
+struct microstep *diff_state2(
+    struct state *oldstate,
+    struct state *newstate,
+    struct context *oldctx,
+    struct context *newctx,
+    struct callstack *oldcs,
+    struct callstack *newcs,
+    bool interrupt,
+    bool choose,
+    hvalue_t choice,
+    hvalue_t print
+) {
+    struct microstep *micro = calloc(1, sizeof(*micro));
+
+    micro->oldctx = oldctx;
+    micro->newctx = newctx;
+    micro->oldstate = oldstate;
+    micro->newstate = newstate;
+    micro->interrupt = interrupt;
+    micro->choose = choose;
+    micro->choice = choice;
+    micro->print = print;
+    if (newcs != NULL && newcs != oldcs) {
+        micro->cs = callstack_copy(newcs);
+    }
+
+    return micro;
+}
+
 void diff_dump(
     struct global *global,
     FILE *file,
@@ -1025,6 +1080,39 @@ void diff_dump(
     memcpy(oldstate, newstate, state_size(newstate));
     memcpy(oldctx, newctx, newsize);
     *oldcs = newcs;
+}
+
+void diff_dump2(
+    struct state *oldstate,
+    struct state *newstate,
+    struct context *oldctx,
+    struct context *newctx,
+    struct callstack **oldcs,
+    struct callstack *newcs,
+    bool interrupt,
+    bool choose,
+    hvalue_t choice,
+    hvalue_t print,
+    struct step *step,
+    struct macrostep *macro
+) {
+    unsigned int oldsize = ctx_size(oldctx);
+    unsigned int newsize = ctx_size(newctx);
+    if (memcmp(oldstate, newstate, sizeof(struct state)) == 0 &&
+            newsize == oldsize &&
+            memcmp(oldctx, newctx, newsize) == 0) {
+        return;
+    }
+
+    // Keep track of old state and context for taking diffs
+    struct microstep *micro = diff_state2(oldstate, newstate, oldctx, newctx, *oldcs, newcs, interrupt, choose, choice, print);
+    memcpy(oldstate, newstate, state_size(newstate));
+    memcpy(oldctx, newctx, newsize);
+    *oldcs = newcs;
+
+    // Add to linked list
+    *macro->last = micro;
+    macro->last = &micro->next;
 }
 
 // similar to onestep.
@@ -1198,6 +1286,176 @@ void twostep(
     global->callstacks[pid] = step.callstack;
 }
 
+// similar to onestep.
+void twostep2(
+    struct global *global,
+    struct node *node,
+    hvalue_t ctx,
+    struct callstack *cs,
+    hvalue_t choice,
+    bool interrupt,
+    struct state *oldstate,
+    struct context *oldctx,
+    hvalue_t nextvars,
+    unsigned int nsteps,
+    unsigned int pid,
+    struct macrostep *macro
+){
+    // Make a copy of the state
+    struct state *sc = calloc(1, sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1));
+    memcpy(sc, node->state, state_size(node->state));
+    sc->choosing = 0;
+
+    struct step step;
+    memset(&step, 0, sizeof(step));
+    step.keep_callstack = true;
+    step.engine.values = &global->values;
+    step.callstack = cs;
+    strbuf_init(&step.explain);
+
+    unsigned int size;
+    struct context *cc = value_get(ctx, &size);
+    step.ctx = calloc(1, sizeof(struct context) +
+                            MAX_CONTEXT_STACK * sizeof(hvalue_t));
+    memcpy(step.ctx, cc, size);
+    if (step.ctx->terminated || step.ctx->failed) {
+        panic("twostep: already terminated???");
+    }
+
+    struct callstack *oldcs = NULL;
+
+    if (interrupt) {
+        assert(step.ctx->extended);
+		assert(ctx_trap_pc(step.ctx) != 0);
+        interrupt_invoke(&step);
+        diff_dump2(oldstate, sc, oldctx, step.ctx, &oldcs, step.callstack, true, false, 0, 0, &step, macro);
+    }
+
+    struct dict *infloop = NULL;        // infinite loop detector
+    unsigned int instrcnt = 0;
+    for (;;) {
+        int pc = step.ctx->pc;
+
+        hvalue_t print = 0;
+        struct instr *instrs = global->code.instrs;
+        struct op_info *oi = instrs[pc].oi;
+        if (instrs[pc].choose) {
+            assert(choice != 0);
+            char *set = value_string(ctx_stack(step.ctx)[step.ctx->sp - 1]);
+            char *sel = value_string(choice);
+            strbuf_printf(&step.explain, "replace top of stack (%s) with choice (%s)", set, sel);
+            free(set);
+            free(sel);
+            ctx_stack(step.ctx)[step.ctx->sp - 1] = choice;
+            step.ctx->pc++;
+        }
+        else if (instrs[pc].atomicinc) {
+            if (instrcnt == 0) {
+                step.ctx->atomicFlag = true;
+            }
+            (*oi->op)(instrs[pc].env, sc, &step, global);
+        }
+        else if (instrs[pc].print) {
+            print = ctx_stack(step.ctx)[step.ctx->sp - 1];
+            (*oi->op)(instrs[pc].env, sc, &step, global);
+        }
+        else {
+            (*oi->op)(instrs[pc].env, sc, &step, global);
+        }
+
+        // Infinite loop detection
+        if (!step.ctx->terminated && !step.ctx->failed) {
+            if (infloop == NULL) {
+                infloop = dict_new("infloop2", 0, 0, 0, NULL, NULL);
+            }
+
+            int ctxsize = sizeof(struct context) + step.ctx->sp * sizeof(hvalue_t);
+            if (step.ctx->extended) {
+                ctxsize += ctx_extent * sizeof(hvalue_t);
+            }
+            int combosize = ctxsize + state_size(sc);
+            char *combo = calloc(1, combosize);
+            memcpy(combo, step.ctx, ctxsize);
+            memcpy(combo + ctxsize, sc, state_size(sc));
+            bool new;
+            dict_insert(infloop, NULL, combo, combosize, &new);
+            free(combo);
+            if (!new) {
+                value_ctx_failure(step.ctx, &step.engine, "infinite loop");
+            }
+        }
+
+        assert(!instrs[pc].choose || choice != 0);
+        diff_dump2(oldstate, sc, oldctx, step.ctx, &oldcs, step.callstack, false, instrs[pc].choose, choice, print, &step, macro);
+        if (step.ctx->terminated || step.ctx->failed || step.ctx->stopped) {
+            break;
+        }
+        instrcnt++;
+        if (instrcnt >= nsteps) {
+            break;
+        }
+        if (step.ctx->pc == pc) {
+            fprintf(stderr, ">>> %s\n", oi->name);
+        }
+        assert(step.ctx->pc != pc);
+
+        /* Peek at the next instruction.
+         */
+        oi = global->code.instrs[step.ctx->pc].oi;
+        if (global->code.instrs[step.ctx->pc].choose) {
+            assert(step.ctx->sp > 0);
+#ifdef TODO
+            if (0 && step.ctx->readonly > 0) {    // TODO
+                value_ctx_failure(step.ctx, &step.engine, "can't choose in assertion or invariant");
+                diff_dump2(oldstate, sc, oldctx, step.ctx, &oldcs, step.callstack, false, global->code.instrs[pc].choose, choice, 0, &step, macro);
+                break;
+            }
+#endif
+            hvalue_t s = ctx_stack(step.ctx)[step.ctx->sp - 1];
+            if (VALUE_TYPE(s) != VALUE_SET) {
+                value_ctx_failure(step.ctx, &step.engine, "choose operation requires a set");
+                diff_dump2(oldstate, sc, oldctx, step.ctx, &oldcs, step.callstack, false, global->code.instrs[pc].choose, choice, 0, &step, macro);
+                break;
+            }
+            unsigned int size;
+            hvalue_t *vals = value_get(s, &size);
+            size /= sizeof(hvalue_t);
+            if (size == 0) {
+                value_ctx_failure(step.ctx, &step.engine, "choose operation requires a non-empty set");
+                diff_dump2(oldstate, sc, oldctx, step.ctx, &oldcs, step.callstack, false, global->code.instrs[pc].choose, choice, 0, &step, macro);
+                break;
+            }
+            if (size == 1) {
+                choice = vals[0];
+            }
+            else {
+                break;
+            }
+        }
+    }
+
+    // Remove old context from the bag
+    context_remove(sc, ctx);
+
+    hvalue_t after = value_put_context(&step.engine, step.ctx);
+
+    // Add new context to state unless it's terminated or stopped
+    if (step.ctx->stopped) {
+        sc->stopbag = value_bag_add(&step.engine, sc->stopbag, after, 1);
+    }
+    else if (!step.ctx->terminated) {
+        context_add(sc, after);
+    }
+
+    free(sc);
+    free(step.ctx);
+    strbuf_deinit(&step.explain);
+    // TODO free(step.log);
+
+    global->processes[pid] = after;
+    global->callstacks[pid] = step.callstack;
+}
+
 // Recursively dump the path as a sequence of macrosteps.  The steps are
 // recreated using the twostep() function.  Edge e points to the last edge.
 void path_dump(
@@ -1252,7 +1510,6 @@ void path_dump(
     const struct env_Frame *ef = global->code.instrs[cs->pc].env;
     char *name = value_string(ef->name);
 	int len = strlen(name);
-    char *c = e->choice == 0 ? NULL : value_json(e->choice, global);
     if (oldstate->vars != 0) {
         fprintf(file, "      \"shared\": ");
         print_vars(global, file, oldstate->vars);
@@ -1266,6 +1523,7 @@ void path_dump(
     else {
         fprintf(file, "      \"name\": \"%.*s(%s)\",\n", len - 2, name + 1, arg);
     }
+    char *c = e->choice == 0 ? NULL : value_json(e->choice, global);
     if (c != NULL) {
         fprintf(file, "      \"choice\": %s,\n", c);
     }
@@ -1302,6 +1560,75 @@ void path_dump(
     // Print the resulting state
     print_state(global, file, node);
     fprintf(file, "    }");
+}
+
+// Recursively dump the path as a sequence of macrosteps.  The steps are
+// recreated using the twostep() function.  Edge e points to the last edge.
+void path_dump2(
+    struct global *global,
+    struct edge *e,
+    struct state *oldstate,
+    struct context *oldctx
+) {
+    struct node *node = e->dst;
+    struct node *parent = e->src;
+
+    // First recurse to the previous step
+    if (parent->to_parent != NULL) {
+        path_dump2(global, parent->to_parent, oldstate, oldctx);
+    }
+
+    /* Find the starting context in the list of processes.  Prefer
+     * sticking with the same pid if possible.
+     */
+    hvalue_t ctx = e->ctx;
+    unsigned int pid;
+    if (global->processes[oldpid] == ctx) {
+        pid = oldpid;
+    }
+    else {
+        for (pid = 0; pid < global->nprocesses; pid++) {
+            if (global->processes[pid] == ctx) {
+                break;
+            }
+        }
+        oldpid = pid;
+    }
+    assert(pid < global->nprocesses);
+
+    struct macrostep *macro = calloc(sizeof(*macro), 1);
+    macro->node = node;     // for node->id and node->len
+    if (oldstate->vars != 0) {
+        macro->shared = oldstate->vars;
+    }
+
+    macro->tid = pid;
+    macro->choice = e->choice;
+    macro->ctx = ctx;
+    macro->cs = callstack_copy(global->callstacks[pid]);
+
+    unsigned int ctxsize;
+    struct context *context = value_get(ctx, &ctxsize);
+    assert(!context->terminated);
+    memset(oldctx, 0, sizeof(struct context) +
+                        MAX_CONTEXT_STACK * sizeof(hvalue_t));
+    memcpy(oldctx, context, ctxsize);
+
+    // Recreate the steps
+    twostep2(
+        global,
+        parent,
+        ctx,
+        global->callstacks[pid],
+        e->choice,
+        e->interrupt,
+        oldstate,
+        oldctx,
+        node->state->vars,
+        e->nsteps,
+        pid,
+        macro
+    );
 }
 
 static char *json_string_encode(char *s, int len){
@@ -2570,6 +2897,7 @@ int main(int argc, char **argv){
             cs->pc = inv_ctx->pc;
             cs->arg = VALUE_LIST;
             cs->vars = VALUE_DICT;
+            // TODO.  What's the purpose of the next line exactly?
             cs->return_address = (inv_ctx->pc << CALLTYPE_BITS) | CALLTYPE_PROCESS;
             global->callstacks[global->nprocesses] = cs;
             global->nprocesses++;
