@@ -3096,9 +3096,9 @@ int main(int argc, char **argv){
         struct context *oldctx = calloc(1, sizeof(struct context) +
                         MAX_CONTEXT_STACK * sizeof(hvalue_t));
         global->dumpfirst = true;
-        path_dump(global, out, edge, oldstate, oldctx);
-        // path_recompute(global, edge);
-        // path_output(global, out);
+        // path_dump(global, out, edge, oldstate, oldctx);
+        path_recompute(global, edge);
+        path_output(global, out);
 
         fprintf(out, "\n");
         free(oldctx);
