@@ -1547,15 +1547,6 @@ void path_recompute(
     macro->ctx = ctx;
     macro->cs = global->callstacks[pid];
 
-    if (global->nmacrosteps == 0) {
-        macro->shared = VALUE_DICT;
-    }
-    else {
-        struct macrostep *prev = global->macrosteps[global->nmacrosteps - 1];
-        struct microstep *last = prev->microsteps[prev->nmicrosteps - 1];
-        macro->shared = last->newstate->vars;
-    }
-
     // Recreate the steps
     twostep2(
         global,
@@ -1581,14 +1572,150 @@ void path_recompute(
     global->macrosteps[global->nmacrosteps++] = macro;
 }
 
-static void path_output_macrostep(struct global *global, FILE *file, struct macrostep *macro){
+static void path_output_microstep(struct global *global, FILE *file,
+    struct microstep *micro,
+    struct state *oldstate,
+    struct context *oldctx,
+    struct callstack *oldcs
+){
+    fprintf(file, "\n        {\n");
+    struct json_value *next = global->pretty->u.list.vals[oldctx->pc];
+    assert(next->type == JV_LIST);
+    assert(next->u.list.nvals == 2);
+    struct json_value *opstr = next->u.list.vals[0];
+    assert(opstr->type == JV_ATOM);
+    char *op = json_escape(opstr->u.atom.base, opstr->u.atom.len);
+    fprintf(file, "          \"code\": \"%s\",\n", op);
+    free(op);
+
+#ifdef notdef
+    if (strbuf_getlen(&step->explain) > 0) {
+        char *v = json_escape(step->explain.buf, step->explain.len);
+        fprintf(file, "          \"explain\": \"%s\",\n", v);
+        free(v);
+        step->explain.len = 0;
+    }
+    else {
+        struct json_value *codestr = next->u.list.vals[1];
+        assert(codestr->type == JV_ATOM);
+		char *v = json_escape(codestr->u.atom.base, codestr->u.atom.len);
+        fprintf(file, "          \"explain\": \"%s\",\n", v);
+        free(v);
+    }
+#else
+    fprintf(file, "          \"explain\": \"%s\",\n", "no explanation");
+#endif
+
+    if (micro->newstate->vars != oldstate->vars) {
+        fprintf(file, "          \"shared\": ");
+        print_vars(global, file, micro->newstate->vars);
+        fprintf(file, ",\n");
+    }
+    if (micro->interrupt) {
+        fprintf(file, "          \"interrupt\": \"True\",\n");
+    }
+    if (micro->choose) {
+        char *val = value_json(micro->choice, global);
+        fprintf(file, "          \"choose\": %s,\n", val);
+        free(val);
+    }
+    if (micro->print != 0) {
+        char *val = value_json(micro->print, global);
+        fprintf(file, "          \"print\": %s,\n", val);
+        free(val);
+    }
+
+    struct context *newctx = micro->newctx;
+    struct callstack *newcs = micro->cs;
+
+    fprintf(file, "          \"npc\": \"%d\",\n", newctx->pc);
+    if (newcs != NULL && newcs != oldcs) {
+        fprintf(file, "          \"fp\": \"%d\",\n", newcs->sp + 1);
+#ifdef notdef
+        {
+            fprintf(stderr, "STACK2 %d:\n", newctx->fp);
+            for (int x = 0; x < newctx->sp; x++) {
+                fprintf(stderr, "    %d: %s\n", x, value_string(ctx_stack(newctx)[x]));
+            }
+        }
+#endif
+
+        fprintf(file, "          \"trace\": [\n");
+        value_trace(global, file, newcs, newctx->pc, newctx->vars, "          ");
+        fprintf(file, "\n");
+        fprintf(file, "          ],\n");
+    }
+    // TODO.  Shouldn't this check if the oldctx is also extended?
+    if (newctx->extended && ctx_this(newctx) != ctx_this(oldctx)) {
+        char *val = value_json(ctx_this(newctx), global);
+        fprintf(file, "          \"this\": %s,\n", val);
+        free(val);
+    }
+    if (newctx->vars != oldctx->vars) {
+        fprintf(file, "          \"local\": ");
+        print_vars(global, file, newctx->vars);
+        fprintf(file, ",\n");
+    }
+    if (newctx->atomic != oldctx->atomic) {
+        fprintf(file, "          \"atomic\": \"%d\",\n", newctx->atomic);
+    }
+    if (newctx->readonly != oldctx->readonly) {
+        fprintf(file, "          \"readonly\": \"%d\",\n", newctx->readonly);
+    }
+    if (newctx->interruptlevel != oldctx->interruptlevel) {
+        fprintf(file, "          \"interruptlevel\": \"%d\",\n", newctx->interruptlevel ? 1 : 0);
+    }
+    if (newctx->failed) {
+        char *val = value_string(ctx_failure(newctx));
+        fprintf(file, "          \"failure\": %s,\n", val);
+        fprintf(file, "          \"mode\": \"failed\",\n");
+        free(val);
+    }
+    else if (newctx->terminated) {
+        fprintf(file, "          \"mode\": \"terminated\",\n");
+    }
+
+    unsigned int common;
+    for (common = 0; common < newctx->sp && common < oldctx->sp; common++) {
+        if (ctx_stack(newctx)[common] != ctx_stack(oldctx)[common]) {
+            break;
+        }
+    }
+    if (common < oldctx->sp) {
+        fprintf(file, "          \"pop\": \"%d\",\n", oldctx->sp - common);
+    }
+    fprintf(file, "          \"push\": [");
+    for (unsigned int i = common; i < newctx->sp; i++) {
+        if (i > common) {
+            fprintf(file, ",");
+        }
+        char *val = value_json(ctx_stack(newctx)[i], global);
+        fprintf(file, " %s", val);
+        free(val);
+    }
+    fprintf(file, " ],\n");
+
+#ifdef notdef
+    unsigned int bs = oldstate->bagsize * (sizeof(hvalue_t) + 1);
+    if (oldstate->bagsize != micro->newstate->bagsize ||
+            memcmp(state_contexts(oldstate), state_contexts(micro->newstate), bs) != 0) {
+        fprintf(file, "          \"contexts\": \"%d\",\n", micro->newstate->bagsize);
+    }
+#endif
+
+    fprintf(file, "          \"pc\": \"%d\"\n", oldctx->pc);
+
+    fprintf(file, "        }");
+}
+
+static void path_output_macrostep(struct global *global, FILE *file, struct macrostep *macro, struct state *oldstate){
     fprintf(file, "    {\n");
     fprintf(file, "      \"id\": \"%d\",\n", macro->node->id);
     fprintf(file, "      \"len\": \"%d\",\n", macro->node->len);
     fprintf(file, "      \"tid\": \"%d\",\n", macro->tid);
 
     fprintf(file, "      \"shared\": ");
-    print_vars(global, file, macro->shared);
+    print_vars(global, file, oldstate->vars);
     fprintf(file, ",\n");
 
     struct callstack *cs = macro->cs;
@@ -1620,6 +1747,21 @@ static void path_output_macrostep(struct global *global, FILE *file, struct macr
     fprintf(file, "      },\n");
 
     fprintf(file, "      \"microsteps\": [");
+    struct context *oldctx = value_get(macro->ctx, NULL);
+    struct callstack *oldcs = NULL;
+    for (unsigned int i = 0; i < macro->nmicrosteps; i++) {
+        struct microstep *micro = macro->microsteps[i];
+        path_output_microstep(global, file, micro, oldstate, oldctx, oldcs);
+        if (i == macro->nmicrosteps - 1) {
+            fprintf(file, "\n");
+        }
+        else {
+            fprintf(file, ",\n");
+        }
+        memcpy(oldstate, micro->newstate, state_size(micro->newstate));
+        oldctx = micro->newctx;
+        oldcs = micro->cs;
+    }
     fprintf(file, "\n      ],\n");
   
     // Print the resulting state
@@ -1631,8 +1773,10 @@ static void path_output_macrostep(struct global *global, FILE *file, struct macr
 // Output the macrosteps
 static void path_output(struct global *global, FILE *file){
     fprintf(file, "\n");
+    struct state *oldstate = calloc(1, sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1));
+    oldstate->vars = VALUE_DICT;
     for (unsigned int i = 0; i < global->nmacrosteps; i++) {
-        path_output_macrostep(global, file, global->macrosteps[i]);
+        path_output_macrostep(global, file, global->macrosteps[i], oldstate);
         if (i == global->nmacrosteps - 1) {
             fprintf(file, "\n");
         }

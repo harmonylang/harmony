@@ -39,7 +39,7 @@ struct macrostep {
     struct macrostep *next;
     struct node *node;
     unsigned int tid;
-    hvalue_t shared, name, arg, choice, ctx;
+    hvalue_t name, arg, choice, ctx;
     struct callstack *cs;
     unsigned int nmicrosteps, alloc_microsteps;
     struct microstep **microsteps;
