@@ -44,6 +44,10 @@ struct macrostep {
     struct callstack *cs;
     unsigned int nmicrosteps, alloc_microsteps;
     struct microstep **microsteps;
+
+    hvalue_t *processes;            // array of contexts of processes
+    struct callstack **callstacks;  // array of callstacks of processes
+    unsigned int nprocesses;        // the number of processes in the list
 };
 
 struct global {

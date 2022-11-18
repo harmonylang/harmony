@@ -1511,6 +1511,12 @@ void path_dump(
     fprintf(file, "    }");
 }
 
+static void *copy(void *p, unsigned int size){
+    char *c = malloc(size);
+    memcpy(c, p, size);
+    return c;
+}
+
 // Recursively reconstruct the steps to edge e using the twostep() function
 void path_recompute(
     struct global *global,
@@ -1562,6 +1568,11 @@ void path_recompute(
         pid,
         macro
     );
+
+    // Copy thread state
+    macro->nprocesses = global->nprocesses;
+    macro->processes = copy(global->processes, global->nprocesses * sizeof(hvalue_t));
+    macro->callstacks = copy(global->callstacks, global->nprocesses * sizeof(struct callstack *));
 
     if (global->nmacrosteps == global->alloc_macrosteps) {
         global->alloc_macrosteps *= 2;
@@ -1762,8 +1773,29 @@ static void path_output_macrostep(struct global *global, FILE *file, struct macr
     }
     fprintf(file, "\n      ],\n");
   
-    // Print the resulting state
-    print_state(global, file, macro->node);
+    fprintf(file, "      \"ctxbag\": {\n");
+    struct state *state = macro->node->state;
+    for (unsigned int i = 0; i < state->bagsize; i++) {
+        if (i > 0) {
+            fprintf(file, ",\n");
+        }
+        assert(VALUE_TYPE(state_contexts(state)[i]) == VALUE_CONTEXT);
+        fprintf(file, "          \"%"PRIx64"\": \"%u\"", state_contexts(state)[i],
+                multiplicities(state)[i]);
+    }
+    fprintf(file, "\n      },\n");
+
+    fprintf(file, "      \"contexts\": [\n");
+    for (unsigned int i = 0; i < macro->nprocesses; i++) {
+        fprintf(file, "        {\n");
+        print_context(global, file, macro->processes[i], macro->callstacks[i], i, macro->node, "          ");
+        fprintf(file, "        }");
+        if (i < macro->nprocesses - 1) {
+            fprintf(file, ",");
+        }
+        fprintf(file, "\n");
+    }
+    fprintf(file, "      ]\n");
 
     fprintf(file, "    }");
 }
@@ -3064,9 +3096,9 @@ int main(int argc, char **argv){
         struct context *oldctx = calloc(1, sizeof(struct context) +
                         MAX_CONTEXT_STACK * sizeof(hvalue_t));
         global->dumpfirst = true;
-        // path_dump(global, out, edge, oldstate, oldctx);
-        path_recompute(global, edge);
-        path_output(global, out);
+        path_dump(global, out, edge, oldstate, oldctx);
+        // path_recompute(global, edge);
+        // path_output(global, out);
 
         fprintf(out, "\n");
         free(oldctx);
