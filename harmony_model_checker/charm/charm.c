@@ -1225,6 +1225,8 @@ static void make_microstep(
     micro->choice = choice;
     micro->print = print;
     micro->cs = newcs;
+    micro->explain = json_escape(step->explain.buf, step->explain.len);
+    step->explain.len = 0;
 
     if (macro->nmicrosteps == macro->alloc_microsteps) {
         macro->alloc_microsteps *= 2;
@@ -1588,23 +1590,19 @@ static void path_output_microstep(struct global *global, FILE *file,
     fprintf(file, "          \"code\": \"%s\",\n", op);
     free(op);
 
-#ifdef notdef
-    if (strbuf_getlen(&step->explain) > 0) {
-        char *v = json_escape(step->explain.buf, step->explain.len);
-        fprintf(file, "          \"explain\": \"%s\",\n", v);
-        free(v);
-        step->explain.len = 0;
-    }
-    else {
+    if (strlen(micro->explain) == 0) {
+        struct json_value *next = global->pretty->u.list.vals[oldctx->pc];
+        assert(next->type == JV_LIST);
+        assert(next->u.list.nvals == 2);
         struct json_value *codestr = next->u.list.vals[1];
         assert(codestr->type == JV_ATOM);
 		char *v = json_escape(codestr->u.atom.base, codestr->u.atom.len);
         fprintf(file, "          \"explain\": \"%s\",\n", v);
         free(v);
     }
-#else
-    fprintf(file, "          \"explain\": \"%s\",\n", "no explanation");
-#endif
+    else {
+        fprintf(file, "          \"explain\": \"%s\",\n", micro->explain);
+    }
 
     if (micro->newstate->vars != oldstate->vars) {
         fprintf(file, "          \"shared\": ");

@@ -33,6 +33,7 @@ struct microstep {
     bool interrupt, choose;
     hvalue_t choice, print;
     struct callstack *cs;
+    char *explain;
 };
 
 struct macrostep {
