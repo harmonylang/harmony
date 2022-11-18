@@ -22,7 +22,27 @@ struct values {
 
 struct invariant {
     unsigned int pc;                // location of invariant code
+    // TODO.  May not need the following since we can get it from env
     bool pre;                       // uses "pre" or not
+};
+
+struct microstep {
+    struct microstep *next;
+    struct state *oldstate, *newstate;
+    struct context *oldctx, *newctx;
+    bool interrupt, choose;
+    hvalue_t choice, print;
+    struct callstack *cs;
+};
+
+struct macrostep {
+    struct macrostep *next;
+    struct node *node;
+    unsigned int tid;
+    hvalue_t name, arg, choice, ctx;
+    struct callstack *cs;
+    unsigned int nmicrosteps, alloc_microsteps;
+    struct microstep **microsteps;
 };
 
 struct global {
@@ -58,6 +78,8 @@ struct global {
     struct scc *scc_todo;           // SCC search
     struct json_value *pretty;      // for output
     bool run_direct;                // non-model-checked mode
+    unsigned int nmacrosteps, alloc_macrosteps;
+    struct macrostep **macrosteps;
 };
 
 #endif //SRC_CHARM_H

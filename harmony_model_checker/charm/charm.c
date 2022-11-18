@@ -36,24 +36,6 @@ unsigned int run_count;  // counter of #threads
 mutex_t run_mutex;       // to protect count
 mutex_t run_waiting;     // for main thread to wait on
 
-struct microstep {
-    struct microstep *next;
-    struct state *oldstate, *newstate;
-    struct context *oldctx, *newctx;
-    bool interrupt, choose;
-    hvalue_t choice, print;
-    struct callstack *cs;
-};
-
-struct macrostep {
-    struct macrostep *next;
-    struct node *node;
-    unsigned int tid;
-    hvalue_t shared, name, arg, choice, ctx;
-    struct callstack *cs;
-    struct microstep *first, **last;
-};
-
 // One of these per worker thread
 struct worker {
     struct global *global;     // global state
@@ -816,7 +798,7 @@ void print_context(
     }
 
     if (c->terminated) {
-        fprintf(file, "%s\"mode\": \"terminated\"\n", prefix);
+        fprintf(file, "%s\"mode\": \"terminated\"", prefix);
     }
     else {
         if (c->failed) {
@@ -829,6 +811,7 @@ void print_context(
             fprintf(file, "%s\"mode\": \"%s\"", prefix, ctx_status(node, ctx));
         }
     }
+    fprintf(file, "\n");
 
 #ifdef notdef
     fprintf(file, "          \"stack\": [\n");
@@ -1012,46 +995,6 @@ void diff_state(
     fprintf(file, "        }");
 }
 
-// Deep-copy a callstack
-struct callstack *callstack_copy(struct callstack *cs){
-    if (cs == NULL) {
-        return NULL;
-    }
-    struct callstack *ncs = malloc(sizeof(*ncs));
-    memcpy(ncs, cs, sizeof(*cs));
-    ncs->parent = callstack_copy(cs->parent);
-    return ncs;
-}
-
-struct microstep *diff_state2(
-    struct state *oldstate,
-    struct state *newstate,
-    struct context *oldctx,
-    struct context *newctx,
-    struct callstack *oldcs,
-    struct callstack *newcs,
-    bool interrupt,
-    bool choose,
-    hvalue_t choice,
-    hvalue_t print
-) {
-    struct microstep *micro = calloc(1, sizeof(*micro));
-
-    micro->oldctx = oldctx;
-    micro->newctx = newctx;
-    micro->oldstate = oldstate;
-    micro->newstate = newstate;
-    micro->interrupt = interrupt;
-    micro->choose = choose;
-    micro->choice = choice;
-    micro->print = print;
-    if (newcs != NULL && newcs != oldcs) {
-        micro->cs = callstack_copy(newcs);
-    }
-
-    return micro;
-}
-
 void diff_dump(
     struct global *global,
     FILE *file,
@@ -1080,39 +1023,6 @@ void diff_dump(
     memcpy(oldstate, newstate, state_size(newstate));
     memcpy(oldctx, newctx, newsize);
     *oldcs = newcs;
-}
-
-void diff_dump2(
-    struct state *oldstate,
-    struct state *newstate,
-    struct context *oldctx,
-    struct context *newctx,
-    struct callstack **oldcs,
-    struct callstack *newcs,
-    bool interrupt,
-    bool choose,
-    hvalue_t choice,
-    hvalue_t print,
-    struct step *step,
-    struct macrostep *macro
-) {
-    unsigned int oldsize = ctx_size(oldctx);
-    unsigned int newsize = ctx_size(newctx);
-    if (memcmp(oldstate, newstate, sizeof(struct state)) == 0 &&
-            newsize == oldsize &&
-            memcmp(oldctx, newctx, newsize) == 0) {
-        return;
-    }
-
-    // Keep track of old state and context for taking diffs
-    struct microstep *micro = diff_state2(oldstate, newstate, oldctx, newctx, *oldcs, newcs, interrupt, choose, choice, print);
-    memcpy(oldstate, newstate, state_size(newstate));
-    memcpy(oldctx, newctx, newsize);
-    *oldcs = newcs;
-
-    // Add to linked list
-    *macro->last = micro;
-    macro->last = &micro->next;
 }
 
 // similar to onestep.
@@ -1286,6 +1196,47 @@ void twostep(
     global->callstacks[pid] = step.callstack;
 }
 
+// Save the state and the context of a microstep.
+static void make_microstep(
+    struct state *newstate,
+    struct context *newctx,
+    struct callstack *newcs,
+    bool interrupt,
+    bool choose,
+    hvalue_t choice,
+    hvalue_t print,
+    struct step *step,
+    struct macrostep *macro
+) {
+    struct microstep *micro = calloc(1, sizeof(*micro));
+
+    // Save the current context
+    unsigned int cs = ctx_size(newctx);
+    micro->newctx = malloc(cs);
+    memcpy(micro->newctx, newctx, cs);
+
+    // Save the current state
+    unsigned int ss = state_size(newstate);
+    micro->newstate = malloc(ss);
+    memcpy(micro->newstate, newstate, ss);
+
+    micro->interrupt = interrupt;
+    micro->choose = choose;
+    micro->choice = choice;
+    micro->print = print;
+    micro->cs = newcs;
+
+    if (macro->nmicrosteps == macro->alloc_microsteps) {
+        macro->alloc_microsteps *= 2;
+        if (macro->alloc_microsteps < 64) {
+            macro->alloc_microsteps = 64;
+        }
+        macro->microsteps = realloc(macro->microsteps,
+            macro->alloc_microsteps * sizeof(*macro->microsteps));
+    }
+    macro->microsteps[macro->nmicrosteps++] = micro;
+}
+
 // similar to onestep.
 void twostep2(
     struct global *global,
@@ -1294,8 +1245,6 @@ void twostep2(
     struct callstack *cs,
     hvalue_t choice,
     bool interrupt,
-    struct state *oldstate,
-    struct context *oldctx,
     hvalue_t nextvars,
     unsigned int nsteps,
     unsigned int pid,
@@ -1322,13 +1271,11 @@ void twostep2(
         panic("twostep: already terminated???");
     }
 
-    struct callstack *oldcs = NULL;
-
     if (interrupt) {
         assert(step.ctx->extended);
 		assert(ctx_trap_pc(step.ctx) != 0);
         interrupt_invoke(&step);
-        diff_dump2(oldstate, sc, oldctx, step.ctx, &oldcs, step.callstack, true, false, 0, 0, &step, macro);
+        make_microstep(sc, step.ctx, step.callstack, true, false, 0, 0, &step, macro);
     }
 
     struct dict *infloop = NULL;        // infinite loop detector
@@ -1386,7 +1333,7 @@ void twostep2(
         }
 
         assert(!instrs[pc].choose || choice != 0);
-        diff_dump2(oldstate, sc, oldctx, step.ctx, &oldcs, step.callstack, false, instrs[pc].choose, choice, print, &step, macro);
+        make_microstep(sc, step.ctx, step.callstack, false, instrs[pc].choose, choice, print, &step, macro);
         if (step.ctx->terminated || step.ctx->failed || step.ctx->stopped) {
             break;
         }
@@ -1407,14 +1354,14 @@ void twostep2(
 #ifdef TODO
             if (0 && step.ctx->readonly > 0) {    // TODO
                 value_ctx_failure(step.ctx, &step.engine, "can't choose in assertion or invariant");
-                diff_dump2(oldstate, sc, oldctx, step.ctx, &oldcs, step.callstack, false, global->code.instrs[pc].choose, choice, 0, &step, macro);
+                make_microstep(sc, step.ctx, step.callstack, false, global->code.instrs[pc].choose, choice, 0, &step, macro);
                 break;
             }
 #endif
             hvalue_t s = ctx_stack(step.ctx)[step.ctx->sp - 1];
             if (VALUE_TYPE(s) != VALUE_SET) {
                 value_ctx_failure(step.ctx, &step.engine, "choose operation requires a set");
-                diff_dump2(oldstate, sc, oldctx, step.ctx, &oldcs, step.callstack, false, global->code.instrs[pc].choose, choice, 0, &step, macro);
+                make_microstep(sc, step.ctx, step.callstack, false, global->code.instrs[pc].choose, choice, 0, &step, macro);
                 break;
             }
             unsigned int size;
@@ -1422,7 +1369,7 @@ void twostep2(
             size /= sizeof(hvalue_t);
             if (size == 0) {
                 value_ctx_failure(step.ctx, &step.engine, "choose operation requires a non-empty set");
-                diff_dump2(oldstate, sc, oldctx, step.ctx, &oldcs, step.callstack, false, global->code.instrs[pc].choose, choice, 0, &step, macro);
+                make_microstep(sc, step.ctx, step.callstack, false, global->code.instrs[pc].choose, choice, 0, &step, macro);
                 break;
             }
             if (size == 1) {
@@ -1562,20 +1509,17 @@ void path_dump(
     fprintf(file, "    }");
 }
 
-// Recursively dump the path as a sequence of macrosteps.  The steps are
-// recreated using the twostep() function.  Edge e points to the last edge.
-void path_dump2(
+// Recursively reconstruct the steps to edge e using the twostep() function
+void path_recompute(
     struct global *global,
-    struct edge *e,
-    struct state *oldstate,
-    struct context *oldctx
+    struct edge *e
 ) {
     struct node *node = e->dst;
     struct node *parent = e->src;
 
     // First recurse to the previous step
     if (parent->to_parent != NULL) {
-        path_dump2(global, parent->to_parent, oldstate, oldctx);
+        path_recompute(global, parent->to_parent);
     }
 
     /* Find the starting context in the list of processes.  Prefer
@@ -1597,22 +1541,11 @@ void path_dump2(
     assert(pid < global->nprocesses);
 
     struct macrostep *macro = calloc(sizeof(*macro), 1);
-    macro->node = node;     // for node->id and node->len
-    if (oldstate->vars != 0) {
-        macro->shared = oldstate->vars;
-    }
-
+    macro->node = node;
     macro->tid = pid;
     macro->choice = e->choice;
     macro->ctx = ctx;
-    macro->cs = callstack_copy(global->callstacks[pid]);
-
-    unsigned int ctxsize;
-    struct context *context = value_get(ctx, &ctxsize);
-    assert(!context->terminated);
-    memset(oldctx, 0, sizeof(struct context) +
-                        MAX_CONTEXT_STACK * sizeof(hvalue_t));
-    memcpy(oldctx, context, ctxsize);
+    macro->cs = global->callstacks[pid];
 
     // Recreate the steps
     twostep2(
@@ -1622,13 +1555,83 @@ void path_dump2(
         global->callstacks[pid],
         e->choice,
         e->interrupt,
-        oldstate,
-        oldctx,
         node->state->vars,
         e->nsteps,
         pid,
         macro
     );
+
+    if (global->nmacrosteps == global->alloc_macrosteps) {
+        global->alloc_macrosteps *= 2;
+        if (global->alloc_macrosteps < 8) {
+            global->alloc_macrosteps = 8;
+        }
+        global->macrosteps = realloc(global->macrosteps,
+            global->alloc_macrosteps * sizeof(*global->macrosteps));
+    }
+    global->macrosteps[global->nmacrosteps++] = macro;
+}
+
+static void path_output_macrostep(struct global *global, FILE *file, struct macrostep *macro){
+    fprintf(file, "    {\n");
+    fprintf(file, "      \"id\": \"%d\",\n", macro->node->id);
+    fprintf(file, "      \"len\": \"%d\",\n", macro->node->len);
+    fprintf(file, "      \"tid\": \"%d\",\n", macro->tid);
+
+    // TODO.  Not sure about this
+    fprintf(file, "      \"shared\": ");
+    print_vars(global, file, macro->node->to_parent->src->state->vars);
+    fprintf(file, ",\n");
+
+    struct callstack *cs = macro->cs;
+    while (cs->parent != NULL) {
+        cs = cs->parent;
+    }
+    assert(strcmp(global->code.instrs[cs->pc].oi->name, "Frame") == 0);
+    const struct env_Frame *ef = global->code.instrs[cs->pc].env;
+    char *name = value_string(ef->name);
+	int len = strlen(name);
+    char *arg = json_escape_value(cs->arg);
+    if (*arg == '(') {
+        fprintf(file, "      \"name\": \"%.*s%s\",\n", len - 2, name + 1, arg);
+    }
+    else {
+        fprintf(file, "      \"name\": \"%.*s(%s)\",\n", len - 2, name + 1, arg);
+    }
+    free(name);
+    free(arg);
+
+    char *c = macro->choice == 0 ? NULL : value_json(macro->choice, global);
+    if (c != NULL) {
+        fprintf(file, "      \"choice\": %s,\n", c);
+    }
+    free(c);
+
+    fprintf(file, "      \"context\": {\n");
+    print_context(global, file, macro->ctx, macro->cs, macro->tid, macro->node, "        ");
+    fprintf(file, "      },\n");
+
+    fprintf(file, "      \"microsteps\": [");
+    fprintf(file, "\n      ],\n");
+  
+    // Print the resulting state
+    print_state(global, file, macro->node);
+
+    fprintf(file, "    }");
+}
+
+// Output the macrosteps
+static void path_output(struct global *global, FILE *file){
+    fprintf(file, "\n");
+    for (unsigned int i = 0; i < global->nmacrosteps; i++) {
+        path_output_macrostep(global, file, global->macrosteps[i]);
+        if (i == global->nmacrosteps - 1) {
+            fprintf(file, "\n");
+        }
+        else {
+            fprintf(file, ",\n");
+        }
+    }
 }
 
 static char *json_string_encode(char *s, int len){
@@ -2911,7 +2914,9 @@ int main(int argc, char **argv){
         struct context *oldctx = calloc(1, sizeof(struct context) +
                         MAX_CONTEXT_STACK * sizeof(hvalue_t));
         global->dumpfirst = true;
-        path_dump(global, out, edge, oldstate, oldctx);
+        // path_dump(global, out, edge, oldstate, oldctx);
+        path_recompute(global, edge);
+        path_output(global, out);
 
         fprintf(out, "\n");
         free(oldctx);
