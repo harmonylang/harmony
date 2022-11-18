@@ -483,7 +483,10 @@ void op_Address(const void *env, struct state *state, struct step *step, struct 
 
 static void update_callstack(struct global *global, struct step *step, hvalue_t method, hvalue_t arg) {
     unsigned int pc = VALUE_FROM_PC(method);
-    assert(strcmp(global->code.instrs[pc].oi->name, "Frame") == 0);
+
+    // This may not hold because Builtin commands
+    // assert(strcmp(global->code.instrs[pc].oi->name, "Frame") == 0);
+
     struct callstack *cs = new_alloc(struct callstack);
     cs->parent = step->callstack;
     cs->pc = pc;
