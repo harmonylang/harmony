@@ -1547,6 +1547,15 @@ void path_recompute(
     macro->ctx = ctx;
     macro->cs = global->callstacks[pid];
 
+    if (global->nmacrosteps == 0) {
+        macro->shared = VALUE_DICT;
+    }
+    else {
+        struct macrostep *prev = global->macrosteps[global->nmacrosteps - 1];
+        struct microstep *last = prev->microsteps[prev->nmicrosteps - 1];
+        macro->shared = last->newstate->vars;
+    }
+
     // Recreate the steps
     twostep2(
         global,
@@ -1578,9 +1587,8 @@ static void path_output_macrostep(struct global *global, FILE *file, struct macr
     fprintf(file, "      \"len\": \"%d\",\n", macro->node->len);
     fprintf(file, "      \"tid\": \"%d\",\n", macro->tid);
 
-    // TODO.  Not sure about this
     fprintf(file, "      \"shared\": ");
-    print_vars(global, file, macro->node->to_parent->src->state->vars);
+    print_vars(global, file, macro->shared);
     fprintf(file, ",\n");
 
     struct callstack *cs = macro->cs;

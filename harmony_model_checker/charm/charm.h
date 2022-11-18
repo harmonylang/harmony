@@ -28,8 +28,8 @@ struct invariant {
 
 struct microstep {
     struct microstep *next;
-    struct state *oldstate, *newstate;
-    struct context *oldctx, *newctx;
+    struct state *newstate;
+    struct context *newctx;
     bool interrupt, choose;
     hvalue_t choice, print;
     struct callstack *cs;
@@ -39,7 +39,7 @@ struct macrostep {
     struct macrostep *next;
     struct node *node;
     unsigned int tid;
-    hvalue_t name, arg, choice, ctx;
+    hvalue_t shared, name, arg, choice, ctx;
     struct callstack *cs;
     unsigned int nmicrosteps, alloc_microsteps;
     struct microstep **microsteps;
