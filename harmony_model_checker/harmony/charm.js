@@ -151,7 +151,7 @@ function drawTimeLine(mes) {
     }
     nsteps -= xboxes;
   }
-  mes.nextstep.innerHTML = "";
+  // mes.nextstep.innerHTML = "";
   if (currentTime >= t) {
     for (var i = 0; i < mes.contexts.length; i++) {
       var c = mes.contexts[i];
@@ -180,7 +180,7 @@ function drawTimeLine(mes) {
             mes.nextstep.innerHTML = "about to print " + json_string(c.next.value);
             break;
           default:
-            mes.nextstep.innerHTML = c.next.type;
+             mes.nextstep.innerHTML = "about to execute " + c.next.type;
           }
         }
         break;
@@ -584,6 +584,7 @@ function escapeHTML(s) {
 
 function run_microstep(t) {
   var mis = microsteps[t];
+  var mes = megasteps[mis.mesidx];
   var mesrow = mestable.rows[mis.mesidx];
   mesrow.cells[3].innerHTML = mis.npc;
 
@@ -609,7 +610,6 @@ function run_microstep(t) {
     threadtable.rows[tid].cells[1].innerHTML = get_status(cv);
     threadtable.rows[tid].cells[3].innerHTML = cv.stack.slice(cv.fp).map(x => json_string(x));
   }
-  var mes = megasteps[mis.mesidx];
   if (t != mes.startTime + mes.nsteps - 1) {
     threadtable.rows[mis.tid].cells[1].innerHTML = get_status(mis);
   }
@@ -645,14 +645,18 @@ function run_microstep(t) {
   }
 
   if (t+1 < microsteps.length) {
-    var nmis = microsteps[t+1];
-    hvmrow.innerHTML = "T" + nmis.tid + "/" + nmis.pc + ": " + nmis.hvm + " (" + nmis.explain + ")"
+    if (nmis.tid == mis.tid) {
+        var nmis = microsteps[t+1];
+        mes.nextstep.innerHTML = "next: " + nmis.explain;
+    }
+    // hvmrow.innerHTML = "T" + nmis.tid + "/" + nmis.pc + ": " + nmis.hvm + " (" + nmis.explain + ")"
     currCloc = document.getElementById('C' + nmis.pc)
     currOffset = document.getElementById('P' + nmis.pc);
   }
   else {
     currCloc = null;
     currOffset = mis.offset;
+    mes.nextstep.innerHTML = "";
   }
 }
 
@@ -680,7 +684,7 @@ function run_microsteps() {
   var mis = microsteps[0];
   var mesrow = mestable.rows[mis.mesidx];
   mesrow.cells[3].innerHTML = 0;
-  hvmrow.innerHTML = "T" + mis.tid + "/" + mis.pc + ": " + mis.hvm + " (" + mis.explain + ")"
+  // hvmrow.innerHTML = "T" + mis.tid + "/" + mis.pc + ": " + mis.hvm + " (" + mis.explain + ")"
 
   for (var t = 0; t < currentTime; t++) {
     run_microstep(t);
@@ -688,6 +692,8 @@ function run_microsteps() {
   if (0 < currentTime && currentTime < microsteps.length &&
             microsteps[currentTime - 1].tid != microsteps[currentTime].tid) {
     var mis = microsteps[currentTime];
+    var mes = megasteps[mis.mesidx];
+    mes.nextstep.innerHTML = "next: " + mis.explain;
     var mesrow = mestable.rows[mis.mesidx];
     mesrow.cells[3].innerHTML = mis.pc;
 
@@ -695,10 +701,11 @@ function run_microsteps() {
       mesrow.cells[i + 4].innerHTML = get_shared(mis.shared, vardir[i])
     }
   }
+  container.scrollTop = currOffset.offsetTop;
+
   for (var i = 0; i < nmegasteps; i++) {
     drawTimeLine(megasteps[i]);
   }
-  container.scrollTop = currOffset.offsetTop;
 
   if (currCloc != null) {
     currCloc.style.color = "red";
