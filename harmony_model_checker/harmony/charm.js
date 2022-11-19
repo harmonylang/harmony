@@ -665,7 +665,7 @@ function run_microstep(t) {
   else {
     currCloc = null;
     currOffset = mis.offset;
-    mes.nextstep.innerHTML = "";
+    updateStatus(mes);
   }
 }
 
