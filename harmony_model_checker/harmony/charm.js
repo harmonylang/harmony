@@ -685,6 +685,16 @@ function run_microsteps() {
   for (var t = 0; t < currentTime; t++) {
     run_microstep(t);
   }
+  if (0 < currentTime && currentTime < microsteps.length &&
+            microsteps[currentTime - 1].tid != microsteps[currentTime].tid) {
+    var mis = microsteps[currentTime];
+    var mesrow = mestable.rows[mis.mesidx];
+    mesrow.cells[3].innerHTML = mis.pc;
+
+    for (var i = 0; i < vardir.length; i++) {
+      mesrow.cells[i + 4].innerHTML = get_shared(mis.shared, vardir[i])
+    }
+  }
   for (var i = 0; i < nmegasteps; i++) {
     drawTimeLine(megasteps[i]);
   }
