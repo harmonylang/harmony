@@ -1212,13 +1212,13 @@ static void make_microstep(
 
     // Save the current context
     unsigned int cs = ctx_size(newctx);
-    micro->newctx = malloc(cs);
-    memcpy(micro->newctx, newctx, cs);
+    micro->ctx = malloc(cs);
+    memcpy(micro->ctx, newctx, cs);
 
     // Save the current state
     unsigned int ss = state_size(newstate);
-    micro->newstate = malloc(ss);
-    memcpy(micro->newstate, newstate, ss);
+    micro->state = malloc(ss);
+    memcpy(micro->state, newstate, ss);
 
     micro->interrupt = interrupt;
     micro->choose = choose;
@@ -1619,9 +1619,9 @@ static void path_output_microstep(struct global *global, FILE *file,
         fprintf(file, "          \"explain\": \"%s\",\n", micro->explain);
     }
 
-    if (micro->newstate->vars != oldstate->vars) {
+    if (micro->state->vars != oldstate->vars) {
         fprintf(file, "          \"shared\": ");
-        print_vars(global, file, micro->newstate->vars);
+        print_vars(global, file, micro->state->vars);
         fprintf(file, ",\n");
     }
     if (micro->interrupt) {
@@ -1638,7 +1638,7 @@ static void path_output_microstep(struct global *global, FILE *file,
         free(val);
     }
 
-    struct context *newctx = micro->newctx;
+    struct context *newctx = micro->ctx;
     struct callstack *newcs = micro->cs;
 
     fprintf(file, "          \"npc\": \"%d\",\n", newctx->pc);
@@ -1710,9 +1710,9 @@ static void path_output_microstep(struct global *global, FILE *file,
 
 #ifdef notdef
     unsigned int bs = oldstate->bagsize * (sizeof(hvalue_t) + 1);
-    if (oldstate->bagsize != micro->newstate->bagsize ||
-            memcmp(state_contexts(oldstate), state_contexts(micro->newstate), bs) != 0) {
-        fprintf(file, "          \"contexts\": \"%d\",\n", micro->newstate->bagsize);
+    if (oldstate->bagsize != micro->state->bagsize ||
+            memcmp(state_contexts(oldstate), state_contexts(micro->state), bs) != 0) {
+        fprintf(file, "          \"contexts\": \"%d\",\n", micro->state->bagsize);
     }
 #endif
 
@@ -1762,6 +1762,7 @@ static void path_output_macrostep(struct global *global, FILE *file, struct macr
     fprintf(file, "      \"microsteps\": [");
     struct context *oldctx = value_get(macro->ctx, NULL);
     struct callstack *oldcs = NULL;
+    printf("NMICRO %u %u\n", macro->tid, macro->nmicrosteps);
     for (unsigned int i = 0; i < macro->nmicrosteps; i++) {
         struct microstep *micro = macro->microsteps[i];
         path_output_microstep(global, file, micro, oldstate, oldctx, oldcs);
@@ -1771,8 +1772,8 @@ static void path_output_macrostep(struct global *global, FILE *file, struct macr
         else {
             fprintf(file, ",\n");
         }
-        memcpy(oldstate, micro->newstate, state_size(micro->newstate));
-        oldctx = micro->newctx;
+        memcpy(oldstate, micro->state, state_size(micro->state));
+        oldctx = micro->ctx;
         oldcs = micro->cs;
     }
     fprintf(file, "\n      ],\n");
@@ -1816,6 +1817,42 @@ static void path_output(struct global *global, FILE *file){
         }
         else {
             fprintf(file, ",\n");
+        }
+    }
+}
+
+// Remove unneeded microsteps from error trace
+static void path_trim(struct global *global, struct engine *engine){
+    // Find the last macrostep for each thread
+    unsigned int *last = calloc(global->nprocesses, sizeof(*last));
+    for (unsigned int i = 0; i < global->nmacrosteps; i++) {
+        last[global->macrosteps[i]->tid] = i;
+    }
+
+    struct instr *instrs = global->code.instrs;
+    for (unsigned int i = 1; i < global->nprocesses; i++) {
+        // Don't trim the very last step
+        if (last[i] == global->nmacrosteps - 1) {
+            continue;
+        }
+        struct macrostep *macro = global->macrosteps[last[i]];
+
+        // Look up the last microstep of this thread, which wasn't the
+        // last one to take a step overall
+        struct context *cc = value_get(macro->ctx, NULL);
+        struct microstep *ls = macro->microsteps[macro->nmicrosteps - 1];
+        struct instr *fi = &instrs[cc->pc];
+        struct instr *li = &instrs[ls->ctx->pc];
+        if ((fi->store || fi->load || fi->print) && (li->store || li->load || li->print)) {
+
+            printf("LAST STEP OF %u = %u (%u)\n", i, last[i], macro->nmicrosteps);
+            macro->nmicrosteps = 1;
+            hvalue_t ictx = value_put_context(engine, macro->microsteps[0]->ctx);
+            for (unsigned int j = last[i]; j < global->nmacrosteps; j++) {
+                struct macrostep *m = global->macrosteps[j];
+                m->processes[macro->tid] = ictx;
+                m->callstacks[macro->tid] = macro->microsteps[0]->cs;
+            }
         }
     }
 }
@@ -3105,6 +3142,9 @@ int main(int argc, char **argv){
         free(oldctx);
 #endif
         path_recompute(global, edge);
+        if (bad->type == FAIL_INVARIANT || bad->type == FAIL_SAFETY) {
+            path_trim(global, &engine);
+        }
         path_output(global, out);
 
         fprintf(out, "\n");

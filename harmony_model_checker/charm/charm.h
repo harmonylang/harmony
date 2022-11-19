@@ -26,16 +26,18 @@ struct invariant {
     bool pre;                       // uses "pre" or not
 };
 
+// Info about a microstep
 struct microstep {
     struct microstep *next;
-    struct state *newstate;
-    struct context *newctx;
+    struct state *state;
+    struct context *ctx;
     bool interrupt, choose;
     hvalue_t choice, print;
     struct callstack *cs;
     char *explain;
 };
 
+// Info about a macrostep
 struct macrostep {
     struct macrostep *next;
     struct node *node;
@@ -76,15 +78,14 @@ struct global {
     unsigned int nprocesses;        // the number of processes in the list
     double lasttime;                // since last report printed
     unsigned int last_nstates;      // to measure #states / second
-#ifdef PATH_DUMP
-    bool dumpfirst;                 // for json dumping
-#endif
     struct dfa *dfa;                // for tracking correct behaviors
     unsigned int diameter;          // graph diameter
     bool phase2;                    // when model checking is done and graph analysis starts
     struct scc *scc_todo;           // SCC search
     struct json_value *pretty;      // for output
     bool run_direct;                // non-model-checked mode
+
+    // Reconstructed error trace stored here
     unsigned int nmacrosteps, alloc_macrosteps;
     struct macrostep **macrosteps;
 };
