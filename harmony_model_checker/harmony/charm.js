@@ -8,7 +8,7 @@ var curMegaStep = 0;
 var mestable = document.getElementById("mestable");
 var threadtable = document.getElementById("threadtable");
 var coderow = document.getElementById("coderow");
-var hvmrow = document.getElementById("hvmrow");
+// var hvmrow = document.getElementById("hvmrow");
 var container = document.getElementById('table-scroll');
 var currOffset = 0;
 var currCloc = null;
@@ -151,40 +151,42 @@ function drawTimeLine(mes) {
     }
     nsteps -= xboxes;
   }
-  // mes.nextstep.innerHTML = "";
-  if (currentTime >= t) {
-    for (var i = 0; i < mes.contexts.length; i++) {
-      var c = mes.contexts[i];
-      if (c.tid == mes.tid) {
-        if (c.mode == "terminated") {
-          mes.nextstep.innerHTML = "terminated"
-        }
-        else if (c.hasOwnProperty("next")) {
-          switch (c.next.type) {
-          case "Store":
-            mes.nextstep.innerHTML = "about to store " + json_string(c.next.value) + " in variable " + c.next.var;
-            break;
-          case "Load":
-            mes.nextstep.innerHTML = "about to load variable " + c.next.var;
-            break;
-          case "Assert":
-            var loc = getCode(c.pc);
-            mes.nextstep.innerHTML = "assertion failed in " + '<a href="' + loc.file + '">' + loc.module + "</a>:" + loc.line + ":" + loc.code;
-            mes.nextstep.style.color = "red";
-            break;
-          case "AtomicInc":
-            var loc = getCode(c.pc);
-            mes.nextstep.innerHTML = "about to execute in " + '<a href="' + loc.file + '">' + loc.module + "</a>:" + loc.line + ":" + loc.code;
-            break;
-          case "Print":
-            mes.nextstep.innerHTML = "about to print " + json_string(c.next.value);
-            break;
-          default:
-             mes.nextstep.innerHTML = "about to execute " + c.next.type;
-          }
-        }
-        break;
+  mes.nextstep.innerHTML = "";
+  return t;
+}
+
+function updateStatus(mes) {
+  for (var i = 0; i < mes.contexts.length; i++) {
+    var c = mes.contexts[i];
+    if (c.tid == mes.tid) {
+      if (c.mode == "terminated") {
+        mes.nextstep.innerHTML = "terminated"
       }
+      else if (c.hasOwnProperty("next")) {
+        switch (c.next.type) {
+        case "Store":
+          mes.nextstep.innerHTML = "about to store " + json_string(c.next.value) + " in variable " + c.next.var;
+          break;
+        case "Load":
+          mes.nextstep.innerHTML = "about to load variable " + c.next.var;
+          break;
+        case "Assert":
+          var loc = getCode(c.pc);
+          mes.nextstep.innerHTML = "assertion failed in " + '<a href="' + loc.file + '">' + loc.module + "</a>:" + loc.line + ":" + loc.code;
+          mes.nextstep.style.color = "red";
+          break;
+        case "AtomicInc":
+          var loc = getCode(c.pc);
+          mes.nextstep.innerHTML = "about to execute in " + '<a href="' + loc.file + '">' + loc.module + "</a>:" + loc.line + ":" + loc.code;
+          break;
+        case "Print":
+          mes.nextstep.innerHTML = "about to print " + json_string(c.next.value);
+          break;
+        default:
+           mes.nextstep.innerHTML = "about to " + state.hvm.pretty[c.pc][1];
+        }
+      }
+      break;
     }
   }
 }
@@ -265,7 +267,7 @@ function stackTrace(tid, trace, failure) {
     var vtext = document.createTextNode(stringify_vars(trace[i].vars));
     vcell.appendChild(vtext);
   }
-  if (failure != null) {
+  if (false && failure != null) {
     var row = table.insertRow();
     var fcell = row.insertCell();
     fcell.innerHTML = failure;
@@ -644,11 +646,18 @@ function run_microstep(t) {
     }
   }
 
-  if (t+1 < microsteps.length) {
+  if (mis.failure != null) {
+    mes.nextstep.innerHTML = '<span style="color:red">' + mis.failure + '</span>';
+  }
+  else if (t+1 < microsteps.length) {
+    var nmis = microsteps[t+1];
     if (nmis.tid == mis.tid) {
-        var nmis = microsteps[t+1];
         mes.nextstep.innerHTML = "next: " + nmis.explain;
     }
+    else {
+        updateStatus(mes);
+    }
+
     // hvmrow.innerHTML = "T" + nmis.tid + "/" + nmis.pc + ": " + nmis.hvm + " (" + nmis.explain + ")"
     currCloc = document.getElementById('C' + nmis.pc)
     currOffset = document.getElementById('P' + nmis.pc);
@@ -662,7 +671,7 @@ function run_microstep(t) {
 
 function run_microsteps() {
   coderow.innerHTML = "";
-  hvmrow.innerHTML = "";
+  // hvmrow.innerHTML = "";
   if (currCloc != null) {
     currCloc.style.color = "black";
   }
@@ -681,16 +690,14 @@ function run_microsteps() {
     threadtable.rows[tid].cells[3].innerHTML = threads[tid].stack;
   }
 
-  var mis = microsteps[0];
-  var mesrow = mestable.rows[mis.mesidx];
-  mesrow.cells[3].innerHTML = 0;
-  // hvmrow.innerHTML = "T" + mis.tid + "/" + mis.pc + ": " + mis.hvm + " (" + mis.explain + ")"
-
+  for (var i = 0; i < nmegasteps; i++) {
+    drawTimeLine(megasteps[i]);
+  }
   for (var t = 0; t < currentTime; t++) {
     run_microstep(t);
   }
-  if (0 < currentTime && currentTime < microsteps.length &&
-            microsteps[currentTime - 1].tid != microsteps[currentTime].tid) {
+  if (currentTime < microsteps.length && (currentTime == 0 ||
+            microsteps[currentTime - 1].tid != microsteps[currentTime].tid)) {
     var mis = microsteps[currentTime];
     var mes = megasteps[mis.mesidx];
     mes.nextstep.innerHTML = "next: " + mis.explain;
@@ -702,10 +709,6 @@ function run_microsteps() {
     }
   }
   container.scrollTop = currOffset.offsetTop;
-
-  for (var i = 0; i < nmegasteps; i++) {
-    drawTimeLine(megasteps[i]);
-  }
 
   if (currCloc != null) {
     currCloc.style.color = "red";
