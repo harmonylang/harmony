@@ -439,7 +439,6 @@ static bool onestep(
                 // If this is a thread exit, break so we can invoke the
                 // interrupt handler one more time
                 if (next_instr->retop && step->ctx->sp == 1) {
-                    printf("YAY\n", step->ctx->sp);
                     breakable = true;
                 }
 
@@ -826,6 +825,8 @@ void print_context(
 #endif
 }
 
+#ifdef PATH_DUMP
+
 void print_state(
     struct global *global,
     FILE *file,
@@ -1193,6 +1194,8 @@ void twostep(
     global->callstacks[pid] = step.callstack;
 }
 
+#endif // PATH_DUMP
+
 // Save the state and the context of a microstep.
 static void make_microstep(
     struct state *newstate,
@@ -1402,6 +1405,8 @@ void twostep2(
     global->callstacks[pid] = step.callstack;
 }
 
+#ifdef PATH_DUMP
+
 // Recursively dump the path as a sequence of macrosteps.  The steps are
 // recreated using the twostep() function.  Edge e points to the last edge.
 void path_dump(
@@ -1507,6 +1512,8 @@ void path_dump(
     print_state(global, file, node);
     fprintf(file, "    }");
 }
+
+#endif // PATH_DUMP
 
 static void *copy(void *p, unsigned int size){
     char *c = malloc(size);
@@ -3089,16 +3096,18 @@ int main(int argc, char **argv){
         }
 
         fprintf(out, "  \"macrosteps\": [");
+#ifdef PATH_DUMP
         struct state *oldstate = calloc(1, sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1));
         struct context *oldctx = calloc(1, sizeof(struct context) +
                         MAX_CONTEXT_STACK * sizeof(hvalue_t));
         global->dumpfirst = true;
-        // path_dump(global, out, edge, oldstate, oldctx);
+        path_dump(global, out, edge, oldstate, oldctx);
+        free(oldctx);
+#endif
         path_recompute(global, edge);
         path_output(global, out);
 
         fprintf(out, "\n");
-        free(oldctx);
         fprintf(out, "  ]\n");
     }
 

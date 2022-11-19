@@ -76,7 +76,9 @@ struct global {
     unsigned int nprocesses;        // the number of processes in the list
     double lasttime;                // since last report printed
     unsigned int last_nstates;      // to measure #states / second
+#ifdef PATH_DUMP
     bool dumpfirst;                 // for json dumping
+#endif
     struct dfa *dfa;                // for tracking correct behaviors
     unsigned int diameter;          // graph diameter
     bool phase2;                    // when model checking is done and graph analysis starts
