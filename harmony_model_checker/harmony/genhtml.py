@@ -107,8 +107,8 @@ class GenHTML:
         print("    <tr>", file=f)
         print("      <th colspan='4' style='color:red;'>", file=f)
         print("        Issue:", self.top["issue"], file=f)
-        if "invpc" in self.top:
-            print("        (Line %d)"%self.top["hvm"]["locs"][self.top["invpc"]]["line"], file=f)
+        # if "invpc" in self.top:
+        #     print("        (Line %d)"%self.top["hvm"]["locs"][self.top["invpc"]]["line"], file=f)
         print("      </th>", file=f)
         print("      <th align='center' colspan='%d'>"%width, file=f)
         print("        Shared Variables", file=f)

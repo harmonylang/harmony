@@ -1762,7 +1762,6 @@ static void path_output_macrostep(struct global *global, FILE *file, struct macr
     fprintf(file, "      \"microsteps\": [");
     struct context *oldctx = value_get(macro->ctx, NULL);
     struct callstack *oldcs = NULL;
-    printf("NMICRO %u %u\n", macro->tid, macro->nmicrosteps);
     for (unsigned int i = 0; i < macro->nmicrosteps; i++) {
         struct microstep *micro = macro->microsteps[i];
         path_output_microstep(global, file, micro, oldstate, oldctx, oldcs);
@@ -1845,7 +1844,6 @@ static void path_trim(struct global *global, struct engine *engine){
         struct instr *li = &instrs[ls->ctx->pc];
         if ((fi->store || fi->load || fi->print) && (li->store || li->load || li->print)) {
 
-            printf("LAST STEP OF %u = %u (%u)\n", i, last[i], macro->nmicrosteps);
             macro->nmicrosteps = 1;
             hvalue_t ictx = value_put_context(engine, macro->microsteps[0]->ctx);
             for (unsigned int j = last[i]; j < global->nmacrosteps; j++) {
