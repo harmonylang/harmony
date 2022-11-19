@@ -472,7 +472,7 @@ void op_Address(const void *env, struct state *state, struct step *step, struct 
         char *key = value_string(index);
         char *addr = value_string(av);
         char *val = value_string(result);
-        strbuf_printf(&step->explain, "pop a key (%s) and an address (%s) and push the combined address (%s)", key, addr, val);
+        strbuf_printf(&step->explain, "pop key (%s) and address (%s) and push combined address (%s)", key, addr, val);
         free(key);
         free(addr);
         free(val);
@@ -1278,7 +1278,7 @@ void op_Frame(const void *env, struct state *state, struct step *step, struct gl
         char *name = value_string(ef->name);
         char *args = vt_string(ef->args);
         char *val = value_string(arg);
-        strbuf_printf(&step->explain, "method %s with argument %s set to %s", name, args, val);
+        strbuf_printf(&step->explain, "run method %s with argument %s set to %s", name, args, val);
         free(name);
         free(args);
         free(val);
@@ -1884,7 +1884,7 @@ void op_Spawn(
             char *m = value_string(ef->name);
             char *x = value_string(thisval);
             char *y = value_string(arg);
-            strbuf_printf(&step->explain, "pop thread-local state (%s), argument (%s), and program counter (%d: %s), and spawn thread", x, y, ip, m);
+            strbuf_printf(&step->explain, "pop local state (%s), arg (%s), and pc (%d: %s), and spawn thread", x, y, ip, m);
             free(x);
             free(y);
             free(m);
