@@ -194,6 +194,7 @@ unsigned int check_invariants(struct worker *w, struct node *node,
 
         assert(step->ctx->sp == 0);
         step->ctx->terminated = step->ctx->failed = false;
+        ctx_failure(step->ctx) = 0;
         step->ctx->pc = global->invs[i].pc;
         step->ctx->vars = VALUE_DICT;
         value_ctx_push(step->ctx, value_put_list(&step->engine, args, sizeof(args)));
@@ -437,13 +438,9 @@ static bool onestep(
                                 !step->ctx->interruptlevel) {
                 // If this is a thread exit, break so we can invoke the
                 // interrupt handler one more time
-                // TODO.  DOES THIS STILL WORK???
-                if (next_instr->retop) {
-                    hvalue_t ct = ctx_stack(step->ctx)[step->ctx->sp - 4];
-                    assert(VALUE_TYPE(ct) == VALUE_INT);
-                    if (VALUE_FROM_INT(ct) == CALLTYPE_PROCESS) {
-                        breakable = true;
-                    }
+                if (next_instr->retop && step->ctx->sp == 1) {
+                    printf("YAY\n", step->ctx->sp);
+                    breakable = true;
                 }
 
                 // If this is a setintlevel(True), should try interrupt

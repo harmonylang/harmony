@@ -146,7 +146,7 @@ struct dfa *dfa_read(struct engine *engine, char *fname){
         assert(dt->dst < dfa->nstates);
 
         struct json_value *symbol = dict_lookup(edge->u.map, "sym", 3);
-        assert(symbol->type == JV_MAP);
+        assert(symbol->type == JV_ATOM);
         unsigned int sym = int_parse(symbol->u.atom.base, symbol->u.atom.len);
         assert(sym < dfa->nsymbols);
         dt->symbol = dfa->symbols[sym];
