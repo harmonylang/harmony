@@ -1,4 +1,5 @@
 var boxSize = 10;
+var timeWidth = 40;
 var currentTime = 0;
 var totalTime = 0;
 var microsteps = [];
@@ -138,10 +139,10 @@ function drawTimeLine(mes) {
   c.beginPath();
   c.clearRect(0, 0, mes.canvas.width, mes.canvas.height);
   var t = mes.startTime;
-  var yboxes = Math.floor((mes.nsteps + 29) / 30);
+  var yboxes = Math.floor((mes.nsteps + timeWidth - 1) / timeWidth);
   var nsteps = mes.nsteps;
   for (var y = 0; y < yboxes; y++) {
-    var xboxes = nsteps > 30 ? 30 : nsteps;
+    var xboxes = nsteps > timeWidth ? timeWidth : nsteps;
     for (var x = 0; x < xboxes; x++) {
       c.fillStyle = t < currentTime ? "orange" : "white";
       c.fillRect(x * boxSize, y * boxSize, boxSize, boxSize);
@@ -286,7 +287,7 @@ function addToLog(step, entry) {
 function handleClick(e, mesIdx) {
   var x = Math.floor(e.offsetX / boxSize);
   var y = Math.floor(e.offsetY / boxSize);
-  currentTime = megasteps[mesIdx].startTime + y*30 + x + 1;
+  currentTime = megasteps[mesIdx].startTime + y*timeWidth + x + 1;
   run_microsteps()
 }
 

@@ -14,6 +14,7 @@ class GenHTML:
         self_dir = Path(__file__).parent
         self.style = (self_dir / "charm.css").read_text()
         self.js = (self_dir / "charm.js").read_text()
+        self.timeWidth = 40
 
     def file_include(self, name, f):
         with open(name, encoding='utf-8') as g:
@@ -30,10 +31,10 @@ class GenHTML:
         print("  </td>", file=f)
 
         print("  <td>", file=f)
-        print("    <table border='0'>", file=f)
+        print("    <table border='0' style='max-width:%dpx; word-wrap: break-word;'>"%(self.timeWidth * 10), file=f)
         time = nmicrosteps
-        nrows = (time + 29) // 30
-        print("      <tr><td><canvas id='timeline%d' width='300px' height='%dpx'>"%(step-1, 10*nrows), file=f)
+        nrows = (time + self.timeWidth - 1) // self.timeWidth
+        print("      <tr><td><canvas id='timeline%d' width='%dpx' height='%dpx'>"%(step-1, self.timeWidth*10, 10*nrows), file=f)
         print("      </canvas></td></tr>", file=f)
         print("      <tr><td id='nextstep%d'></td></tr>"%(step-1), file=f)
         print("    </table>", file=f)
