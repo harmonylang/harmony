@@ -5,6 +5,7 @@
 #else
 #include <sys/param.h>
 #include <unistd.h>
+#include <signal.h>
 #endif
 
 #include <stdio.h>
@@ -61,6 +62,7 @@ struct worker {
 
     char *alloc_buf;            // allocated buffer
     char *alloc_ptr;            // pointer into allocated buffer
+    unsigned long allocated;    // keeps track of how much was allocated
 
     struct allocator allocator; // mostly for hashdict
 
@@ -73,10 +75,11 @@ struct worker {
     hvalue_t stack[MAX_CONTEXT_STACK];
 };
 
-// Per thread one-time memory allocator (no free)
+// Per thread one-time memory allocator (no free())
 static void *walloc(void *ctx, unsigned int size, bool zero){
     struct worker *w = ctx;
 
+    w->allocated += size;
     if (size > WALLOC_CHUNK) {
         return zero ? calloc(1, size) : malloc(size);
     }
@@ -271,13 +274,18 @@ static bool onestep(
             if (now - global->lasttime > 1) {
                 if (global->lasttime != 0) {
                     unsigned int enqueued = 0, dequeued = 0;
+                    unsigned long allocated = 0;
                     for (unsigned int i = 0; i < w->nworkers; i++) {
                         struct worker *w2 = &w->workers[i];
                         enqueued += w2->enqueued;
                         dequeued += w2->dequeued;
+                        allocated += w2->allocated;
                     }
-                    fprintf(stderr, "pc=%d states=%u diam=%u q=%d rate=%d\n",
-                            step->ctx->pc, enqueued, global->diameter, enqueued - dequeued, (unsigned int) ((enqueued - global->last_nstates) / (now - global->lasttime)));
+                    double gigs = (double) allocated / (1 << 30);
+                    fprintf(stderr, "pc=%d states=%u diam=%u q=%d rate=%d mem=%.2lfGB\n",
+                            step->ctx->pc, enqueued, global->diameter, enqueued - dequeued,
+                            (unsigned int) ((enqueued - global->last_nstates) / (now - global->lasttime)),
+                            gigs);
                     global->last_nstates = enqueued;
                 }
                 global->lasttime = now;
@@ -2406,6 +2414,13 @@ static void print_transitions(FILE *out, struct dict *symbols, struct edge *edge
     dict_delete(d);
 }
 
+#ifndef _WIN32
+static void inthandler(int sig){
+    printf("Caught interrupt\n");
+    _exit(1);
+}
+#endif
+
 static void usage(char *prog){
     fprintf(stderr, "Usage: %s [-c] [-t<maxtime>] [-B<dfafile>] -o<outfile> file.json\n", prog);
     exit(1);
@@ -2448,6 +2463,10 @@ int main(int argc, char **argv){
     }
     char *fname = argv[i];
     double timeout = gettime() + maxtime;
+
+#ifndef _WIN32
+    signal(SIGINT, inthandler);
+#endif
 
     // Determine how many worker threads to use
     struct global *global = new_alloc(struct global);
