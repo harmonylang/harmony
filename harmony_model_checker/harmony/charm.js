@@ -288,7 +288,7 @@ function handleClick(e, mesIdx) {
   var x = Math.floor(e.offsetX / boxSize);
   var y = Math.floor(e.offsetY / boxSize);
   currentTime = megasteps[mesIdx].startTime + y*timeWidth + x + 1;
-  run_microsteps()
+  run_microsteps();
 }
 
 function handleKeyPress(e) {
@@ -494,7 +494,7 @@ function init_microstep(masidx, misidx) {
   var trl = microsteps[t].trace.length; 
   if (trl > 0 && mis.hasOwnProperty("local")) {
     // deep copy first
-    microsteps[t].trace = JSON.parse(JSON.stringify(microsteps[t].trace))
+    microsteps[t].trace = JSON.parse(JSON.stringify(microsteps[t].trace));
     microsteps[t].trace[trl - 1].vars = mis.local;
   }
 
@@ -592,7 +592,7 @@ function run_microstep(t) {
   mesrow.cells[3].innerHTML = mis.npc;
 
   for (var i = 0; i < vardir.length; i++) {
-    mesrow.cells[i + 4].innerHTML = get_shared(mis.shared, vardir[i])
+    mesrow.cells[i + 4].innerHTML = get_shared(mis.shared, vardir[i]);
   }
 
   if (mis.failure != null) {
@@ -600,7 +600,7 @@ function run_microstep(t) {
   }
   else if (mis.print != null) {
     stackTrace(mis.tid, mis.trace, "print " + mis.print);
-    addToLog(mis.mesidx, mis.print)
+    addToLog(mis.mesidx, mis.print);
   }
   else {
     stackTrace(mis.tid, mis.trace, mis.choose);
@@ -660,7 +660,7 @@ function run_microstep(t) {
     }
 
     // hvmrow.innerHTML = "T" + nmis.tid + "/" + nmis.pc + ": " + nmis.hvm + " (" + nmis.explain + ")"
-    currCloc = document.getElementById('C' + nmis.pc)
+    currCloc = document.getElementById('C' + nmis.pc);
     currOffset = document.getElementById('P' + nmis.pc);
   }
   else {
@@ -705,8 +705,11 @@ function run_microsteps() {
     var mesrow = mestable.rows[mis.mesidx];
     mesrow.cells[3].innerHTML = mis.pc;
 
-    for (var i = 0; i < vardir.length; i++) {
-      mesrow.cells[i + 4].innerHTML = get_shared(mis.shared, vardir[i])
+    if (mis.mesidx > 0) {
+      var oldrow = mestable.rows[mis.mesidx - 1];
+      for (var i = 0; i < vardir.length; i++) {
+        mesrow.cells[i + 4].innerHTML = oldrow.cells[i + 4].innerHTML;
+      }
     }
   }
   container.scrollTop = currOffset.offsetTop;
@@ -717,7 +720,7 @@ function run_microsteps() {
 
   var curmes = currentTime < totalTime ? microsteps[currentTime].mesidx : -1;
   for (var mes = 0; mes < nmegasteps; mes++) {
-    var row = document.getElementById("mes" + mes)
+    var row = document.getElementById("mes" + mes);
     if (mes == curmes) {
       row.style = 'background-color: #A5FF33;';
     }
@@ -728,7 +731,7 @@ function run_microsteps() {
 
   var curtid = currentTime < totalTime ? microsteps[currentTime].tid : -1;
   for (var tid = 0; tid < nthreads; tid++) {
-    var row = document.getElementById("thread" + tid)
+    var row = document.getElementById("thread" + tid);
     if (tid == curtid) {
       row.style = 'background-color: #A5FF33;';
     }
