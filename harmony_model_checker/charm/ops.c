@@ -1277,11 +1277,16 @@ void op_Frame(const void *env, struct state *state, struct step *step, struct gl
     if (step->keep_callstack) {
         char *name = value_string(ef->name);
         char *args = vt_string(ef->args);
-        char *val = value_string(arg);
-        strbuf_printf(&step->explain, "run method %s with argument %s set to %s", name, args, val);
+        if (strcmp(args, "()") == 0 && arg == VALUE_LIST) {
+            strbuf_printf(&step->explain, "pop argument () and run method %s", name);
+        }
+        else {
+            char *val = value_string(arg);
+            strbuf_printf(&step->explain, "pop argument (%s), assign to %s, and run method %s", val, args, name);
+            free(val);
+        }
         free(name);
         free(args);
-        free(val);
     }
 
     // match argument against parameters
