@@ -12,4 +12,3 @@ def join(meta):
     synch.acquire(?meta->sema)
     result = meta->result
     alloc.free(meta)
-

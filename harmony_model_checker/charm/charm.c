@@ -282,10 +282,16 @@ static bool onestep(
                         allocated += w2->allocated;
                     }
                     double gigs = (double) allocated / (1 << 30);
+#ifdef INCLUDE_RATE
                     fprintf(stderr, "pc=%d states=%u diam=%u q=%d rate=%d mem=%.2lfGB\n",
                             step->ctx->pc, enqueued, global->diameter, enqueued - dequeued,
                             (unsigned int) ((enqueued - global->last_nstates) / (now - global->lasttime)),
                             gigs);
+#else
+                    fprintf(stderr, "pc=%d states=%u diam=%u q=%d mem=%.2lfGB\n",
+                            step->ctx->pc, enqueued, global->diameter,
+                            enqueued - dequeued, gigs);
+#endif
                     global->last_nstates = enqueued;
                 }
                 global->lasttime = now;
