@@ -1734,7 +1734,7 @@ void op_Return(const void *env, struct state *state, struct step *step, struct g
 
     if (step->keep_callstack) {
         char *s = value_string(result);
-        strbuf_printf(&step->explain, "push result (%s) and restore method variables", s);
+        strbuf_printf(&step->explain, "pop caller's method variables and pc and push result (%s), or terminate if no caller", s);
         free(s);
     }
 
@@ -3359,7 +3359,7 @@ hvalue_t f_plus(struct state *state, struct step *step, hvalue_t *args, int n){
             int64_t e2 = args[i];
             if (VALUE_TYPE(e2) != VALUE_INT) {
                 return value_ctx_failure(step->ctx, &step->engine,
-                    "+: applied to mix of integers and other &step->engine");
+                    "+: applied to mix of integers and other types");
             }
             e2 = VALUE_FROM_INT(e2);
             int64_t sum = e1 + e2;
@@ -3381,7 +3381,7 @@ hvalue_t f_plus(struct state *state, struct step *step, hvalue_t *args, int n){
         for (int i = n; --i >= 0;) {
             if (VALUE_TYPE(args[i]) != VALUE_ATOM) {
                 return value_ctx_failure(step->ctx, &step->engine,
-                    "+: applied to mix of strings and other &step->engine");
+                    "+: applied to mix of strings and other types");
             }
             unsigned int size;
             char *chars = value_get(args[i], &size);

@@ -1,0 +1,15 @@
+import alloc, synch
+
+def _helper(method, args, meta):
+    meta->result = method(args)
+    synch.release(?meta->sema)
+
+def fork(method, args):
+    result = alloc.malloc({ .sema: synch.BinSema(True), .result: None })
+    spawn _helper(method, args, result)
+
+def join(meta):
+    synch.acquire(?meta->sema)
+    result = meta->result
+    alloc.free(meta)
+
