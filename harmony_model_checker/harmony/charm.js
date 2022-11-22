@@ -75,13 +75,10 @@ function json_string_dict(obj) {
   return "{ " + result + " }";
 }
 
-function json_string_address(obj) {
-  if (obj.length == 0) {
-    return "None";
-  }
-  var result = "?" + obj[0].value;
-  for (var i = 1; i < obj.length; i++) {
-    result += "[" + json_string(obj[i]) + "]";
+function json_string_address(func, args) {
+  var result = "?" + json_string(func);
+  for (var i = 0; i < args.length; i++) {
+    result += "[" + json_string(args[i]) + "]";
   }
   return result;
 }
@@ -95,7 +92,6 @@ function json_string(obj) {
   switch (obj.type) {
   case "bool": case "int":
     return obj.value;
-    break;
   case "atom":
     return '"' + obj.value + '"';
   case "set":
@@ -107,7 +103,10 @@ function json_string(obj) {
   case "pc":
     return "PC(" + obj.value + ")"
   case "address":
-    return json_string_address(obj.value);
+    if ("func" in obj) {
+      return json_string_address(obj.func, obj.args);
+    }
+    return "None";
   case "context":
     return json_string_context(obj.value);
   default:
@@ -202,7 +201,7 @@ function currentMegaStep() {
 function stringify_vars(obj) {
   var result = "";
   for (var k in obj) {
-    if (k == "result" && obj[k].type == "address" && obj[k].value.length == 0) {
+    if (k == "result" && obj[k].type == "address" && !("func" in obj)) {
       continue;
     }
     if (result != "") {
