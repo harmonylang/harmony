@@ -1191,7 +1191,7 @@ void op_Del(const void *env, struct state *state, struct step *step, struct glob
             step->ai->load = false;
         }
         hvalue_t nd;
-        if (!ind_remove(state->vars, ed->indices, ed->n, &step->engine, &nd)) {
+        if (!ind_remove(state->vars, ed->indices + 1, ed->n - 1, &step->engine, &nd)) {
             value_ctx_failure(step->ctx, &step->engine, "Del: bad variable");
         }
         else {
@@ -1513,8 +1513,8 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
             step->ai->n = el->n;
             step->ai->load = true;
         }
-        unsigned int k = ind_tryload(&step->engine, state->vars, el->indices, el->n, &v);
-        if (k != el->n) {
+        unsigned int k = ind_tryload(&step->engine, state->vars, el->indices + 1, el->n - 1, &v);
+        if (k != el->n - 1) {
             char *x = indices_string(el->indices, el->n);
             value_ctx_failure(step->ctx, &step->engine, "Load: unknown variable %s", x);
             free(x);
@@ -2197,9 +2197,9 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
             step->ai->n = es->n;
             step->ai->load = is_sequential(global->seqs, step->ai->indices, step->ai->n);
         }
-        if (es->n == 1 && !step->ctx->initial) {
+        if (es->n == 2 && !step->ctx->initial) {
             hvalue_t newvars;
-            if (!value_dict_trystore(&step->engine, state->vars, es->indices[0], v, false, &newvars)){
+            if (!value_dict_trystore(&step->engine, state->vars, es->indices[1], v, false, &newvars)){
                 char *x = indices_string(es->indices, es->n);
                 value_ctx_failure(step->ctx, &step->engine, "Store: declare a local variable %s (or set during initialization)", x);
                 free(x);
@@ -2207,7 +2207,7 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
             }
             state->vars = newvars;
         }
-        else if (!ind_trystore(state->vars, es->indices, es->n, v, &step->engine, &state->vars)) {
+        else if (!ind_trystore(state->vars, es->indices + 1, es->n - 1, v, &step->engine, &state->vars)) {
             char *x = indices_string(es->indices, es->n);
             value_ctx_failure(step->ctx, &step->engine, "Store: bad variable %s", x);
             free(x);
