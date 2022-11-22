@@ -2031,7 +2031,6 @@ void op_Save(const void *env, struct state *state, struct step *step, struct glo
     ctx_push(step->ctx, result);
 }
 
-// TODOADDR
 void op_Stop(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_Stop *es = env;
 
@@ -2063,7 +2062,7 @@ void op_Stop(const void *env, struct state *state, struct step *step, struct glo
         unsigned int size;
         hvalue_t *indices = value_get(av, &size);
         size /= sizeof(hvalue_t);
-        if (!ind_trystore(state->vars, indices, size, v, &step->engine, &state->vars)) {
+        if (!ind_trystore(state->vars, indices + 1, size - 1, v, &step->engine, &state->vars)) {
             char *x = indices_string(indices, size);
             value_ctx_failure(step->ctx, &step->engine, "Stop: bad address: %s", x);
             free(x);
@@ -2073,7 +2072,7 @@ void op_Stop(const void *env, struct state *state, struct step *step, struct glo
         step->ctx->stopped = true;
         step->ctx->pc++;
         hvalue_t v = value_put_context(&step->engine, step->ctx);
-        if (!ind_trystore(state->vars, es->indices, es->n, v, &step->engine, &state->vars)) {
+        if (!ind_trystore(state->vars, es->indices + 1, es->n - 1, v, &step->engine, &state->vars)) {
             value_ctx_failure(step->ctx, &step->engine, "Stop: bad variable");
         }
     }
@@ -2586,12 +2585,13 @@ void *init_Stop(struct dict *map, struct engine *engine){
     }
     assert(jv->type == JV_LIST);
     struct env_Stop *env = new_alloc(struct env_Stop);
-    env->n = jv->u.list.nvals;
+    env->n = jv->u.list.nvals + 1;
     env->indices = malloc(env->n * sizeof(hvalue_t));
-    for (unsigned int i = 0; i < env->n; i++) {
+    env->indices[0] = FROM_TO_PC(-1);
+    for (unsigned int i = 0; i < jv->u.list.nvals + 1; i++) {
         struct json_value *index = jv->u.list.vals[i];
         assert(index->type == JV_MAP);
-        env->indices[i] = value_from_json(engine, index->u.map);
+        env->indices[i + 1] = value_from_json(engine, index->u.map);
     }
     return env;
 }
