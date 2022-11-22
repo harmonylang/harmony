@@ -76,8 +76,25 @@ function json_string_dict(obj) {
 }
 
 function json_string_address(func, args) {
-  var result = "?" + json_string(func);
-  for (var i = 0; i < args.length; i++) {
+  var result = "?";
+  var index = 0;
+  if (func.type == "pc") {
+    if (func.value == -1 || func.value == -2) {
+      result += args[0].value;
+      index = 1;
+    }
+    else if (func.value == -3) {
+      result += "this." + args[0].value;
+      index = 1;
+    }
+    else {
+      result += json_string(func);
+    }
+  }
+  else {
+    result += json_string(func);
+  }
+  for (var i = index; i < args.length; i++) {
     result += "[" + json_string(args[i]) + "]";
   }
   return result;

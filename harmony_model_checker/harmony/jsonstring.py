@@ -5,6 +5,24 @@ def json_idx(js):
 
 def json_string(js):
     type = js["type"]
+    if type == "address":
+        if "func" not in js:
+            return "None"
+        result = "?"
+        func = js["func"]
+        args = js["args"]
+        if func["type"] == "pc":
+            if int(func["value"]) in { -1, -2 }:
+                result += args[0]["value"]
+                args = args[1:]
+            elif int(func["value"]) == -3:
+                result += "this." + args[0]["value"]
+                args = args[1:]
+            else:
+                result += json_string(func)
+        else:
+            result += json_string(func)
+        return result + "".join([ json_idx(kv) for kv in args ])
     v = js["value"]
     if type in { "bool", "int" }:
         return v

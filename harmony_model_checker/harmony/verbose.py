@@ -11,9 +11,21 @@ def verbose_string(js):
     if type == "address":
         if "func" not in js:
             return "None"
-        # TODO.  Pretty print variables
-        return "?" + verbose_string(js["func"]) + "".join([ verbose_idx(kv) for kv in js["args"] ])
-
+        result = "?"
+        func = js["func"]
+        args = js["args"]
+        if func["type"] == "pc":
+            if int(func["value"]) in { -1, -2 }:
+                result += args[0]["value"]
+                args = args[1:]
+            elif int(func["value"]) == -3:
+                result += "this." + args[0]["value"]
+                args = args[1:]
+            else:
+                result += verbose_string(func)
+        else:
+            result += verbose_string(func)
+        return result + "".join([ verbose_idx(kv) for kv in args ])
     v = js["value"]
     if type == "bool":
         return v

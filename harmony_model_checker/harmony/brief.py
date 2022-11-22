@@ -11,6 +11,24 @@ def brief_idx(js):
 
 def brief_string(js):
     type = js["type"]
+    if type == "address":
+        if "func" not in js:
+            return "None"
+        result = "?"
+        func = js["func"]
+        args = js["args"]
+        if func["type"] == "pc":
+            if int(func["value"]) in { -1, -2 }:
+                result += args[0]["value"]
+                args = args[1:]
+            elif int(func["value"]) == -3:
+                result += "this." + args[0]["value"]
+                args = args[1:]
+            else:
+                result += brief_string(func)
+        else:
+            result += brief_string(func)
+        return result + "".join([ brief_idx(kv) for kv in args ])
     v = js["value"]
     if type == "bool":
         return v
@@ -39,10 +57,6 @@ def brief_string(js):
             return "{ " + ", ".join([k + ": " + v for k,v in lst]) + " }" 
     if type == "pc":
         return "PC(%s)"%v
-    if type == "address":
-        if v == []:
-            return "None"
-        return "?" + v[0]["value"] + "".join([ brief_idx(kv) for kv in v[1:] ])
     if type == "context":
         return "CONTEXT(" + str(v["pc"]) + ")"
 
