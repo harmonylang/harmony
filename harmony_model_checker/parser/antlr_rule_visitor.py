@@ -162,7 +162,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
 
     # Visit a parse tree produced by HarmonyParser#none.
     def visitNone(self, ctx: HarmonyParser.NoneContext):
-        tkn = self.get_token(ctx.start, AddressValue([]))
+        tkn = self.get_token(ctx.start, AddressValue(None, []))
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
         return ConstantAST(endtoken, tkn)
 

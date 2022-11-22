@@ -812,10 +812,11 @@ void op_Alloc_Malloc(const void *env, struct state *state, struct step *step, st
     hvalue_t next = value_dict_load(state->vars, alloc_next_atom);
 
     // Assign arg to alloc$pool[alloc$next]
-    hvalue_t addr[2];
-    addr[0] = alloc_pool_atom;
-    addr[1] = next;
-    if (!ind_trystore(state->vars, addr, 2, arg, &step->engine, &state->vars)) {
+    hvalue_t addr[3];
+    addr[0] = VALUE_TO_PC(-1);
+    addr[1] = alloc_pool_atom;
+    addr[2] = next;
+    if (!ind_trystore(state->vars, addr + 1, 2, arg, &step->engine, &state->vars)) {
         panic("op_Alloc_Malloc: store value failed");
     }
 
@@ -2587,7 +2588,7 @@ void *init_Stop(struct dict *map, struct engine *engine){
     struct env_Stop *env = new_alloc(struct env_Stop);
     env->n = jv->u.list.nvals + 1;
     env->indices = malloc(env->n * sizeof(hvalue_t));
-    env->indices[0] = FROM_TO_PC(-1);
+    env->indices[0] = VALUE_TO_PC(-1);
     for (unsigned int i = 0; i < jv->u.list.nvals + 1; i++) {
         struct json_value *index = jv->u.list.vals[i];
         assert(index->type == JV_MAP);
