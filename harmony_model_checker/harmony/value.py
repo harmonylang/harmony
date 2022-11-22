@@ -301,49 +301,64 @@ class SetValue(Value):
     def substitute(self, map):
         return SetValue({ substValue(v, map) for v in self.s })
 
+# An address is a closure consisting of a function and a list of arguments
+# All are of type Value.  Due to backwards compatibility, we also have to
+# represent "None" as an AddressValue.  For this we use func=None and args=[].
 class AddressValue(Value):
-    def __init__(self, indexes):
-        self.indexes = indexes
+    def __init__(self, func, args):
+        self.func = func
+        self.args = args
 
-    def __repr__(self):
-        if len(self.indexes) == 0:
-            return "None"
-        result = "?" + self.indexes[0]
-        for index in self.indexes[1:]:
-            if isinstance(index, str):
-                result = result + strValue(index)
-            else:
-                result += "[" + strValue(index) + "]"
+    def remainder(self):
+        result = ""
+        for index in self.args[1:]:
+            result += "[" + strValue(index) + "]"
         return result
 
+    def __repr__(self):
+        if self.func == None:
+            assert self.args == []
+            return "None"
+        assert self.args != []
+        if isinstance(self.func, PcValue):
+            if self.func.pc in { -1, -2 }:      # shared or method variable
+                return "?" + self.args[0] + self.remainder()
+            if self.func.pc == -3:              # thread-local variable
+                return "?this." + self.args[0] + self.remainder()
+        return "?" + strValue(self.args[0]) + self.remainder()
+
     def tlaval(self):
-        s = "<<" + ",".join(tlaValue(x) for x in self.indexes) + ">>"
+        # TODO.  Deal with "func"
+        assert False
+        s = "<<" + ",".join(tlaValue(x) for x in self.args) + ">>"
         return 'HAddress(%s)'%s
 
     def jdump(self):
+        if self.func == None:
+            return '{ "type": "address" }'
         result = ""
-        for index in self.indexes:
+        for index in self.args:
             if result != "":
                 result += ", "
             result = result + jsonValue(index)
-        return '{ "type": "address", "value": [%s] }'%result
+        return '{ "type": "address", "func": %s, "args": [%s] }'%(jsonValue(self.func), result)
 
     def __hash__(self):
         hash = 0
-        for x in self.indexes:
+        for x in self.args:
             hash ^= x.__hash__()
         return hash
 
     def __eq__(self, other):
         if not isinstance(other, AddressValue):
             return False
-        return self.indexes == other.indexes
+        return self.args == other.args
 
     def key(self):
-        return (7, self.indexes)
+        return (7, self.args)
 
     def substitute(self, map):
-        return AddressValue([ substValue(v, map) for v in self.indexes ])
+        return AddressValue(substValue(self.func, map), [ substValue(v, map) for v in self.args ])
 
 class ContextValue(Value):
     def __init__(self, name, entry, arg, this):

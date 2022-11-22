@@ -63,11 +63,11 @@ int value_cmp(hvalue_t v1, hvalue_t v2);
 void *value_get(hvalue_t v, unsigned int *size);
 // void *value_copy(hvalue_t v, unsigned int *size);
 void *value_copy_extend(hvalue_t v, unsigned int inc, unsigned int *psize);
-hvalue_t value_put_atom(struct engine *engine, const void *p, int size);
-hvalue_t value_put_set(struct engine *engine, void *p, int size);
-hvalue_t value_put_dict(struct engine *engine, void *p, int size);
-hvalue_t value_put_list(struct engine *engine, void *p, int size);
-hvalue_t value_put_address(struct engine *engine, void *p, int size);
+hvalue_t value_put_atom(struct engine *engine, const void *p, unsigned int size);
+hvalue_t value_put_set(struct engine *engine, void *p, unsigned int size);
+hvalue_t value_put_dict(struct engine *engine, void *p, unsigned int size);
+hvalue_t value_put_list(struct engine *engine, void *p, unsigned int size);
+hvalue_t value_put_address(struct engine *engine, void *p, unsigned int size);
 hvalue_t value_put_context(struct engine *engine, struct context *ctx);
 char *value_string(hvalue_t v);
 char *indices_string(const hvalue_t *vec, int size);
@@ -101,8 +101,8 @@ void strbuf_value_json(strbuf *sb, hvalue_t v, struct global *global);
 #define VALUE_TO_BOOL(i)   (((hvalue_t) (i) << VALUE_BITS) | VALUE_BOOL)
 #define VALUE_TO_PC(i)     (((hvalue_t) (i) << VALUE_BITS) | VALUE_PC)
 #define VALUE_FROM_INT(i)  ((int64_t) (i) >> VALUE_BITS)
-#define VALUE_FROM_BOOL(i) ((i) >> VALUE_BITS)
-#define VALUE_FROM_PC(i)   ((i) >> VALUE_BITS)
+#define VALUE_FROM_BOOL(i) ((bool) ((i) >> VALUE_BITS))
+#define VALUE_FROM_PC(i)   ((int64_t) (i) >> VALUE_BITS)
 
 bool value_trystore(struct engine *engine, hvalue_t dict, hvalue_t key, hvalue_t value, bool allow_inserts, hvalue_t *result);
 hvalue_t value_store(struct engine *engine, hvalue_t root, hvalue_t key, hvalue_t value);

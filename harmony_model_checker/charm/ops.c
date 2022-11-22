@@ -95,6 +95,7 @@ static inline hvalue_t ctx_peep(struct context *ctx){
     return ctx_stack(ctx)[ctx->sp - 1];
 }
 
+// TODOADDR
 static bool is_sequential(hvalue_t seqvars, hvalue_t *indices, unsigned int n){
     assert(VALUE_TYPE(seqvars) == VALUE_SET);
     unsigned int size;
@@ -1162,14 +1163,20 @@ void op_Del(const void *env, struct state *state, struct step *step, struct glob
 
         unsigned int size;
         hvalue_t *indices = value_get(av, &size);
+        if (indices[0] != VALUE_TO_PC(-1)) {
+            char *p = value_string(av);
+            value_ctx_failure(step->ctx, &step->engine, "Del %s: not the address of a shared variable", p);
+            free(p);
+            return;
+        }
         size /= sizeof(hvalue_t);
         if (step->ai != NULL) {
-            step->ai->indices = indices;
-            step->ai->n = size;
+            step->ai->indices = indices + 1;
+            step->ai->n = size - 1;
             step->ai->load = false;
         }
         hvalue_t nd;
-        if (!ind_remove(state->vars, indices, size, &step->engine, &nd)) {
+        if (!ind_remove(state->vars, indices + 1, size - 1, &step->engine, &nd)) {
             value_ctx_failure(step->ctx, &step->engine, "Del: no such variable");
         }
         else {
@@ -1205,10 +1212,16 @@ void op_DelVar(const void *env, struct state *state, struct step *step, struct g
 
         unsigned int size;
         hvalue_t *indices = value_get(av, &size);
+        if (indices[0] != VALUE_TO_PC(-2)) {
+            char *p = value_string(av);
+            value_ctx_failure(step->ctx, &step->engine, "DelVar %s: not the address of a method variable", p);
+            free(p);
+            return;
+        }
         size /= sizeof(hvalue_t);
 
         bool result;
-        if (indices[0] == this_atom) {
+        if (indices[0] == this_atom) {      // TODO.  VALUE_TO_PC(-3)
             if (!step->ctx->extended) {
                 value_ctx_failure(step->ctx, &step->engine, "DelVar: context does not have 'this'");
                 return;
@@ -1220,7 +1233,7 @@ void op_DelVar(const void *env, struct state *state, struct step *step, struct g
 		    result = ind_remove(ctx_this(step->ctx), &indices[1], size - 1, &step->engine, &ctx_this(step->ctx));
         }
         else {
-		    result = ind_remove(step->ctx->vars, indices, size, &step->engine, &step->ctx->vars);
+		    result = ind_remove(step->ctx->vars, indices + 1, size - 1, &step->engine, &step->ctx->vars);
         }
         if (!result) {
             char *x = indices_string(indices, size);
@@ -1402,6 +1415,7 @@ void next_Load(const void *env, struct context *ctx, struct global *global, FILE
 
         unsigned int size;
         hvalue_t *indices = value_get(av, &size);
+        assert(indices[0] == VALUE_TO_PC(-1));
         size /= sizeof(hvalue_t);
 
         char *x = indices_string(indices, size);
@@ -1444,17 +1458,23 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
 
         unsigned int size;
         hvalue_t *indices = value_get(av, &size);
+        if (indices[0] != VALUE_TO_PC(-1)) {
+            char *p = value_string(av);
+            value_ctx_failure(step->ctx, &step->engine, "Load %s: not the address of a shared variable", p);
+            free(p);
+            return;
+        }
         size /= sizeof(hvalue_t);
 
         if (step->ai != NULL) {
-            step->ai->indices = indices;
-            step->ai->n = size;
+            step->ai->indices = indices + 1;
+            step->ai->n = size - 1;
             step->ai->load = true;
         }
         assert(size > 0);
 
-        unsigned int k = ind_tryload(&step->engine, state->vars, indices, size, &v);
-        if (k != size) {
+        unsigned int k = ind_tryload(&step->engine, state->vars, indices + 1, size - 1, &v);
+        if (k != size - 1) {
             if (VALUE_TYPE(v) == VALUE_PC && k == size - 1) {
                 ctx_push(step->ctx, VALUE_TO_INT(((step->ctx->pc + 1) << CALLTYPE_BITS) | CALLTYPE_NORMAL));
                 // see if we need to keep track of the call stack
@@ -1526,10 +1546,16 @@ void op_LoadVar(const void *env, struct state *state, struct step *step, struct 
 
         unsigned int size;
         hvalue_t *indices = value_get(av, &size);
+        if (indices[0] != VALUE_TO_PC(-1)) {
+            char *p = value_string(av);
+            value_ctx_failure(step->ctx, &step->engine, "LoadVar %s: not the address of a method variable", p);
+            free(p);
+            return;
+        }
         size /= sizeof(hvalue_t);
 
         bool result;
-        if (indices[0] == this_atom) {
+        if (indices[0] == this_atom) {          // TODO. PC(-3)
             if (!step->ctx->extended) {
                 value_ctx_failure(step->ctx, &step->engine, "LoadVar: context does not have 'this'");
                 return;
@@ -1546,7 +1572,7 @@ void op_LoadVar(const void *env, struct state *state, struct step *step, struct 
                 value_ctx_failure(step->ctx, &step->engine, "LoadVar: out of stack");
                 return;
             }
-            unsigned int k = ind_tryload(&step->engine, step->ctx->vars, indices, size, &v);
+            unsigned int k = ind_tryload(&step->engine, step->ctx->vars, indices + 1, size - 1, &v);
             result = k == size;
         }
 
@@ -1784,6 +1810,7 @@ void op_Builtin(const void *env, struct state *state, struct step *step, struct 
     step->ctx->pc++;
 }
 
+// TODOADDR
 void op_Sequential(const void *env, struct state *state, struct step *step, struct global *global){
     hvalue_t addr = ctx_pop(step->ctx);
     if (VALUE_TYPE(addr) != VALUE_ADDRESS) {
@@ -2006,6 +2033,7 @@ void op_Save(const void *env, struct state *state, struct step *step, struct glo
     ctx_push(step->ctx, result);
 }
 
+// TODOADDR
 void op_Stop(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_Stop *es = env;
 
@@ -2062,11 +2090,12 @@ void next_Store(const void *env, struct context *ctx, struct global *global, FIL
     if (es == 0) {
         assert(ctx->sp > 1);
         hvalue_t av = ctx_stack(ctx)[ctx->sp - 2];
-        assert (VALUE_TYPE(av) == VALUE_ADDRESS);
-        assert (av != VALUE_ADDRESS);
+        assert(VALUE_TYPE(av) == VALUE_ADDRESS);
+        assert(av != VALUE_ADDRESS);
 
         unsigned int size;
         hvalue_t *indices = value_get(av, &size);
+        assert(indices[0] == VALUE_TO_PC(-1));
         size /= sizeof(hvalue_t);
         char *x = indices_string(indices, size);
         assert(x[0] == '?');
@@ -2118,6 +2147,12 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
 
         unsigned int size;
         hvalue_t *indices = value_get(av, &size);
+        if (indices[0] != VALUE_TO_PC(-1)) {
+            char *p = value_string(av);
+            value_ctx_failure(step->ctx, &step->engine, "Store %s: not the address of a shared variable", p);
+            free(p);
+            return;
+        }
         size /= sizeof(hvalue_t);
         if (step->ai != NULL) {
             step->ai->indices = indices;
@@ -2132,9 +2167,9 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
             free(val);
         }
 
-        if (size == 1 && !step->ctx->initial) {
+        if (size == 2 && !step->ctx->initial) {
             hvalue_t newvars;
-            if (!value_dict_trystore(&step->engine, state->vars, indices[0], v, false, &newvars)){
+            if (!value_dict_trystore(&step->engine, state->vars, indices[1], v, false, &newvars)){
                 char *x = indices_string(indices, size);
                 value_ctx_failure(step->ctx, &step->engine, "Store: declare a local variable %s (or set during initialization)", x);
                 free(x);
@@ -2142,7 +2177,7 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
             }
             state->vars = newvars;
         }
-        else if (!ind_trystore(state->vars, indices, size, v, &step->engine, &state->vars)) {
+        else if (!ind_trystore(state->vars, indices + 1, size - 1, v, &step->engine, &state->vars)) {
             char *x = indices_string(indices, size);
             value_ctx_failure(step->ctx, &step->engine, "Store: bad address: %s", x);
             free(x);
@@ -2194,6 +2229,12 @@ void op_StoreVar(const void *env, struct state *state, struct step *step, struct
 
         unsigned int size;
         hvalue_t *indices = value_get(av, &size);
+        if (indices[0] != VALUE_TO_PC(-2)) {
+            char *p = value_string(av);
+            value_ctx_failure(step->ctx, &step->engine, "DelVar %s: not the address of a method variable", p);
+            free(p);
+            return;
+        }
         size /= sizeof(hvalue_t);
 
         if (step->keep_callstack) {
@@ -2205,7 +2246,7 @@ void op_StoreVar(const void *env, struct state *state, struct step *step, struct
         }
 
         bool result;
-        if (indices[0] == this_atom) {
+        if (indices[0] == this_atom) {      // TODOADDR
             if (!step->ctx->extended) {
                 value_ctx_extend(step->ctx);
             }
@@ -2217,7 +2258,7 @@ void op_StoreVar(const void *env, struct state *state, struct step *step, struct
         }
 
         else {
-            result = ind_trystore(step->ctx->vars, indices, size, v, &step->engine, &step->ctx->vars);
+            result = ind_trystore(step->ctx->vars, indices + 1, size - 1, v, &step->engine, &step->ctx->vars);
         }
         if (!result) {
             char *x = indices_string(indices, size);
@@ -2267,7 +2308,7 @@ void op_Trap(const void *env, struct state *state, struct step *step, struct glo
     }
     value_ctx_extend(step->ctx);
     ctx_trap_pc(step->ctx) = trap_pc;
-    assert(VALUE_FROM_PC(trap_pc) < (hvalue_t) global->code.len);
+    assert(VALUE_FROM_PC(trap_pc) < global->code.len);
     assert(strcmp(global->code.instrs[VALUE_FROM_PC(trap_pc)].oi->name, "Frame") == 0);
     ctx_trap_arg(step->ctx) = ctx_pop(step->ctx);
     step->ctx->pc++;

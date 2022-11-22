@@ -281,13 +281,13 @@ class NameAST(AST):
         elif t == "local-var":
             (lexeme, file, line, column) = v
             if lexeme != "_":
-                code.append(PushOp((AddressValue([lexeme]), file, line, column)), self.token, self.endtoken, stmt=stmt)
+                code.append(PushOp((AddressValue(PcValue(-2), [lexeme]), file, line, column)), self.token, self.endtoken, stmt=stmt)
         else:
             (lexeme, file, line, column) = self.name
             if scope.prefix == None:
-                code.append(PushOp((AddressValue([lexeme]), file, line, column)), self.token, self.endtoken, stmt=stmt)
+                code.append(PushOp((AddressValue(PcValue(-1), [lexeme]), file, line, column)), self.token, self.endtoken, stmt=stmt)
             else:
-                code.append(PushOp((AddressValue([scope.prefix + '$' + lexeme]), file, line, column)), self.token, self.endtoken, stmt=stmt)
+                code.append(PushOp((AddressValue(PcValue(-1), [scope.prefix + '$' + lexeme]), file, line, column)), self.token, self.endtoken, stmt=stmt)
 
     def ph2(self, scope, code, skip, start, stop, stmt):
         if skip > 0:

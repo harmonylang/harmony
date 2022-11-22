@@ -8,6 +8,12 @@ def verbose_idx(js):
 
 def verbose_string(js):
     type = js["type"]
+    if type == "address":
+        if "func" not in js:
+            return "None"
+        # TODO.  Pretty print variables
+        return "?" + verbose_string(js["func"]) + "".join([ verbose_idx(kv) for kv in js["args"] ])
+
     v = js["value"]
     if type == "bool":
         return v
@@ -36,10 +42,6 @@ def verbose_string(js):
             return "{ " + ", ".join([k + ": " + v for k,v in lst]) + " }" 
     if type == "pc":
         return "PC(%s)"%v
-    if type == "address":
-        if v == []:
-            return "None"
-        return "?" + v[0]["value"] + "".join([ verbose_idx(kv) for kv in v[1:] ])
     if type == "context":
         return "CONTEXT(" + str(v["pc"]) + ")"
 

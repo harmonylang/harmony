@@ -61,7 +61,7 @@ void *value_copy_extend(hvalue_t v, unsigned int inc, unsigned int *psize){
     return r;
 }
 
-hvalue_t value_put_atom(struct engine *engine, const void *p, int size){
+hvalue_t value_put_atom(struct engine *engine, const void *p, unsigned int size){
     if (size == 0) {
         return VALUE_ATOM;
     }
@@ -69,7 +69,7 @@ hvalue_t value_put_atom(struct engine *engine, const void *p, int size){
     return (hvalue_t) q | VALUE_ATOM;
 }
 
-hvalue_t value_put_set(struct engine *engine, void *p, int size){
+hvalue_t value_put_set(struct engine *engine, void *p, unsigned int size){
     if (size == 0) {
         return VALUE_SET;
     }
@@ -77,7 +77,7 @@ hvalue_t value_put_set(struct engine *engine, void *p, int size){
     return (hvalue_t) q | VALUE_SET;
 }
 
-hvalue_t value_put_dict(struct engine *engine, void *p, int size){
+hvalue_t value_put_dict(struct engine *engine, void *p, unsigned int size){
     if (size == 0) {
         return VALUE_DICT;
     }
@@ -85,7 +85,7 @@ hvalue_t value_put_dict(struct engine *engine, void *p, int size){
     return (hvalue_t) q | VALUE_DICT;
 }
 
-hvalue_t value_put_list(struct engine *engine, void *p, int size){
+hvalue_t value_put_list(struct engine *engine, void *p, unsigned int size){
     if (size == 0) {
         return VALUE_LIST;
     }
@@ -93,10 +93,11 @@ hvalue_t value_put_list(struct engine *engine, void *p, int size){
     return (hvalue_t) q | VALUE_LIST;
 }
 
-hvalue_t value_put_address(struct engine *engine, void *p, int size){
+hvalue_t value_put_address(struct engine *engine, void *p, unsigned int size){
     if (size == 0) {
         return VALUE_ADDRESS;
     }
+    assert(size > sizeof(hvalue_t));
     void *q = dict_find(engine->values->addresses, engine->allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_ADDRESS;
 }
@@ -345,7 +346,7 @@ static void value_string_pc(struct strbuf *sb, hvalue_t v) {
 }
 
 static void value_json_pc(struct strbuf *sb, hvalue_t v) {
-    strbuf_printf(sb, "{ \"type\": \"pc\", \"value\": \"%u\" }", (unsigned int) VALUE_FROM_PC(v));
+    strbuf_printf(sb, "{ \"type\": \"pc\", \"value\": \"%d\" }", (int) VALUE_FROM_PC(v));
 }
 
 static void value_string_dict(struct strbuf *sb, hvalue_t v) {
@@ -480,23 +481,44 @@ static void value_json_set(struct strbuf *sb, hvalue_t v, struct global *global)
 }
 
 static void strbuf_indices_string(struct strbuf *sb, const hvalue_t *vec, int size) {
+#ifdef OBSOLETE
     if (size == 0) {
         strbuf_printf(sb, "None");
         return;
     }
-    char *s = value_string(vec[0]);     // TODO.  Inefficient
-    assert(s[0] == '"');
-	int len = strlen(s);
-    strbuf_printf(sb, "?%.*s", len - 2, s + 1);
-    free(s);
-
-    for (int i = 1; i < size; i++) {
+#endif
+    int index = 1;
+    if (VALUE_TYPE(vec[0]) == VALUE_PC) {
+        int pc = (int) VALUE_FROM_PC(vec[0]);
+        if (pc == -1 || pc == -2) {     // shared or method variable
+            char *s = value_string(vec[1]);     // TODO.  Inefficient
+            assert(s[0] == '"');
+            int len = strlen(s);
+            strbuf_printf(sb, "?%.*s", len - 2, s + 1);
+            free(s);
+            index = 2;
+        }
+        else if (pc == -3) {            // thread-local variable
+            char *s = value_string(vec[1]);     // TODO.  Inefficient
+            assert(s[0] == '"');
+            int len = strlen(s);
+            strbuf_printf(sb, "?this.%.*s", len - 2, s + 1);
+            free(s);
+            index = 2;
+        }
+    }
+    if (index == 1) {
+        strbuf_printf(sb, "?");
+        strbuf_value_string(sb, vec[0]);
+    }
+    for (int i = index; i < size; i++) {
         strbuf_printf(sb, "[");
         strbuf_value_string(sb, vec[i]);
         strbuf_printf(sb, "]");
     }
 }
 
+// TODO.  Rename to "address_string" or something like that
 char *indices_string(const hvalue_t *vec, int size) {
     struct strbuf sb;
 
@@ -506,10 +528,12 @@ char *indices_string(const hvalue_t *vec, int size) {
 }
 
 static void value_string_address(struct strbuf *sb, hvalue_t v) {
+#ifdef OBSOLETE
     if (v == 0) {
         strbuf_printf(sb, "None");
         return;
     }
+#endif
 
     void *p = (void *) v;
     unsigned int size;
@@ -521,7 +545,7 @@ static void value_string_address(struct strbuf *sb, hvalue_t v) {
 
 static void value_json_address(struct strbuf *sb, hvalue_t v, struct global *global) {
     if (v == 0) {
-        strbuf_printf(sb, "{ \"type\": \"address\", \"value\": [] }");
+        strbuf_printf(sb, "{ \"type\": \"address\" }");
         return;
     }
 
@@ -530,9 +554,11 @@ static void value_json_address(struct strbuf *sb, hvalue_t v, struct global *glo
     hvalue_t *vals = dict_retrieve(p, &size);
     size /= sizeof(hvalue_t);
     assert(size > 0);
-    strbuf_printf(sb, "{ \"type\": \"address\", \"value\": [");
-    for (unsigned int i = 0; i < size; i++) {
-        if (i != 0) {
+    strbuf_printf(sb, "{ \"type\": \"address\", \"func\": ");
+    strbuf_value_json(sb, vals[0], global);
+    strbuf_printf(sb, ", \"args\": [");
+    for (unsigned int i = 1; i < size; i++) {
+        if (i != 1) {
             strbuf_printf(sb, ", ");
         }
         strbuf_value_json(sb, vals[i], global);
@@ -985,19 +1011,23 @@ hvalue_t value_list(struct engine *engine, struct dict *map){
 }
 
 hvalue_t value_address(struct engine *engine, struct dict *map){
-    struct json_value *value = dict_lookup(map, "value", 5);
-    assert(value->type == JV_LIST);
-    if (value->u.list.nvals == 0) {
-        return (hvalue_t) VALUE_ADDRESS;
+    struct json_value *func = dict_lookup(map, "func", 4);
+    if (func == NULL) {
+        return (hvalue_t) VALUE_ADDRESS;        // None
     }
-    hvalue_t *vals = malloc(value->u.list.nvals * sizeof(hvalue_t));
-    for (unsigned int i = 0; i < value->u.list.nvals; i++) {
-        struct json_value *jv = value->u.list.vals[i];
+    assert(func->type == JV_MAP);
+    struct json_value *args = dict_lookup(map, "args", 4);
+    assert(args->type == JV_LIST);
+    assert(args->u.list.nvals > 0);
+    hvalue_t *vals = malloc((1 + args->u.list.nvals) * sizeof(hvalue_t));
+    vals[0] = value_from_json(engine, func->u.map);
+    for (unsigned int i = 0; i < args->u.list.nvals; i++) {
+        struct json_value *jv = args->u.list.vals[i];
         assert(jv->type == JV_MAP);
-        vals[i] = value_from_json(engine, jv->u.map);
+        vals[1+i] = value_from_json(engine, jv->u.map);
     }
     void *p = dict_find(engine->values->addresses, engine->allocator, vals,
-                            value->u.list.nvals * sizeof(hvalue_t), NULL);
+                            (1 + args->u.list.nvals) * sizeof(hvalue_t), NULL);
     free(vals);
     return (hvalue_t) p | VALUE_ADDRESS;
 }

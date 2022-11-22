@@ -668,6 +668,8 @@ class AddressOp(Op):
         return "combine the top two values on the stack into an address and push the result"
 
     def eval(self, state, context):
+        # TODO.  Deal with func in address
+        assert False
         index = context.pop()
         av = context.pop()
         assert isinstance(av, AddressValue), av
