@@ -481,12 +481,10 @@ static void value_json_set(struct strbuf *sb, hvalue_t v, struct global *global)
 }
 
 static void strbuf_indices_string(struct strbuf *sb, const hvalue_t *vec, int size) {
-#ifdef OBSOLETE
     if (size == 0) {
         strbuf_printf(sb, "None");
         return;
     }
-#endif
     int index = 1;
     if (VALUE_TYPE(vec[0]) == VALUE_PC) {
         int pc = (int) VALUE_FROM_PC(vec[0]);
@@ -528,12 +526,10 @@ char *indices_string(const hvalue_t *vec, int size) {
 }
 
 static void value_string_address(struct strbuf *sb, hvalue_t v) {
-#ifdef OBSOLETE
     if (v == 0) {
         strbuf_printf(sb, "None");
         return;
     }
-#endif
 
     void *p = (void *) v;
     unsigned int size;
