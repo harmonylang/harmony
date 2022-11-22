@@ -75,7 +75,7 @@ struct failure {
     struct failure *next;   // for linked list maintenance
     enum fail_type type;    // failure type
     struct edge *edge;      // edge->dst is the faulty state
-    hvalue_t address;       // in case of data race
+    hvalue_t address;       // in case of data race or invariant failure
 };
 
 struct graph {

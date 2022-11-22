@@ -1171,8 +1171,8 @@ void op_Del(const void *env, struct state *state, struct step *step, struct glob
         }
         size /= sizeof(hvalue_t);
         if (step->ai != NULL) {
-            step->ai->indices = indices + 1;
-            step->ai->n = size - 1;
+            step->ai->indices = indices;
+            step->ai->n = size;
             step->ai->load = false;
         }
         hvalue_t nd;
@@ -1467,8 +1467,8 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
         size /= sizeof(hvalue_t);
 
         if (step->ai != NULL) {
-            step->ai->indices = indices + 1;
-            step->ai->n = size - 1;
+            step->ai->indices = indices;
+            step->ai->n = size;
             step->ai->load = true;
         }
         assert(size > 0);
@@ -2384,12 +2384,13 @@ void *init_Del(struct dict *map, struct engine *engine){
     }
     assert(jv->type == JV_LIST);
     struct env_Del *env = new_alloc(struct env_Del);
-    env->n = jv->u.list.nvals;
+    env->n = jv->u.list.nvals + 1;
     env->indices = malloc(env->n * sizeof(hvalue_t));
+    env->indices[0] = VALUE_FROM_PC(-1);
     for (unsigned int i = 0; i < env->n; i++) {
         struct json_value *index = jv->u.list.vals[i];
         assert(index->type == JV_MAP);
-        env->indices[i] = value_from_json(engine, index->u.map);
+        env->indices[i + 1] = value_from_json(engine, index->u.map);
     }
     return env;
 }
@@ -2429,12 +2430,13 @@ void *init_Load(struct dict *map, struct engine *engine){
     }
     assert(jv->type == JV_LIST);
     struct env_Load *env = new_alloc(struct env_Load);
-    env->n = jv->u.list.nvals;
+    env->n = jv->u.list.nvals + 1;
     env->indices = malloc(env->n * sizeof(hvalue_t));
+    env->indices[0] = VALUE_FROM_PC(-1);
     for (unsigned int i = 0; i < env->n; i++) {
         struct json_value *index = jv->u.list.vals[i];
         assert(index->type == JV_MAP);
-        env->indices[i] = value_from_json(engine, index->u.map);
+        env->indices[i +1 ] = value_from_json(engine, index->u.map);
     }
     return env;
 }
@@ -2603,12 +2605,13 @@ void *init_Store(struct dict *map, struct engine *engine){
     }
     assert(jv->type == JV_LIST);
     struct env_Store *env = new_alloc(struct env_Store);
-    env->n = jv->u.list.nvals;
+    env->n = jv->u.list.nvals + 1;
     env->indices = malloc(env->n * sizeof(hvalue_t));
+    env->indices[0] = VALUE_FROM_PC(-1);
     for (unsigned int i = 0; i < env->n; i++) {
         struct json_value *index = jv->u.list.vals[i];
         assert(index->type == JV_MAP);
-        env->indices[i] = value_from_json(engine, index->u.map);
+        env->indices[i + 1] = value_from_json(engine, index->u.map);
     }
     return env;
 }
