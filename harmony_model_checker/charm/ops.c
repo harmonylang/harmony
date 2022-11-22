@@ -95,7 +95,6 @@ static inline hvalue_t ctx_peep(struct context *ctx){
     return ctx_stack(ctx)[ctx->sp - 1];
 }
 
-// TODOADDR
 static bool is_sequential(hvalue_t seqvars, hvalue_t *indices, unsigned int n){
     assert(VALUE_TYPE(seqvars) == VALUE_SET);
     unsigned int size;
@@ -1810,7 +1809,6 @@ void op_Builtin(const void *env, struct state *state, struct step *step, struct 
     step->ctx->pc++;
 }
 
-// TODOADDR
 void op_Sequential(const void *env, struct state *state, struct step *step, struct global *global){
     hvalue_t addr = ctx_pop(step->ctx);
     if (VALUE_TYPE(addr) != VALUE_ADDRESS) {
@@ -1822,7 +1820,7 @@ void op_Sequential(const void *env, struct state *state, struct step *step, stru
 
     /* Insert in set of sequential variables.
      *
-     * TODO.  Could lead to race between workers
+     * TODO.  Could lead to race between workers.  Use a lock.
      */
     unsigned int size;
     hvalue_t *seqs = value_copy_extend(global->seqs, sizeof(hvalue_t), &size);
