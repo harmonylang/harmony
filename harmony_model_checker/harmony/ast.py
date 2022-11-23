@@ -663,7 +663,7 @@ class ApplyAST(AST):
     # and do the applications afterwards.  We need to generate an address
     # value and then a Load instruction will evaluate the applications.
     def compile(self, scope, code, stmt):
-        if self.varcompile(scope, code, stmt)
+        if self.varcompile(scope, code, stmt):
             (lexeme, file, line, column) = self.token
             code.append(NaryOp(("Closure", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
         else:
