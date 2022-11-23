@@ -1546,7 +1546,7 @@ void op_LoadVar(const void *env, struct state *state, struct step *step, struct 
 
         unsigned int size;
         hvalue_t *indices = value_get(av, &size);
-        if (indices[0] != VALUE_TO_PC(-1)) {
+        if (indices[0] != VALUE_TO_PC(-2)) {
             char *p = value_string(av);
             value_ctx_failure(step->ctx, &step->engine, "LoadVar %s: not the address of a method variable", p);
             free(p);
@@ -1573,7 +1573,7 @@ void op_LoadVar(const void *env, struct state *state, struct step *step, struct 
                 return;
             }
             unsigned int k = ind_tryload(&step->engine, step->ctx->vars, indices + 1, size - 1, &v);
-            result = k == size;
+            result = k == size - 1;
         }
 
         if (step->keep_callstack) {
