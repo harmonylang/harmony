@@ -1699,6 +1699,7 @@ class NaryOp(Op):
 
 class ApplyOp(Op):
     def __init__(self, token):
+        assert False                    # TODO: ApplyOp is obsolete
         self.token = token
 
     def __repr__(self):

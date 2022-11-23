@@ -505,6 +505,8 @@ static void update_callstack(struct global *global, struct step *step, hvalue_t 
 }
 
 void op_Apply(const void *env, struct state *state, struct step *step, struct global *global){
+    assert(false);      // TODO: op_Apply is obsolete
+
     hvalue_t e = ctx_pop(step->ctx);
     hvalue_t method = ctx_pop(step->ctx);
 
