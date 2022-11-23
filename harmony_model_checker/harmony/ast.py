@@ -590,6 +590,7 @@ class ApplyAST(AST):
     def __repr__(self):
         return "ApplyAST(" + str(self.method) + ", " + str(self.arg) + ")"
 
+    # Returns True if it pushed a constant, or False if it pushed an address
     def varcompile(self, scope, code, stmt):
         if isinstance(self.method, NameAST):
             (lexeme, file, line, column) = self.method.name
@@ -662,8 +663,7 @@ class ApplyAST(AST):
     # and do the applications afterwards.  We need to generate an address
     # value and then a Load instruction will evaluate the applications.
     def compile(self, scope, code, stmt):
-        r = self.varcompile(scope, code, stmt)
-        if r:
+        if self.varcompile(scope, code, stmt)
             (lexeme, file, line, column) = self.token
             code.append(NaryOp(("Closure", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
         else:
