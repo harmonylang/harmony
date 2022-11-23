@@ -107,10 +107,11 @@ class AST:
     # This is supposed to push the address of an lvalue
     def ph1(self, scope, code, stmt):
         lexeme, file, line, column = self.token
+        assert False, str(self)
         raise HarmonyCompilerError(
             lexeme=lexeme,
             filename=file,
-            stmt=stmt,
+            # stmt=stmt,
             column=column,
             message='Cannot use in left-hand side expression: %s' % str(self)
         )
@@ -610,13 +611,13 @@ class ApplyAST(AST):
                     column=column
                 )
 
-            if t in {"constant", "local-const"}:
+            if t == "constant":
                 code.append(PushOp(v), self.token, self.endtoken, stmt=stmt)
                 self.arg.compile(scope, code, stmt)
                 code.append(NaryOp(("Closure", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
                 return False
 
-            if t == "local-var":
+            if t in { "local-var", "local-const" }:
                 if lexeme == "_":
                     raise HarmonyCompilerError(
                         message="can't apply to _",
@@ -624,7 +625,9 @@ class ApplyAST(AST):
                         filename=file,
                         column=column
                     )
-                code.append(PushOp((AddressValue(PcValue(-2), [lexeme]), file, line, column)), self.token, self.endtoken, stmt=stmt)
+                self.method.compile(scope, code, stmt)
+                self.arg.compile(scope, code, stmt)
+                code.append(NaryOp(("Closure", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
             else:
                 assert t == "global", t
                 if scope.prefix == None:
@@ -632,8 +635,8 @@ class ApplyAST(AST):
                 else:
                     code.append(PushOp((AddressValue(PcValue(-1), [scope.prefix + '$' + lexeme]), file, line, column)), self.token, self.endtoken, stmt=stmt)
 
-            self.arg.compile(scope, code, stmt)
-            code.append(AddressOp(), self.token, self.endtoken, stmt=stmt)
+                self.arg.compile(scope, code, stmt)
+                code.append(AddressOp(), self.token, self.endtoken, stmt=stmt)
             return False
 
         if isinstance(self.method, PointerAST):
@@ -678,17 +681,25 @@ class ApplyAST(AST):
             (t, v) = scope.lookup(self.method.name)
             if t == "module" and isinstance(self.arg, ConstantAST) and isinstance(self.arg.const[0], str):
                 (t2, v2) = v.lookup(self.arg.const)
-                if t2 == "constant":
-                    lexeme, file, line, column = self.token
-                    raise HarmonyCompilerError(
-                        message="Cannot assign to constant %s %s" % (self.method.name, self.arg.const),
-                        lexeme=lexeme,
-                        filename=file,
-                        column=column
-                    )
-        self.method.ph1(scope, code, stmt)
-        self.arg.compile(scope, code, stmt)
-        code.append(AddressOp(), self.token, self.endtoken, stmt=stmt)
+                assert t2 == "constant"
+                lexeme, file, line, column = self.token
+                raise HarmonyCompilerError(
+                    message="Cannot assign to constant %s %s" % (self.method.name, self.arg.const),
+                    lexeme=lexeme,
+                    filename=file,
+                    column=column
+                )
+
+        if isinstance(self.method, ConstantAST):
+            (t2, v2) = v.lookup(self.arg.const)
+            assert t2 == "constant"
+            code.append(PushOp(v2), self.token, self.endtoken, stmt=stmt)
+            self.arg.compile(scope, code, stmt)
+            code.append(ClosureOp(), self.token, self.endtoken, stmt=stmt)
+        else:
+            self.method.ph1(scope, code, stmt)
+            self.arg.compile(scope, code, stmt)
+            code.append(AddressOp(), self.token, self.endtoken, stmt=stmt)
 
     def ph2(self, scope, code, skip, start, stop, stmt):
         if skip > 0:
@@ -967,6 +978,8 @@ class AddressAST(AST):
         elif isinstance(lv, ApplyAST):
             self.check(lv.method, scope)
         elif isinstance(lv, PointerAST):
+            pass
+        elif isinstance(lv, TupleAST):
             pass
         else:
             lexeme, file, line, column = lv.token if isinstance(lv, AST) else (None, None, None, None)
