@@ -806,10 +806,10 @@ static void do_return(struct state *state, struct step *step, struct global *glo
             else {
                 unsigned int size;
                 hvalue_t *list = value_get(args, &size);
-                unsigned int asize = (1 + size) * sizeof(hvalue_t);
+                unsigned int asize = size + sizeof(hvalue_t);
                 hvalue_t *addr = malloc(asize);
                 addr[0] = result;
-                memcpy(&addr[1], list, size * sizeof(hvalue_t));
+                memcpy(&addr[1], list, size);
                 ctx_push(step->ctx, value_put_address(&step->engine, addr, asize));
                 step->ctx->pc = pc + 1;
             }
