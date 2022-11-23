@@ -770,13 +770,18 @@ void op_Continue(const void *env, struct state *state, struct step *step, struct
     step->ctx->pc++;
 }
 
+// On the stack are:
+//  - call: normal or interrupt plus return address
+//  - saved list of arguments of Load instruction if normal
 static void do_return(struct state *state, struct step *step, struct global *global, hvalue_t result){
+    // If there is nothing on the stack, this is the last return
     if (step->ctx->sp == 0) {
         ctx_push(step->ctx, result);
         step->ctx->terminated = true;
         return;
     }
 
+    // See if it's a normal call or an interrupt
     hvalue_t callval = ctx_pop(step->ctx);
     assert(VALUE_TYPE(callval) == VALUE_INT);
     unsigned int call = VALUE_FROM_INT(callval);
@@ -785,8 +790,29 @@ static void do_return(struct state *state, struct step *step, struct global *glo
         {
             unsigned int pc = call >> CALLTYPE_BITS;
             assert(pc != step->ctx->pc);
-            ctx_push(step->ctx, result);
-            step->ctx->pc = pc;
+
+            // Get the remaining arguments
+            hvalue_t args = ctx_pop(step->ctx);
+            assert(VALUE_TYPE(args) == VALUE_LIST);
+
+            // If it's the empty list, we're done and can move
+            // on the instruction beyond the Load instruction
+            if (args == VALUE_LIST) {
+                ctx_push(step->ctx, result);
+                step->ctx->pc = pc + 1;
+            }
+
+            // Otherwise re-execute the Load instruction with a new address
+            else {
+                unsigned int size;
+                hvalue_t *list = value_get(args, &size);
+                unsigned int asize = (1 + size) * sizeof(hvalue_t);
+                hvalue_t *addr = malloc(asize);
+                addr[0] = result;
+                memcpy(&addr[1], list, size * sizeof(hvalue_t));
+                ctx_push(step->ctx, value_put_address(&step->engine, addr, asize));
+                step->ctx->pc = pc + 1;
+            }
         }
         break;
     case CALLTYPE_INTERRUPT:
@@ -1437,13 +1463,80 @@ void next_Load(const void *env, struct context *ctx, struct global *global, FILE
     }
 }
 
+// Call a method
+void do_Call(struct step *step, struct global *global,
+            hvalue_t av, hvalue_t method, hvalue_t *args, unsigned int size){
+    assert(VALUE_TYPE(method) == VALUE_PC);
+    if (VALUE_FROM_PC(method) <= 0) {
+        char *p = value_string(av);
+        value_ctx_failure(step->ctx, &step->engine, "Load %s: bad pc %d", p, (int) VALUE_FROM_PC(method));
+        free(p);
+        return;
+    }
+
+    // Push the remaining arguments of the address.
+    hvalue_t remainder = value_put_list(&step->engine,
+            &args[1], (size - 1) * sizeof(hvalue_t));
+    ctx_push(step->ctx, remainder);
+
+    // Push the return address
+    ctx_push(step->ctx, VALUE_TO_INT((step->ctx->pc << CALLTYPE_BITS) | CALLTYPE_NORMAL));
+
+    // See if we need to keep track of the call stack
+    if (step->keep_callstack) {
+        update_callstack(global, step, method, args[0]);
+    }
+
+    // Push the argument
+    ctx_push(step->ctx, args[0]);
+
+    // Continue at the given function
+    step->ctx->pc = VALUE_FROM_PC(method);
+}
+
+// Try to load as much as possible using the address.  If it ends in a
+// PC value, call the method.
+void do_Load(struct state *state, struct step *step, struct global *global,
+            hvalue_t av, hvalue_t root, hvalue_t *indices, unsigned int size){
+    // See how much we can load from the shared memory
+    hvalue_t v;
+    unsigned int k = ind_tryload(&step->engine, root, indices, size, &v);
+
+    // If we could not load all, the remainder should be a method call.
+    if (k != size) {
+        if (VALUE_TYPE(v) != VALUE_PC) {
+            char *p = value_string(av);
+            char *val = value_string(v);
+            value_ctx_failure(step->ctx, &step->engine, "Load %s: can't load from %s", p, val);
+            free(p);
+            free(val);
+            return;
+        }
+        do_Call(step, global, av, v, &indices[k], size - k);
+        return;
+    }
+
+    if (step->keep_callstack) {
+        char *x = indices_string(indices, size);
+        char *val = value_string(v);
+        strbuf_printf(&step->explain, "pop address of variable (%s) and push value (%s)", x, val);
+        free(x);
+        free(val);
+    }
+
+    // We were able to process the entire address
+    ctx_push(step->ctx, v);
+    step->ctx->pc++;
+}
+
 void op_Load(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_Load *el = env;
 
     assert(VALUE_TYPE(state->vars) == VALUE_DICT);
 
-    hvalue_t v;
+    // See if the address is on the stack
     if (el == 0) {
+        // Pop the address and do a sanity check
         hvalue_t av = ctx_pop(step->ctx);
         if (VALUE_TYPE(av) != VALUE_ADDRESS) {
             char *p = value_string(av);
@@ -1456,51 +1549,29 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
             return;
         }
 
+        // Get the function and arguments
         unsigned int size;
         hvalue_t *indices = value_get(av, &size);
-        if (indices[0] != VALUE_TO_PC(-1)) {
-            char *p = value_string(av);
-            value_ctx_failure(step->ctx, &step->engine, "Load %s: not the address of a shared variable", p);
-            free(p);
-            return;
-        }
         size /= sizeof(hvalue_t);
+        assert(size > 1);
 
-        if (step->ai != NULL) {
-            step->ai->indices = indices;
-            step->ai->n = size;
-            step->ai->load = true;
-        }
-        assert(size > 0);
-
-        unsigned int k = ind_tryload(&step->engine, state->vars, indices + 1, size - 1, &v);
-        if (k != size - 1) {
-            if (VALUE_TYPE(v) == VALUE_PC && k == size - 1) {
-                ctx_push(step->ctx, VALUE_TO_INT(((step->ctx->pc + 1) << CALLTYPE_BITS) | CALLTYPE_NORMAL));
-                // see if we need to keep track of the call stack
-                if (step->keep_callstack) {
-                    update_callstack(global, step, v, indices[k]);
-                }
-                ctx_push(step->ctx, indices[k]);
-                assert(VALUE_FROM_PC(v) != step->ctx->pc);
-                step->ctx->pc = VALUE_FROM_PC(v);
-                return;
+        // See if it's reading a shared variable
+        if (indices[0] == VALUE_TO_PC(-1)) {
+            // Keep track for race detection
+            if (step->ai != NULL) {
+                step->ai->indices = indices;
+                step->ai->n = size;
+                step->ai->load = true;
             }
-            char *x = indices_string(indices, size);
-            value_ctx_failure(step->ctx, &step->engine, "Load: bad address %s", x);
-            free(x);
-            return;
-        }
 
-        if (step->keep_callstack) {
-            char *x = indices_string(indices, size);
-            char *val = value_string(v);
-            strbuf_printf(&step->explain, "pop address of variable (%s) and push value (%s)", x, val);
-            free(x);
-            free(val);
+            do_Load(state, step, global, av, state->vars, indices + 1, size - 1);
         }
-
-        ctx_push(step->ctx, v);
+        else if (VALUE_TYPE(indices[0]) != VALUE_PC) {
+            do_Load(state, step, global, av, indices[0], indices + 1, size - 1);
+        }
+        else {
+            do_Call(step, global, av, indices[0], indices + 1, size - 1);
+        }
     }
     else {
         if (!check_stack(step->ctx, 1)) {
@@ -1513,6 +1584,7 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
             step->ai->n = el->n;
             step->ai->load = true;
         }
+        hvalue_t v;
         unsigned int k = ind_tryload(&step->engine, state->vars, el->indices + 1, el->n - 1, &v);
         if (k != el->n - 1) {
             char *x = indices_string(el->indices, el->n);
@@ -1530,8 +1602,8 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
         }
 
         ctx_push(step->ctx, v);
+        step->ctx->pc++;
     }
-    step->ctx->pc++;
 }
 
 void op_LoadVar(const void *env, struct state *state, struct step *step, struct global *global){
@@ -1751,10 +1823,9 @@ void op_ReadonlyInc(const void *env, struct state *state, struct step *step, str
 }
 
 // On the stack are:
-//  - frame pointer
 //  - saved variables
-//  - saved argument for stack trace
-//  - call: process, normal, or interrupt plus return address
+//  - call: normal or interrupt plus return address
+//  - saved list of arguments of Load instruction if normal
 void op_Return(const void *env, struct state *state, struct step *step, struct global *global){
     hvalue_t result = value_dict_load(step->ctx->vars, result_atom);
 
