@@ -811,7 +811,7 @@ static void do_return(struct state *state, struct step *step, struct global *glo
                 addr[0] = result;
                 memcpy(&addr[1], list, size);
                 ctx_push(step->ctx, value_put_address(&step->engine, addr, asize));
-                step->ctx->pc = pc + 1;
+                step->ctx->pc = pc;
             }
         }
         break;
