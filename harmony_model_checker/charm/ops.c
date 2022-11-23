@@ -1430,6 +1430,7 @@ void op_JumpCond(const void *env, struct state *state, struct step *step, struct
     }
 }
 
+// TODO.  Update for new Load
 void next_Load(const void *env, struct context *ctx, struct global *global, FILE *fp){
     const struct env_Load *el = env;
 
@@ -1441,7 +1442,6 @@ void next_Load(const void *env, struct context *ctx, struct global *global, FILE
 
         unsigned int size;
         hvalue_t *indices = value_get(av, &size);
-        assert(indices[0] == VALUE_TO_PC(-1));
         size /= sizeof(hvalue_t);
 
         char *x = indices_string(indices, size);
@@ -1506,10 +1506,8 @@ void do_Load(struct state *state, struct step *step, struct global *global,
     if (k != size) {
         if (VALUE_TYPE(v) != VALUE_PC) {
             char *p = value_string(av);
-            char *val = value_string(v);
-            value_ctx_failure(step->ctx, &step->engine, "Load %s: can't load from %s", p, val);
+            value_ctx_failure(step->ctx, &step->engine, "Load %s: can't load", p);
             free(p);
-            free(val);
             return;
         }
         do_Call(step, global, av, v, &indices[k], size - k);
@@ -1565,6 +1563,9 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
             }
 
             do_Load(state, step, global, av, state->vars, indices + 1, size - 1);
+        }
+        else if (indices[0] == VALUE_TO_PC(-2)) {
+            do_Load(state, step, global, av, step->ctx->vars, indices + 1, size - 1);
         }
         else if (VALUE_TYPE(indices[0]) != VALUE_PC) {
             do_Load(state, step, global, av, indices[0], indices + 1, size - 1);
@@ -2763,6 +2764,37 @@ hvalue_t f_any(struct state *state, struct step *step, hvalue_t *args, int n){
 		return VALUE_FALSE;
     }
     return value_ctx_failure(step->ctx, &step->engine, "any() can only be applied to sets or dictionaries");
+}
+
+hvalue_t f_closure(struct state *state, struct step *step, hvalue_t *args, int n){
+    assert(n == 2);
+
+    // Sanity check on function
+    switch (VALUE_TYPE(args[1])) {
+    case VALUE_BOOL:
+    case VALUE_INT:
+    case VALUE_SET:
+    case VALUE_ADDRESS:
+    case VALUE_CONTEXT:
+        {
+            char *p = value_string(args[1]);
+            value_ctx_failure(step->ctx, &step->engine, "Closure: bad function type: %s", p);
+            free(p);
+            return 0;
+        }
+    case VALUE_ATOM:
+    case VALUE_PC:
+    case VALUE_LIST:
+    case VALUE_DICT:
+        break;
+    default:
+        assert(false);
+    }
+
+    hvalue_t list[2];
+    list[0] = args[1];
+    list[1] = args[0];
+    return value_put_address(&step->engine, list, sizeof(list));
 }
 
 hvalue_t f_countLabel(struct state *state, struct step *step, hvalue_t *args, int n){
@@ -4204,6 +4236,7 @@ struct f_info f_table[] = {
     { "abs", f_abs },
     { "all", f_all },
     { "any", f_any },
+    { "Closure", f_closure },
     { "countLabel", f_countLabel },
     { "DictAdd", f_dict_add },
     { "in", f_in },

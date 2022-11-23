@@ -280,9 +280,11 @@ class NameAST(AST):
             )
         elif t == "local-var":
             (lexeme, file, line, column) = v
+            # TODO: what if lexeme == "_"?
             if lexeme != "_":
                 code.append(PushOp((AddressValue(PcValue(-2), [lexeme]), file, line, column)), self.token, self.endtoken, stmt=stmt)
         else:
+            assert t == "global"
             (lexeme, file, line, column) = self.name
             if scope.prefix == None:
                 code.append(PushOp((AddressValue(PcValue(-1), [lexeme]), file, line, column)), self.token, self.endtoken, stmt=stmt)
@@ -588,58 +590,84 @@ class ApplyAST(AST):
     def __repr__(self):
         return "ApplyAST(" + str(self.method) + ", " + str(self.arg) + ")"
 
-    def varCompile(self, scope, code, stmt):
+    def varcompile(self, scope, code, stmt):
         if isinstance(self.method, NameAST):
+            (lexeme, file, line, column) = self.method.name
             (t, v) = scope.lookup(self.method.name)
-            if t == "global":
-                self.method.ph1(scope, code, stmt)
+
+            # See if it's of the form "module.constant":
+            if t == "module":
+                if isinstance(self.arg, ConstantAST) and isinstance(self.arg.const[0], str):
+                    (t2, v2) = v.lookup(self.arg.const)
+                    assert t2 == "constant"
+                    code.append(PushOp(v2), self.token, self.endtoken, stmt=stmt)
+                    return True
+                raise HarmonyCompilerError(
+                    message="can only look up a constant in a module %s, not %s" % (self.method.name, self.arg),
+                    lexeme=lexeme,
+                    filename=file,
+                    column=column
+                )
+
+            if t in {"constant", "local-const"}:
+                code.append(PushOp(v), self.token, self.endtoken, stmt=stmt)
                 self.arg.compile(scope, code, stmt)
-                code.append(AddressOp(), self.token, self.endtoken, stmt=stmt)
-                return True
-            else:
+                code.append(NaryOp(("Closure", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
                 return False
+
+            if t == "local-var":
+                if lexeme == "_":
+                    raise HarmonyCompilerError(
+                        message="can't apply to _",
+                        lexeme=lexeme,
+                        filename=file,
+                        column=column
+                    )
+                code.append(PushOp((AddressValue(PcValue(-2), [lexeme]), file, line, column)), self.token, self.endtoken, stmt=stmt)
+            else:
+                assert t == "global", t
+                if scope.prefix == None:
+                    code.append(PushOp((AddressValue(PcValue(-1), [lexeme]), file, line, column)), self.token, self.endtoken, stmt=stmt)
+                else:
+                    code.append(PushOp((AddressValue(PcValue(-1), [scope.prefix + '$' + lexeme]), file, line, column)), self.token, self.endtoken, stmt=stmt)
+
+            self.arg.compile(scope, code, stmt)
+            code.append(AddressOp(), self.token, self.endtoken, stmt=stmt)
+            return False
 
         if isinstance(self.method, PointerAST):
             self.method.expr.compile(scope, code, stmt)
             self.arg.compile(scope, code, stmt)
             code.append(AddressOp(), self.token, self.endtoken, stmt=stmt)
-            return True
+            return False
 
         if isinstance(self.method, ApplyAST):
-            if self.method.varCompile(scope, code, stmt):
-                self.arg.compile(scope, code, stmt)
-                code.append(AddressOp(), self.token, self.endtoken, stmt=stmt)
-                return True
+            r = self.method.varcompile(scope, code, stmt)
+            self.arg.compile(scope, code, stmt)
+            if r:
+                (lexeme, file, line, column) = self.token
+                code.append(NaryOp(("Closure", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
             else:
-                return False
-
+                code.append(AddressOp(), self.token, self.endtoken, stmt=stmt)
+        else:
+            self.method.compile(scope, code, stmt)
+            self.arg.compile(scope, code, stmt)
+            (lexeme, file, line, column) = self.token
+            code.append(NaryOp(("Closure", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
         return False
 
+    # An expression like "e1 e2 e3" comes out like a nested expression
+    # of the form ApplyAST(ApplyAST(e1, e2), e3).  However, we want it
+    # in the form [e1, e2, e3] so that we can first compute the expressions
+    # and do the applications afterwards.  We need to generate an address
+    # value and then a Load instruction will evaluate the applications.
     def compile(self, scope, code, stmt):
-        if isinstance(self.method, NameAST):
-            (t, v) = scope.lookup(self.method.name)
-            # See if it's of the form "module.constant":
-            if t == "module" and isinstance(self.arg, ConstantAST) and isinstance(self.arg.const[0], str):
-                (t2, v2) = v.lookup(self.arg.const)
-                if t2 == "constant":
-                    code.append(PushOp(v2), self.token, self.endtoken, stmt=stmt)
-                    return
-            # Decrease chances of data race
-            if t == "global":
-                self.method.ph1(scope, code, stmt)
-                self.arg.compile(scope, code, stmt)
-                code.append(AddressOp(), self.token, self.endtoken, stmt=stmt)
-                code.append(LoadOp(None, self.token, None), self.token, self.endtoken, stmt=stmt)
-                return
-
-        # Decrease chances of data race
-        if self.varCompile(scope, code, stmt):
+        r = self.varcompile(scope, code, stmt)
+        if r:
+            (lexeme, file, line, column) = self.token
+            code.append(NaryOp(("Closure", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
+        else:
             code.append(LoadOp(None, self.token, None), self.token, self.endtoken, stmt=stmt)
-            return
-
-        self.method.compile(scope, code, stmt)
-        self.arg.compile(scope, code, stmt)
-        code.append(ApplyOp(self.token), self.token, self.endtoken, stmt=stmt)
 
     def localVar(self, scope):
         return self.method.localVar(scope)
