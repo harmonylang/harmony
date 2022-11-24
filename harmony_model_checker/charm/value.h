@@ -104,6 +104,9 @@ void strbuf_value_json(strbuf *sb, hvalue_t v, struct global *global);
 #define VALUE_FROM_BOOL(i) ((bool) ((i) >> VALUE_BITS))
 #define VALUE_FROM_PC(i)   ((int64_t) (i) >> VALUE_BITS)
 
+#define VALUE_PC_SHARED    VALUE_TO_PC(-1)
+#define VALUE_PC_LOCAL     VALUE_TO_PC(-2)
+
 bool value_trystore(struct engine *engine, hvalue_t dict, hvalue_t key, hvalue_t value, bool allow_inserts, hvalue_t *result);
 hvalue_t value_store(struct engine *engine, hvalue_t root, hvalue_t key, hvalue_t value);
 hvalue_t value_dict_store(struct engine *engine, hvalue_t dict, hvalue_t key, hvalue_t value);

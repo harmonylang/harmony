@@ -735,7 +735,7 @@ void op_Alloc_Malloc(const void *env, struct state *state, struct step *step, st
 
     // Assign arg to alloc$pool[alloc$next]
     hvalue_t addr[3];
-    addr[0] = VALUE_TO_PC(-1);
+    addr[0] = VALUE_PC_SHARED;
     addr[1] = alloc_pool_atom;
     addr[2] = next;
     if (!ind_trystore(state->vars, addr + 1, 2, arg, &step->engine, &state->vars)) {
@@ -1085,7 +1085,7 @@ void op_Del(const void *env, struct state *state, struct step *step, struct glob
 
         unsigned int size;
         hvalue_t *indices = value_get(av, &size);
-        if (indices[0] != VALUE_TO_PC(-1)) {
+        if (indices[0] != VALUE_PC_SHARED) {
             char *p = value_string(av);
             value_ctx_failure(step->ctx, &step->engine, "Del %s: not the address of a shared variable", p);
             free(p);
@@ -1134,7 +1134,7 @@ void op_DelVar(const void *env, struct state *state, struct step *step, struct g
 
         unsigned int size;
         hvalue_t *indices = value_get(av, &size);
-        if (indices[0] != VALUE_TO_PC(-2)) {
+        if (indices[0] != VALUE_PC_LOCAL) {
             char *p = value_string(av);
             value_ctx_failure(step->ctx, &step->engine, "DelVar %s: not the address of a method variable", p);
             free(p);
@@ -1444,7 +1444,7 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
         assert(size > 1);
 
         // See if it's reading a shared variable
-        if (indices[0] == VALUE_TO_PC(-1)) {
+        if (indices[0] == VALUE_PC_SHARED) {
             // Keep track for race detection
             // TODO.  Should it check the entire address?  Maybe part
             //        of it is not memory.
@@ -1456,7 +1456,7 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
 
             do_Load(state, step, global, av, state->vars, indices + 1, size - 1);
         }
-        else if (indices[0] == VALUE_TO_PC(-2)) {
+        else if (indices[0] == VALUE_PC_LOCAL) {
             do_Load(state, step, global, av, step->ctx->vars, indices + 1, size - 1);
         }
         else if (VALUE_TYPE(indices[0]) != VALUE_PC) {
@@ -1511,7 +1511,7 @@ void op_LoadVar(const void *env, struct state *state, struct step *step, struct 
 
         unsigned int size;
         hvalue_t *indices = value_get(av, &size);
-        if (indices[0] != VALUE_TO_PC(-2)) {
+        if (indices[0] != VALUE_PC_LOCAL) {
             char *p = value_string(av);
             value_ctx_failure(step->ctx, &step->engine, "LoadVar %s: not the address of a method variable", p);
             free(p);
@@ -1521,7 +1521,7 @@ void op_LoadVar(const void *env, struct state *state, struct step *step, struct 
         assert(size > 1);
 
         bool result;
-        if (indices[1] == this_atom) {          // TODO. PC(-3)
+        if (indices[1] == this_atom) {
             assert(size > 2);
             if (!step->ctx->extended) {
                 value_ctx_failure(step->ctx, &step->engine, "LoadVar: context does not have 'this'");
@@ -2059,7 +2059,7 @@ void next_Store(const void *env, struct context *ctx, struct global *global, FIL
 
         unsigned int size;
         hvalue_t *indices = value_get(av, &size);
-        assert(indices[0] == VALUE_TO_PC(-1));
+        assert(indices[0] == VALUE_PC_SHARED);
         size /= sizeof(hvalue_t);
         char *x = indices_string(indices, size);
         assert(x[0] == '?');
@@ -2111,7 +2111,7 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
 
         unsigned int size;
         hvalue_t *indices = value_get(av, &size);
-        if (indices[0] != VALUE_TO_PC(-1)) {
+        if (indices[0] != VALUE_PC_SHARED) {
             char *p = value_string(av);
             value_ctx_failure(step->ctx, &step->engine, "Store %s: not the address of a shared variable", p);
             free(p);
@@ -2193,7 +2193,7 @@ void op_StoreVar(const void *env, struct state *state, struct step *step, struct
 
         unsigned int size;
         hvalue_t *indices = value_get(av, &size);
-        if (indices[0] != VALUE_TO_PC(-2)) {
+        if (indices[0] != VALUE_PC_LOCAL) {
             char *p = value_string(av);
             value_ctx_failure(step->ctx, &step->engine, "DelVar %s: not the address of a method variable", p);
             free(p);
@@ -2350,7 +2350,7 @@ void *init_Del(struct dict *map, struct engine *engine){
     struct env_Del *env = new_alloc(struct env_Del);
     env->n = jv->u.list.nvals + 1;
     env->indices = malloc(env->n * sizeof(hvalue_t));
-    env->indices[0] = VALUE_TO_PC(-1);
+    env->indices[0] = VALUE_PC_SHARED;
     for (unsigned int i = 0; i < jv->u.list.nvals; i++) {
         struct json_value *index = jv->u.list.vals[i];
         assert(index->type == JV_MAP);
@@ -2396,7 +2396,7 @@ void *init_Load(struct dict *map, struct engine *engine){
     struct env_Load *env = new_alloc(struct env_Load);
     env->n = jv->u.list.nvals + 1;
     env->indices = malloc(env->n * sizeof(hvalue_t));
-    env->indices[0] = VALUE_TO_PC(-1);
+    env->indices[0] = VALUE_PC_SHARED;
     for (unsigned int i = 0; i < jv->u.list.nvals; i++) {
         struct json_value *index = jv->u.list.vals[i];
         assert(index->type == JV_MAP);
@@ -2554,7 +2554,7 @@ void *init_Stop(struct dict *map, struct engine *engine){
     struct env_Stop *env = new_alloc(struct env_Stop);
     env->n = jv->u.list.nvals + 1;
     env->indices = malloc(env->n * sizeof(hvalue_t));
-    env->indices[0] = VALUE_TO_PC(-1);
+    env->indices[0] = VALUE_PC_SHARED;
     for (unsigned int i = 0; i < jv->u.list.nvals + 1; i++) {
         struct json_value *index = jv->u.list.vals[i];
         assert(index->type == JV_MAP);
@@ -2572,7 +2572,7 @@ void *init_Store(struct dict *map, struct engine *engine){
     struct env_Store *env = new_alloc(struct env_Store);
     env->n = jv->u.list.nvals + 1;
     env->indices = malloc(env->n * sizeof(hvalue_t));
-    env->indices[0] = VALUE_TO_PC(-1);
+    env->indices[0] = VALUE_PC_SHARED;
     for (unsigned int i = 0; i < jv->u.list.nvals; i++) {
         struct json_value *index = jv->u.list.vals[i];
         assert(index->type == JV_MAP);

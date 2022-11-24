@@ -455,7 +455,7 @@ static bool onestep(
                 assert(VALUE_TYPE(addr) == VALUE_ADDRESS);
                 assert(addr != VALUE_ADDRESS);
                 hvalue_t *func = value_get(addr, NULL);
-                if (*func != VALUE_TO_PC(-1)) {
+                if (*func != VALUE_PC_SHARED) {
                     breakable = false;
                 }
             }
