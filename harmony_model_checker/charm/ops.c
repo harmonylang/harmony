@@ -1249,7 +1249,7 @@ void op_DelVar(const void *env, struct state *state, struct step *step, struct g
         size /= sizeof(hvalue_t);
 
         bool result;
-        if (indices[0] == this_atom) {      // TODO.  VALUE_TO_PC(-3)
+        if (indices[1] == this_atom) {
             if (!step->ctx->extended) {
                 value_ctx_failure(step->ctx, &step->engine, "DelVar: context does not have 'this'");
                 return;
@@ -1258,7 +1258,7 @@ void op_DelVar(const void *env, struct state *state, struct step *step, struct g
                 value_ctx_failure(step->ctx, &step->engine, "DelVar: 'this' is not a dictionary");
                 return;
             }
-		    result = ind_remove(ctx_this(step->ctx), &indices[1], size - 1, &step->engine, &ctx_this(step->ctx));
+		    result = ind_remove(ctx_this(step->ctx), &indices[2], size - 2, &step->engine, &ctx_this(step->ctx));
         }
         else {
 		    result = ind_remove(step->ctx->vars, indices + 1, size - 1, &step->engine, &step->ctx->vars);
@@ -1624,9 +1624,11 @@ void op_LoadVar(const void *env, struct state *state, struct step *step, struct 
             return;
         }
         size /= sizeof(hvalue_t);
+        assert(size > 1);
 
         bool result;
-        if (indices[0] == this_atom) {          // TODO. PC(-3)
+        if (indices[1] == this_atom) {          // TODO. PC(-3)
+            assert(size > 2);
             if (!step->ctx->extended) {
                 value_ctx_failure(step->ctx, &step->engine, "LoadVar: context does not have 'this'");
                 return;
@@ -1635,8 +1637,8 @@ void op_LoadVar(const void *env, struct state *state, struct step *step, struct 
                 value_ctx_failure(step->ctx, &step->engine, "LoadVar: 'this' is not a dictionary");
                 return;
             }
-            unsigned int k = ind_tryload(&step->engine, ctx_this(step->ctx), &indices[1], size - 1, &v);
-            result = k == (size - 1);
+            unsigned int k = ind_tryload(&step->engine, ctx_this(step->ctx), &indices[2], size - 2, &v);
+            result = k == (size - 2);
         }
         else {
             if (!check_stack(step->ctx, 1)) {
@@ -1644,7 +1646,7 @@ void op_LoadVar(const void *env, struct state *state, struct step *step, struct 
                 return;
             }
             unsigned int k = ind_tryload(&step->engine, step->ctx->vars, indices + 1, size - 1, &v);
-            result = k == size - 1;
+            result = k == (size - 1);
         }
 
         if (step->keep_callstack) {
@@ -2314,7 +2316,8 @@ void op_StoreVar(const void *env, struct state *state, struct step *step, struct
         }
 
         bool result;
-        if (indices[0] == this_atom) {      // TODOADDR
+        if (indices[1] == this_atom) {      // TODOADDR
+            assert(size > 2);
             if (!step->ctx->extended) {
                 value_ctx_extend(step->ctx);
             }
@@ -2322,7 +2325,7 @@ void op_StoreVar(const void *env, struct state *state, struct step *step, struct
                 value_ctx_failure(step->ctx, &step->engine, "StoreVar: 'this' is not a dictionary");
                 return;
             }
-            result = ind_trystore(ctx_this(step->ctx), &indices[1], size - 1, v, &step->engine, &ctx_this(step->ctx));
+            result = ind_trystore(ctx_this(step->ctx), &indices[2], size - 2, v, &step->engine, &ctx_this(step->ctx));
         }
 
         else {
