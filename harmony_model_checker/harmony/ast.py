@@ -625,7 +625,7 @@ class ApplyAST(AST):
                         filename=file,
                         column=column
                     )
-                self.method.compile(scope, code, stmt)
+                self.method.compile(scope, code, stmt)  # LoadVar
                 self.arg.compile(scope, code, stmt)
                 code.append(NaryOp(("Closure", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
             else:
