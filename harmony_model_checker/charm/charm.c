@@ -757,8 +757,8 @@ void print_context(
     fprintf(file, "%s\"sp\": \"%u\",\n", prefix, c->sp);
 
     fprintf(file, "%s\"stack\": [", prefix);
-    for (unsigned int x = cs->sp; x < c->sp; x++) {
-        if (x != cs->sp) {
+    for (unsigned int x = 0; x < c->sp; x++) {
+        if (x != 0) {
             fprintf(file, ", ");
         }
         char *v = value_json(ctx_stack(c)[x], global);

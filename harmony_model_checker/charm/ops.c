@@ -1435,6 +1435,7 @@ void op_JumpCond(const void *env, struct state *state, struct step *step, struct
 // TODO.  Update for new Load
 void next_Load(const void *env, struct context *ctx, struct global *global, FILE *fp){
     const struct env_Load *el = env;
+    char *x;
 
     if (el == 0) {
         assert(ctx->sp > 0);
@@ -1445,24 +1446,17 @@ void next_Load(const void *env, struct context *ctx, struct global *global, FILE
         unsigned int size;
         hvalue_t *indices = value_get(av, &size);
         size /= sizeof(hvalue_t);
-
-        char *x = indices_string(indices, size);
-        assert(x[0] == '?');
-        int n = strlen(x);
-        char *json = json_escape(x+1, n-1);
-        fprintf(fp, "{ \"type\": \"Load\", \"var\": \"%s\" }", json);
-        free(json);
-        free(x);
+        x = indices_string(indices, size);
     }
     else {
-        char *x = indices_string(el->indices, el->n);
-        assert(x[0] == '?');
-        int n = strlen(x);
-        char *json = json_escape(x+1, n-1);
-        fprintf(fp, "{ \"type\": \"Load\", \"var\": \"%s\" }", json);
-        free(json);
-        free(x);
+        x = indices_string(el->indices, el->n);
     }
+    assert(x[0] == '?');
+    int n = strlen(x);
+    char *json = json_escape(x+1, n-1);
+    fprintf(fp, "{ \"type\": \"Load\", \"var\": \"%s\" }", json);
+    free(json);
+    free(x);
 }
 
 // Call a method
@@ -1517,9 +1511,9 @@ void do_Load(struct state *state, struct step *step, struct global *global,
     }
 
     if (step->keep_callstack) {
-        char *x = indices_string(indices, size);
+        char *x = value_string(av);
         char *val = value_string(v);
-        strbuf_printf(&step->explain, "pop address of variable (%s) and push value (%s)", x, val);
+        strbuf_printf(&step->explain, "pop address (%s) and push value (%s)", x, val);
         free(x);
         free(val);
     }
