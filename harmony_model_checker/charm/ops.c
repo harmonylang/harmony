@@ -1558,6 +1558,8 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
         // See if it's reading a shared variable
         if (indices[0] == VALUE_TO_PC(-1)) {
             // Keep track for race detection
+            // TODO.  Should it check the entire address?  Maybe part
+            //        of it is not memory.
             if (step->ai != NULL) {
                 step->ai->indices = indices;
                 step->ai->n = size;
