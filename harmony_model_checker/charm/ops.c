@@ -504,112 +504,6 @@ static void update_callstack(struct global *global, struct step *step, hvalue_t 
     free(key);
 }
 
-void op_Apply(const void *env, struct state *state, struct step *step, struct global *global){
-    assert(false);      // TODO: op_Apply is obsolete
-
-    hvalue_t e = ctx_pop(step->ctx);
-    hvalue_t method = ctx_pop(step->ctx);
-
-    hvalue_t type = VALUE_TYPE(method);
-    switch (type) {
-    case VALUE_DICT:
-        {
-            hvalue_t v;
-            if (!value_tryload(&step->engine, method, e, &v)) {
-                char *m = value_string(method);
-                char *x = value_string(e);
-                value_ctx_failure(step->ctx, &step->engine, "Bad index %s: not in %s", x, m);
-                free(m);
-                free(x);
-                return;
-            }
-            if (step->keep_callstack) {
-                char *m = value_string(method);
-                char *key = value_string(e);
-                char *val = value_string(v);
-                strbuf_printf(&step->explain, "pop a key (%s) and a dict value (%s) and push the corresponding value (%s)", key, m, val);
-                free(m);
-                free(key);
-                free(val);
-            }
-            ctx_push(step->ctx, v);
-            step->ctx->pc++;
-        }
-        return;
-    case VALUE_LIST:
-        {
-            if (VALUE_TYPE(e) != VALUE_INT) {
-                value_ctx_failure(step->ctx, &step->engine, "Bad index type for list");
-                return;
-            }
-            unsigned int index = VALUE_FROM_INT(e), size;
-            hvalue_t *vals = value_get(method, &size);
-            if (index >= (hvalue_t) size / sizeof(hvalue_t)) {
-                value_ctx_failure(step->ctx, &step->engine, "Index out of range");
-                return;
-            }
-            if (step->keep_callstack) {
-                char *m = value_string(method);
-                char *key = value_string(e);
-                char *val = value_string(vals[index]);
-                strbuf_printf(&step->explain, "pop an index (%s) and a list value (%s) and push the corresponding value (%s)", key, m, val);
-                free(m);
-                free(key);
-                free(val);
-            }
-            ctx_push(step->ctx, vals[index]);
-            step->ctx->pc++;
-        }
-        return;
-    case VALUE_ATOM:
-        {
-            if (VALUE_TYPE(e) != VALUE_INT) {
-                value_ctx_failure(step->ctx, &step->engine, "Bad index type for string");
-                return;
-            }
-            e = VALUE_FROM_INT(e);
-            unsigned int size;
-            char *chars = value_get(method, &size);
-            if (e >= (hvalue_t) size) {
-                value_ctx_failure(step->ctx, &step->engine, "Index out of range");
-                return;
-            }
-            hvalue_t v = value_put_atom(&step->engine, &chars[e], 1);
-            if (step->keep_callstack) {
-                char *m = value_string(method);
-                char *key = value_string(e);
-                char *val = value_string(v);
-                strbuf_printf(&step->explain, "pop an offset (%s) and a string value (%s) and push the corresponding character (%s)", key, m, val);
-                free(m);
-                free(key);
-                free(val);
-            }
-            ctx_push(step->ctx, v);
-            step->ctx->pc++;
-        }
-        return;
-    case VALUE_PC:
-        ctx_push(step->ctx, VALUE_TO_INT(((step->ctx->pc + 1) << CALLTYPE_BITS) | CALLTYPE_NORMAL));
-
-        // see if we need to keep track of the call stack
-        if (step->keep_callstack) {
-            update_callstack(global, step, method, e);
-        }
-
-        ctx_push(step->ctx, e);
-        assert(VALUE_FROM_PC(method) != step->ctx->pc);
-        step->ctx->pc = VALUE_FROM_PC(method);
-
-        return;
-    default:
-        {
-            char *x = value_string(method);
-            value_ctx_failure(step->ctx, &step->engine, "Can only apply to methods or dictionaries, not to: %s", x);
-            free(x);
-        }
-    }
-}
-
 void op_Assert(const void *env, struct state *state, struct step *step, struct global *global){
     hvalue_t v = ctx_pop(step->ctx);
 
@@ -2386,7 +2280,6 @@ void op_Trap(const void *env, struct state *state, struct step *step, struct glo
 }
 
 void *init_Address(struct dict *map, struct engine *engine){ return NULL; }
-void *init_Apply(struct dict *map, struct engine *engine){ return NULL; }
 void *init_Assert(struct dict *map, struct engine *engine){ return NULL; }
 void *init_Assert2(struct dict *map, struct engine *engine){ return NULL; }
 void *init_AtomicDec(struct dict *map, struct engine *engine){ return NULL; }
@@ -4163,7 +4056,6 @@ hvalue_t f_xor(struct state *state, struct step *step, hvalue_t *args, int n){
 
 struct op_info op_table[] = {
 	{ "Address", init_Address, op_Address },
-	{ "Apply", init_Apply, op_Apply },
 	{ "Assert", init_Assert, op_Assert },
 	{ "Assert2", init_Assert2, op_Assert2 },
 	{ "AtomicDec", init_AtomicDec, op_AtomicDec },
