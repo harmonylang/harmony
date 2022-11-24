@@ -441,46 +441,6 @@ bool ind_remove(hvalue_t root, hvalue_t *indices, int n, struct engine *engine,
     return false;
 }
 
-void op_Address(const void *env, struct state *state, struct step *step, struct global *global){
-    hvalue_t index = ctx_pop(step->ctx);
-    hvalue_t av = ctx_pop(step->ctx);
-    if (VALUE_TYPE(av) != VALUE_ADDRESS) {
-        char *p = value_string(av);
-        value_ctx_failure(step->ctx, &step->engine, "%s: not an address", p);
-        free(p);
-        return;
-    }
-    if (av == VALUE_ADDRESS) {
-        value_ctx_failure(step->ctx, &step->engine, "Address: None unexpected");
-        return;
-    }
-
-    unsigned int size;
-    hvalue_t *indices_orig = value_get(av, &size);
-#ifdef HEAP_ALLOC
-    hvalue_t *indices = malloc((size / sizeof(hvalue_t) + 1) * sizeof(hvalue_t));
-#else
-    hvalue_t indices[size / sizeof(hvalue_t) + 1];
-#endif
-    memcpy(indices, indices_orig, size);
-    indices[size / sizeof(hvalue_t)] = index;
-    hvalue_t result = value_put_address(&step->engine, indices, size + sizeof(index));
-#ifdef HEAP_ALLOC
-    free(indices);
-#endif
-    if (step->keep_callstack) {
-        char *key = value_string(index);
-        char *addr = value_string(av);
-        char *val = value_string(result);
-        strbuf_printf(&step->explain, "pop key (%s) and address (%s) and push combined address (%s)", key, addr, val);
-        free(key);
-        free(addr);
-        free(val);
-    }
-    ctx_push(step->ctx, result);
-    step->ctx->pc++;
-}
-
 static void update_callstack(struct global *global, struct step *step, hvalue_t method, hvalue_t arg) {
     unsigned int pc = VALUE_FROM_PC(method);
 
@@ -2279,7 +2239,6 @@ void op_Trap(const void *env, struct state *state, struct step *step, struct glo
     step->ctx->pc++;
 }
 
-void *init_Address(struct dict *map, struct engine *engine){ return NULL; }
 void *init_Assert(struct dict *map, struct engine *engine){ return NULL; }
 void *init_Assert2(struct dict *map, struct engine *engine){ return NULL; }
 void *init_AtomicDec(struct dict *map, struct engine *engine){ return NULL; }
@@ -2658,6 +2617,19 @@ hvalue_t f_any(struct state *state, struct step *step, hvalue_t *args, int n){
 		return VALUE_FALSE;
     }
     return value_ctx_failure(step->ctx, &step->engine, "any() can only be applied to sets or dictionaries");
+}
+
+hvalue_t f_add_arg(struct state *state, struct step *step, hvalue_t *args, int n){
+    assert(n == 2);
+
+    if (VALUE_TYPE(args[1]) != VALUE_ADDRESS) {
+        return value_ctx_failure(step->ctx, &step->engine, "AddArg: not an address");
+    }
+
+    unsigned int size;
+    hvalue_t *list = value_copy_extend(args[1], sizeof(hvalue_t), &size);
+    list[size / sizeof(hvalue_t)] = args[0];
+    return value_put_address(&step->engine, list, size + sizeof(hvalue_t));
 }
 
 hvalue_t f_closure(struct state *state, struct step *step, hvalue_t *args, int n){
@@ -4055,7 +4027,6 @@ hvalue_t f_xor(struct state *state, struct step *step, hvalue_t *args, int n){
 }
 
 struct op_info op_table[] = {
-	{ "Address", init_Address, op_Address },
 	{ "Assert", init_Assert, op_Assert },
 	{ "Assert2", init_Assert2, op_Assert2 },
 	{ "AtomicDec", init_AtomicDec, op_AtomicDec },
@@ -4127,6 +4098,7 @@ struct f_info f_table[] = {
     { "==", f_eq },
     { "!=", f_ne },
     { "abs", f_abs },
+    { "AddArg", f_add_arg },
     { "all", f_all },
     { "any", f_any },
     { "Closure", f_closure },

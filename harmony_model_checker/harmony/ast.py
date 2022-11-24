@@ -636,23 +636,27 @@ class ApplyAST(AST):
                     code.append(PushOp((AddressValue(PcValue(-1), [scope.prefix + '$' + lexeme]), file, line, column)), self.token, self.endtoken, stmt=stmt)
 
                 self.arg.compile(scope, code, stmt)
-                code.append(AddressOp(), self.token, self.endtoken, stmt=stmt)
+                code.append(NaryOp(("AddArg", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
+                # code.append(AddressOp(), self.token, self.endtoken, stmt=stmt)
             return False
+
+        (lexeme, file, line, column) = self.token
 
         if isinstance(self.method, PointerAST):
             self.method.expr.compile(scope, code, stmt)
             self.arg.compile(scope, code, stmt)
-            code.append(AddressOp(), self.token, self.endtoken, stmt=stmt)
+            code.append(NaryOp(("AddArg", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
+            # code.append(AddressOp(), self.token, self.endtoken, stmt=stmt)
             return False
 
         if isinstance(self.method, ApplyAST):
             r = self.method.varcompile(scope, code, stmt)
             self.arg.compile(scope, code, stmt)
             if r:
-                (lexeme, file, line, column) = self.token
                 code.append(NaryOp(("Closure", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
             else:
-                code.append(AddressOp(), self.token, self.endtoken, stmt=stmt)
+                code.append(NaryOp(("AddArg", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
+                # code.append(AddressOp(), self.token, self.endtoken, stmt=stmt)
         else:
             self.method.compile(scope, code, stmt)
             self.arg.compile(scope, code, stmt)
@@ -676,13 +680,14 @@ class ApplyAST(AST):
         return self.method.localVar(scope)
 
     def ph1(self, scope, code, stmt):
+        lexeme, file, line, column = self.token
+
         # See if it's of the form "module.constant":
         if isinstance(self.method, NameAST):
             (t, v) = scope.lookup(self.method.name)
             if t == "module" and isinstance(self.arg, ConstantAST) and isinstance(self.arg.const[0], str):
                 (t2, v2) = v.lookup(self.arg.const)
                 assert t2 == "constant"
-                lexeme, file, line, column = self.token
                 raise HarmonyCompilerError(
                     message="Cannot assign to constant %s %s" % (self.method.name, self.arg.const),
                     lexeme=lexeme,
@@ -699,7 +704,8 @@ class ApplyAST(AST):
         else:
             self.method.ph1(scope, code, stmt)
             self.arg.compile(scope, code, stmt)
-            code.append(AddressOp(), self.token, self.endtoken, stmt=stmt)
+            code.append(NaryOp(("AddArg", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
+            # code.append(AddressOp(), self.token, self.endtoken, stmt=stmt)
 
     def ph2(self, scope, code, skip, start, stop, stmt):
         if skip > 0:
