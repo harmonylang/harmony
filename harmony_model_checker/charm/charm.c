@@ -447,6 +447,19 @@ static bool onestep(
         else if (!step->ctx->atomicFlag) {
             bool breakable = next_instr->breakable;
 
+            // If this is a Load operation, it's only breakable if it
+            // accesses a global variable
+            // TODO.  Can this be made more efficient?
+            if (next_instr->load && next_instr->env == NULL) {
+                hvalue_t addr = ctx_stack(step->ctx)[step->ctx->sp - 1];
+                assert(VALUE_TYPE(addr) == VALUE_ADDRESS);
+                assert(addr != VALUE_ADDRESS);
+                hvalue_t *func = value_get(addr, NULL);
+                if (*func != VALUE_TO_PC(-1)) {
+                    breakable = false;
+                }
+            }
+
             // Deal with interrupts if enabled
             if (step->ctx->extended && ctx_trap_pc(step->ctx) != 0 &&
                                 !step->ctx->interruptlevel) {
