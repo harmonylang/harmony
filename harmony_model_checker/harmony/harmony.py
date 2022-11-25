@@ -1733,18 +1733,18 @@ RemoveDirAddr(dir, addr) ==
 \* is the new value.  It is a recursive operator that returns the new directory.
 RECURSIVE UpdateDirAddr(_, _, _)
 UpdateDirAddr(dir, addr, value) ==
-    IF addr.cval = <<>>
+    IF addr = <<>>
     THEN
         value
     ELSE
-        LET next == AddrHead(addr)
+        LET next == Head(addr)
         IN
             CASE dir.ctype = "dict" ->
                 HDict(
                     [ x \\in (DOMAIN dir.cval) \\union {next} |->
                         IF x = next
                         THEN
-                            UpdateDirAddr(dir.cval[x], AddrTail(addr), value)
+                            UpdateDirAddr(dir.cval[x], Tail(addr), value)
                         ELSE
                             dir.cval[x]
                     ]
@@ -1755,7 +1755,7 @@ UpdateDirAddr(dir, addr, value) ==
                         [ x \\in (DOMAIN dir.cval) \\union {next.cval + 1} |->
                             IF x = next.cval + 1
                             THEN
-                                UpdateDirAddr(dir.cval[x], AddrTail(addr), value)
+                                UpdateDirAddr(dir.cval[x], Tail(addr), value)
                             ELSE
                                 dir.cval[x]
                         ]
@@ -2450,7 +2450,7 @@ OpStore(self, v) ==
     IN
         /\\ Assert(self.readonly = 0, "Store in readonly mode")
         /\\ UpdateContext(self, next)
-        /\\ shared' = UpdateDirAddr(shared, HAddress(v), Head(self.stack))
+        /\\ shared' = UpdateDirAddr(shared, v, Head(self.stack))
 
 \* Pop a value and an address and store the value at the given address
 OpStoreInd(self) ==
@@ -2459,16 +2459,20 @@ OpStoreInd(self) ==
         next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(Tail(@))]
     IN
         /\\ Assert(self.readonly = 0, "StoreInd in readonly mode")
+        /\\ addr.ctype = "address"
+        /\\ addr.cval.func = HPc(-1)
         /\\ UpdateContext(self, next)
-        /\\ shared' = UpdateDirAddr(shared, addr, val)
+        /\\ shared' = UpdateDirAddr(shared, addr.cval.args, val)
 
 \* Pop a value and an address and store the *local* value at the given address
 OpStoreVarInd(self) ==
     LET val  == self.stack[1]
         addr == self.stack[2]
         next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(Tail(@)),
-                                    !.vs = UpdateDirAddr(@, addr, val)]
+                                    !.vs = UpdateDirAddr(@, addr.cval.args, val)]
     IN
+        /\\ addr.ctype = "address"
+        /\\ addr.cval.func = HPc(-2)
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
@@ -2476,7 +2480,7 @@ OpStoreVarInd(self) ==
 \* continue to the next instruction.  If not, push the arguments except
 \* the first and evaluate the function with the first argument.
 OpLoadInd(self) ==
-    LET addr == Head(self.stack)
+    LET addr == Head(self.stack).cval
         func == CASE addr.func = HPc(-1) -> shared
                []   addr.func = HPc(-2) -> self.vs
                []   OTHER               -> addr.func
@@ -2502,7 +2506,7 @@ OpLoadInd(self) ==
                     /\\ UNCHANGED shared
             [] func.ctype = "list" ->
                 LET next == [self EXCEPT !.stack =
-                        << Address(func.cval[arg.cval], Tail(args)) >> \\o Tail(@)]
+                        << Address(func.cval[arg.cval+1], Tail(args)) >> \\o Tail(@)]
                 IN
                     /\\ arg.ctype = "int"
                     /\\ UpdateContext(self, next)
@@ -2534,8 +2538,7 @@ OpLoadVarInd(self) ==
 
 \* Push the value of shared variable v onto the stack.
 OpLoad(self, v) ==
-    LET next == [ self EXCEPT !.pc = @ + 1,
-                    !.stack = << LoadDirAddr(shared, HAddress(v)) >> \\o @ ]
+    LET next == [ self EXCEPT !.pc = @ + 1, !.stack = << shared.cval[v] >> \o @ ]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
@@ -2559,13 +2562,15 @@ OpStopInd(self) ==
     LET addr == Head(self.stack)
         next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
     IN
+        /\\ addr.ctype = "address"
+        /\\ addr.cval.func = HPc(-1)
         /\\ self.atomic > 0
         /\\ RemoveContext(self)
         /\\ IF addr = None \\/ addr = EmptyDict
             THEN
                 UNCHANGED shared
             ELSE
-                shared' = UpdateDirAddr(shared, addr, HContext(next))
+                shared' = UpdateDirAddr(shared, addr.cval.args, HContext(next))
 
 \* What Return should do depends on whether the methods was spawned,
 \* called as an ordinary method, or as an interrupt handler.  To indicate
