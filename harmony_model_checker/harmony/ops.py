@@ -653,29 +653,6 @@ class ContinueOp(Op):
     def eval(self, state, context):
         context.pc += 1
 
-# TODO.  Address should be a 1-ary operator
-class AddressOp(Op):
-    def __repr__(self):
-        return "Address"
-
-    def jdump(self):
-        return '{ "op": "Address" }'
-
-    def tladump(self):
-        return "OpBin(self, FunAddress)"
-
-    def explain(self):
-        return "combine the top two values on the stack into an address and push the result"
-
-    def eval(self, state, context):
-        # TODO.  Deal with func in address
-        assert False
-        index = context.pop()
-        av = context.pop()
-        assert isinstance(av, AddressValue), av
-        context.push(AddressValue(av.indexes + [index]))
-        context.pc += 1
-
 class StoreVarOp(Op):
     def __init__(self, v, lvar=None, reason=None):
         self.v = v
@@ -1298,6 +1275,10 @@ class NaryOp(Op):
             return "OpBin(self, FunMod)"
         if lexeme == "**" and self.n == 2:
             return "OpBin(self, FunPower)"
+        if lexeme == "Closure" and self.n == 2:
+            return "OpBin(self, FunClosure)"
+        if lexeme == "AddArg" and self.n == 2:
+            return "OpBin(self, FunAddArg)"
         if lexeme == "ListAdd" and self.n == 2:
             return "OpListAdd(self)"
         if lexeme == "DictAdd" and self.n == 3:

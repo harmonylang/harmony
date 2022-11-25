@@ -328,10 +328,8 @@ class AddressValue(Value):
         return "?" + strValue(self.args[0]) + self.remainder()
 
     def tlaval(self):
-        # TODO.  Deal with "func"
-        assert False
         s = "<<" + ",".join(tlaValue(x) for x in self.args) + ">>"
-        return 'HAddress(%s)'%s
+        return 'HAddress(%s, %s)'%(tlaValue(self.func), s)
 
     def jdump(self):
         if self.func == None:

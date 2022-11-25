@@ -1544,6 +1544,10 @@ HSort(s) ==
 VName(name) == [ vtype |-> "var", vname |-> name ]
 VList(list) == [ vtype |-> "tup", vlist |-> list ]
 
+\* An address has a function and a list of argument, each of which are
+\* Harmony values
+Address(f, a) == HAddress([ func |-> f, args |-> a ])
+
 \* Representation of a context (the state of a thread).  It includes
 \* the following fields:
 \*  pc:     the program counter (location in the code)
@@ -2300,9 +2304,12 @@ FunDiv(x, y)        == HInt(x.cval \\div y.cval)
 FunMod(x, y)        == HInt(x.cval % y.cval)
 FunPower(x, y)      == HInt(x.cval ^ y.cval)
 FunSetAdd(x, y)     == HSet(x.cval \\union {y})
-FunAddress(x, y)    == HAddress(x.cval \o <<y>>)
 FunShiftRight(x, y) == HInt(Bits2Int(BitsShiftRight(Int2Bits(x.cval), y.cval)))
-FunShiftLeft(x, y) == HInt(Bits2Int(BitsShiftLeft(Int2Bits(x.cval), y.cval)))
+FunShiftLeft(x, y)  == HInt(Bits2Int(BitsShiftLeft(Int2Bits(x.cval), y.cval)))
+
+\* Functions to create and extend addresses
+FunClosure(x, y)    == Address(x, <<y>>)
+FunAddArg(x, y)     == Address(x.cval.func, x.cval.args \o <<y>>)
 
 \* Compute either XOR of two ints or the union minus the intersection
 \* of two sets
