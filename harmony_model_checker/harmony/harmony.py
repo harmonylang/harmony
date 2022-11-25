@@ -2585,26 +2585,14 @@ OpReturn(self) ==
             LET raddr  == self.stack[3]
                 args   == self.stack[4]
                 result == self.vs.cval[Result]
-            IN
-                IF args = <<>>
-                THEN
-                    LET next == [ self EXCEPT
-                            !.pc = raddr + 1,
-                            !.vs = savedvars,
-                            !.stack = << result >> \\o Tail(Tail(Tail(Tail(@))))
-                        ]
-                    IN
-                        /\\ UpdateContext(self, next)
-                        /\\ UNCHANGED shared
-                ELSE
-                    LET next == [ self EXCEPT
+                next == [ self EXCEPT
                             !.pc = raddr,
                             !.vs = savedvars,
                             !.stack = << Address(result, args) >> \\o Tail(Tail(Tail(Tail(@))))
                         ]
-                    IN
-                        /\\ UpdateContext(self, next)
-                        /\\ UNCHANGED shared
+                IN
+                    /\\ UpdateContext(self, next)
+                    /\\ UNCHANGED shared
         [] calltype = "interrupt" ->
             LET raddr == self.stack[3]
                 next == [ self EXCEPT
