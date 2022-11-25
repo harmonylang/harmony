@@ -2443,44 +2443,6 @@ OpPush(self, c) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
-\* In Harmony, the expression "x(y)" (or equivalently "x y" or "x[y]")
-\* means something different depending on the type of x, similar to TLA+
-\* actually.  If x is a method, that x should be invoked with the argument y.
-\* When the method finishes, the value is that of its "result" variable.
-\* If x is a dictionary, then the value is that of x[y].  If x is a string,
-\* then y must be an integer index and x[y] returns the specified character.
-OpApply(self) ==
-    LET arg    == self.stack[1]
-        method == self.stack[2]
-    IN
-        CASE method.ctype = "pc" ->
-            LET next == [self EXCEPT !.pc = method.cval,
-                    !.stack = << arg, "normal", self.pc + 1 >> \\o Tail(Tail(@))]
-            IN
-                /\\ UpdateContext(self, next)
-                /\\ UNCHANGED shared
-        [] method.ctype = "list" ->
-            LET next == [self EXCEPT !.pc = @ + 1,
-                            !.stack = << method.cval[arg.cval] >> \\o Tail(Tail(@))]
-            IN
-                /\\ arg.ctype = "int"
-                /\\ UpdateContext(self, next)
-                /\\ UNCHANGED shared
-        [] method.ctype = "dict" ->
-            LET next == [self EXCEPT !.pc = @ + 1,
-                            !.stack = << method.cval[arg] >> \\o Tail(Tail(@))]
-            IN
-                /\\ UpdateContext(self, next)
-                /\\ UNCHANGED shared
-        [] method.ctype = "str" ->
-            LET char == SubSeq(method.cval, arg.cval+1, arg.cval+1)
-                next == [self EXCEPT !.pc = @ + 1,
-                    !.stack = << HStr(char) >> \\o Tail(Tail(@))]
-            IN
-                /\\ arg.ctype = "int"
-                /\\ UpdateContext(self, next)
-                /\\ UNCHANGED shared
-
 \* Pop the top of the stack and store in the shared variable pointed to
 \* by the sequence v of Harmony values that acts as an address
 OpStore(self, v) ==
@@ -2510,15 +2472,53 @@ OpStoreVarInd(self) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
-\* Pop an address and push the value at the address onto the stack
+\* Pop an address.  If the arguments are empty, push the function and
+\* continue to the next instruction.  If not, push the arguments except
+\* the first and evaluate the function with the first argument.
 OpLoadInd(self) ==
-    LET
-        addr == Head(self.stack)
-        val  == LoadDirAddr(shared, addr)
-        next == [self EXCEPT !.pc = @ + 1, !.stack = <<val>> \\o Tail(@)]
+    LET addr == Head(self.stack)
+        func = addr.func
+        args = addr.args
     IN
-        /\\ UpdateContext(self, next)
-        /\\ UNCHANGED shared
+    IF args == <<>>
+    THEN
+        LET next == [self EXCEPT !.pc = @ + 1, !.stack = <<func>> \\o Tail(@)]
+        IN
+            /\\ UpdateContext(self, next)
+            /\\ UNCHANGED shared
+    ELSE
+        LET arg == Head(args) IN
+        CASE func.ctype = "pc" ->
+            LET next == [self EXCEPT !.pc = func.cval, !.stack = <<
+                        arg,
+                        "normal",
+                        self.pc,
+                        Tail(args)
+                    >> \\o Tail(@)]
+            IN
+                /\\ UpdateContext(self, next)
+                /\\ UNCHANGED shared
+        [] func.ctype = "list" ->
+            LET next == [self EXCEPT !.stack =
+                    << Address(func.cval[arg.cval], Tail(args)) >> \\o Tail(@)]
+            IN
+                /\\ arg.ctype = "int"
+                /\\ UpdateContext(self, next)
+                /\\ UNCHANGED shared
+        [] func.ctype = "dict" ->
+            LET next == [self EXCEPT !.stack =
+                    << Address(func.cval[arg], Tail(args) >> \\o Tail(@)]
+            IN
+                /\\ UpdateContext(self, next)
+                /\\ UNCHANGED shared
+        [] func.ctype = "str" ->
+            LET char == SubSeq(func.cval, arg.cval+1, arg.cval+1)
+                next == [self EXCEPT !.stack =
+                    << Address(HStr(char), Tail(args) >> \\o Tail(@)]
+            IN
+                /\\ arg.ctype = "int"
+                /\\ UpdateContext(self, next)
+                /\\ UNCHANGED shared
 
 \* Pop an address and push the value of the addressed local variable onto the stack
 OpLoadVarInd(self) ==
@@ -2530,8 +2530,7 @@ OpLoadVarInd(self) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
-\* Push the value of shared variable pointed to by v onto the stack.  v
-\* is a sequence of Harmony values acting as an address
+\* Push the value of shared variable v onto the stack.
 OpLoad(self, v) ==
     LET next == [ self EXCEPT !.pc = @ + 1,
                     !.stack = << LoadDirAddr(shared, HAddress(v)) >> \\o @ ]
@@ -2566,26 +2565,39 @@ OpStopInd(self) ==
             ELSE
                 shared' = UpdateDirAddr(shared, addr, HContext(next))
 
-\* What Return should do depends on whether the methods was spawned
-\* or called as an ordinary method.  To indicate this, Spawn pushes the
-\* string "process" on the stack, while Apply pushes the string "normal"
-\* onto the stack.  The Frame operation also pushed the saved variables
-\* which must be restored.
+\* What Return should do depends on whether the methods was spawned,
+\* called as an ordinary method, or as an interrupt handler.  To indicate
+\* this, Spawn pushes the string "process" on the stack, OpLoadInd pushes
+\* the string "normal", and an interrupt pushes the string "interrupt".
+\* The Frame operation also pushed the saved variables which must be restored.
 OpReturn(self) ==
     LET savedvars == self.stack[1]
         calltype  == self.stack[2]
     IN
         CASE calltype = "normal" ->
             LET raddr == self.stack[3]
+                args == self.stack[4]
                 result == self.vs.cval[Result]
-                next == [ self EXCEPT
+            IN
+                IF args == <<>>
+                THEN
+                    LET next == [ self EXCEPT
+                            !.pc = raddr + 1,
+                            !.vs = savedvars,
+                            !.stack = << result >> \\o Tail(Tail(Tail(Tail(@))))
+                        ]
+                    IN
+                        /\\ UpdateContext(self, next)
+                        /\\ UNCHANGED shared
+                ELSE
+                    LET next == [ self EXCEPT
                             !.pc = raddr,
                             !.vs = savedvars,
-                            !.stack = << result >> \\o Tail(Tail(Tail(@)))
+                            !.stack = << Address(result, args) >> \\o Tail(Tail(Tail(Tail(@))))
                         ]
-            IN
-                /\\ UpdateContext(self, next)
-                /\\ UNCHANGED shared
+                    IN
+                        /\\ UpdateContext(self, next)
+                        /\\ UNCHANGED shared
         [] calltype = "interrupt" ->
             LET raddr == self.stack[3]
                 next == [ self EXCEPT
