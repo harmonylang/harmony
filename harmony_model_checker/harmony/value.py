@@ -329,7 +329,7 @@ class AddressValue(Value):
 
     def tlaval(self):
         s = "<<" + ",".join(tlaValue(x) for x in self.args) + ">>"
-        return 'HAddress(%s, %s)'%(tlaValue(self.func), s)
+        return 'Address(%s, %s)'%(tlaValue(self.func), s)
 
     def jdump(self):
         if self.func == None:

@@ -2477,12 +2477,12 @@ OpStoreVarInd(self) ==
 \* the first and evaluate the function with the first argument.
 OpLoadInd(self) ==
     LET addr == Head(self.stack)
-        func = CASE addr.func = HPc(-1) -> shared
-               []   addr.func = Hpc(-2) -> self.vs
+        func == CASE addr.func = HPc(-1) -> shared
+               []   addr.func = HPc(-2) -> self.vs
                []   OTHER               -> addr.func
-        args = addr.args
+        args == addr.args
     IN
-        IF args == <<>>
+        IF args = <<>>
         THEN
             LET next == [self EXCEPT !.pc = @ + 1, !.stack = <<func>> \\o Tail(@)]
             IN
@@ -2509,14 +2509,14 @@ OpLoadInd(self) ==
                     /\\ UNCHANGED shared
             [] func.ctype = "dict" ->
                 LET next == [self EXCEPT !.stack =
-                        << Address(func.cval[arg], Tail(args) >> \\o Tail(@)]
+                        << Address(func.cval[arg], Tail(args)) >> \\o Tail(@)]
                 IN
                     /\\ UpdateContext(self, next)
                     /\\ UNCHANGED shared
             [] func.ctype = "str" ->
                 LET char == SubSeq(func.cval, arg.cval+1, arg.cval+1)
                     next == [self EXCEPT !.stack =
-                        << Address(HStr(char), Tail(args) >> \\o Tail(@)]
+                        << Address(HStr(char), Tail(args)) >> \\o Tail(@)]
                 IN
                     /\\ arg.ctype = "int"
                     /\\ UpdateContext(self, next)
@@ -2577,11 +2577,11 @@ OpReturn(self) ==
         calltype  == self.stack[2]
     IN
         CASE calltype = "normal" ->
-            LET raddr == self.stack[3]
-                args == self.stack[4]
+            LET raddr  == self.stack[3]
+                args   == self.stack[4]
                 result == self.vs.cval[Result]
             IN
-                IF args == <<>>
+                IF args = <<>>
                 THEN
                     LET next == [ self EXCEPT
                             !.pc = raddr + 1,
