@@ -205,7 +205,7 @@ def lexer(s, file, fd, pmap):
     while s != "":
         if column == 1:
             if line != 1: print("\\\\\n", file=fd)
-            print("\>{\\tiny %d}\\'\\>"%line, end="", file=fd)
+            print("\\>\\hnyLine{%d}\\>"%line, end="", file=fd)
 
         # see if it's a blank
         if s[0] in { " ", "\t" }:
@@ -258,10 +258,21 @@ def loadAll(filename):
 
 def doProcess(filename, fd, pmap):
     all = loadAll(filename)
+    print("% \\documentclass{article}", file=fd)
+    print("% \\begin{document}", file=fd)
+    print("\\providecommand{\\hnyLine}[1]{{\\tiny #1}\\'}", file=fd)
+    print("\\providecommand{\\hnyReserved}[1]{\\textbf{#1}}", file=fd)
+    print("\\providecommand{\\hnyModule}[1]{\\texttt{#1}}", file=fd)
+    print("\\providecommand{\\hnyConstant}[1]{\\texttt{#1}}", file=fd)
+    print("\\providecommand{\\hnyGlobal}[1]{\\textit{#1}}", file=fd)
+    print("\\providecommand{\\hnyLocalConst}[1]{\\textit{#1}}", file=fd)
+    print("\\providecommand{\\hnyLocalVar}[1]{\\textit{#1}}", file=fd)
+    print("\\providecommand{\\hnyNumber}[1]{#1}", file=fd)
     print("\\begin{tabbing}", file=fd)
     print("X\\=XX\\=XXX\\kill", file=fd)
     lexer(all, filename, fd, pmap)
     print("\\end{tabbing}", file=fd)
+    print("% \\end{document}", file=fd)
 
 def tex_main(f, code, scope):
     doProcess(scope.file, f, scope.pmap)
