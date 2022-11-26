@@ -45,6 +45,7 @@ import time
 import traceback
 import webbrowser
 
+from harmony_model_checker.harmony.tex import *
 from harmony_model_checker.harmony.jsonstring import *
 from harmony_model_checker.harmony.brief import *
 from harmony_model_checker.harmony.genhtml import *
@@ -2706,3 +2707,6 @@ THEOREM Spec => [](active \subseteq (DOMAIN ctxbag))
 THEOREM Spec => ((active = {}) => [](active = {}))
 \* THEOREM Spec => []<>(active = {})
 ================""", file=f)
+
+def tex_output(f, code, scope):
+    tex_main(f, code, scope)

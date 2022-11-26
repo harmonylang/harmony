@@ -41,7 +41,7 @@ args.add_argument("-s", action="store_true",
 args.add_argument("-v", "--version", action="store_true",
                   help="print version number")
 args.add_argument("-o", action='append', type=pathlib.Path,
-                  help="specify output file (.hvm, .hco, .hfa, .htm. .tla, .png, .gv)")
+                  help="specify output file (.hvm, .hco, .hfa, .htm. .tla, .tex, .png, .gv)")
 args.add_argument("-j", action="store_true",
                   help="list machine code in JSON format")
 args.add_argument("--noweb", action="store_true", default=False,
@@ -90,6 +90,10 @@ def handle_hny(ns, output_files, parse_code_only, filenames):
     if output_files["tla"] is not None:
         with open(output_files["tla"], "w", encoding='utf-8') as f:
             legacy_harmony.tla_translate(f, code, scope)
+
+    if output_files["tex"] is not None:
+        with open(output_files["tex"], "w", encoding='utf-8') as f:
+            legacy_harmony.tex_output(f, code, scope)
     
     return code, scope
 
@@ -202,6 +206,7 @@ def main():
         "hvm": None,
         "png": None,
         "tla": None,
+        "tex": None,
         "gv":  None
     }
     for p in (ns.o or []):
