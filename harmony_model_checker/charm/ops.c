@@ -1464,89 +1464,32 @@ void op_LoadVar(const void *env, struct state *state, struct step *step, struct 
     assert(VALUE_TYPE(step->ctx->vars) == VALUE_DICT);
 
     hvalue_t v;
-    if (el == NULL) {
-        hvalue_t av = ctx_pop(step->ctx);
-        assert(VALUE_TYPE(av) == VALUE_ADDRESS);
-        assert(av != VALUE_ADDRESS);
-
-        unsigned int size;
-        hvalue_t *indices = value_get(av, &size);
-        if (indices[0] != VALUE_PC_LOCAL) {
-            char *p = value_string(av);
-            value_ctx_failure(step->ctx, &step->engine, "LoadVar %s: not the address of a method variable", p);
-            free(p);
+    if (el->name == this_atom) {
+        if (!step->ctx->extended) {
+            value_ctx_failure(step->ctx, &step->engine, "LoadVar: context does not have 'this'");
             return;
         }
-        size /= sizeof(hvalue_t);
-        assert(size > 1);
-
-        bool result;
-        if (indices[1] == this_atom) {
-            assert(size > 2);
-            if (!step->ctx->extended) {
-                value_ctx_failure(step->ctx, &step->engine, "LoadVar: context does not have 'this'");
-                return;
-            }
-            if (VALUE_TYPE(ctx_this(step->ctx)) != VALUE_DICT) {
-                value_ctx_failure(step->ctx, &step->engine, "LoadVar: 'this' is not a dictionary");
-                return;
-            }
-            unsigned int k = ind_tryload(&step->engine, ctx_this(step->ctx), &indices[2], size - 2, &v);
-            result = k == (size - 2);
+        if (VALUE_TYPE(ctx_this(step->ctx)) != VALUE_DICT) {
+            value_ctx_failure(step->ctx, &step->engine, "LoadVar: 'this' is not a dictionary");
+            return;
         }
-        else {
-            if (!check_stack(step->ctx, 1)) {
-                value_ctx_failure(step->ctx, &step->engine, "LoadVar: out of stack");
-                return;
-            }
-            unsigned int k = ind_tryload(&step->engine, step->ctx->vars, indices + 1, size - 1, &v);
-            result = k == (size - 1);
-        }
-
+        ctx_push(step->ctx, ctx_this(step->ctx));
+    }
+    else if (value_tryload(&step->engine, step->ctx->vars, el->name, &v)) {
         if (step->keep_callstack) {
-            char *x = indices_string(indices, size);
+            char *x = value_string(el->name);
             char *val = value_string(v);
-            strbuf_printf(&step->explain, "pop address of method variable (%s) and push value (%s)", x, val);
+            strbuf_printf(&step->explain, "push value (%s) of variable %s", val, x);
             free(x);
             free(val);
-        }
-
-        if (!result) {
-            char *x = indices_string(indices, size);
-            value_ctx_failure(step->ctx, &step->engine, "LoadVar: bad address: %s", x);
-            free(x);
-            return;
         }
         ctx_push(step->ctx, v);
     }
     else {
-        if (el->name == this_atom) {
-            if (!step->ctx->extended) {
-                value_ctx_failure(step->ctx, &step->engine, "LoadVar: context does not have 'this'");
-                return;
-            }
-            if (VALUE_TYPE(ctx_this(step->ctx)) != VALUE_DICT) {
-                value_ctx_failure(step->ctx, &step->engine, "LoadVar: 'this' is not a dictionary");
-                return;
-            }
-            ctx_push(step->ctx, ctx_this(step->ctx));
-        }
-        else if (value_tryload(&step->engine, step->ctx->vars, el->name, &v)) {
-            if (step->keep_callstack) {
-                char *x = value_string(el->name);
-                char *val = value_string(v);
-                strbuf_printf(&step->explain, "push value (%s) of variable %s", val, x);
-                free(x);
-                free(val);
-            }
-            ctx_push(step->ctx, v);
-        }
-        else {
-            char *p = value_string(el->name);
-            value_ctx_failure(step->ctx, &step->engine, "LoadVar: unknown variable %s", p);
-            free(p);
-            return;
-        }
+        char *p = value_string(el->name);
+        value_ctx_failure(step->ctx, &step->engine, "LoadVar: unknown variable %s", p);
+        free(p);
+        return;
     }
     step->ctx->pc++;
 }
@@ -2366,15 +2309,10 @@ void *init_Load(struct dict *map, struct engine *engine){
 
 void *init_LoadVar(struct dict *map, struct engine *engine){
     struct json_value *value = dict_lookup(map, "value", 5);
-    if (value == NULL) {
-        return NULL;
-    }
-    else {
-        struct env_LoadVar *env = new_alloc(struct env_LoadVar);
-        assert(value->type == JV_ATOM);
-        env->name = value_put_atom(engine, value->u.atom.base, value->u.atom.len);
-        return env;
-    }
+    struct env_LoadVar *env = new_alloc(struct env_LoadVar);
+    assert(value->type == JV_ATOM);
+    env->name = value_put_atom(engine, value->u.atom.base, value->u.atom.len);
+    return env;
 }
 
 void *init_Move(struct dict *map, struct engine *engine){

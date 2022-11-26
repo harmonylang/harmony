@@ -2527,6 +2527,7 @@ OpLoadInd(self) ==
                     /\\ UNCHANGED shared
 
 \* Pop an address and push the value of the addressed local variable onto the stack
+\* TODO.  THIS IS OBSOLETE
 OpLoadVarInd(self) ==
     LET
         addr == Head(self.stack)
