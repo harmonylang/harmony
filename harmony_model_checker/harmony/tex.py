@@ -26,15 +26,8 @@ def isalnum(c):
 def isnamechar(c):
     return isalnum(c) or c == "_"
 
-def isprint(c):
-    return isinstance(c, str) and len(c) == 1 and (
-        isalnum(c) or c in " ~`!@#$%^&*()-_=+[{]}\\|;:'\",<.>/?")
-
 def isnumber(s):
     return all(isnumeral(c) for c in s)
-
-def allcaps(s):
-    return all(isupper(c) or isnumeral(c) or c == '_' for c in s)
 
 reserved = {
     "all",
@@ -96,30 +89,6 @@ reserved = {
     "while"
 }
 
-constants = {
-    "synch",
-    "synchS",
-    "barrier",
-    "queue",
-    "list",
-    "bag",
-    "alloc",
-    "Lock",
-    "acquire",
-    "release",
-    "wait",
-    "notify",
-    "notifyAll",
-    "signal",
-    "P",
-    "V",
-    "malloc",
-    "free",
-    "Queue",
-    "put",
-    "get"
-}
-
 def isname(s):
     return (not isreserved(s)) and (isletter(s[0]) or s[0] == "_") and \
                     all(isnamechar(c) for c in s)
@@ -139,7 +108,10 @@ tokens = [ "==", "!=", "<=", ">=", "..", "->", "[]" ]
 def putchar(c, fd):
     print(c, end="", file=fd)
 
-def nextLine(s, fd):
+def capitalize(s):
+    return "".join([ x[0].upper() + x[1:] for x in s.split("-")])
+
+def nextLine(s, fd, pmap):
     while s != "":
         # skip over line comments
         if s.startswith("#"):
@@ -179,25 +151,16 @@ def nextLine(s, fd):
             while i < len(s) and isnamechar(s[i]):
                 i += 1
             found = s[:i]
-            if found in nametypes:
-                nt = nametypes[found]
+            if found in reserved:
+                nt = "reserved"
             elif isnumeral(found[0]):
                 nt = "number"
-            elif allcaps(found):
-                nt = "const"
+            elif found in pmap:
+                (nt, _) = pmap[found]
             else:
                 nt = "var"
             found = found.replace("_", "\\_")
-            if nt == "number":
-                print(found, end="", file=fd)
-            elif nt == "var":
-                print("\\textit{%s}"%found, end="", file=fd)
-            elif nt == "reserved":
-                print("\\textbf{%s}"%found, end="", file=fd)
-            elif nt in { "const", "module" }:
-                print("\\texttt{%s}"%found, end="", file=fd)
-            else:
-                assert False, (found, nt)
+            print("\\hny%s{%s}"%(capitalize(nt),found), end="", file=fd)
             s = s[i:]
             continue
 
@@ -236,7 +199,7 @@ def nextLine(s, fd):
                 putchar(s[0], fd)
         s = s[1:]
 
-def lexer(s, file, fd):
+def lexer(s, file, fd, pmap):
     line = 1
     column = 1
     while s != "":
@@ -277,10 +240,10 @@ def lexer(s, file, fd):
         # Find the end of the line, if any
         i = s.find("\n")
         if i < 0:
-            nextLine(s, fd)
+            nextLine(s, fd, pmap)
             s = ""
         else:
-            nextLine(s[:i], fd)
+            nextLine(s[:i], fd, pmap)
             s = s[i+1:]
             line += 1
             column = 1
@@ -293,16 +256,12 @@ def loadAll(filename):
             all += line
     return all
 
-def doProcess(filename, fd):
+def doProcess(filename, fd, pmap):
     all = loadAll(filename)
     print("\\begin{tabbing}", file=fd)
     print("X\\=XX\\=XXX\\kill", file=fd)
-    lexer(all, filename, fd)
+    lexer(all, filename, fd, pmap)
     print("\\end{tabbing}", file=fd)
 
 def tex_main(f, code, scope):
-    for k in reserved:
-        nametypes[k] = "reserved"
-    for k in constants:
-        nametypes[k] = "const"
-    doProcess(scope.file, f)
+    doProcess(scope.file, f, scope.pmap)
