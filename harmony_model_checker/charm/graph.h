@@ -17,6 +17,8 @@ struct component {
 struct access_info {
     struct access_info *next;        // linked list maintenance
     hvalue_t *indices;               // address of load/store
+
+    // TODO.  The following 32 bits could be packed differently
     uint8_t n;                       // length of address
     uint8_t atomic;                  // atomic counter
     unsigned int multiplicity : 7;   // #identical contexts
