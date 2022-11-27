@@ -198,15 +198,6 @@ unsigned int graph_find_scc(struct graph *graph) {
     return count;
 }
 
-// For tracking data races
-struct access_info *graph_ai_alloc(int multiplicity, int atomic, int pc) {
-    struct access_info *ai = calloc(1, sizeof(*ai));
-    ai->multiplicity = multiplicity;
-    ai->atomic = atomic;
-    ai->pc = pc;
-    return ai;
-}
-
 void graph_check_for_data_race(
     struct node *node,
     struct minheap *warnings,

@@ -217,12 +217,11 @@ unsigned int check_invariants(struct worker *w, struct node *node,
 }
 
 // For tracking data races
-static struct access_info *ai_alloc(struct worker *w, int multiplicity,
-                        int atomic, int pc) {
+static struct access_info *ai_alloc(struct worker *w, int multiplicity, int atomic) {
     struct access_info *ai = walloc(w, sizeof(*ai), true);
+    assert(multiplicity < 128);     // only 7 bits in ai->multiplicity
     ai->multiplicity = multiplicity;
     ai->atomic = atomic;
-    ai->pc = pc;
     return ai;
 }
 
@@ -334,7 +333,7 @@ static bool onestep(
         else {
             // Keep track of access for data race detection
             if (instrs[pc].load || instrs[pc].store || instrs[pc].del) {
-                struct access_info *ai = ai_alloc(w, multiplicity, step->ctx->atomic, pc);
+                struct access_info *ai = ai_alloc(w, multiplicity, step->ctx->atomic);
                 ai->next = step->ai;
                 step->ai = ai;
             }
@@ -1072,8 +1071,7 @@ void path_recompute(
     struct global *global,
     struct edge *e
 ) {
-    struct node *node = e->dst;
-    struct node *parent = e->src;
+    struct node *node = e->dst, *parent = e->src;
 
     // First recurse to the previous step
     if (parent->to_parent != NULL) {
@@ -1099,10 +1097,8 @@ void path_recompute(
     assert(pid < global->nprocesses);
 
     struct macrostep *macro = calloc(sizeof(*macro), 1);
-    macro->node = node;
+    macro->edge = e;
     macro->tid = pid;
-    macro->choice = e->choice;
-    macro->ctx = ctx;
     macro->cs = global->callstacks[pid];
 
     // Recreate the steps
@@ -1269,8 +1265,8 @@ static void path_output_microstep(struct global *global, FILE *file,
 
 static void path_output_macrostep(struct global *global, FILE *file, struct macrostep *macro, struct state *oldstate){
     fprintf(file, "    {\n");
-    fprintf(file, "      \"id\": \"%d\",\n", macro->node->id);
-    fprintf(file, "      \"len\": \"%d\",\n", macro->node->len);
+    fprintf(file, "      \"id\": \"%d\",\n", macro->edge->dst->id);
+    fprintf(file, "      \"len\": \"%d\",\n", macro->edge->dst->len);
     fprintf(file, "      \"tid\": \"%d\",\n", macro->tid);
 
     fprintf(file, "      \"shared\": ");
@@ -1295,18 +1291,18 @@ static void path_output_macrostep(struct global *global, FILE *file, struct macr
     free(name);
     free(arg);
 
-    char *c = macro->choice == 0 ? NULL : value_json(macro->choice, global);
+    char *c = macro->edge->choice == 0 ? NULL : value_json(macro->edge->choice, global);
     if (c != NULL) {
         fprintf(file, "      \"choice\": %s,\n", c);
     }
     free(c);
 
     fprintf(file, "      \"context\": {\n");
-    print_context(global, file, macro->ctx, macro->cs, macro->tid, macro->node, "        ");
+    print_context(global, file, macro->edge->ctx, macro->cs, macro->tid, macro->edge->dst, "        ");
     fprintf(file, "      },\n");
 
     fprintf(file, "      \"microsteps\": [");
-    struct context *oldctx = value_get(macro->ctx, NULL);
+    struct context *oldctx = value_get(macro->edge->ctx, NULL);
     struct callstack *oldcs = NULL;
     for (unsigned int i = 0; i < macro->nmicrosteps; i++) {
         struct microstep *micro = macro->microsteps[i];
@@ -1324,7 +1320,7 @@ static void path_output_macrostep(struct global *global, FILE *file, struct macr
     fprintf(file, "\n      ],\n");
   
     fprintf(file, "      \"ctxbag\": {\n");
-    struct state *state = macro->node->state;
+    struct state *state = macro->edge->dst->state;
     for (unsigned int i = 0; i < state->bagsize; i++) {
         if (i > 0) {
             fprintf(file, ",\n");
@@ -1338,7 +1334,7 @@ static void path_output_macrostep(struct global *global, FILE *file, struct macr
     fprintf(file, "      \"contexts\": [\n");
     for (unsigned int i = 0; i < macro->nprocesses; i++) {
         fprintf(file, "        {\n");
-        print_context(global, file, macro->processes[i], macro->callstacks[i], i, macro->node, "          ");
+        print_context(global, file, macro->processes[i], macro->callstacks[i], i, macro->edge->dst, "          ");
         fprintf(file, "        }");
         if (i < macro->nprocesses - 1) {
             fprintf(file, ",");
@@ -1384,7 +1380,7 @@ static void path_trim(struct global *global, struct engine *engine){
 
         // Look up the last microstep of this thread, which wasn't the
         // last one to take a step overall
-        struct context *cc = value_get(macro->ctx, NULL);
+        struct context *cc = value_get(macro->edge->ctx, NULL);
         struct microstep *ls = macro->microsteps[macro->nmicrosteps - 1];
         struct instr *fi = &instrs[cc->pc];
         struct instr *li = &instrs[ls->ctx->pc];

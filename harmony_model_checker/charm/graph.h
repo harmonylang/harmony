@@ -19,8 +19,7 @@ struct access_info {
     hvalue_t *indices;               // address of load/store
     uint8_t n;                       // length of address
     uint8_t atomic;                  // atomic counter
-    uint16_t pc;                     // for debugging
-    unsigned int multiplicity : 15;  // #identical contexts
+    unsigned int multiplicity : 7;   // #identical contexts
     bool load : 1;                   // store or del if false
 };
 
@@ -85,8 +84,6 @@ struct graph {
 };
 
 void graph_init(struct graph *graph, unsigned int initial_size);
-
-struct access_info *graph_ai_alloc(int multiplicity, int atomic, int pc);
 
 void graph_check_for_data_race(
     struct node *node,

@@ -37,12 +37,12 @@ struct microstep {
     char *explain;
 };
 
-// Info about a macrostep
+// Info about a macrostep (edge in Kripke structure)
 struct macrostep {
     struct macrostep *next;
-    struct node *node;
+    struct edge *edge;
     unsigned int tid;
-    hvalue_t name, arg, choice, ctx;
+    hvalue_t name, arg;
     struct callstack *cs;
     unsigned int nmicrosteps, alloc_microsteps;
     struct microstep **microsteps;
