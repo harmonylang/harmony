@@ -1179,7 +1179,9 @@ class JumpCondOp(Op):
 
     def eval(self, state, context):
         c = context.pop()
-        if c == self.cond:
+        if type(c) != type(self.cond):
+            context.failure = "Error: incompatible types (%s, %s)"%(c, self.cond)
+        elif c == self.cond:
             assert self.pc != context.pc
             context.pc = self.pc
         else:
