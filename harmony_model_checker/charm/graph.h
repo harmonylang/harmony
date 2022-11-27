@@ -20,8 +20,8 @@ struct access_info {
 
     // TODO.  The following 32 bits could be packed differently
     uint8_t n;                       // length of address
-    uint8_t atomic;                  // atomic counter
-    unsigned int multiplicity : 7;   // #identical contexts
+    uint8_t multiplicity;            // #identical contexts
+    bool atomic : 1;                 // atomic or not
     bool load : 1;                   // store or del if false
 };
 

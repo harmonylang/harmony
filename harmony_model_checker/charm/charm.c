@@ -219,9 +219,9 @@ unsigned int check_invariants(struct worker *w, struct node *node,
 // For tracking data races
 static struct access_info *ai_alloc(struct worker *w, int multiplicity, int atomic) {
     struct access_info *ai = walloc(w, sizeof(*ai), true);
-    assert(multiplicity < 128);     // only 7 bits in ai->multiplicity
+    assert(multiplicity < 256);     // only 8 bits in ai->multiplicity
     ai->multiplicity = multiplicity;
-    ai->atomic = atomic;
+    ai->atomic = atomic > 0;
     return ai;
 }
 
@@ -1301,8 +1301,19 @@ static void path_output_macrostep(struct global *global, FILE *file, struct macr
     print_context(global, file, macro->edge->ctx, macro->cs, macro->tid, macro->edge->dst, "        ");
     fprintf(file, "      },\n");
 
-    fprintf(file, "      \"microsteps\": [");
     struct context *oldctx = value_get(macro->edge->ctx, NULL);
+    if (macro->trimmed) {
+        struct instr *fi = &global->code.instrs[oldctx->pc];
+        if (fi->store) {
+            struct access_info *ai = macro->edge->ai;
+            assert(ai != NULL);
+            assert(ai->next == NULL);
+            assert(!ai->load);
+            assert(!ai->atomic);
+        }
+    }
+
+    fprintf(file, "      \"microsteps\": [");
     struct callstack *oldcs = NULL;
     for (unsigned int i = 0; i < macro->nmicrosteps; i++) {
         struct microstep *micro = macro->microsteps[i];
@@ -1387,6 +1398,7 @@ static void path_trim(struct global *global, struct engine *engine){
         if ((fi->store || fi->load || fi->print) && (li->store || li->load || li->print)) {
 
             macro->nmicrosteps = 1;
+            macro->trimmed = true;
             hvalue_t ictx = value_put_context(engine, macro->microsteps[0]->ctx);
             for (unsigned int j = last[i]; j < global->nmacrosteps; j++) {
                 struct macrostep *m = global->macrosteps[j];

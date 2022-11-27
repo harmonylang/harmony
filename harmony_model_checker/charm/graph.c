@@ -208,7 +208,7 @@ void graph_check_for_data_race(
         for (struct access_info *ai = edge->ai; ai != NULL; ai = ai->next) {
             if (ai->indices != NULL) {
                 assert(ai->n > 0);
-                if (ai->multiplicity > 1 && !ai->load && ai->atomic == 0) {
+                if (ai->multiplicity > 1 && !ai->load && !ai->atomic) {
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_RACE;
                     f->edge = node->to_parent;
@@ -219,7 +219,7 @@ void graph_check_for_data_race(
                     for (struct edge *edge2 = edge->fwdnext; edge2 != NULL; edge2 = edge2->fwdnext) {
                         for (struct access_info *ai2 = edge2->ai; ai2 != NULL; ai2 = ai2->next) {
                             if (ai2->indices != NULL && !(ai->load && ai2->load) &&
-                                (ai->atomic == 0 || ai2->atomic == 0)) {
+                                (!ai->atomic || !ai2->atomic)) {
                                 int min = ai->n < ai2->n ? ai->n : ai2->n;
                                 assert(min > 0);
                                 if (memcmp(ai->indices, ai2->indices,
