@@ -1301,19 +1301,14 @@ static void path_output_macrostep(struct global *global, FILE *file, struct macr
     print_context(global, file, macro->edge->ctx, macro->cs, macro->tid, macro->edge->dst, "        ");
     fprintf(file, "      },\n");
 
-    struct context *oldctx = value_get(macro->edge->ctx, NULL);
-    if (macro->trimmed) {
-        struct instr *fi = &global->code.instrs[oldctx->pc];
-        if (fi->store) {
-            struct access_info *ai = macro->edge->ai;
-            assert(ai != NULL);
-            assert(ai->next == NULL);
-            assert(!ai->load);
-            assert(!ai->atomic);
-        }
+    if (macro->trim != NULL && macro->value != 0) {
+        char *value = value_json(macro->value, global);
+        fprintf(file, "      \"trim\": %s,\n", value);
+        free(value);
     }
 
     fprintf(file, "      \"microsteps\": [");
+    struct context *oldctx = value_get(macro->edge->ctx, NULL);
     struct callstack *oldcs = NULL;
     for (unsigned int i = 0; i < macro->nmicrosteps; i++) {
         struct microstep *micro = macro->microsteps[i];
@@ -1398,7 +1393,22 @@ static void path_trim(struct global *global, struct engine *engine){
         if ((fi->store || fi->load || fi->print) && (li->store || li->load || li->print)) {
 
             macro->nmicrosteps = 1;
-            macro->trimmed = true;
+
+            macro->trim = fi;
+            if (fi->store) {
+                struct access_info *ai = macro->edge->ai;
+                assert(ai != NULL);
+                assert(ai->next == NULL);
+                assert(!ai->load);
+                assert(!ai->atomic);
+                macro->value = value_put_address(engine, ai->indices, ai->n * sizeof(hvalue_t));
+            }
+            else if (fi->print) {
+                assert(macro->edge->nlog == 1);
+                hvalue_t *log = edge_log(macro->edge);
+                macro->value = log[0];
+            }
+
             hvalue_t ictx = value_put_context(engine, macro->microsteps[0]->ctx);
             for (unsigned int j = last[i]; j < global->nmacrosteps; j++) {
                 struct macrostep *m = global->macrosteps[j];
