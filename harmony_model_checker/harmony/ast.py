@@ -1136,7 +1136,7 @@ class WhileAST(AST):
         cond.compile(scope, code, stmt)
         code.append(JumpCondOp(negate, endlabel), self.token, self.token, stmt=stmt)
         self.stat.compile(scope, code, stmt)
-        code.append(JumpOp(startlabel), self.endtoken, self.token, stmt=stmt)
+        code.append(JumpOp(startlabel), self.token, self.endtoken, stmt=stmt)
         code.nextLabel(endlabel)
         if self.atomically:
             code.append(AtomicDecOp(), self.token, self.endtoken, stmt=stmt)

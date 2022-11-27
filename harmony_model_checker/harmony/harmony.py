@@ -1284,6 +1284,8 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
             if (endline, endcolumn) < (line1, column1):
                 endline = line1
                 endcolumn = column1
+            assert line <= endline
+            assert (line < endline) or (column <= endcolumn), (module, line, endline, column, endcolumn, lop.start, lop.stop, lop.stmt)
             if False:        # TODO: debugging
                 line = line1
                 column = column1
