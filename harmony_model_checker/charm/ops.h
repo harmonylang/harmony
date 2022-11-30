@@ -31,6 +31,10 @@ struct op_info {
     void (*next)(const void *env, struct context *ctx, struct global *global, FILE *fp);
 };
 
+struct env_Apply {
+    hvalue_t method;
+};
+
 struct env_Builtin {
     hvalue_t method;
 };

@@ -15,11 +15,11 @@ def verbose_string(js):
         func = js["func"]
         args = js["args"]
         if func["type"] == "pc":
-            if int(func["value"]) in { -1, -2 }:
+            if int(func["value"]) == -1:
                 result += args[0]["value"]
                 args = args[1:]
-            elif int(func["value"]) == -3:
-                result += "this." + args[0]["value"]
+            elif int(func["value"]) == -2:
+                result += "@" + args[0]["value"]
                 args = args[1:]
             else:
                 result += verbose_string(func)

@@ -86,8 +86,9 @@ void strbuf_value_json(strbuf *sb, hvalue_t v, struct global *global);
 #define VALUE_LIST      5
 #define VALUE_DICT      6
 #define VALUE_SET       7
-#define VALUE_ADDRESS   8
-#define VALUE_CONTEXT   9
+#define VALUE_ADDRESS_SHARED    8
+#define VALUE_ADDRESS_PRIVATE   9
+#define VALUE_CONTEXT  10
 
 #define VALUE_FALSE     VALUE_BOOL
 #define VALUE_TRUE      ((1 << VALUE_BITS) | VALUE_BOOL)

@@ -451,12 +451,20 @@ static bool onestep(
             // TODO.  Can this be made more efficient?
             if (next_instr->load && next_instr->env == NULL) {
                 hvalue_t addr = ctx_stack(step->ctx)[step->ctx->sp - 1];
+#ifdef VALUE_ADDRESS
+                assert(false);
                 assert(VALUE_TYPE(addr) == VALUE_ADDRESS);
                 assert(addr != VALUE_ADDRESS);
                 hvalue_t *func = value_get(addr, NULL);
                 if (*func != VALUE_PC_SHARED) {
                     breakable = false;
                 }
+#else
+                assert(VALUE_TYPE(addr) == VALUE_ADDRESS_SHARED || VALUE_TYPE(addr) == VALUE_ADDRESS_PRIVATE);
+                if ((VALUE_TYPE(addr)) == VALUE_ADDRESS_PRIVATE) {
+                    breakable = false;
+                }
+#endif
             }
 
             // Deal with interrupts if enabled
@@ -2643,7 +2651,8 @@ int main(int argc, char **argv){
             fprintf(out, "  \"issue\": \"Active busy waiting\",\n");
             break;
         case FAIL_RACE:
-            assert(bad->address != VALUE_ADDRESS);
+            assert(VALUE_TYPE(bad->address) == VALUE_ADDRESS_SHARED);
+            assert(bad->address != VALUE_ADDRESS_SHARED);
             char *addr = value_string(bad->address);
             char *json = json_string_encode(addr, strlen(addr));
             printf("Data race (%s)\n", json);

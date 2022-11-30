@@ -189,7 +189,7 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global *global, int iface
         *iface_node = iface_graph_add_node(iface_graph);
 
         // Give initial node the None value, though it's displayed as "__init__"
-        (*iface_node)->value = VALUE_ADDRESS;
+        (*iface_node)->value = VALUE_ADDRESS_SHARED;
         (*iface_node)->initial = true;
         (*iface_node)->terminated = false;
         (*iface_node)->choosing = false;
@@ -233,7 +233,7 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global *global, int iface
         iface_node->choosing = node->state->choosing != 0;
         iface_node->state = node->state;
         if (iface_step.ctx->failed) {
-            iface_node->value = VALUE_ADDRESS;
+            iface_node->value = VALUE_ADDRESS_SHARED;
         }
 
         struct node_vec_t *children = find_all_children(node);

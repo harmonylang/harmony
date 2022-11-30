@@ -273,8 +273,70 @@ class GoOp(Op):
             bag_add(state.ctxbag, copy)
             context.pc += 1
 
+class ApplyOp(Op):
+    def __init__(self, method):
+        self.method = method
+
+    def __repr__(self):
+        (lexeme, file, line, column) = self.method
+        return "Apply %s"%strValue(lexeme)
+
+    def jdump(self):
+        (lexeme, file, line, column) = self.method
+        return '{ "op": "Apply", "value": %s }'%jsonValue(lexeme)
+
+    def tladump(self):
+        assert False    # closure + load ?
+        (lexeme, file, line, column) = self.method
+        v = tlaValue(lexeme)
+        return 'OpPush(self, %s)'%v
+
+    def explain(self):
+        return "call method " + strValue(self.method[0])
+
+    def eval(self, state, context):
+        assert False
+
+    def substitute(self, map):
+        (lexeme, file, line, column) = self.method
+        if isinstance(lexeme, Value):
+            self.method = (lexeme.substitute(map), file, line, column)
+
+class PushOp(Op):
+    def __init__(self, constant, reason=None):
+        self.constant = constant
+        self.reason = reason
+
+    def __repr__(self):
+        (lexeme, file, line, column) = self.constant
+        return "Push %s"%strValue(lexeme)
+
+    def jdump(self):
+        (lexeme, file, line, column) = self.constant
+        return '{ "op": "Push", "value": %s }'%jsonValue(lexeme)
+
+    def tladump(self):
+        (lexeme, file, line, column) = self.constant
+        v = tlaValue(lexeme)
+        return 'OpPush(self, %s)'%v
+
+    def explain(self):
+        prefix = "" if self.reason == None else (self.reason + ": ")
+        return prefix + "push constant " + strValue(self.constant[0])
+
+    def eval(self, state, context):
+        (lexeme, file, line, column) = self.constant
+        context.push(lexeme)
+        context.pc += 1
+
+    def substitute(self, map):
+        (lexeme, file, line, column) = self.constant
+        if isinstance(lexeme, Value):
+            self.constant = (lexeme.substitute(map), file, line, column)
+
 class LoadVarOp(Op):
     def __init__(self, v, lvar=None, reason=None):
+        assert v != None        # TODO.  LoadVarOp(None) is obsolete
         self.v = v
         self.lvar = lvar        # name of local var if v == None
         self.reason = reason

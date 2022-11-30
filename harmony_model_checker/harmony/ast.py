@@ -670,6 +670,13 @@ class ApplyAST(AST):
     # and do the applications afterwards.  We need to generate an address
     # value and then a Load instruction will evaluate the applications.
     def compile(self, scope, code, stmt):
+        # Special case f(x) where f is a method constant
+        if isinstance(self.method, NameAST):
+            (t, v) = scope.lookup(self.method.name)
+            if t == "constant" and isinstance(v[0], LabelValue):
+                self.arg.compile(scope, code, stmt)
+                code.append(ApplyOp(v), self.token, self.endtoken, stmt=stmt)
+                return
         if self.varcompile(scope, code, stmt):
             (lexeme, file, line, column) = self.token
             code.append(NaryOp(("Closure", file, line, column), 2), self.token, self.endtoken, stmt=stmt)

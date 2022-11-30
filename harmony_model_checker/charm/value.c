@@ -95,11 +95,16 @@ hvalue_t value_put_list(struct engine *engine, void *p, unsigned int size){
 
 hvalue_t value_put_address(struct engine *engine, void *p, unsigned int size){
     if (size == 0) {
-        return VALUE_ADDRESS;
+        return VALUE_ADDRESS_SHARED;
     }
     assert(size > sizeof(hvalue_t));
     void *q = dict_find(engine->values->addresses, engine->allocator, p, size, NULL);
-    return (hvalue_t) q | VALUE_ADDRESS;
+    if (* (hvalue_t *) p == VALUE_PC_SHARED) {
+        return (hvalue_t) q | VALUE_ADDRESS_SHARED;
+    }
+    else {
+        return (hvalue_t) q | VALUE_ADDRESS_PRIVATE;
+    }
 }
 
 hvalue_t value_put_context(struct engine *engine, struct context *ctx){
@@ -263,7 +268,8 @@ int value_cmp(hvalue_t v1, hvalue_t v2){
         return value_cmp_dict(v1 & ~VALUE_MASK, v2 & ~VALUE_MASK);
     case VALUE_SET:
         return value_cmp_set(v1 & ~VALUE_MASK, v2 & ~VALUE_MASK);
-    case VALUE_ADDRESS:
+    case VALUE_ADDRESS_SHARED:
+    case VALUE_ADDRESS_PRIVATE:
         return value_cmp_address(v1 & ~VALUE_MASK, v2 & ~VALUE_MASK);
     case VALUE_CONTEXT:
         return value_cmp_context(v1 & ~VALUE_MASK, v2 & ~VALUE_MASK);
@@ -488,7 +494,7 @@ static void strbuf_indices_string(struct strbuf *sb, const hvalue_t *vec, int si
     int index = 1;
     if (VALUE_TYPE(vec[0]) == VALUE_PC) {
         int pc = (int) VALUE_FROM_PC(vec[0]);
-        if (pc == -1 || pc == -2) {     // shared or method variable
+        if (pc == -1) {     // shared or method variable
             char *s = value_string(vec[1]);     // TODO.  Inefficient
             assert(s[0] == '"');
             int len = strlen(s);
@@ -496,11 +502,11 @@ static void strbuf_indices_string(struct strbuf *sb, const hvalue_t *vec, int si
             free(s);
             index = 2;
         }
-        else if (pc == -3) {            // thread-local variable
+        else if (pc == -2) {            // method variable
             char *s = value_string(vec[1]);     // TODO.  Inefficient
             assert(s[0] == '"');
             int len = strlen(s);
-            strbuf_printf(sb, "?this.%.*s", len - 2, s + 1);
+            strbuf_printf(sb, "?@%.*s", len - 2, s + 1);
             free(s);
             index = 2;
         }
@@ -822,7 +828,8 @@ void strbuf_value_string(struct strbuf *sb, hvalue_t v){
     case VALUE_SET:
         value_string_set(sb, v & ~VALUE_MASK);
         break;
-    case VALUE_ADDRESS:
+    case VALUE_ADDRESS_SHARED:
+    case VALUE_ADDRESS_PRIVATE:
         value_string_address(sb, v & ~VALUE_MASK);
         break;
     case VALUE_CONTEXT:
@@ -864,7 +871,8 @@ void strbuf_value_json(struct strbuf *sb, hvalue_t v, struct global *global){
     case VALUE_SET:
         value_json_set(sb, v & ~VALUE_MASK, global);
         break;
-    case VALUE_ADDRESS:
+    case VALUE_ADDRESS_SHARED:
+    case VALUE_ADDRESS_PRIVATE:
         value_json_address(sb, v & ~VALUE_MASK, global);
         break;
     case VALUE_CONTEXT:
@@ -1009,23 +1017,24 @@ hvalue_t value_list(struct engine *engine, struct dict *map){
 hvalue_t value_address(struct engine *engine, struct dict *map){
     struct json_value *func = dict_lookup(map, "func", 4);
     if (func == NULL) {
-        return (hvalue_t) VALUE_ADDRESS;        // None
+        return (hvalue_t) VALUE_ADDRESS_SHARED;        // None
     }
     assert(func->type == JV_MAP);
     struct json_value *args = dict_lookup(map, "args", 4);
     assert(args->type == JV_LIST);
     assert(args->u.list.nvals > 0);
-    hvalue_t *vals = malloc((1 + args->u.list.nvals) * sizeof(hvalue_t));
+    unsigned int size = (1 + args->u.list.nvals) * sizeof(hvalue_t);
+    hvalue_t *vals = malloc(size);
     vals[0] = value_from_json(engine, func->u.map);
     for (unsigned int i = 0; i < args->u.list.nvals; i++) {
         struct json_value *jv = args->u.list.vals[i];
         assert(jv->type == JV_MAP);
         vals[1+i] = value_from_json(engine, jv->u.map);
     }
-    void *p = dict_find(engine->values->addresses, engine->allocator, vals,
-                            (1 + args->u.list.nvals) * sizeof(hvalue_t), NULL);
+    hvalue_t result = value_put_address(engine, vals, size);
+    assert(vals[0] != VALUE_PC_SHARED || VALUE_TYPE(result) == VALUE_ADDRESS_SHARED);
     free(vals);
-    return (hvalue_t) p | VALUE_ADDRESS;
+    return result;
 }
 
 hvalue_t value_from_json(struct engine *engine, struct dict *map){

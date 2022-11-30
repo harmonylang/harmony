@@ -103,7 +103,7 @@ static bool is_sequential(hvalue_t seqvars, hvalue_t *indices, unsigned int n){
 
     n *= sizeof(hvalue_t);
     for (unsigned int i = 0; i < size; i++) {
-        assert(VALUE_TYPE(seqs[i]) == VALUE_ADDRESS);
+        assert(VALUE_TYPE(seqs[i]) == VALUE_ADDRESS_SHARED);
         unsigned int sn;
         hvalue_t *inds = value_get(seqs[i], &sn);
         if (n >= sn && sn >= 0 && memcmp(indices, inds, sn) == 0) {
@@ -459,9 +459,28 @@ static void update_callstack(struct global *global, struct step *step, hvalue_t 
     const struct env_Frame *ef = global->code.instrs[pc].env;
     char *m = value_string(ef->name);
     char *key = value_string(arg);
-    strbuf_printf(&step->explain, "pop an argument (%s) and a program counter value (%u: %s) and call the method", key, pc, m);
+    strbuf_printf(&step->explain, "pop an argument (%s) and call method (%u: %s)", key, pc, m);
     free(m);
     free(key);
+}
+
+void op_Apply(const void *env, struct state *state, struct step *step, struct global *global){
+    const struct env_Apply *ea = env;
+
+    hvalue_t arg = ctx_pop(step->ctx);
+    ctx_push(step->ctx, VALUE_LIST);
+    ctx_push(step->ctx, VALUE_TO_INT((step->ctx->pc << CALLTYPE_BITS) | CALLTYPE_NORMAL));
+
+    // See if we need to keep track of the call stack
+    if (step->keep_callstack) {
+        update_callstack(global, step, ea->method, arg);
+    }
+
+    // Push the argument
+    ctx_push(step->ctx, arg);
+
+    // Continue at the given function
+    step->ctx->pc = VALUE_FROM_PC(ea->method);
 }
 
 void op_Assert(const void *env, struct state *state, struct step *step, struct global *global){
@@ -1032,13 +1051,13 @@ void op_Del(const void *env, struct state *state, struct step *step, struct glob
 
     if (ed == 0) {
         hvalue_t av = ctx_pop(step->ctx);
-        if (VALUE_TYPE(av) != VALUE_ADDRESS) {
+        if (VALUE_TYPE(av) != VALUE_ADDRESS_SHARED) {
             char *p = value_string(av);
             value_ctx_failure(step->ctx, &step->engine, "Del %s: not an address", p);
             free(p);
             return;
         }
-        if (av == VALUE_ADDRESS) {
+        if (av == VALUE_ADDRESS_SHARED) {
             value_ctx_failure(step->ctx, &step->engine, "Del: address is None");
             return;
         }
@@ -1089,8 +1108,8 @@ void op_DelVar(const void *env, struct state *state, struct step *step, struct g
     assert(VALUE_TYPE(step->ctx->vars) == VALUE_DICT);
     if (ed == NULL) {
         hvalue_t av = ctx_pop(step->ctx);
-        assert(VALUE_TYPE(av) == VALUE_ADDRESS);
-        assert(av != VALUE_ADDRESS);
+        assert(VALUE_TYPE(av) == VALUE_ADDRESS_PRIVATE);
+        assert(av != VALUE_ADDRESS_PRIVATE);
 
         unsigned int size;
         hvalue_t *indices = value_get(av, &size);
@@ -1286,7 +1305,6 @@ void op_JumpCond(const void *env, struct state *state, struct step *step, struct
     }
 }
 
-// TODO.  Update for new Load
 void next_Load(const void *env, struct context *ctx, struct global *global, FILE *fp){
     const struct env_Load *el = env;
     char *x;
@@ -1294,8 +1312,8 @@ void next_Load(const void *env, struct context *ctx, struct global *global, FILE
     if (el == 0) {
         assert(ctx->sp > 0);
         hvalue_t av = ctx_peep(ctx);
-        assert(VALUE_TYPE(av) == VALUE_ADDRESS);
-        assert(av != VALUE_ADDRESS);
+        assert(VALUE_TYPE(av) == VALUE_ADDRESS_SHARED || VALUE_TYPE(av) == VALUE_ADDRESS_PRIVATE);
+        assert(av != VALUE_ADDRESS_SHARED && av != VALUE_ADDRESS_PRIVATE);
 
         unsigned int size;
         hvalue_t *indices = value_get(av, &size);
@@ -1386,13 +1404,14 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
     if (el == 0) {
         // Pop the address and do a sanity check
         hvalue_t av = ctx_pop(step->ctx);
-        if (VALUE_TYPE(av) != VALUE_ADDRESS) {
+        if (VALUE_TYPE(av) != VALUE_ADDRESS_SHARED && VALUE_TYPE(av) != VALUE_ADDRESS_PRIVATE) {
             char *p = value_string(av);
             value_ctx_failure(step->ctx, &step->engine, "Load %s: not an address", p);
             free(p);
             return;
         }
-        if (av == VALUE_ADDRESS) {
+        assert(av != VALUE_ADDRESS_PRIVATE);
+        if (av == VALUE_ADDRESS_SHARED) {
             value_ctx_failure(step->ctx, &step->engine, "Load: can't load from None");
             return;
         }
@@ -1405,6 +1424,8 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
 
         // See if it's reading a shared variable
         if (indices[0] == VALUE_PC_SHARED) {
+            assert(VALUE_TYPE(av) == VALUE_ADDRESS_SHARED);
+
             // Keep track for race detection
             // TODO.  Should it check the entire address?  Maybe part
             //        of it is not memory.
@@ -1416,14 +1437,17 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
 
             do_Load(state, step, global, av, state->vars, indices + 1, size - 1);
         }
-        else if (indices[0] == VALUE_PC_LOCAL) {
-            do_Load(state, step, global, av, step->ctx->vars, indices + 1, size - 1);
-        }
-        else if (VALUE_TYPE(indices[0]) != VALUE_PC) {
-            do_Load(state, step, global, av, indices[0], indices + 1, size - 1);
-        }
         else {
-            do_Call(step, global, av, indices[0], indices + 1, size - 1);
+            assert(VALUE_TYPE(av) == VALUE_ADDRESS_PRIVATE);
+            if (indices[0] == VALUE_PC_LOCAL) {
+                do_Load(state, step, global, av, step->ctx->vars, indices + 1, size - 1);
+            }
+            else if (VALUE_TYPE(indices[0]) != VALUE_PC) {
+                do_Load(state, step, global, av, indices[0], indices + 1, size - 1);
+            }
+            else {
+                do_Call(step, global, av, indices[0], indices + 1, size - 1);
+            }
         }
     }
     else {
@@ -1681,7 +1705,7 @@ void op_Builtin(const void *env, struct state *state, struct step *step, struct 
 
 void op_Sequential(const void *env, struct state *state, struct step *step, struct global *global){
     hvalue_t addr = ctx_pop(step->ctx);
-    if (VALUE_TYPE(addr) != VALUE_ADDRESS) {
+    if (VALUE_TYPE(addr) != VALUE_ADDRESS_SHARED) {
         char *p = value_string(addr);
         value_ctx_failure(step->ctx, &step->engine, "Sequential %s: not an address", p);
         free(p);
@@ -1913,13 +1937,13 @@ void op_Stop(const void *env, struct state *state, struct step *step, struct glo
 
     if (es == 0) {
         hvalue_t av = ctx_pop(step->ctx);
-        if (av == VALUE_ADDRESS || av == VALUE_LIST) {
+        if (av == VALUE_ADDRESS_SHARED || av == VALUE_LIST) {
             step->ctx->pc++;
             step->ctx->terminated = true;
             return;
         }
 
-        if (VALUE_TYPE(av) != VALUE_ADDRESS) {
+        if (VALUE_TYPE(av) != VALUE_ADDRESS_SHARED) {
             char *p = value_string(av);
             value_ctx_failure(step->ctx, &step->engine, "Stop %s: not an address", p);
             free(p);
@@ -1957,8 +1981,8 @@ void next_Store(const void *env, struct context *ctx, struct global *global, FIL
     if (es == 0) {
         assert(ctx->sp > 1);
         hvalue_t av = ctx_stack(ctx)[ctx->sp - 2];
-        assert(VALUE_TYPE(av) == VALUE_ADDRESS);
-        assert(av != VALUE_ADDRESS);
+        assert(VALUE_TYPE(av) == VALUE_ADDRESS_SHARED);
+        assert(av != VALUE_ADDRESS_SHARED);
 
         unsigned int size;
         hvalue_t *indices = value_get(av, &size);
@@ -2001,13 +2025,13 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
 
     if (es == 0) {
         hvalue_t av = ctx_pop(step->ctx);
-        if (VALUE_TYPE(av) != VALUE_ADDRESS) {
+        if (VALUE_TYPE(av) != VALUE_ADDRESS_SHARED) {
             char *p = value_string(av);
             value_ctx_failure(step->ctx, &step->engine, "Store %s: not an address", p);
             free(p);
             return;
         }
-        if (av == VALUE_ADDRESS) {
+        if (av == VALUE_ADDRESS_SHARED) {
             value_ctx_failure(step->ctx, &step->engine, "Store: address is None");
             return;
         }
@@ -2091,8 +2115,8 @@ void op_StoreVar(const void *env, struct state *state, struct step *step, struct
     assert(VALUE_TYPE(step->ctx->vars) == VALUE_DICT);
     if (es == NULL) {
         hvalue_t av = ctx_pop(step->ctx);
-        assert(VALUE_TYPE(av) == VALUE_ADDRESS);
-        assert(av != VALUE_ADDRESS);
+        assert(VALUE_TYPE(av) == VALUE_ADDRESS_PRIVATE);
+        assert(av != VALUE_ADDRESS_PRIVATE);
 
         unsigned int size;
         hvalue_t *indices = value_get(av, &size);
@@ -2198,6 +2222,15 @@ void *init_Save(struct dict *map, struct engine *engine){ return NULL; }
 void *init_Sequential(struct dict *map, struct engine *engine){ return NULL; }
 void *init_SetIntLevel(struct dict *map, struct engine *engine){ return NULL; }
 void *init_Trap(struct dict *map, struct engine *engine){ return NULL; }
+
+void *init_Apply(struct dict *map, struct engine *engine) {
+    struct json_value *jv = dict_lookup(map, "value", 5);
+    assert(jv->type == JV_MAP);
+    struct env_Apply *env = new_alloc(struct env_Apply);
+    env->method = value_from_json(engine, jv->u.map);
+    assert(VALUE_TYPE(env->method) == VALUE_PC);
+    return env;
+}
 
 void *init_Builtin(struct dict *map, struct engine *engine){
     struct env_Builtin *env = new_alloc(struct env_Builtin);
@@ -2560,7 +2593,7 @@ hvalue_t f_any(struct state *state, struct step *step, hvalue_t *args, int n){
 hvalue_t f_add_arg(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 2);
 
-    if (VALUE_TYPE(args[1]) != VALUE_ADDRESS) {
+    if (VALUE_TYPE(args[1]) != VALUE_ADDRESS_SHARED && VALUE_TYPE(args[1]) != VALUE_ADDRESS_PRIVATE) {
         return value_ctx_failure(step->ctx, &step->engine, "AddArg: not an address");
     }
 
@@ -2578,7 +2611,8 @@ hvalue_t f_closure(struct state *state, struct step *step, hvalue_t *args, int n
     case VALUE_BOOL:
     case VALUE_INT:
     case VALUE_SET:
-    case VALUE_ADDRESS:
+    case VALUE_ADDRESS_SHARED:
+    case VALUE_ADDRESS_PRIVATE:
     case VALUE_CONTEXT:
         {
             char *p = value_string(args[1]);
@@ -3078,7 +3112,8 @@ hvalue_t f_type(struct state *state, struct step *step, hvalue_t *args, int n){
         return type_dict;
     case VALUE_SET:
         return type_set;
-    case VALUE_ADDRESS:
+    case VALUE_ADDRESS_SHARED:
+    case VALUE_ADDRESS_PRIVATE:
         return type_address;
     case VALUE_CONTEXT:
         return type_context;
@@ -3965,6 +4000,7 @@ hvalue_t f_xor(struct state *state, struct step *step, hvalue_t *args, int n){
 }
 
 struct op_info op_table[] = {
+	{ "Apply", init_Apply, op_Apply },
 	{ "Assert", init_Assert, op_Assert },
 	{ "Assert2", init_Assert2, op_Assert2 },
 	{ "AtomicDec", init_AtomicDec, op_AtomicDec },
@@ -4077,7 +4113,7 @@ void ops_init(struct global *global, struct engine *engine) {
     type_context = value_put_atom(engine, "context", 7);
 	alloc_pool_atom = value_put_atom(engine, "alloc$pool", 10);
 	alloc_next_atom = value_put_atom(engine, "alloc$next", 10);
-    initial_vars = value_dict_store(engine, VALUE_DICT, result_atom, VALUE_ADDRESS);
+    initial_vars = value_dict_store(engine, VALUE_DICT, result_atom, VALUE_ADDRESS_PRIVATE);
 
     for (struct op_info *oi = op_table; oi->name != NULL; oi++) {
         struct op_info **p = dict_insert(ops_map, NULL, oi->name, strlen(oi->name), NULL);
