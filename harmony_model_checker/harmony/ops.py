@@ -287,8 +287,7 @@ class ApplyOp(Op):
 
     def tladump(self):
         (lexeme, file, line, column) = self.method
-        v = tlaValue(lexeme)
-        return 'OpApply(self, %s)'%v
+        return 'OpApply(self, %d)'%self.method[0].pc
 
     def explain(self):
         return "call method " + strValue(self.method[0])

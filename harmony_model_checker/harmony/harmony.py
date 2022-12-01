@@ -2484,7 +2484,7 @@ OpApply(self, pc) ==
     LET arg  == self.stack[1]
         next == [self EXCEPT !.pc = pc, !.stack = <<
                 arg,
-                "normal",
+                "apply",
                 self.pc,
                 <<>>
             >> \\o Tail(@)]
@@ -2610,6 +2610,19 @@ OpReturn(self) ==
                 IN
                     /\\ UpdateContext(self, next)
                     /\\ UNCHANGED shared
+        [] calltype = "apply" ->
+            LET raddr  == self.stack[3]
+                args   == self.stack[4]
+                result == self.vs.cval[Result]
+                next == [ self EXCEPT
+                            !.pc = raddr + 1,
+                            !.vs = savedvars,
+                            !.stack = << result >> \o Tail(Tail(Tail(Tail(@))))
+                        ]
+                IN
+                    /\ args = <<>>
+                    /\ UpdateContext(self, next)
+                    /\ UNCHANGED shared
         [] calltype = "interrupt" ->
             LET raddr == self.stack[3]
                 next == [ self EXCEPT
