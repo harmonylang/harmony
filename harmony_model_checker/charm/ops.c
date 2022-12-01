@@ -682,11 +682,14 @@ static void do_return(struct state *state, struct step *step, struct global *glo
                 unsigned int size;
                 hvalue_t *list = value_get(args, &size);
                 unsigned int asize = size + sizeof(hvalue_t);
+                
+                // TODO.  Remove malloc
                 hvalue_t *addr = malloc(asize);
                 addr[0] = result;
                 memcpy(&addr[1], list, size);
                 ctx_push(step->ctx, value_put_address(&step->engine, addr, asize));
                 step->ctx->pc = pc;
+                free(addr);
             }
         }
         break;
@@ -2598,9 +2601,22 @@ hvalue_t f_add_arg(struct state *state, struct step *step, hvalue_t *args, int n
     }
 
     unsigned int size;
-    hvalue_t *list = value_copy_extend(args[1], sizeof(hvalue_t), &size);
-    list[size / sizeof(hvalue_t)] = args[0];
-    return value_put_address(&step->engine, list, size + sizeof(hvalue_t));
+    hvalue_t *list = value_get(args[1], &size);
+    assert(size > 0);
+
+#ifdef HEAP_ALLOC
+    char *nl = malloc(size + sizeof(hvalue_t));
+    memcpy(nl, list, size);
+    * (hvalue_t *) &nl[size] = args[0];
+    hvalue_t result = value_put_address(&step->engine, nl, size + sizeof(hvalue_t));
+    free(nl);
+    return result;
+#else
+    char nl[size + sizeof(hvalue_t)];
+    memcpy(nl, list, size);
+    * (hvalue_t *) &nl[size] = args[0];
+    return value_put_address(&step->engine, nl, size + sizeof(hvalue_t));
+#endif
 }
 
 hvalue_t f_closure(struct state *state, struct step *step, hvalue_t *args, int n){
