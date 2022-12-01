@@ -2479,6 +2479,19 @@ OpStoreVarInd(self) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
+\* Call method pc.
+OpApply(self, pc) ==
+    LET arg  == self.stack[1]
+        next == [self EXCEPT !.pc = pc, !.stack = <<
+                arg,
+                "normal",
+                self.pc,
+                <<>>
+            >> \\o Tail(@)]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
 \* Pop an address.  If the arguments are empty, push the function and
 \* continue to the next instruction.  If not, push the arguments except
 \* the first and evaluate the function with the first argument.
