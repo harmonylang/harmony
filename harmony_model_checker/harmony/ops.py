@@ -286,10 +286,9 @@ class ApplyOp(Op):
         return '{ "op": "Apply", "value": %s }'%jsonValue(lexeme)
 
     def tladump(self):
-        assert False    # closure + load ?
         (lexeme, file, line, column) = self.method
         v = tlaValue(lexeme)
-        return 'OpPush(self, %s)'%v
+        return 'OpApply(self, %s)'%v
 
     def explain(self):
         return "call method " + strValue(self.method[0])
