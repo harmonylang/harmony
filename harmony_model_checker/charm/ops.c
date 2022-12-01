@@ -683,13 +683,18 @@ static void do_return(struct state *state, struct step *step, struct global *glo
                 hvalue_t *list = value_get(args, &size);
                 unsigned int asize = size + sizeof(hvalue_t);
                 
-                // TODO.  Remove malloc
+#ifdef HEAP_ALLOC
                 hvalue_t *addr = malloc(asize);
+#else
+                hvalue_t addr[asize];
+#endif
                 addr[0] = result;
                 memcpy(&addr[1], list, size);
                 ctx_push(step->ctx, value_put_address(&step->engine, addr, asize));
-                step->ctx->pc = pc;
+#ifdef HEAP_ALLOC
                 free(addr);
+#endif
+                step->ctx->pc = pc;
             }
         }
         break;
