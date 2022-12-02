@@ -1482,14 +1482,16 @@ class PrintAST(AST):
 
 
 class MethodAST(AST):
-    def __init__(self, endtoken, token, atomically, name, args, stat, colon):
+    def __init__(self, endtoken, token, atomically, name, args, result, stat, colon):
         AST.__init__(self, endtoken, token, atomically)
         self.name = name
         self.args = args
+        self.result = result
         self.stat = stat
         (lexeme, file, line, column) = name
         self.label = LabelValue(None, lexeme)
         self.colon = colon
+        print("METHOD", name, result)
 
     def __repr__(self):
         return "Method(" + str(self.name) + ", " + str(self.args) + ", " + str(self.stat) + ")"

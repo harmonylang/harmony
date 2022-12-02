@@ -279,6 +279,11 @@ class HarmonyVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by HarmonyParser#opt_returns.
+    def visitOpt_returns(self, ctx:HarmonyParser.Opt_returnsContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by HarmonyParser#method_decl.
     def visitMethod_decl(self, ctx:HarmonyParser.Method_declContext):
         return self.visitChildren(ctx)

@@ -217,7 +217,9 @@ when_decl: WHEN (EXISTS bound IN expr | expr) NL?;
 let_when_decl: (let_decl | when_decl) let_when_decl?;
 let_when_block: let_when_decl COLON block;
 
-method_decl: DEF NAME bound COLON block;
+opt_returns: RETURNS NAME;
+
+method_decl: DEF NAME bound opt_returns? COLON block;
 while_block: WHILE expr COLON block;
 elif_block: ELIF expr COLON block;
 else_block: ELSE COLON block;
@@ -318,6 +320,7 @@ ELSE    : 'else';
 AT      : '@';
 WHILE   : 'while';
 DEF     : 'def';
+RETURNS : 'returns';
 EXISTS  : 'exists';
 WHERE   : 'where';
 EQ      : '=';

@@ -396,6 +396,10 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         else:
             return LetWhenAST(endtoken, tkn, False, vars_and_conds, stmts)
 
+    # Visit a parse tree produced by HarmonyParser#opt_returns.
+    def visitOpt_returns(self, ctx: HarmonyParser.Opt_returnsContext):
+        return ctx.NAME()
+
     # Visit a parse tree produced by HarmonyParser#method_decl.
     def visitMethod_decl(self, ctx: HarmonyParser.Method_declContext):
         tkn = self.get_token(ctx.start, ctx.start.text)
@@ -403,10 +407,15 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         value = str(ctx.NAME())
         method_name = self.get_token(ctx.NAME().symbol, value)
         args = self.visit(ctx.bound()) if ctx.bound() else []
+        ors = self.visit(ctx.opt_returns())
+        if ors is not None:
+            result_name = self.get_token(ors.symbol, str(ors))
+        else:
+            result_name = None
         body = self.visit(ctx.block())
         colon = ctx.COLON()
         ctoken = self.get_token(colon.getSymbol(), colon.getText())
-        ast = MethodAST(endtoken, tkn, False, method_name, args, body, ctoken)
+        ast = MethodAST(endtoken, tkn, False, method_name, args, result_name, body, ctoken)
         return ast
 
     # Visit a parse tree produced by HarmonyParser#while_block.
