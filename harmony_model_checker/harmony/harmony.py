@@ -1399,9 +1399,6 @@ HContext(x) == [ ctype |-> "context", cval |-> x ]
 EmptyFunc == [x \in {} |-> TRUE]
 EmptyDict == HDict(EmptyFunc)
 
-\* Defining the Harmony constant None, which is a empty address
-None      == HAddress(<<>>)
-
 \* Flatten a sequence of sequences
 Flatten(seq) ==
     LET F[i \\in 0..Len(seq)] == IF i = 0 THEN <<>> ELSE F[i-1] \\o seq[i]
@@ -1547,6 +1544,9 @@ VList(list) == [ vtype |-> "tup", vlist |-> list ]
 \* An address has a function and a list of argument, each of which are
 \* Harmony values
 Address(f, a) == HAddress([ func |-> f, args |-> a ])
+
+\* Defining the Harmony constant None
+None      == Address(EmptyFunc, <<>>)
 
 \* Representation of a context (the state of a thread).  It includes
 \* the following fields:
@@ -2598,7 +2598,7 @@ OpReturnVar(self, var) ==
         CASE calltype = "normal" ->
             LET raddr  == self.stack[3]
                 args   == self.stack[4]
-                result == self.vs.cval[var]
+                result == self.vs.cval[HStr(var)]
                 next == [ self EXCEPT
                             !.pc = raddr,
                             !.vs = savedvars,
@@ -2610,7 +2610,7 @@ OpReturnVar(self, var) ==
         [] calltype = "apply" ->
             LET raddr  == self.stack[3]
                 args   == self.stack[4]
-                result == self.vs.cval[var]
+                result == self.vs.cval[HStr(var)]
                 next == [ self EXCEPT
                             !.pc = raddr + 1,
                             !.vs = savedvars,
@@ -2650,7 +2650,7 @@ OpReturn(self) ==
                 next == [ self EXCEPT
                             !.pc = raddr,
                             !.vs = savedvars,
-                            !.stack = << Address(result, args) >> \\o Tail(Tail(Tail(Tail(@))))
+                            !.stack = << Address(result, args) >> \\o Tail(Tail(Tail(Tail(Tail(@)))))
                         ]
                 IN
                     /\\ UpdateContext(self, next)
@@ -2661,7 +2661,7 @@ OpReturn(self) ==
                 next == [ self EXCEPT
                             !.pc = raddr + 1,
                             !.vs = savedvars,
-                            !.stack = << result >> \o Tail(Tail(Tail(Tail(@))))
+                            !.stack = << result >> \o Tail(Tail(Tail(Tail(Tail(@)))))
                         ]
                 IN
                     /\ args = <<>>
@@ -2673,7 +2673,7 @@ OpReturn(self) ==
                             !.pc = raddr,
                             !.interruptLevel = FALSE,
                             !.vs = savedvars,
-                            !.stack = Tail(Tail(Tail(@)))
+                            !.stack = Tail(Tail(Tail(Tail(@))))
                         ]
             IN
                 /\\ UpdateContext(self, next)
@@ -2693,7 +2693,7 @@ OpReturnVarDefault(self, var, deflt) ==
         CASE calltype = "normal" ->
             LET raddr  == self.stack[3]
                 args   == self.stack[4]
-                result == IF var \\in DOMAIN self.vs.cval THEN self.vs.cval[var] ELSE deflt
+                result == IF HStr(var) \\in DOMAIN self.vs.cval THEN self.vs.cval[HStr(var)] ELSE deflt
                 next == [ self EXCEPT
                             !.pc = raddr,
                             !.vs = savedvars,
@@ -2705,7 +2705,7 @@ OpReturnVarDefault(self, var, deflt) ==
         [] calltype = "apply" ->
             LET raddr  == self.stack[3]
                 args   == self.stack[4]
-                result == IF var \\in DOMAIN self.vs.cval THEN self.vs.cval[var] ELSE deflt
+                result == IF HStr(var) \\in DOMAIN self.vs.cval THEN self.vs.cval[HStr(var)] ELSE deflt
                 next == [ self EXCEPT
                             !.pc = raddr + 1,
                             !.vs = savedvars,

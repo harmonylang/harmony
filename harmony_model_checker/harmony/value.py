@@ -328,6 +328,8 @@ class AddressValue(Value):
         return "?" + strValue(self.args[0]) + self.remainder()
 
     def tlaval(self):
+        if self.func == None:
+            return "None"
         s = "<<" + ",".join(tlaValue(x) for x in self.args) + ">>"
         return 'Address(%s, %s)'%(tlaValue(self.func), s)
 
