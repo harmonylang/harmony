@@ -1482,17 +1482,17 @@ class MethodAST(AST):
         for ((lexeme, file, line, column), lb) in self.stat.getLabels():
             ns.names[lexeme] = ("constant", (lb, file, line, column))
         self.define(ns, self.args)
-        ns.names["result"] = ("local-var", ("result", file, line, column))
+        result = ("result", file, line, column) if self.result == None else self.result
+        ns.names[result[0]] = ("local-var", result)
         if self.atomically:
             code.append(AtomicIncOp(False), self.token, self.endtoken, stmt=stmt)
         self.stat.compile(ns, code, stmt)
         if self.atomically:
             code.append(AtomicDecOp(), self.token, self.endtoken, stmt=stmt)
         if self.result == None:
-            (lexeme, file, line, column) = self.name
-            code.append(ReturnOp(("result", file, line, column), AddressValue(None, [])), self.token, self.endtoken, stmt=stmt)
+            code.append(ReturnOp(result, AddressValue(None, [])), self.token, self.endtoken, stmt=stmt)
         else:
-            code.append(ReturnOp(self.result, None), self.token, self.endtoken, stmt=stmt)
+            code.append(ReturnOp(result, None), self.token, self.endtoken, stmt=stmt)
         code.nextLabel(endlabel)
 
         # promote global variables
@@ -1536,14 +1536,11 @@ class LambdaAST(AST):
         (lexeme, file, line, column) = self.token
         ns = Scope(scope)
         self.define(ns, self.args)
-        R = ("result", file, line, column)
-        ns.names["result"] = ("local-var", R)
         if self.atomically:
             code.append(AtomicIncOp(False), self.token, self.endtoken, stmt=stmt)
         self.stat.compile(ns, code, stmt)
         if self.atomically:
             code.append(AtomicDecOp(), self.token, self.endtoken, stmt=stmt)
-        code.append(StoreVarOp(R), self.token, self.endtoken, stmt=stmt)
         code.append(ReturnOp(None, None), self.token, self.endtoken, stmt=stmt)
         code.nextLabel(endlabel)
         return startlabel
