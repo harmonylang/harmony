@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 #define new_alloc(t)	(t *) calloc(1, sizeof(t))
 

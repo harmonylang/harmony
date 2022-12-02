@@ -129,6 +129,7 @@ bool context_add(struct state *state, hvalue_t ctx);
 char *json_escape_value(hvalue_t v);
 void value_trace(struct global *global, FILE *file, struct callstack *cs, unsigned int pc, hvalue_t vars, char *prefix);
 void value_grow_prepare(struct values *values);
+unsigned long value_allocated(struct values *values);
 void print_vars(struct global *global, FILE *file, hvalue_t v);
 
 #endif //SRC_VALUE_H

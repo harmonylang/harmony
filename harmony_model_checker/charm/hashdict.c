@@ -41,7 +41,7 @@ static inline struct dict_assoc *dict_assoc_new(struct dict *dict,
 // TODO.  Make iterative rather than recursive
 void dict_assoc_delete(struct dict *dict, struct dict_assoc *node) {
 	if (node->next) dict_assoc_delete(dict, node->next);
-	(*dict->free)(node);
+	free(node);
 }
 
 struct dict *dict_new(char *whoami, unsigned int value_len, unsigned int initial_size,
@@ -66,8 +66,6 @@ struct dict *dict_new(char *whoami, unsigned int value_len, unsigned int initial
     for (unsigned int i = 0; i < nworkers; i++) {
         dict->workers[i].unstable = calloc(sizeof(struct dict_assoc *), nworkers);
     }
-    dict->malloc = m == NULL ? malloc : m;
-    dict->free = f == NULL ? free : f;
 	return dict;
 }
 
@@ -95,6 +93,10 @@ static inline void dict_reinsert_when_resizing(struct dict *dict, struct dict_as
 	struct dict_bucket *db = &dict->table[n];
     k->next = db->stable;
     db->stable = k;
+}
+
+unsigned long dict_allocated(struct dict *dict) {
+    return dict->length * sizeof(struct dict_bucket);
 }
 
 static void dict_resize(struct dict *dict, unsigned int newsize) {

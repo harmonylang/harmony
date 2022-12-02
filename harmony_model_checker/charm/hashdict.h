@@ -46,8 +46,6 @@ struct dict {
 	double growth_threshold;
 	unsigned int growth_factor;
     bool concurrent;         // 0 = not concurrent
-    void *(*malloc)(size_t size);
-    void (*free)(void *);
 };
 
 struct dict *dict_new(char *whoami, unsigned int value_len, unsigned int initial_size,
@@ -64,6 +62,7 @@ void dict_set_concurrent(struct dict *dict);
 void dict_make_stable(struct dict *dict, unsigned int worker);
 void dict_set_sequential(struct dict *dict);
 void dict_grow_prepare(struct dict *dict);
+unsigned long dict_allocated(struct dict *dict);
 void dict_dump(struct dict *dict);
 
 #endif

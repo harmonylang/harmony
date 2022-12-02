@@ -1098,6 +1098,15 @@ static bool align_test(){
     return true;
 }
 
+unsigned long value_allocated(struct values *values){
+    return dict_allocated(values->atoms) +
+        dict_allocated(values->dicts) +
+        dict_allocated(values->sets) +
+        dict_allocated(values->lists) +
+        dict_allocated(values->addresses) +
+        dict_allocated(values->contexts);
+}
+
 void value_init(struct values *values, unsigned int nworkers){
     if (align_test()) {
         // printf("malloc appears aligned to %d bytes\n", 1 << VALUE_BITS);

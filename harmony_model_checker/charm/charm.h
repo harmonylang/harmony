@@ -86,6 +86,7 @@ struct global {
     struct scc *scc_todo;           // SCC search
     struct json_value *pretty;      // for output
     bool run_direct;                // non-model-checked mode
+    unsigned long allocated;        // allocated table space
 
     // Reconstructed error trace stored here
     unsigned int nmacrosteps, alloc_macrosteps;

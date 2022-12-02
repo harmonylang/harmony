@@ -296,14 +296,20 @@ static bool onestep(
             if (now - global->lasttime > 1) {
                 if (global->lasttime != 0) {
                     unsigned int enqueued = 0, dequeued = 0;
-                    unsigned long allocated = 0, align_waste = 0, frag_waste = 0;
+                    unsigned long allocated = global->allocated;
+#ifdef FULL_REPORT
+                    unsigned long align_waste = 0, frag_waste = 0;
+#endif
+
                     for (unsigned int i = 0; i < w->nworkers; i++) {
                         struct worker *w2 = &w->workers[i];
                         enqueued += w2->enqueued;
                         dequeued += w2->dequeued;
                         allocated += w2->allocated;
+#ifdef FULL_REPORT
                         align_waste += w2->align_waste;
                         frag_waste += w2->frag_waste;
+#endif
                     }
                     double gigs = (double) allocated / (1 << 30);
 #ifdef INCLUDE_RATE
@@ -312,9 +318,15 @@ static bool onestep(
                             (unsigned int) ((enqueued - global->last_nstates) / (now - global->lasttime)),
                             gigs);
 #else
-                    fprintf(stderr, "pc=%d states=%u diam=%u q=%d mem=%.2lfGB %lu %lu\n",
+#ifdef FULL_REPORT
+                    fprintf(stderr, "pc=%d states=%u diam=%u q=%d mem=%.2lfGB %lu %lu %lu\n",
                             step->ctx->pc, enqueued, global->diameter,
-                            enqueued - dequeued, gigs, align_waste, frag_waste);
+                            enqueued - dequeued, gigs, align_waste, frag_waste, tables);
+#else
+                    fprintf(stderr, "pc=%d states=%u diam=%u q=%d mem=%.2lfGB\n",
+                            step->ctx->pc, enqueued, global->diameter,
+                            enqueued - dequeued, gigs);
+#endif
 #endif
                     global->last_nstates = enqueued;
                 }
@@ -2224,6 +2236,10 @@ int main(int argc, char **argv){
     value_set_concurrent(&global->values);
     dict_set_concurrent(visited);
 
+    // Compute how much table space is allocated
+    global->allocated = global->graph.size * sizeof(struct node *) +
+        dict_allocated(visited) + value_allocated(&global->values);
+
     double before = gettime(), postproc = 0;
     for (;;) {
         barrier_wait(&start_barrier);
@@ -2281,6 +2297,10 @@ int main(int argc, char **argv){
             global->goal = global->graph.size;
         }
         assert(global->goal >= global->todo);
+
+        // Compute how much table space is in use
+        global->allocated = global->graph.size * sizeof(struct node *) +
+            dict_allocated(visited) + value_allocated(&global->values);
 
         // printf("Coordinator back to workers (%d)\n", global->diameter);
 
