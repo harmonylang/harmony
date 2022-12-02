@@ -22,7 +22,7 @@ double gettime();
 #define CHUNKSIZE   (1 << 12)
 
 struct allocator {
-    void *(*alloc)(void *ctx, unsigned int size, bool zero);
+    void *(*alloc)(void *ctx, unsigned int size, bool zero, bool align16);
     void *ctx;
     unsigned int worker;        // identifies worker thread
 };

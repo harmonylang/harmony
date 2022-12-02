@@ -31,7 +31,7 @@ static inline struct dict_assoc *dict_assoc_new(struct dict *dict,
     unsigned int alen = (len + DICT_ALIGN - 1) & ~(DICT_ALIGN - 1);
     unsigned int total = sizeof(struct dict_assoc) + alen + dict->value_len;
 	struct dict_assoc *k = al == NULL ?  malloc(total) :
-                            (*al->alloc)(al->ctx, total, false);
+                            (*al->alloc)(al->ctx, total, false, true);
 	k->len = len;
 	memcpy(k+1, key, len);
 	k->next = k->unstable_next = NULL;

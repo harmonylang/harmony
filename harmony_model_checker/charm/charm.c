@@ -62,7 +62,11 @@ struct worker {
 
     char *alloc_buf;            // allocated buffer
     char *alloc_ptr;            // pointer into allocated buffer
+    char *alloc_buf16;          // allocated buffer, 16 byte aligned
+    char *alloc_ptr16;          // pointer into allocated buffer
     unsigned long allocated;    // keeps track of how much was allocated
+    unsigned long align_waste;
+    unsigned long frag_waste;
 
     struct allocator allocator; // mostly for hashdict
 
@@ -76,20 +80,39 @@ struct worker {
 };
 
 // Per thread one-time memory allocator (no free())
-static void *walloc(void *ctx, unsigned int size, bool zero){
+static void *walloc(void *ctx, unsigned int size, bool zero, bool align16){
     struct worker *w = ctx;
+    void *result;
 
-    w->allocated += size;
     if (size > WALLOC_CHUNK) {
+        panic("TODO: TOO LARGE");       // TODO
         return zero ? calloc(1, size) : malloc(size);
     }
-    size = (size + 0xF) & ~0xF;     // align to 16 bytes
-    if (w->alloc_ptr + size > w->alloc_buf + WALLOC_CHUNK) {
-        w->alloc_buf = malloc(WALLOC_CHUNK);
-        w->alloc_ptr = w->alloc_buf;
+
+    if (align16) {
+        unsigned int asize = (size + 0xF) & ~0xF;     // align to 16 bytes
+        w->align_waste += asize - size;
+        if (w->alloc_ptr16 + asize > w->alloc_buf16 + WALLOC_CHUNK) {
+            w->frag_waste += WALLOC_CHUNK - (w->alloc_ptr16 - w->alloc_buf16);
+            w->alloc_buf16 = malloc(WALLOC_CHUNK);
+            w->alloc_ptr16 = w->alloc_buf16;
+            w->allocated += WALLOC_CHUNK;
+        }
+        result = w->alloc_ptr16;
+        w->alloc_ptr16 += asize;
     }
-    void *result = w->alloc_ptr;
-    w->alloc_ptr += size;
+    else {
+        unsigned int asize = (size + 0x7) & ~0x7;     // align to 8 bytes
+        w->align_waste += asize - size;
+        if (w->alloc_ptr + asize > w->alloc_buf + WALLOC_CHUNK) {
+            w->frag_waste += WALLOC_CHUNK - (w->alloc_ptr - w->alloc_buf);
+            w->alloc_buf = malloc(WALLOC_CHUNK);
+            w->alloc_ptr = w->alloc_buf;
+            w->allocated += WALLOC_CHUNK;
+        }
+        result = w->alloc_ptr;
+        w->alloc_ptr += asize;
+    }
     if (zero) {
         memset(result, 0, size);
     }
@@ -218,7 +241,7 @@ unsigned int check_invariants(struct worker *w, struct node *node,
 
 // For tracking data races
 static struct access_info *ai_alloc(struct worker *w, int multiplicity, int atomic) {
-    struct access_info *ai = walloc(w, sizeof(*ai), true);
+    struct access_info *ai = walloc(w, sizeof(*ai), true, false);
     assert(multiplicity < 256);     // only 8 bits in ai->multiplicity
     ai->multiplicity = multiplicity;
     ai->atomic = atomic > 0;
@@ -273,12 +296,14 @@ static bool onestep(
             if (now - global->lasttime > 1) {
                 if (global->lasttime != 0) {
                     unsigned int enqueued = 0, dequeued = 0;
-                    unsigned long allocated = 0;
+                    unsigned long allocated = 0, align_waste = 0, frag_waste = 0;
                     for (unsigned int i = 0; i < w->nworkers; i++) {
                         struct worker *w2 = &w->workers[i];
                         enqueued += w2->enqueued;
                         dequeued += w2->dequeued;
                         allocated += w2->allocated;
+                        align_waste += w2->align_waste;
+                        frag_waste += w2->frag_waste;
                     }
                     double gigs = (double) allocated / (1 << 30);
 #ifdef INCLUDE_RATE
@@ -287,9 +312,9 @@ static bool onestep(
                             (unsigned int) ((enqueued - global->last_nstates) / (now - global->lasttime)),
                             gigs);
 #else
-                    fprintf(stderr, "pc=%d states=%u diam=%u q=%d mem=%.2lfGB\n",
+                    fprintf(stderr, "pc=%d states=%u diam=%u q=%d mem=%.2lfGB %lu %lu\n",
                             step->ctx->pc, enqueued, global->diameter,
-                            enqueued - dequeued, gigs);
+                            enqueued - dequeued, gigs, align_waste, frag_waste);
 #endif
                     global->last_nstates = enqueued;
                 }
@@ -540,7 +565,7 @@ static bool onestep(
     unsigned int weight = (node->to_parent == NULL || ctx == node->to_parent->after) ? 0 : 1;
 
     // Allocate edge now
-    struct edge *edge = walloc(w, sizeof(struct edge) + step->nlog * sizeof(hvalue_t), false);
+    struct edge *edge = walloc(w, sizeof(struct edge) + step->nlog * sizeof(hvalue_t), false, false);
     edge->src = node;
     edge->ctx = ctx;
     edge->choice = choice_copy;
@@ -2182,6 +2207,8 @@ int main(int argc, char **argv){
 
         w->alloc_buf = malloc(WALLOC_CHUNK);
         w->alloc_ptr = w->alloc_buf;
+        w->alloc_buf16 = malloc(WALLOC_CHUNK);
+        w->alloc_ptr16 = w->alloc_buf16;
 
         w->allocator.alloc = walloc;
         w->allocator.ctx = w;
