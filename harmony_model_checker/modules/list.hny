@@ -13,10 +13,10 @@ def tail(s):
     result = subseq(s, 1, len(s))
 
 # sum of a list or set
-def sum(a):
-    result = 0
+def sum(a) returns accu:
+    accu = 0
     for v in a:
-        result += v
+        accu += v
 
 # convert list (or values of a dict) to a set
 def set(a):
