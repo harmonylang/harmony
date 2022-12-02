@@ -72,6 +72,7 @@ reserved = {
     "or",
     "pass",
     "print",
+    "returns",
     "save",
     "select",
     "sequential",
