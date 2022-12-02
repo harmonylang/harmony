@@ -315,8 +315,7 @@ class PushOp(Op):
 
     def tladump(self):
         (lexeme, file, line, column) = self.constant
-        v = tlaValue(lexeme)
-        return 'OpPush(self, %s)'%v
+        return 'OpPush(self, %s)'%tlaValue(lexeme)
 
     def explain(self):
         prefix = "" if self.reason == None else (self.reason + ": ")
@@ -1007,7 +1006,12 @@ class ReturnOp(Op):
         return '{ "op": "Return", "result": "%s", "default": %s }'%(lexeme, jsonValue(self.default))
 
     def tladump(self):
-        return 'OpReturn(self)'     # TODO
+        if self.result == None:
+            return 'OpReturn(self)'
+        (lexeme, file, line, column) = self.result
+        if self.default == None:
+            return 'OpReturnVar(self, "%s")'%lexeme
+        return 'OpReturnVarDefault(self, "%s", %s)'%(lexeme, tlaValue(self.default))
 
     def use(self):
         if self.result == None:

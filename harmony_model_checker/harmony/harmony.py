@@ -1402,9 +1402,6 @@ EmptyDict == HDict(EmptyFunc)
 \* Defining the Harmony constant None, which is a empty address
 None      == HAddress(<<>>)
 
-\* Convenient definition for the "result" variable in each method
-Result    == HStr("result")
-
 \* Flatten a sequence of sequences
 Flatten(seq) ==
     LET F[i \\in 0..Len(seq)] == IF i = 0 THEN <<>> ELSE F[i-1] \\o seq[i]
@@ -1856,7 +1853,7 @@ OpFrame(self, name, args) ==
     LET next == [
         self EXCEPT !.pc = @ + 1,
         !.stack = << self.vs >> \\o Tail(@),
-        !.vs = UpdateVars(UpdateDict(@, Result, None), args, Head(self.stack))
+        !.vs = UpdateVars(EmptyDict, args, Head(self.stack))
     ]
     IN
         /\\ UpdateContext(self, next)
@@ -2594,14 +2591,14 @@ OpStopInd(self) ==
 \* this, Spawn pushes the string "process" on the stack, OpLoadInd pushes
 \* the string "normal", and an interrupt pushes the string "interrupt".
 \* The Frame operation also pushed the saved variables which must be restored.
-OpReturn(self) ==
+OpReturnVar(self, var) ==
     LET savedvars == self.stack[1]
         calltype  == self.stack[2]
     IN
         CASE calltype = "normal" ->
             LET raddr  == self.stack[3]
                 args   == self.stack[4]
-                result == self.vs.cval[Result]
+                result == self.vs.cval[var]
                 next == [ self EXCEPT
                             !.pc = raddr,
                             !.vs = savedvars,
@@ -2613,7 +2610,102 @@ OpReturn(self) ==
         [] calltype = "apply" ->
             LET raddr  == self.stack[3]
                 args   == self.stack[4]
-                result == self.vs.cval[Result]
+                result == self.vs.cval[var]
+                next == [ self EXCEPT
+                            !.pc = raddr + 1,
+                            !.vs = savedvars,
+                            !.stack = << result >> \o Tail(Tail(Tail(Tail(@))))
+                        ]
+                IN
+                    /\ args = <<>>
+                    /\ UpdateContext(self, next)
+                    /\ UNCHANGED shared
+        [] calltype = "interrupt" ->
+            LET raddr == self.stack[3]
+                next == [ self EXCEPT
+                            !.pc = raddr,
+                            !.interruptLevel = FALSE,
+                            !.vs = savedvars,
+                            !.stack = Tail(Tail(Tail(@)))
+                        ]
+            IN
+                /\\ UpdateContext(self, next)
+                /\\ UNCHANGED shared
+        [] calltype = "process" ->
+            /\\ ctxbag' = ctxbag (-) SetToBag({self})
+            /\\ IF self.atomic > 0
+               THEN active' = DOMAIN ctxbag'
+               ELSE active' = active \\ { self }
+            /\\ UNCHANGED shared
+
+\* Version of OpReturnVar where result is on stack instead of in variable
+OpReturn(self) ==
+    LET result    == self.stack[1]
+        savedvars == self.stack[2]
+        calltype  == self.stack[3]
+    IN
+        CASE calltype = "normal" ->
+            LET raddr  == self.stack[4]
+                args   == self.stack[5]
+                next == [ self EXCEPT
+                            !.pc = raddr,
+                            !.vs = savedvars,
+                            !.stack = << Address(result, args) >> \\o Tail(Tail(Tail(Tail(@))))
+                        ]
+                IN
+                    /\\ UpdateContext(self, next)
+                    /\\ UNCHANGED shared
+        [] calltype = "apply" ->
+            LET raddr  == self.stack[4]
+                args   == self.stack[5]
+                next == [ self EXCEPT
+                            !.pc = raddr + 1,
+                            !.vs = savedvars,
+                            !.stack = << result >> \o Tail(Tail(Tail(Tail(@))))
+                        ]
+                IN
+                    /\ args = <<>>
+                    /\ UpdateContext(self, next)
+                    /\ UNCHANGED shared
+        [] calltype = "interrupt" ->
+            LET raddr == self.stack[4]
+                next == [ self EXCEPT
+                            !.pc = raddr,
+                            !.interruptLevel = FALSE,
+                            !.vs = savedvars,
+                            !.stack = Tail(Tail(Tail(@)))
+                        ]
+            IN
+                /\\ UpdateContext(self, next)
+                /\\ UNCHANGED shared
+        [] calltype = "process" ->
+            /\\ ctxbag' = ctxbag (-) SetToBag({self})
+            /\\ IF self.atomic > 0
+               THEN active' = DOMAIN ctxbag'
+               ELSE active' = active \\ { self }
+            /\\ UNCHANGED shared
+
+\* Version of OpReturnVar with a default value
+OpReturnVarDefault(self, var, deflt) ==
+    LET savedvars == self.stack[1]
+        calltype  == self.stack[2]
+    IN
+        CASE calltype = "normal" ->
+            LET raddr  == self.stack[3]
+                args   == self.stack[4]
+                result == IF var \\in DOMAIN self.vs.cval THEN self.vs.cval[var] ELSE deflt
+                next == [ self EXCEPT
+                            !.pc = raddr,
+                            !.vs = savedvars,
+                            !.stack = << Address(result, args) >> \\o Tail(Tail(Tail(Tail(@))))
+                        ]
+                IN
+                    /\\ UpdateContext(self, next)
+                    /\\ UNCHANGED shared
+        [] calltype = "apply" ->
+            LET raddr  == self.stack[3]
+                args   == self.stack[4]
+                result == IF var \\in DOMAIN self.vs.cval THEN self.vs.cval[var] ELSE deflt
                 next == [ self EXCEPT
                             !.pc = raddr + 1,
                             !.vs = savedvars,
