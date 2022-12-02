@@ -43,11 +43,10 @@ struct var_tree {
 
 // These are initialized in ops_init and are immutable.
 static struct dict *ops_map, *f_map;
-static hvalue_t underscore, this_atom, result_atom;
+static hvalue_t underscore, this_atom;
 static hvalue_t alloc_pool_atom, alloc_next_atom;
 static hvalue_t type_bool, type_int, type_str, type_pc, type_list;
 static hvalue_t type_dict, type_set, type_address, type_context;
-static hvalue_t initial_vars;
 
 static void vt_string_recurse(struct strbuf *sb, const struct var_tree *vt){
     switch (vt->type) {
@@ -1193,7 +1192,7 @@ void op_Frame(const void *env, struct state *state, struct step *step, struct gl
         return;
     }
 
-    step->ctx->vars = initial_vars; // Set result to None
+    step->ctx->vars = VALUE_DICT;
 
     hvalue_t arg = ctx_pop(step->ctx);
     if (step->keep_callstack) {
@@ -1656,8 +1655,24 @@ void op_ReadonlyInc(const void *env, struct state *state, struct step *step, str
 //  - saved variables
 //  - call: normal or interrupt plus return address
 //  - saved list of arguments of Load instruction if normal
+// TODO.  Update description, explain, ...
 void op_Return(const void *env, struct state *state, struct step *step, struct global *global){
-    hvalue_t result = value_dict_load(step->ctx->vars, result_atom);
+    const struct env_Return *er = env;
+
+    hvalue_t result;
+    if (er->result == 0) {
+        result = ctx_pop(step->ctx);
+    }
+    else {
+        result = value_dict_load(step->ctx->vars, er->result);
+        if (result == 0) {
+            result = er->deflt;
+        }
+        if (result == 0) {
+            value_ctx_failure(step->ctx, &step->engine, "OpReturn: no return value");
+            return;
+        }
+    }
 
     if (step->keep_callstack) {
         char *s = value_string(result);
@@ -2225,7 +2240,6 @@ void *init_Print(struct dict *map, struct engine *engine){ return NULL; }
 void *init_Pop(struct dict *map, struct engine *engine){ return NULL; }
 void *init_ReadonlyDec(struct dict *map, struct engine *engine){ return NULL; }
 void *init_ReadonlyInc(struct dict *map, struct engine *engine){ return NULL; }
-void *init_Return(struct dict *map, struct engine *engine){ return NULL; }
 void *init_Save(struct dict *map, struct engine *engine){ return NULL; }
 void *init_Sequential(struct dict *map, struct engine *engine){ return NULL; }
 void *init_SetIntLevel(struct dict *map, struct engine *engine){ return NULL; }
@@ -2448,6 +2462,21 @@ void *init_Push(struct dict *map, struct engine *engine) {
     assert(jv->type == JV_MAP);
     struct env_Push *env = new_alloc(struct env_Push);
     env->value = value_from_json(engine, jv->u.map);
+    return env;
+}
+
+void *init_Return(struct dict *map, struct engine *engine) {
+    struct env_Return *env = new_alloc(struct env_Return);
+    struct json_value *result = dict_lookup(map, "result", 6);
+    if (result != NULL) {
+        assert(result->type == JV_ATOM);
+        env->result = value_put_atom(engine, result->u.atom.base, result->u.atom.len);
+    }
+    struct json_value *deflt = dict_lookup(map, "default", 7);
+    if (deflt != NULL) {
+        assert(deflt->type == JV_MAP);
+        env->deflt = value_from_json(engine, deflt->u.map);
+    }
     return env;
 }
 
@@ -4122,7 +4151,6 @@ void ops_init(struct global *global, struct engine *engine) {
     f_map = dict_new("functions", sizeof(struct f_info *), 0, 0, NULL, NULL);
 	underscore = value_put_atom(engine, "_", 1);
 	this_atom = value_put_atom(engine, "this", 4);
-	result_atom = value_put_atom(engine, "result", 6);
     type_bool = value_put_atom(engine, "bool", 4);
     type_int = value_put_atom(engine, "int", 3);
     type_str = value_put_atom(engine, "str", 3);
@@ -4134,7 +4162,6 @@ void ops_init(struct global *global, struct engine *engine) {
     type_context = value_put_atom(engine, "context", 7);
 	alloc_pool_atom = value_put_atom(engine, "alloc$pool", 10);
 	alloc_next_atom = value_put_atom(engine, "alloc$next", 10);
-    initial_vars = value_dict_store(engine, VALUE_DICT, result_atom, VALUE_ADDRESS_PRIVATE);
 
     for (struct op_info *oi = op_table; oi->name != NULL; oi++) {
         struct op_info **p = dict_insert(ops_map, NULL, oi->name, strlen(oi->name), NULL);

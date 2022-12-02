@@ -97,6 +97,11 @@ struct env_Push {
     hvalue_t value;
 };
 
+struct env_Return {
+    hvalue_t result;      // may be 0
+    hvalue_t deflt;       // may be 0
+};
+
 struct env_Spawn {
     bool eternal;
 };

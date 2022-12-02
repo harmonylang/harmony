@@ -1370,9 +1370,6 @@ hvalue_t value_dict_load(hvalue_t dict, hvalue_t key){
             }
         */
     }
-
-    printf("CAN'T FIND %s in %s\n", value_string(key), value_string(dict));
-    panic("dict_load");
     return 0;
 }
 
