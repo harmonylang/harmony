@@ -1180,40 +1180,12 @@ class InvariantAST(AST):
         self.define(ns, args)
         self.cond.compile(ns, code, stmt)
         code.append(AssertOp(self.token, False), self.token, self.token, stmt=stmt)
-        code.append(ReturnOp(), self.token, self.endtoken, stmt=stmt)
+        code.append(ReturnOp(None, None), self.token, self.endtoken, stmt=stmt)
         code.nextLabel(endlabel)
         code.append(InvariantOp(startlabel), self.token, self.endtoken, stmt=stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_lambda(self, *args, **kwargs)
-
-"""
-    def compile(self, scope, code, stmt):
-        stmt = self.stmt()
-        global labelcnt
-        label = LabelValue(None, "$%d" % labelcnt)
-        labelcnt += 1
-        invop = InvariantOp(label, self.token)
-        code.append(invop, self.token, self.endtoken, stmt=stmt)
-        ns = Scope(scope)
-        (_, file, line, column) = self.token
-        ns.names["pre"] = ("local-var", ("pre", file, line, column))
-        ns.names["post"] = ("local-var", ("post", file, line, column))
-        self.cond.compile(ns, code, stmt)
-        invop.uses_pre = ns.uses_pre       # Invariant optimization
-
-        # TODO. The following is a workaround for a bug.
-        # When you do "invariant 0 <= count <= 1", it inserts
-        # DelVar operations before the ReturnOp, and the InvariantOp
-        # operation then jumps to the wrong instruction
-        code.append(ContinueOp(), self.token, self.endtoken, stmt=stmt)
-
-        code.nextLabel(label)
-        code.append(ReturnOp(), self.token, self.endtoken, stmt=stmt)
-
-    def accept_visitor(self, visitor, *args, **kwargs):
-        return visitor.visit_invariant(self, *args, **kwargs)
-"""
 
 class LetAST(AST):
     def __init__(self, endtoken, token, atomically, vars, stat):
@@ -1491,7 +1463,6 @@ class MethodAST(AST):
         (lexeme, file, line, column) = name
         self.label = LabelValue(None, lexeme)
         self.colon = colon
-        print("METHOD", name, result)
 
     def __repr__(self):
         return "Method(" + str(self.name) + ", " + str(self.args) + ", " + str(self.stat) + ")"
@@ -1517,7 +1488,11 @@ class MethodAST(AST):
         self.stat.compile(ns, code, stmt)
         if self.atomically:
             code.append(AtomicDecOp(), self.token, self.endtoken, stmt=stmt)
-        code.append(ReturnOp(), self.token, self.endtoken, stmt=stmt)
+        if self.result == None:
+            (lexeme, file, line, column) = self.name
+            code.append(ReturnOp(("result", file, line, column), AddressValue(None, [])), self.token, self.endtoken, stmt=stmt)
+        else:
+            code.append(ReturnOp(self.result, None), self.token, self.endtoken, stmt=stmt)
         code.nextLabel(endlabel)
 
         # promote global variables
@@ -1569,7 +1544,7 @@ class LambdaAST(AST):
         if self.atomically:
             code.append(AtomicDecOp(), self.token, self.endtoken, stmt=stmt)
         code.append(StoreVarOp(R), self.token, self.endtoken, stmt=stmt)
-        code.append(ReturnOp(), self.token, self.endtoken, stmt=stmt)
+        code.append(ReturnOp(None, None), self.token, self.endtoken, stmt=stmt)
         code.nextLabel(endlabel)
         return startlabel
 

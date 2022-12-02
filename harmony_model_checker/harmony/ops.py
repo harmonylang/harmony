@@ -986,22 +986,43 @@ class FrameOp(Op):
         context.pc += 1
 
 class ReturnOp(Op):
+    def __init__(self, result, default):
+        self.result = result        # may be None
+        self.default = default      # may be None
+
     def __repr__(self):
-        return "Return"
+        if self.result == None:
+            return "ReturnOp()"
+        (lexeme, file, line, column) = self.result
+        if self.default == None:
+            return "ReturnOp(%s)"%lexeme
+        return "ReturnOp(%s. %s)"%(lexeme, strValue(self.default))
 
     def jdump(self):
-        return '{ "op": "Return" }'
+        if self.result == None:
+            return '{ "op": "Return" }'
+        (lexeme, file, line, column) = self.result
+        if self.default == None:
+            return '{ "op": "Return", "result": "%s" }'%lexeme
+        return '{ "op": "Return", "result": "%s", "default": %s }'%(lexeme, jsonValue(self.default))
 
     def tladump(self):
-        return 'OpReturn(self)'
+        return 'OpReturn(self)'     # TODO
 
     def use(self):
-        return { "result" }
+        if self.result == None:
+            return set()
+        (lexeme, file, line, column) = self.result
+        return { lexeme }
 
     def explain(self):
-        return "restore caller method state and push result"
+        if self.result == None:
+            return "restore caller method state"
+        (lexeme, file, line, column) = self.result
+        return "restore caller method state and push %s"%lexeme
 
     def eval(self, state, context):
+        assert False, "obsolete"
         if len(context.stack) == 0:
             context.phase = "end"
             return

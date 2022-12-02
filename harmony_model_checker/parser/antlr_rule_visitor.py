@@ -407,11 +407,11 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         value = str(ctx.NAME())
         method_name = self.get_token(ctx.NAME().symbol, value)
         args = self.visit(ctx.bound()) if ctx.bound() else []
-        ors = self.visit(ctx.opt_returns())
-        if ors is not None:
-            result_name = self.get_token(ors.symbol, str(ors))
-        else:
+        if ctx.opt_returns() is None:
             result_name = None
+        else:
+            ors = self.visit(ctx.opt_returns())
+            result_name = self.get_token(ors.symbol, str(ors))
         body = self.visit(ctx.block())
         colon = ctx.COLON()
         ctoken = self.get_token(colon.getSymbol(), colon.getText())

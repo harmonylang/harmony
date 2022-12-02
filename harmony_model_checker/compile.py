@@ -111,7 +111,8 @@ def _load_file(filename: str, scope: Scope, code: Code, init: bool):
 
     ast.compile(scope, code, None)
     if init:
-        code.append(ReturnOp(), ast.token, ast.endtoken, stmt=(line1, column1, line2, column2))  # to terminate "__init__" process
+        _, file, line, column = ast.token
+        code.append(ReturnOp(("result", file, line, column), None), ast.token, ast.endtoken, stmt=(line1, column1, line2, column2))  # to terminate "__init__" process
     legacy_harmony.namestack.pop()
 
 
