@@ -1179,9 +1179,9 @@ class InvariantAST(AST):
         ns = Scope(scope)
         self.define(ns, args)
         self.cond.compile(ns, code, stmt)
-        code.append(DupOp(), self.token, self.endtoken, stmt=stmt)
         code.append(AssertOp(self.token, False), self.token, self.endtoken, stmt=stmt)
-        code.append(ReturnOp(None, None), self.token, self.endtoken, stmt=stmt)
+        result = ("result", file, line, column)
+        code.append(ReturnOp(result, AddressValue(None, [])), self.token, self.endtoken, stmt=stmt)
         code.nextLabel(endlabel)
         code.append(InvariantOp(startlabel), self.token, self.endtoken, stmt=stmt)
 

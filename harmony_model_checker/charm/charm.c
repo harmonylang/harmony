@@ -188,8 +188,7 @@ bool invariant_check(struct global *global, struct state *sc, struct step *step)
             return false;
         }
     }
-    assert(step->ctx->sp == 1);     // result
-    value_ctx_pop(step->ctx);
+    step->ctx->sp = 0;
     return true;
 }
 
@@ -2240,7 +2239,8 @@ int main(int argc, char **argv){
     global->allocated = global->graph.size * sizeof(struct node *) +
         dict_allocated(visited) + value_allocated(&global->values);
 
-    double before = gettime(), postproc = 0;
+    double before = gettime();
+    // double postproc = 0;
     for (;;) {
         barrier_wait(&start_barrier);
 
@@ -2253,10 +2253,10 @@ int main(int argc, char **argv){
 
         // Prepare the grow the hash tables (but the actual work of
         // rehashing is distributed among the threads in the next phase
-        double before_postproc = gettime();
+        // double before_postproc = gettime();
         dict_grow_prepare(visited);
         value_grow_prepare(&global->values);
-        postproc += gettime() - before_postproc;
+        // postproc += gettime() - before_postproc;
 
         // End of a layer in the Kripke structure?
         global->layer_done = global->todo == global->graph.size;
@@ -2314,7 +2314,14 @@ int main(int argc, char **argv){
     // Wait for threads to fix up hash tables
     barrier_wait(&start_barrier);
 
-    printf("#states %d (time %.3lf+%.3lf=%.3lf)\n", global->graph.size, gettime() - before - postproc, postproc, gettime() - before);
+    // Compute how much memory was used, approximately
+    unsigned long allocated = global->allocated;
+    for (unsigned int i = 0; i < global->nworkers; i++) {
+        struct worker *w = &workers[i];
+        allocated += w->allocated;
+    }
+
+    printf("#states %d (time %.2lfs, mem=%.2lfGB)\n", global->graph.size, gettime() - before, (double) allocated / (1L << 30));
 
     value_set_sequential(&global->values);
     dict_set_sequential(visited);
@@ -2336,7 +2343,7 @@ int main(int argc, char **argv){
         // Workers working on finding SCCs
         barrier_wait(&end_barrier);
 
-        printf("%u components (%.3lf seconds)\n", global->ncomponents, gettime() - now);
+        printf("%u components (%.2lf seconds)\n", global->ncomponents, gettime() - now);
 
 #ifdef DUMP_GRAPH
         printf("digraph Harmony {\n");
