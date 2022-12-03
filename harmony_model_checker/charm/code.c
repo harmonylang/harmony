@@ -53,7 +53,7 @@ struct code code_init_parse(struct engine *engine, struct json_value *json_code)
         code.instrs[i] = code_instr_parse(engine, json_code->u.list.vals[i]);
     }
 
-    code.code_map = dict_new("code", sizeof(char *), 0, 0, NULL, NULL);
+    code.code_map = dict_new("code", sizeof(char *), 0, 0, false);
 
     return code;
 }

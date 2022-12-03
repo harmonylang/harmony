@@ -46,10 +46,11 @@ struct dict {
 	double growth_threshold;
 	unsigned int growth_factor;
     bool concurrent;         // 0 = not concurrent
+    bool align16;            // entries must be aligned to 16 bytes
 };
 
 struct dict *dict_new(char *whoami, unsigned int value_len, unsigned int initial_size,
-    unsigned int nworkers, void *(*malloc)(size_t size), void (*free)(void *));
+    unsigned int nworkers, bool align16);
 void dict_delete(struct dict *dict);
 void *dict_lookup(struct dict *dict, const void *key, unsigned int keylen);
 bool dict_remove(struct dict *dict, const void *key, unsigned int keylen);

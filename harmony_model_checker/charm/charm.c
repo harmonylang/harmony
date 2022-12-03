@@ -321,7 +321,7 @@ static bool onestep(
 #ifdef FULL_REPORT
                     fprintf(stderr, "pc=%d states=%u diam=%u q=%d mem=%.2lfGB %lu %lu %lu\n",
                             step->ctx->pc, enqueued, global->diameter,
-                            enqueued - dequeued, gigs, align_waste, frag_waste, tables);
+                            enqueued - dequeued, gigs, align_waste, frag_waste, global->allocated);
 #else
                     fprintf(stderr, "pc=%d states=%u diam=%u q=%d mem=%.2lfGB\n",
                             step->ctx->pc, enqueued, global->diameter,
@@ -398,7 +398,7 @@ static bool onestep(
 
         if (infloop_detect || instrcnt > 1000) {
             if (infloop == NULL) {
-                infloop = dict_new("infloop1", 0, 0, 0, NULL, NULL);
+                infloop = dict_new("infloop1", 0, 0, 0, false);
             }
 
             int ctxsize = ctx_size(step->ctx);
@@ -1015,7 +1015,7 @@ void twostep(
         // Infinite loop detection
         if (!step.ctx->terminated && !step.ctx->failed) {
             if (infloop == NULL) {
-                infloop = dict_new("infloop2", 0, 0, 0, NULL, NULL);
+                infloop = dict_new("infloop2", 0, 0, 0, false);
             }
 
             int ctxsize = sizeof(struct context) + step.ctx->sp * sizeof(hvalue_t);
@@ -1916,7 +1916,7 @@ static void destutter1(struct graph *graph){
 }
 
 static struct dict *collect_symbols(struct graph *graph){
-    struct dict *symbols = dict_new("symbols", sizeof(unsigned int), 0, 0, NULL, NULL);
+    struct dict *symbols = dict_new("symbols", sizeof(unsigned int), 0, 0, false);
     unsigned int symbol_id = 0;
 
     for (unsigned int i = 0; i < graph->size; i++) {
@@ -1992,7 +1992,7 @@ static void print_trans_upcall(void *env, const void *key, unsigned int key_size
 }
 
 static void print_transitions(FILE *out, struct dict *symbols, struct edge *edges){
-    struct dict *d = dict_new("transitions", sizeof(struct strbuf), 0, 0, NULL, NULL);
+    struct dict *d = dict_new("transitions", sizeof(struct strbuf), 0, 0, false);
 
     fprintf(out, "      \"transitions\": [\n");
     for (struct edge *e = edges; e != NULL; e = e->fwdnext) {
@@ -2183,7 +2183,7 @@ int main(int argc, char **argv){
     }
 
     // Put the initial state in the visited map
-    struct dict *visited = dict_new("visited", sizeof(struct node), 0, global->nworkers, NULL, NULL);
+    struct dict *visited = dict_new("visited", sizeof(struct node), 0, global->nworkers, false);
     struct node *node = dict_insert(visited, NULL, state, state_size(state), NULL);
     memset(node, 0, sizeof(*node));
     node->state = state;

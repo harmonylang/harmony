@@ -31,7 +31,7 @@ static inline struct dict_assoc *dict_assoc_new(struct dict *dict,
     unsigned int alen = (len + DICT_ALIGN - 1) & ~(DICT_ALIGN - 1);
     unsigned int total = sizeof(struct dict_assoc) + alen + dict->value_len;
 	struct dict_assoc *k = al == NULL ?  malloc(total) :
-                            (*al->alloc)(al->ctx, total, false, true);
+                        (*al->alloc)(al->ctx, total, false, dict->align16);
 	k->len = len;
 	memcpy(k+1, key, len);
 	k->next = k->unstable_next = NULL;
@@ -45,7 +45,7 @@ void dict_assoc_delete(struct dict *dict, struct dict_assoc *node) {
 }
 
 struct dict *dict_new(char *whoami, unsigned int value_len, unsigned int initial_size,
-        unsigned int nworkers, void *(*m)(size_t size), void (*f)(void *)) {
+        unsigned int nworkers, bool align16) {
 	struct dict *dict = new_alloc(struct dict);
     dict->whoami = whoami;
     dict->value_len = value_len;
@@ -66,6 +66,7 @@ struct dict *dict_new(char *whoami, unsigned int value_len, unsigned int initial
     for (unsigned int i = 0; i < nworkers; i++) {
         dict->workers[i].unstable = calloc(sizeof(struct dict_assoc *), nworkers);
     }
+    dict->align16 = align16;
 	return dict;
 }
 

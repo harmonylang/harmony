@@ -1071,6 +1071,8 @@ hvalue_t value_from_json(struct engine *engine, struct dict *map){
     }
 }
 
+#ifdef OBSOLETE
+
 // Memory allocation that returns pointers aligned to 1 << VALUE_BITS
 static void *align_alloc(size_t size){
     char *q = malloc(size + (1 << VALUE_BITS));
@@ -1098,6 +1100,8 @@ static bool align_test(){
     return true;
 }
 
+#endif // OBSOLETE
+
 unsigned long value_allocated(struct values *values){
     return dict_allocated(values->atoms) +
         dict_allocated(values->dicts) +
@@ -1108,23 +1112,12 @@ unsigned long value_allocated(struct values *values){
 }
 
 void value_init(struct values *values, unsigned int nworkers){
-    if (align_test()) {
-        // printf("malloc appears aligned to %d bytes\n", 1 << VALUE_BITS);
-        values->atoms = dict_new("atoms", 0, 0, nworkers, NULL, NULL);
-        values->dicts = dict_new("dicts", 0, 0, nworkers, NULL, NULL);
-        values->sets = dict_new("sets", 0, 0, nworkers, NULL, NULL);
-        values->lists = dict_new("lists", 0, 0, nworkers, NULL, NULL);
-        values->addresses = dict_new("addresses", 0, 0, nworkers, NULL, NULL);
-        values->contexts = dict_new("contexts", 0, 0, nworkers, NULL, NULL);
-    }
-    else {
-        values->atoms = dict_new("atoms", 0, 0, nworkers, align_alloc, align_free);
-        values->dicts = dict_new("dicts", 0, 0, nworkers, align_alloc, align_free);
-        values->sets = dict_new("sets", 0, 0, nworkers, align_alloc, align_free);
-        values->lists = dict_new("lists", 0, 0, nworkers, align_alloc, align_free);
-        values->addresses = dict_new("addresses", 0, 0, nworkers, align_alloc, align_free);
-        values->contexts = dict_new("contexts", 0, 0, nworkers, align_alloc, align_free);
-    }
+    values->atoms = dict_new("atoms", 0, 0, nworkers, true);
+    values->dicts = dict_new("dicts", 0, 0, nworkers, true);
+    values->sets = dict_new("sets", 0, 0, nworkers, true);
+    values->lists = dict_new("lists", 0, 0, nworkers, true);
+    values->addresses = dict_new("addresses", 0, 0, nworkers, true);
+    values->contexts = dict_new("contexts", 0, 0, nworkers, true);
 }
 
 void value_set_concurrent(struct values *values){
