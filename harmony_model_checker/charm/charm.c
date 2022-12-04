@@ -42,6 +42,8 @@ struct worker {
     struct global *global;     // global state
     double timeout;
     barrier_t *start_barrier, *middle_barrier, *end_barrier;
+    double start_wait, middle_wait, end_wait;
+    unsigned int start_count, middle_count, end_count;
 
     struct dict *visited;
 
@@ -1795,7 +1797,10 @@ static void worker(void *arg){
     struct global *global = w->global;
 
     for (int epoch = 0;; epoch++) {
+        double now = gettime();
         barrier_wait(w->start_barrier);
+        w->start_wait += gettime() - now;
+        w->start_count++;
 
         // (first) parallel phase starts now
 		// printf("WORKER %d starting epoch %d\n", w->index, epoch);
@@ -1803,7 +1808,10 @@ static void worker(void *arg){
 
         // wait for others to finish
 		// printf("WORKER %d finished epoch %d %u %u\n", w->index, epoch, w->count, w->node_id);
+        now = gettime();
         barrier_wait(w->middle_barrier);
+        w->middle_wait += gettime() - now;
+        w->middle_count++;
 
         if (global->phase2) {
             work_phase2(w, global);
@@ -1823,7 +1831,10 @@ static void worker(void *arg){
             }
         }
 
+        now = gettime();
         barrier_wait(w->end_barrier);
+        w->end_wait += gettime() - now;
+        w->end_count++;
 
 		// printf("WORKER %d make stable %d %u %u\n", w->index, epoch, w->count, w->node_id);
         value_make_stable(&global->values, w->index);
@@ -2323,6 +2334,10 @@ int main(int argc, char **argv){
     for (unsigned int i = 0; i < global->nworkers; i++) {
         struct worker *w = &workers[i];
         allocated += w->allocated;
+#ifdef REPORT_WORKERS
+        printf("W%u: %lf %lf %lf\n", i, w->start_wait/w->start_count,
+            w->middle_wait/w->middle_count, w->end_wait/w->end_count);
+#endif
     }
 
     printf("#states %d (time %.2lfs, mem=%.2lfGB)\n", global->graph.size, gettime() - before, (double) allocated / (1L << 30));
