@@ -54,6 +54,6 @@ void mutex_destroy(mutex_t *mutex);
 void barrier_init(barrier_t *barrier, unsigned int count);
 void barrier_wait(barrier_t *barrier);
 void barrier_destroy(barrier_t *barrier);
-int getNumCores();
+unsigned int getNumCores();
 
 #endif // SRC_THREAD_H

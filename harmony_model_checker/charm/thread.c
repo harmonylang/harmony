@@ -130,13 +130,13 @@ void barrier_destroy(barrier_t *barrier){
 
 #endif
 
-int getNumCores(){
+unsigned int getNumCores(){
 #ifdef _WIN32
     SYSTEM_INFO sysinfo;
     GetSystemInfo(&sysinfo);
-    return sysinfo.dwNumberOfProcessors;
+    return (unsigned int) sysinfo.dwNumberOfProcessors;
 #elif defined(_SC_NPROCESSORS_ONLN)
-    return sysconf(_SC_NPROCESSORS_ONLN);
+    return (unsigned int) sysconf(_SC_NPROCESSORS_ONLN);
 #else
     int nm[2];
     size_t len = 4;
