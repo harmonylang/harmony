@@ -28,7 +28,7 @@
 #include "thread.h"
 #include "spawn.h"
 
-#define WALLOC_CHUNK    (1024 * 1024)
+#define WALLOC_CHUNK    (16 * 1024 * 1024)
 
 static unsigned int oldpid = 0;
 
@@ -2030,6 +2030,7 @@ int main(int argc, char **argv){
     bool cflag = false;
     int i, maxtime = 300000000 /* about 10 years */;
     char *outfile = NULL, *dfafile = NULL;
+    unsigned int nworkers = 0;
     for (i = 1; i < argc; i++) {
         if (*argv[i] != '-') {
             break;
@@ -2051,6 +2052,9 @@ int main(int argc, char **argv){
         case 'o':
             outfile = &argv[i][2];
             break;
+        case 'w':
+            nworkers = atoi(&argv[i][2]);
+            break;
         case 'x':
             printf("Charm model checker working\n");
             return 0;
@@ -2070,7 +2074,7 @@ int main(int argc, char **argv){
 
     // Determine how many worker threads to use
     struct global *global = new_alloc(struct global);
-    global->nworkers = getNumCores();
+    global->nworkers = nworkers == 0 ? getNumCores() : nworkers;
 	printf("nworkers = %d\n", global->nworkers);
 
     barrier_t start_barrier, middle_barrier, end_barrier;
