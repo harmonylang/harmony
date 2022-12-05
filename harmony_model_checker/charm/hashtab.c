@@ -51,7 +51,13 @@ void ht_do_resize(struct hashtab *ht, unsigned int old_nbuckets, _Atomic(struct 
     // for (unsigned int i = first; i < last; i++) {
     //     atomic_init(&ht->buckets[i], NULL);
     // }
+    unsigned int factor = ht->nbuckets / old_nbuckets;
     for (unsigned int i = first; i < last; i++) {
+        unsigned int k = i;
+        for (unsigned int j = 0; j < factor; j++) {
+            atomic_init(&ht->buckets[k], NULL);
+            k += old_nbuckets;
+        }
         struct ht_node *n = atomic_load(&old_buckets[i]), *next;
         for (; n != NULL; n = next) {
             next = atomic_load(&n->next);
@@ -165,13 +171,8 @@ void ht_set_sequential(struct hashtab *ht){
 void ht_make_stable(struct hashtab *ht, unsigned int worker){
     assert(ht->concurrent);
     if (ht->old_buckets != NULL) {
-        unsigned int first = (uint64_t) worker * ht->nbuckets / ht->nworkers;
-        unsigned int last = (uint64_t) (worker + 1) * ht->nbuckets / ht->nworkers;
-        for (unsigned int i = first; i < last; i++) {
-            atomic_init(&ht->buckets[i], NULL);
-        }
-        first = (uint64_t) worker * ht->old_nbuckets / ht->nworkers;
-        last = (uint64_t) (worker + 1) * ht->old_nbuckets / ht->nworkers;
+        unsigned int first = (uint64_t) worker * ht->old_nbuckets / ht->nworkers;
+        unsigned int last = (uint64_t) (worker + 1) * ht->old_nbuckets / ht->nworkers;
         ht_do_resize(ht, ht->old_nbuckets, ht->old_buckets, first, last);
     }
 }

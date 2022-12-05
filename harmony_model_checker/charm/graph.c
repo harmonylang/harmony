@@ -34,7 +34,7 @@ unsigned int graph_add_multiple(struct graph *graph, unsigned int n) {
     unsigned int node_id = graph->size;
     graph->size += n;
     if (graph->size > graph->alloc_size) {
-        graph->alloc_size = (graph->alloc_size + 1) * 2;
+        graph->alloc_size = (graph->size + 1) * 2;
         graph->nodes = realloc(graph->nodes, (graph->alloc_size * sizeof(struct node *)));
     }
     return node_id;

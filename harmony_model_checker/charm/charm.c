@@ -2309,6 +2309,7 @@ int main(int argc, char **argv){
                 total += w->count;
             }
             graph_add_multiple(&global->graph, total);
+            assert(global->graph.size <= global->graph.alloc_size);
 
             // Collect the failures of all the workers
             for (unsigned int i = 0; i < global->nworkers; i++) {
