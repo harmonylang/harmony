@@ -19,6 +19,8 @@
 #include "ops.h"
 #include "json.h"
 
+#ifdef USE_HASHTAB
+
 #define vd_new(whoami, value_size, nbuckets, nworkers, align16)  ht_new(whoami, value_size, nbuckets, nworkers, align16) 
 #define vd_retrieve(v, s)          ht_retrieve(v, s)
 #define vd_retrieve(v, s)          ht_retrieve(v, s)
@@ -28,6 +30,20 @@
 #define vd_make_stable(ht, worker) /* nothing */
 #define vd_grow_prepare(ht)        /* nothing */
 #define vd_allocated(ht)           1024
+
+#else
+
+#define vd_new(whoami, value_size, nbuckets, nworkers, align16)  dict_new(whoami, value_size, nbuckets, nworkers, align16) 
+#define vd_retrieve(v, s)          dict_retrieve(v, s)
+#define vd_retrieve(v, s)          dict_retrieve(v, s)
+#define vd_find(ht, al, k, n, nw)  dict_find(ht, al, k, n, nw)
+#define vd_set_concurrent(ht)      dict_set_concurrent(ht)
+#define vd_set_sequential(ht)      dict_set_sequential(ht)
+#define vd_make_stable(ht, worker) dict_make_stable(ht, worker)
+#define vd_grow_prepare(ht)        dict_grow_prepare(ht)
+#define vd_allocated(ht)           dict_allocated(ht)
+
+#endif
 
 void *value_get(hvalue_t v, unsigned int *psize){
     v &= ~VALUE_MASK;

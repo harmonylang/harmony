@@ -24,6 +24,7 @@
 #include "dot.h"
 #include "iface/iface.h"
 #include "hashdict.h"
+#include "hashtab.h"
 #include "dfa.h"
 #include "thread.h"
 #include "spawn.h"
@@ -45,7 +46,7 @@ struct worker {
     double start_wait, middle_wait, end_wait;
     unsigned int start_count, middle_count, end_count;
 
-    struct dict *visited;
+    struct hashtab *visited;
 
     unsigned int index;          // index of worker
     struct worker *workers;      // points to list of workers
@@ -119,6 +120,18 @@ static void *walloc(void *ctx, unsigned int size, bool zero, bool align16){
         memset(result, 0, size);
     }
     return result;
+}
+
+// This is only allowed to release the last thing that was allocated
+static void wfree(void *ctx, void *last, bool align16){
+    struct worker *w = ctx;
+
+    if (align16) {
+        w->alloc_ptr16 = last;
+    }
+    else {
+        w->alloc_ptr = last;
+    }
 }
 
 static void run_thread(struct global *global, struct state *state, struct context *ctx){
@@ -594,16 +607,23 @@ static bool onestep(
     bool new;
     mutex_t *lock;
     unsigned int size = state_size(sc);
+#ifdef USE_HASHTAB
+    struct ht_node *hn = ht_find_lock(w->visited, &w->allocator,
+                sc, size, &new, &lock);
+    struct node *next = (struct node *) &hn[1];
+    struct state *state = (struct state *) &next[1];
+#else
     struct dict_assoc *da = dict_find_lock(w->visited, &w->allocator,
                 sc, size, &new, &lock);
     struct state *state = (struct state *) &da[1];
     struct node *next = (struct node *) ((char *) state + size);
+#endif
     if (new) {
         memset(next, 0, sizeof(*next));
         next->len = node->len + weight;
         next->steps = node->steps + instrcnt;
         next->to_parent = edge;
-        next->state = state;
+        next->state = state;        // TODO.  Don't technically need this
     }
     else {
         unsigned int len = node->len + weight;
@@ -1838,7 +1858,7 @@ static void worker(void *arg){
 
 		// printf("WORKER %d make stable %d %u %u\n", w->index, epoch, w->count, w->node_id);
         value_make_stable(&global->values, w->index);
-        dict_make_stable(w->visited, w->index);
+        ht_make_stable(w->visited, w->index);
 
         if (global->layer_done) {
             // Fill the graph table
@@ -2197,8 +2217,8 @@ int main(int argc, char **argv){
     }
 
     // Put the initial state in the visited map
-    struct dict *visited = dict_new("visited", sizeof(struct node), 0, global->nworkers, false);
-    struct node *node = dict_insert(visited, NULL, state, state_size(state), NULL);
+    struct hashtab *visited = ht_new("visited", sizeof(struct node), 1 << 20, global->nworkers, false);
+    struct node *node = ht_insert(visited, NULL, state, state_size(state), NULL);
     memset(node, 0, sizeof(*node));
     node->state = state;
     graph_add(&global->graph, node);
@@ -2237,6 +2257,7 @@ int main(int argc, char **argv){
         w->alloc_ptr16 = w->alloc_buf16;
 
         w->allocator.alloc = walloc;
+        w->allocator.free = wfree;
         w->allocator.ctx = w;
         w->allocator.worker = i;
     }
@@ -2248,11 +2269,11 @@ int main(int argc, char **argv){
 
     // Put the state and value dictionaries in concurrent mode
     value_set_concurrent(&global->values);
-    dict_set_concurrent(visited);
+    ht_set_concurrent(visited);
 
     // Compute how much table space is allocated
     global->allocated = global->graph.size * sizeof(struct node *) +
-        dict_allocated(visited) + value_allocated(&global->values);
+        ht_allocated(visited) + value_allocated(&global->values);
 
     double before = gettime();
     // double postproc = 0;
@@ -2269,7 +2290,7 @@ int main(int argc, char **argv){
         // Prepare the grow the hash tables (but the actual work of
         // rehashing is distributed among the threads in the next phase
         // double before_postproc = gettime();
-        dict_grow_prepare(visited);
+        ht_grow_prepare(visited);
         value_grow_prepare(&global->values);
         // postproc += gettime() - before_postproc;
 
@@ -2315,7 +2336,7 @@ int main(int argc, char **argv){
 
         // Compute how much table space is in use
         global->allocated = global->graph.size * sizeof(struct node *) +
-            dict_allocated(visited) + value_allocated(&global->values);
+            ht_allocated(visited) + value_allocated(&global->values);
 
         // printf("Coordinator back to workers (%d)\n", global->diameter);
 
@@ -2343,15 +2364,15 @@ int main(int argc, char **argv){
     printf("#states %d (time %.2lfs, mem=%.2lfGB)\n", global->graph.size, gettime() - before, (double) allocated / (1L << 30));
 
     value_set_sequential(&global->values);
-    dict_set_sequential(visited);
+    ht_set_sequential(visited);
 
-    // dict_dump(visited);
-    // dict_dump(global->values.dicts);
-    // dict_dump(global->values.addresses);
-    // dict_dump(global->values.atoms);
-    // dict_dump(global->values.lists);
-    // dict_dump(global->values.sets);
-    // dict_dump(global->values.contexts);
+    // ht_dump(visited);
+    // ht_dump(global->values.dicts);
+    // ht_dump(global->values.addresses);
+    // ht_dump(global->values.atoms);
+    // ht_dump(global->values.lists);
+    // ht_dump(global->values.sets);
+    // ht_dump(global->values.contexts);
  
     printf("Phase 3: analysis\n");
     if (minheap_empty(global->failures)) {

@@ -37,6 +37,11 @@ struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int nbuck
         atomic_init(&ht->buckets[i], NULL);
     }
     atomic_init(&ht->nobjects, 0);
+    ht->nlocks = nworkers * 64;        // TODO: how much?
+    ht->locks = malloc(ht->nlocks * sizeof(mutex_t));
+	for (unsigned int i = 0; i < ht->nlocks; i++) {
+		mutex_init(&ht->locks[i]);
+	}
     return ht;
 }
 
@@ -53,8 +58,8 @@ void ht_resize(struct hashtab *ht, unsigned int nbuckets){
         for (; n != NULL; n = next) {
             assert(n->size == sizeof(uint32_t));
             next = atomic_load(&n->next);
-            unsigned int hash = hash_func((char *) &n[1], n->size) % nbuckets;
-            // printf("MOV %u %u -> %u\n", * (uint32_t *) &n[1], i, hash);
+            unsigned int hash = hash_func((char *) &n[1] + ht->value_size, n->size) % nbuckets;
+            // printf("MOV %u %u -> %u\n", * (uint32_t *) (&n[1] + ht->value_size), i, hash);
             atomic_store(&n->next, atomic_load(&ht->buckets[hash]));
             atomic_store(&ht->buckets[hash], n);
         }
@@ -72,7 +77,7 @@ struct ht_node *ht_find(struct hashtab *ht, struct allocator *al, const void *ke
         if (expected == NULL) {
             break;
         }
-        if (expected->size == size && memcmp(&expected[1], key, size) == 0) {
+        if (expected->size == size && memcmp((char *) &expected[1] + ht->value_size, key, size) == 0) {
             if (is_new != NULL) {
                 *is_new = false;
             }
@@ -82,25 +87,31 @@ struct ht_node *ht_find(struct hashtab *ht, struct allocator *al, const void *ke
     }
 
     // Allocated a new node
-    unsigned int total = sizeof(struct ht_node) + size;
+    unsigned int total = sizeof(struct ht_node) + ht->value_size + size;
 	struct ht_node *desired = al == NULL ?
             malloc(total) : (*al->alloc)(al->ctx, total, false, ht->align16);
     atomic_init(&desired->next, NULL);
     desired->size = size;
-    memcpy(&desired[1], key, size);
+    memcpy((char *) &desired[1] + ht->value_size, key, size);
 
     // Insert the node
     for (;;) {
         struct ht_node *expected = NULL;
         if (atomic_compare_exchange_strong(chain, &expected, desired)) {
-            atomic_fetch_add(&ht->nobjects, 1);
+            // atomic_fetch_add(&ht->nobjects, 1);
             if (is_new != NULL) {
                 *is_new = true;
             }
             return desired;
         }
-        else if (expected->size == size && memcmp(&expected[1], key, size) == 0) {
-            free(desired);      // somebody else beat me to it
+        else if (expected->size == size && memcmp((char *) &expected[1] + ht->value_size, key, size) == 0) {
+            // somebody else beat me to it
+            if (al == NULL) {
+                free(desired);
+            }
+            else {
+                (*al->free)(al->ctx, desired, ht->align16);
+            }
             if (is_new != NULL) {
                 *is_new = false;
             }
@@ -110,9 +121,43 @@ struct ht_node *ht_find(struct hashtab *ht, struct allocator *al, const void *ke
     }
 }
 
+struct ht_node *ht_find_lock(struct hashtab *ht, struct allocator *al,
+                            const void *key, unsigned int size, bool *new, mutex_t **lock){
+    struct ht_node *n = ht_find(ht, al, key, size, new);
+
+    // TODO: hash computed twice...
+    unsigned int hash = hash_func(key, size) % ht->nlocks;
+    *lock = &ht->locks[hash];
+    mutex_acquire(*lock);
+    return n;
+}
+
 void *ht_retrieve(struct ht_node *n, unsigned int *psize){
     if (psize != NULL) {
         *psize = n->size;
     }
     return &n[1];
+}
+
+// Returns a pointer to the value
+void *ht_insert(struct hashtab *ht, struct allocator *al,
+                        const void *key, unsigned int size, bool *new){
+    struct ht_node *n = ht_find(ht, al, key, size, new);
+    return &n[1];
+}
+
+void ht_set_concurrent(struct hashtab *ht){
+}
+
+void ht_make_stable(struct hashtab *ht, unsigned int worker){
+}
+
+void ht_set_sequential(struct hashtab *ht){
+}
+
+void ht_grow_prepare(struct hashtab *ht){
+}
+
+unsigned long ht_allocated(struct hashtab *ht){
+    return ht->nbuckets * sizeof(*ht->buckets);
 }

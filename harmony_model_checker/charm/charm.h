@@ -12,13 +12,24 @@ struct scc {        // Strongly Connected Component
     unsigned int start, finish;
 };
 
+#define USE_HASHTAB
+
 struct values {
+#ifdef USE_HASHTAB
     struct hashtab *atoms;
     struct hashtab *dicts;
     struct hashtab *sets;
     struct hashtab *lists;
     struct hashtab *addresses;
     struct hashtab *contexts;
+#else
+    struct dict *atoms;
+    struct dict *dicts;
+    struct dict *sets;
+    struct dict *lists;
+    struct dict *addresses;
+    struct dict *contexts;
+#endif
 };
 
 struct invariant {

@@ -39,6 +39,7 @@ static inline struct dict_assoc *dict_assoc_new(struct dict *dict,
 }
 
 // TODO.  Make iterative rather than recursive
+// TODO.  free() doesn't work with allocator->alloc
 void dict_assoc_delete(struct dict *dict, struct dict_assoc *node) {
 	if (node->next) dict_assoc_delete(dict, node->next);
 	free(node);
@@ -199,8 +200,6 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
     uint32_t hash = hash_func(key, keylen);
     unsigned int index = hash % dict->length;
     struct dict_bucket *db = &dict->table[index];
-    *lock = &dict->locks[index % dict->nlocks];
-
     *lock = &dict->locks[index % dict->nlocks];
 
 	struct dict_assoc *k = db->stable;

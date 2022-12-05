@@ -24,6 +24,7 @@ double gettime();
 
 struct allocator {
     void *(*alloc)(void *ctx, unsigned int size, bool zero, bool align16);
+    void (*free)(void *ctx, void *p, bool align16);
     void *ctx;
     unsigned int worker;        // identifies worker thread
 };
