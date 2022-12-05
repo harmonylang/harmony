@@ -25,11 +25,11 @@
 #define vd_retrieve(v, s)          ht_retrieve(v, s)
 #define vd_retrieve(v, s)          ht_retrieve(v, s)
 #define vd_find(ht, al, k, n, nw)  ht_find(ht, al, k, n, nw)
-#define vd_set_concurrent(ht)      /* nothing */
-#define vd_set_sequential(ht)      /* nothing */
-#define vd_make_stable(ht, worker) /* nothing */
-#define vd_grow_prepare(ht)        /* nothing */
-#define vd_allocated(ht)           1024
+#define vd_set_concurrent(ht)      ht_set_concurrent(ht)
+#define vd_set_sequential(ht)      ht_set_sequential(ht)
+#define vd_make_stable(ht, worker) ht_make_stable(ht, worker)
+#define vd_grow_prepare(ht)        ht_grow_prepare(ht)
+#define vd_allocated(ht)           ht_allocated(ht)
 
 #else
 
@@ -1144,7 +1144,7 @@ void value_init(struct values *values, unsigned int nworkers){
     values->sets = vd_new("sets", 0, 0, nworkers, true);
     values->lists = vd_new("lists", 0, 0, nworkers, true);
     values->addresses = vd_new("addresses", 0, 0, nworkers, true);
-    values->contexts = vd_new("contexts", 0, 0, nworkers, true);
+    values->contexts = vd_new("contexts", 0, 1 << 16, nworkers, true);
 }
 
 void value_set_concurrent(struct values *values){

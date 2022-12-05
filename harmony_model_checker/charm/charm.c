@@ -2217,7 +2217,7 @@ int main(int argc, char **argv){
     }
 
     // Put the initial state in the visited map
-    struct hashtab *visited = ht_new("visited", sizeof(struct node), 1 << 20, global->nworkers, false);
+    struct hashtab *visited = ht_new("visited", sizeof(struct node), 8 << 20, global->nworkers, false);
     struct node *node = ht_insert(visited, NULL, state, state_size(state), NULL);
     memset(node, 0, sizeof(*node));
     node->state = state;

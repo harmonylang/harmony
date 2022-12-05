@@ -16,9 +16,12 @@ struct hashtab {
     bool align16;
     _Atomic(struct ht_node *) *buckets;
     unsigned int nbuckets;
-    _Atomic(uint32_t) nobjects;
     mutex_t *locks;
     unsigned int nlocks;
+    bool concurrent;
+    unsigned int nworkers;
+    unsigned int *counts;       // 1 per worker
+    unsigned long nobjects;     // total #items in hash table
 };
 
 struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int nbuckets,

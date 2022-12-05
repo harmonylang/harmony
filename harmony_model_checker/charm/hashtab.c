@@ -36,12 +36,13 @@ struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int nbuck
     for (unsigned int i = 0; i < nbuckets; i++) {
         atomic_init(&ht->buckets[i], NULL);
     }
-    atomic_init(&ht->nobjects, 0);
     ht->nlocks = nworkers * 64;        // TODO: how much?
     ht->locks = malloc(ht->nlocks * sizeof(mutex_t));
 	for (unsigned int i = 0; i < ht->nlocks; i++) {
 		mutex_init(&ht->locks[i]);
 	}
+    ht->nworkers = nworkers;
+    ht->counts = calloc(nworkers, sizeof(*ht->counts));
     return ht;
 }
 
@@ -59,7 +60,6 @@ void ht_resize(struct hashtab *ht, unsigned int nbuckets){
             assert(n->size == sizeof(uint32_t));
             next = atomic_load(&n->next);
             unsigned int hash = hash_func((char *) &n[1] + ht->value_size, n->size) % nbuckets;
-            // printf("MOV %u %u -> %u\n", * (uint32_t *) (&n[1] + ht->value_size), i, hash);
             atomic_store(&n->next, atomic_load(&ht->buckets[hash]));
             atomic_store(&ht->buckets[hash], n);
         }
@@ -98,7 +98,10 @@ struct ht_node *ht_find(struct hashtab *ht, struct allocator *al, const void *ke
     for (;;) {
         struct ht_node *expected = NULL;
         if (atomic_compare_exchange_strong(chain, &expected, desired)) {
-            // atomic_fetch_add(&ht->nobjects, 1);
+            if (ht->concurrent) {
+                assert(al != NULL);
+                ht->counts[al->worker]++;
+            }
             if (is_new != NULL) {
                 *is_new = true;
             }
@@ -147,17 +150,31 @@ void *ht_insert(struct hashtab *ht, struct allocator *al,
 }
 
 void ht_set_concurrent(struct hashtab *ht){
-}
-
-void ht_make_stable(struct hashtab *ht, unsigned int worker){
+    assert(!ht->concurrent);
+    ht->concurrent = true;
 }
 
 void ht_set_sequential(struct hashtab *ht){
+    assert(ht->concurrent);
+    ht->concurrent = false;
+}
+
+void ht_make_stable(struct hashtab *ht, unsigned int worker){
+    assert(ht->concurrent);
 }
 
 void ht_grow_prepare(struct hashtab *ht){
+    assert(!ht->concurrent);
+    for (unsigned int i = 0; i < ht->nworkers; i++) {
+        ht->nobjects += ht->counts[i];
+        ht->counts[i] = 0;
+    }
+    if (ht->nbuckets < ht->nobjects * 2) {
+        ht_resize(ht, ht->nobjects * 10);
+    }
 }
 
 unsigned long ht_allocated(struct hashtab *ht){
-    return ht->nbuckets * sizeof(*ht->buckets);
+    return ht->nbuckets * sizeof(*ht->buckets) +
+            ht->nlocks * sizeof(*ht->locks);
 }
