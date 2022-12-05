@@ -22,6 +22,10 @@ struct hashtab {
     unsigned int nworkers;
     unsigned int *counts;       // 1 per worker
     unsigned long nobjects;     // total #items in hash table
+
+    // For concurrent resize
+    _Atomic(struct ht_node *) *old_buckets;
+    unsigned int old_nbuckets;
 };
 
 struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int nbuckets,

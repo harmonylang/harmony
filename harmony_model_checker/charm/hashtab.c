@@ -31,8 +31,9 @@ struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int nbuck
 	if (nbuckets == 0) {
         nbuckets = 1024;
     }
+    nbuckets = 1024;
     ht->nbuckets = nbuckets;
-    ht->buckets = malloc(nbuckets * sizeof(_Atomic(struct ht_node *)));
+    ht->buckets = malloc(nbuckets * sizeof(*ht->buckets));
     for (unsigned int i = 0; i < nbuckets; i++) {
         atomic_init(&ht->buckets[i], NULL);
     }
@@ -46,25 +47,28 @@ struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int nbuck
     return ht;
 }
 
-void ht_resize(struct hashtab *ht, unsigned int nbuckets){
-    _Atomic(struct ht_node *) *old_buckets = ht->buckets;
-    unsigned int old_nbuckets = ht->nbuckets;
-    ht->nbuckets = nbuckets;
-    ht->buckets = malloc(nbuckets * sizeof(_Atomic(struct ht_node *)));
-    for (unsigned int i = 0; i < nbuckets; i++) {
-        atomic_init(&ht->buckets[i], NULL);
-    }
-    for (unsigned int i = 0; i < old_nbuckets; i++) {
+void ht_do_resize(struct hashtab *ht, unsigned int old_nbuckets, _Atomic(struct ht_node *) *old_buckets, unsigned int first, unsigned int last){
+    // for (unsigned int i = first; i < last; i++) {
+    //     atomic_init(&ht->buckets[i], NULL);
+    // }
+    for (unsigned int i = first; i < last; i++) {
         struct ht_node *n = atomic_load(&old_buckets[i]), *next;
         for (; n != NULL; n = next) {
             assert(n->size == sizeof(uint32_t));
             next = atomic_load(&n->next);
-            unsigned int hash = hash_func((char *) &n[1] + ht->value_size, n->size) % nbuckets;
+            unsigned int hash = hash_func((char *) &n[1] + ht->value_size, n->size) % ht->nbuckets;
             atomic_store(&n->next, atomic_load(&ht->buckets[hash]));
             atomic_store(&ht->buckets[hash], n);
         }
     }
-    free(old_buckets);
+}
+
+void ht_resize(struct hashtab *ht, unsigned int nbuckets){
+    _Atomic(struct ht_node *) *old_buckets = ht->buckets;
+    unsigned int old_nbuckets = ht->nbuckets;
+    ht->buckets = malloc(nbuckets * sizeof(*ht->buckets));
+    ht->nbuckets = nbuckets;
+    ht_do_resize(ht, old_nbuckets, old_buckets, 0, old_nbuckets);
 }
 
 struct ht_node *ht_find(struct hashtab *ht, struct allocator *al, const void *key, unsigned int size, bool *is_new){
@@ -161,16 +165,37 @@ void ht_set_sequential(struct hashtab *ht){
 
 void ht_make_stable(struct hashtab *ht, unsigned int worker){
     assert(ht->concurrent);
+    if (ht->old_buckets != NULL) {
+        unsigned int first = (uint64_t) worker * ht->nbuckets / ht->nworkers;
+        unsigned int last = (uint64_t) (worker + 1) * ht->nbuckets / ht->nworkers;
+        for (unsigned int i = first; i < last; i++) {
+            atomic_init(&ht->buckets[i], NULL);
+        }
+        first = (uint64_t) worker * ht->old_nbuckets / ht->nworkers;
+        last = (uint64_t) (worker + 1) * ht->old_nbuckets / ht->nworkers;
+        ht_do_resize(ht, ht->old_nbuckets, ht->old_buckets, first, last);
+    }
 }
 
 void ht_grow_prepare(struct hashtab *ht){
     assert(!ht->concurrent);
+    free(ht->old_buckets);
     for (unsigned int i = 0; i < ht->nworkers; i++) {
         ht->nobjects += ht->counts[i];
         ht->counts[i] = 0;
     }
     if (ht->nbuckets < ht->nobjects * 2) {
-        ht_resize(ht, ht->nobjects * 10);
+        ht->old_buckets = ht->buckets;
+        ht->old_nbuckets = ht->nbuckets;
+        ht->nbuckets = ht->nbuckets * 8;
+        while (ht->nbuckets < ht->nobjects * 10) {
+            ht->nbuckets *= 2;
+        }
+        ht->buckets = malloc(ht->nbuckets * sizeof(*ht->buckets));
+    }
+    else {
+        ht->old_buckets = NULL;
+        ht->old_nbuckets = 0;
     }
 }
 
