@@ -54,7 +54,6 @@ void ht_do_resize(struct hashtab *ht, unsigned int old_nbuckets, _Atomic(struct 
     for (unsigned int i = first; i < last; i++) {
         struct ht_node *n = atomic_load(&old_buckets[i]), *next;
         for (; n != NULL; n = next) {
-            assert(n->size == sizeof(uint32_t));
             next = atomic_load(&n->next);
             unsigned int hash = hash_func((char *) &n[1] + ht->value_size, n->size) % ht->nbuckets;
             atomic_store(&n->next, atomic_load(&ht->buckets[hash]));
@@ -178,7 +177,7 @@ void ht_make_stable(struct hashtab *ht, unsigned int worker){
 }
 
 void ht_grow_prepare(struct hashtab *ht){
-    assert(!ht->concurrent);
+    assert(ht->concurrent);
     free(ht->old_buckets);
     for (unsigned int i = 0; i < ht->nworkers; i++) {
         ht->nobjects += ht->counts[i];
