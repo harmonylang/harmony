@@ -27,7 +27,7 @@
 #define vd_set_sequential(ht)      /* nothing */
 #define vd_make_stable(ht, worker) /* nothing */
 #define vd_grow_prepare(ht)        /* nothing */
-#define vd_allocated(ht)           1
+#define vd_allocated(ht)           1024
 
 void *value_get(hvalue_t v, unsigned int *psize){
     v &= ~VALUE_MASK;

@@ -28,6 +28,9 @@ struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int nbuck
     struct hashtab *ht = new_alloc(struct hashtab);
     ht->align16 = align16;
     ht->value_size = value_size;
+	if (nbuckets == 0) {
+        nbuckets = 1024;
+    }
     ht->nbuckets = nbuckets;
     ht->buckets = malloc(nbuckets * sizeof(_Atomic(struct ht_node *)));
     for (unsigned int i = 0; i < nbuckets; i++) {
