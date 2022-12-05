@@ -5,6 +5,7 @@
 #include "code.h"
 #include "graph.h"
 #include "json.h"
+#include "hashtab.h"
 
 struct scc {        // Strongly Connected Component
     struct scc *next;
@@ -12,12 +13,12 @@ struct scc {        // Strongly Connected Component
 };
 
 struct values {
-    struct dict *atoms;
-    struct dict *dicts;
-    struct dict *sets;
-    struct dict *lists;
-    struct dict *addresses;
-    struct dict *contexts;
+    struct hashtab *atoms;
+    struct hashtab *dicts;
+    struct hashtab *sets;
+    struct hashtab *lists;
+    struct hashtab *addresses;
+    struct hashtab *contexts;
 };
 
 struct invariant {

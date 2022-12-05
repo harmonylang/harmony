@@ -13,10 +13,21 @@
 
 #include "global.h"
 #include "hashdict.h"
+#include "hashtab.h"
 #include "value.h"
 #include "strbuf.h"
 #include "ops.h"
 #include "json.h"
+
+#define vd_new(whoami, value_size, nbuckets, nworkers, align16)  ht_new(whoami, value_size, nbuckets, nworkers, align16) 
+#define vd_retrieve(v, s)          ht_retrieve(v, s)
+#define vd_retrieve(v, s)          ht_retrieve(v, s)
+#define vd_find(ht, al, k, n, nw)  ht_find(ht, al, k, n, nw)
+#define vd_set_concurrent(ht)      /* nothing */
+#define vd_set_sequential(ht)      /* nothing */
+#define vd_make_stable(ht, worker) /* nothing */
+#define vd_grow_prepare(ht)        /* nothing */
+#define vd_allocated(ht)           1
 
 void *value_get(hvalue_t v, unsigned int *psize){
     v &= ~VALUE_MASK;
@@ -24,7 +35,7 @@ void *value_get(hvalue_t v, unsigned int *psize){
         *psize = 0;
         return NULL;
     }
-    return dict_retrieve((void *) v, psize);
+    return vd_retrieve((void *) v, psize);
 }
 
 // Like value_get, but allocate dynamic memory for it
@@ -35,7 +46,7 @@ void *value_copy(hvalue_t v, unsigned int *psize){
         return NULL;
     }
     unsigned int size;
-    void *p = dict_retrieve((void *) v, &size);
+    void *p = vd_retrieve((void *) v, &size);
     void *r = malloc(size);
     memcpy(r, p, size);
     if (psize != NULL) {
@@ -52,7 +63,7 @@ void *value_copy_extend(hvalue_t v, unsigned int inc, unsigned int *psize){
         return inc == 0 ? NULL : malloc(inc);
     }
     unsigned int size;
-    void *p = dict_retrieve((void *) v, &size);
+    void *p = vd_retrieve((void *) v, &size);
     void *r = malloc(size + inc);
     memcpy(r, p, size);
     if (psize != NULL) {
@@ -65,7 +76,7 @@ hvalue_t value_put_atom(struct engine *engine, const void *p, unsigned int size)
     if (size == 0) {
         return VALUE_ATOM;
     }
-    void *q = dict_find(engine->values->atoms, engine->allocator, p, size, NULL);
+    void *q = vd_find(engine->values->atoms, engine->allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_ATOM;
 }
 
@@ -73,7 +84,7 @@ hvalue_t value_put_set(struct engine *engine, void *p, unsigned int size){
     if (size == 0) {
         return VALUE_SET;
     }
-    void *q = dict_find(engine->values->sets, engine->allocator, p, size, NULL);
+    void *q = vd_find(engine->values->sets, engine->allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_SET;
 }
 
@@ -81,7 +92,7 @@ hvalue_t value_put_dict(struct engine *engine, void *p, unsigned int size){
     if (size == 0) {
         return VALUE_DICT;
     }
-    void *q = dict_find(engine->values->dicts, engine->allocator, p, size, NULL);
+    void *q = vd_find(engine->values->dicts, engine->allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_DICT;
 }
 
@@ -89,7 +100,7 @@ hvalue_t value_put_list(struct engine *engine, void *p, unsigned int size){
     if (size == 0) {
         return VALUE_LIST;
     }
-    void *q = dict_find(engine->values->lists, engine->allocator, p, size, NULL);
+    void *q = vd_find(engine->values->lists, engine->allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_LIST;
 }
 
@@ -98,7 +109,7 @@ hvalue_t value_put_address(struct engine *engine, void *p, unsigned int size){
         return VALUE_ADDRESS_SHARED;
     }
     assert(size > sizeof(hvalue_t));
-    void *q = dict_find(engine->values->addresses, engine->allocator, p, size, NULL);
+    void *q = vd_find(engine->values->addresses, engine->allocator, p, size, NULL);
     if (* (hvalue_t *) p == VALUE_PC_SHARED) {
         return (hvalue_t) q | VALUE_ADDRESS_SHARED;
     }
@@ -109,7 +120,7 @@ hvalue_t value_put_address(struct engine *engine, void *p, unsigned int size){
 
 hvalue_t value_put_context(struct engine *engine, struct context *ctx){
 	assert(ctx->pc >= 0);
-    void *q = dict_find(engine->values->contexts, engine->allocator, ctx, ctx_size(ctx), NULL);
+    void *q = vd_find(engine->values->contexts, engine->allocator, ctx, ctx_size(ctx), NULL);
     return (hvalue_t) q | VALUE_CONTEXT;
 }
 
@@ -147,8 +158,8 @@ int value_cmp_dict(hvalue_t v1, hvalue_t v2){
     }
     void *p1 = (void *) v1, *p2 = (void *) v2;
     unsigned int size1, size2;
-    hvalue_t *vals1 = dict_retrieve(p1, &size1);
-    hvalue_t *vals2 = dict_retrieve(p2, &size2);
+    hvalue_t *vals1 = vd_retrieve(p1, &size1);
+    hvalue_t *vals2 = vd_retrieve(p2, &size2);
     size1 /= sizeof(hvalue_t);
     size2 /= sizeof(hvalue_t);
     unsigned int size = size1 < size2 ? size1 : size2;
@@ -170,8 +181,8 @@ int value_cmp_set(hvalue_t v1, hvalue_t v2){
     }
     void *p1 = (void *) v1, *p2 = (void *) v2;
     unsigned int size1, size2;
-    hvalue_t *vals1 = dict_retrieve(p1, &size1);
-    hvalue_t *vals2 = dict_retrieve(p2, &size2);
+    hvalue_t *vals1 = vd_retrieve(p1, &size1);
+    hvalue_t *vals2 = vd_retrieve(p2, &size2);
     size1 /= sizeof(hvalue_t);
     size2 /= sizeof(hvalue_t);
     unsigned int size = size1 < size2 ? size1 : size2;
@@ -193,8 +204,8 @@ int value_cmp_list(hvalue_t v1, hvalue_t v2){
     }
     void *p1 = (void *) v1, *p2 = (void *) v2;
     unsigned int size1, size2;
-    hvalue_t *vals1 = dict_retrieve(p1, &size1);
-    hvalue_t *vals2 = dict_retrieve(p2, &size2);
+    hvalue_t *vals1 = vd_retrieve(p1, &size1);
+    hvalue_t *vals2 = vd_retrieve(p2, &size2);
     size1 /= sizeof(hvalue_t);
     size2 /= sizeof(hvalue_t);
     unsigned int size = size1 < size2 ? size1 : size2;
@@ -216,8 +227,8 @@ int value_cmp_address(hvalue_t v1, hvalue_t v2){
     }
     void *p1 = (void *) v1, *p2 = (void *) v2;
     unsigned int size1, size2;
-    hvalue_t *vals1 = dict_retrieve(p1, &size1);
-    hvalue_t *vals2 = dict_retrieve(p2, &size2);
+    hvalue_t *vals1 = vd_retrieve(p1, &size1);
+    hvalue_t *vals2 = vd_retrieve(p2, &size2);
     size1 /= sizeof(hvalue_t);
     size2 /= sizeof(hvalue_t);
     unsigned int size = size1 < size2 ? size1 : size2;
@@ -234,8 +245,8 @@ int value_cmp_address(hvalue_t v1, hvalue_t v2){
 int value_cmp_context(hvalue_t v1, hvalue_t v2){
     void *p1 = (void *) v1, *p2 = (void *) v2;
     unsigned int size1, size2;
-    char *s1 = dict_retrieve(p1, &size1);
-    char *s2 = dict_retrieve(p2, &size2);
+    char *s1 = vd_retrieve(p1, &size1);
+    char *s2 = vd_retrieve(p2, &size2);
     int size = size1 < size2 ? size1 : size2;
     int cmp = memcmp(s1, s2, size);
     if (cmp != 0) {
@@ -363,7 +374,7 @@ static void value_string_dict(struct strbuf *sb, hvalue_t v) {
 
     void *p = (void *) v;
     unsigned int size;
-    hvalue_t *vals = dict_retrieve(p, &size);
+    hvalue_t *vals = vd_retrieve(p, &size);
     size /= 2 * sizeof(hvalue_t);
     strbuf_printf(sb, "{ ");
     for (unsigned int i = 0; i < size; i++) {
@@ -385,7 +396,7 @@ static void value_json_dict(struct strbuf *sb, hvalue_t v, struct global *global
 
     void *p = (void *) v;
     unsigned int size;
-    hvalue_t *vals = dict_retrieve(p, &size);
+    hvalue_t *vals = vd_retrieve(p, &size);
     size /= 2 * sizeof(hvalue_t);
 
     strbuf_printf(sb, "{ \"type\": \"dict\", \"value\": [");
@@ -410,7 +421,7 @@ static void value_string_list(struct strbuf *sb, hvalue_t v) {
 
     void *p = (void *) v;
     unsigned int size;
-    hvalue_t *vals = dict_retrieve(p, &size);
+    hvalue_t *vals = vd_retrieve(p, &size);
     size /= sizeof(hvalue_t);
 
     strbuf_printf(sb, "[");
@@ -431,7 +442,7 @@ static void value_string_set(struct strbuf *sb, hvalue_t v) {
 
     void *p = (void *) v;
     unsigned int size;
-    hvalue_t *vals = dict_retrieve(p, &size);
+    hvalue_t *vals = vd_retrieve(p, &size);
     size /= sizeof(hvalue_t);
 
     strbuf_printf(sb, "{ ");
@@ -452,7 +463,7 @@ static void value_json_list(struct strbuf *sb, hvalue_t v, struct global *global
 
     void *p = (void *) v;
     unsigned int size;
-    hvalue_t *vals = dict_retrieve(p, &size);
+    hvalue_t *vals = vd_retrieve(p, &size);
     size /= sizeof(hvalue_t);
 
     strbuf_printf(sb, "{ \"type\": \"list\", \"value\": [");
@@ -473,7 +484,7 @@ static void value_json_set(struct strbuf *sb, hvalue_t v, struct global *global)
 
     void *p = (void *) v;
     unsigned int size;
-    hvalue_t *vals = dict_retrieve(p, &size);
+    hvalue_t *vals = vd_retrieve(p, &size);
     size /= sizeof(hvalue_t);
 
     strbuf_printf(sb, "{ \"type\": \"set\", \"value\": [");
@@ -539,7 +550,7 @@ static void value_string_address(struct strbuf *sb, hvalue_t v) {
 
     void *p = (void *) v;
     unsigned int size;
-    hvalue_t *indices = dict_retrieve(p, &size);
+    hvalue_t *indices = vd_retrieve(p, &size);
     size /= sizeof(hvalue_t);
     assert(size > 0);
     strbuf_indices_string(sb, indices, size);
@@ -553,7 +564,7 @@ static void value_json_address(struct strbuf *sb, hvalue_t v, struct global *glo
 
     void *p = (void *) v;
     unsigned int size;
-    hvalue_t *vals = dict_retrieve(p, &size);
+    hvalue_t *vals = vd_retrieve(p, &size);
     size /= sizeof(hvalue_t);
     assert(size > 0);
     strbuf_printf(sb, "{ \"type\": \"address\", \"func\": ");
@@ -949,7 +960,7 @@ hvalue_t value_atom(struct engine *engine, struct dict *map){
     if (value->u.atom.len == 0) {
         return VALUE_ATOM;
     }
-    void *p = dict_find(engine->values->atoms, engine->allocator, value->u.atom.base, value->u.atom.len, NULL);
+    void *p = vd_find(engine->values->atoms, engine->allocator, value->u.atom.base, value->u.atom.len, NULL);
     return (hvalue_t) p | VALUE_ATOM;
 }
 
@@ -972,7 +983,7 @@ hvalue_t value_dict(struct engine *engine, struct dict *map){
     }
 
     // vals is sorted already by harmony compiler
-    void *p = dict_find(engine->values->dicts, engine->allocator, vals,
+    void *p = vd_find(engine->values->dicts, engine->allocator, vals,
                     value->u.list.nvals * sizeof(hvalue_t) * 2, NULL);
     free(vals);
     return (hvalue_t) p | VALUE_DICT;
@@ -992,7 +1003,7 @@ hvalue_t value_set(struct engine *engine, struct dict *map){
     }
 
     // vals is sorted already by harmony compiler
-    void *p = dict_find(engine->values->sets, engine->allocator, vals, value->u.list.nvals * sizeof(hvalue_t), NULL);
+    void *p = vd_find(engine->values->sets, engine->allocator, vals, value->u.list.nvals * sizeof(hvalue_t), NULL);
     free(vals);
     return (hvalue_t) p | VALUE_SET;
 }
@@ -1009,7 +1020,7 @@ hvalue_t value_list(struct engine *engine, struct dict *map){
         assert(jv->type == JV_MAP);
         vals[i] = value_from_json(engine, jv->u.map);
     }
-    void *p = dict_find(engine->values->lists, engine->allocator, vals, value->u.list.nvals * sizeof(hvalue_t), NULL);
+    void *p = vd_find(engine->values->lists, engine->allocator, vals, value->u.list.nvals * sizeof(hvalue_t), NULL);
     free(vals);
     return (hvalue_t) p | VALUE_LIST;
 }
@@ -1103,57 +1114,57 @@ static bool align_test(){
 #endif // OBSOLETE
 
 unsigned long value_allocated(struct values *values){
-    return dict_allocated(values->atoms) +
-        dict_allocated(values->dicts) +
-        dict_allocated(values->sets) +
-        dict_allocated(values->lists) +
-        dict_allocated(values->addresses) +
-        dict_allocated(values->contexts);
+    return vd_allocated(values->atoms) +
+        vd_allocated(values->dicts) +
+        vd_allocated(values->sets) +
+        vd_allocated(values->lists) +
+        vd_allocated(values->addresses) +
+        vd_allocated(values->contexts);
 }
 
 void value_init(struct values *values, unsigned int nworkers){
-    values->atoms = dict_new("atoms", 0, 0, nworkers, true);
-    values->dicts = dict_new("dicts", 0, 0, nworkers, true);
-    values->sets = dict_new("sets", 0, 0, nworkers, true);
-    values->lists = dict_new("lists", 0, 0, nworkers, true);
-    values->addresses = dict_new("addresses", 0, 0, nworkers, true);
-    values->contexts = dict_new("contexts", 0, 0, nworkers, true);
+    values->atoms = vd_new("atoms", 0, 0, nworkers, true);
+    values->dicts = vd_new("dicts", 0, 0, nworkers, true);
+    values->sets = vd_new("sets", 0, 0, nworkers, true);
+    values->lists = vd_new("lists", 0, 0, nworkers, true);
+    values->addresses = vd_new("addresses", 0, 0, nworkers, true);
+    values->contexts = vd_new("contexts", 0, 0, nworkers, true);
 }
 
 void value_set_concurrent(struct values *values){
-    dict_set_concurrent(values->atoms);
-    dict_set_concurrent(values->dicts);
-    dict_set_concurrent(values->sets);
-    dict_set_concurrent(values->lists);
-    dict_set_concurrent(values->addresses);
-    dict_set_concurrent(values->contexts);
+    vd_set_concurrent(values->atoms);
+    vd_set_concurrent(values->dicts);
+    vd_set_concurrent(values->sets);
+    vd_set_concurrent(values->lists);
+    vd_set_concurrent(values->addresses);
+    vd_set_concurrent(values->contexts);
 }
 
 void value_make_stable(struct values *values, unsigned int worker){
-    dict_make_stable(values->atoms, worker);
-    dict_make_stable(values->dicts, worker);
-    dict_make_stable(values->sets, worker);
-    dict_make_stable(values->lists, worker);
-    dict_make_stable(values->addresses, worker);
-    dict_make_stable(values->contexts, worker);
+    vd_make_stable(values->atoms, worker);
+    vd_make_stable(values->dicts, worker);
+    vd_make_stable(values->sets, worker);
+    vd_make_stable(values->lists, worker);
+    vd_make_stable(values->addresses, worker);
+    vd_make_stable(values->contexts, worker);
 }
 
 void value_grow_prepare(struct values *values) {
-    dict_grow_prepare(values->atoms);
-    dict_grow_prepare(values->dicts);
-    dict_grow_prepare(values->sets);
-    dict_grow_prepare(values->lists);
-    dict_grow_prepare(values->addresses);
-    dict_grow_prepare(values->contexts);
+    vd_grow_prepare(values->atoms);
+    vd_grow_prepare(values->dicts);
+    vd_grow_prepare(values->sets);
+    vd_grow_prepare(values->lists);
+    vd_grow_prepare(values->addresses);
+    vd_grow_prepare(values->contexts);
 }
 
 void value_set_sequential(struct values *values){
-    dict_set_sequential(values->atoms);
-    dict_set_sequential(values->dicts);
-    dict_set_sequential(values->sets);
-    dict_set_sequential(values->lists);
-    dict_set_sequential(values->addresses);
-    dict_set_sequential(values->contexts);
+    vd_set_sequential(values->atoms);
+    vd_set_sequential(values->dicts);
+    vd_set_sequential(values->sets);
+    vd_set_sequential(values->lists);
+    vd_set_sequential(values->addresses);
+    vd_set_sequential(values->contexts);
 }
 
 // Store key:value in the given dictionary and returns its value code
