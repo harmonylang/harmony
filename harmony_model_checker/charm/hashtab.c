@@ -7,6 +7,8 @@
 
 #ifdef USE_SPINLOCK
 
+#ifdef __APPLE__
+
 #include <pthread.h>
 #include <errno.h>
 
@@ -44,6 +46,8 @@ int pthread_spin_unlock(pthread_spinlock_t *lock) {
     *lock = 0;
     return 0;
 }
+
+#endif // __APPLE__
 
 #endif // USE_SPINLOCK
 

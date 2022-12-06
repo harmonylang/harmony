@@ -15,11 +15,15 @@ struct ht_node {
 
 #ifdef USE_SPINLOCK
 
+#ifdef __APPLE__
 typedef int pthread_spinlock_t;
 
 int pthread_spin_init(pthread_spinlock_t *lock, int pshared);
 int pthread_spin_lock(pthread_spinlock_t *lock);
 int pthread_spin_unlock(pthread_spinlock_t *lock);
+#else
+#include <pthread.h>
+#endif // __APPLE__
 
 typedef pthread_spinlock_t ht_lock_t;
 #define ht_lock_init(ll) pthread_spin_init(ll, 0)
