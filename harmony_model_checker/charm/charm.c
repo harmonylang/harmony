@@ -212,6 +212,8 @@ unsigned int check_invariants(struct worker *w, struct node *node,
                         struct node *before, struct step *step){
     struct global *global = w->global;
     struct state *state = node->state;
+    assert(node->state != NULL);
+    assert(state != NULL);
 
     assert(step->ctx->sp == 0);
 
@@ -609,9 +611,11 @@ static bool onestep(
 #ifdef USE_HASHTAB
     ht_lock_t *lock;
     struct ht_node *hn = ht_find_lock(w->visited, &w->allocator,
-                sc, size, &new, &lock);
+                sc, size, NULL, &lock);
     struct node *next = (struct node *) &hn[1];
     struct state *state = (struct state *) &next[1];
+    new = !next->initialized;
+    next->initialized = true;
 #else
     mutex_t *lock;
     struct dict_assoc *da = dict_find_lock(w->visited, &w->allocator,
@@ -620,7 +624,9 @@ static bool onestep(
     struct node *next = (struct node *) ((char *) state + size);
 #endif
     if (new) {
+#ifndef USE_HASHTAB
         memset(next, 0, sizeof(*next));
+#endif
         next->len = node->len + weight;
         next->steps = node->steps + instrcnt;
         next->to_parent = edge;
@@ -2404,14 +2410,19 @@ int main(int argc, char **argv){
 
     // Compute how much memory was used, approximately
     unsigned long allocated = global->allocated;
+    double start_wait = 0, middle_wait = 0, end_wait = 0;
     for (unsigned int i = 0; i < global->nworkers; i++) {
         struct worker *w = &workers[i];
         allocated += w->allocated;
+        start_wait += w->start_wait;
+        middle_wait += w->middle_wait;
+        end_wait += w->end_wait;
 #ifdef REPORT_WORKERS
         printf("W%u: %lf %lf %lf\n", i, w->start_wait/w->start_count,
             w->middle_wait/w->middle_count, w->end_wait/w->end_count);
 #endif
     }
+    printf("waiting: %lf %lf %lf\n", start_wait / global->nworkers, middle_wait / global->nworkers, end_wait / global->nworkers);
 
     printf("#states %d (time %.2lfs, mem=%.2lfGB)\n", global->graph.size, gettime() - before, (double) allocated / (1L << 30));
 

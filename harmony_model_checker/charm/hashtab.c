@@ -122,6 +122,7 @@ void ht_resize(struct hashtab *ht, unsigned int nbuckets){
     ht_do_resize(ht, old_nbuckets, old_buckets, 0, old_nbuckets);
 }
 
+// TODO.  is_new is not terribly useful.
 struct ht_node *ht_find(struct hashtab *ht, struct allocator *al, const void *key, unsigned int size, bool *is_new){
     unsigned int hash = hash_func(key, size) % ht->nbuckets;
 
@@ -147,6 +148,9 @@ struct ht_node *ht_find(struct hashtab *ht, struct allocator *al, const void *ke
             malloc(total) : (*al->alloc)(al->ctx, total, false, ht->align16);
     atomic_init(&desired->next, NULL);
     desired->size = size;
+    if (ht->value_size > 0) {
+        memset(&desired[1], 0, ht->value_size);
+    }
     memcpy((char *) &desired[1] + ht->value_size, key, size);
 
     // Insert the node
