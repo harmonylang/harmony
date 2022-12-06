@@ -81,7 +81,13 @@ struct global {
     unsigned int todo;              // points into graph->nodes
     unsigned int goal;              // points into graph->nodes
     bool layer_done;                // all states in a layer completed
+
+#define SPIN        // TODO
+#ifdef SPIN
+    pthread_spinlock_t todo_lock;
+#else
     mutex_t todo_lock;              // to access the todo list
+#endif
     mutex_t todo_wait;              // to wait for SCC tasks
     unsigned int nworkers;          // total number of threads
     unsigned int scc_nwaiting;      // # workers waiting for SCC work

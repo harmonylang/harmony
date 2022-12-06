@@ -1686,12 +1686,20 @@ static void do_work(struct worker *w){
     struct global *global = w->global;
 
     for (;;) {
+#ifdef SPIN
+        pthread_spin_lock(&global->todo_lock);
+#else
         mutex_acquire(&global->todo_lock);
+#endif
         assert(global->goal >= global->todo);
         unsigned int start = global->todo;
         unsigned int nleft = global->goal - start;
         if (nleft == 0) {
+#ifdef SPIN
+            pthread_spin_unlock(&global->todo_lock);
+#else
             mutex_release(&global->todo_lock);
+#endif
             break;
         }
 
@@ -1705,7 +1713,11 @@ static void do_work(struct worker *w){
         global->todo = start + take;
         assert(global->todo <= global->graph.size);
         assert(global->goal >= global->todo);
+#ifdef SPIN
+        pthread_spin_unlock(&global->todo_lock);
+#else
         mutex_release(&global->todo_lock);
+#endif
 
         while (take > 0) {
             struct node *node = global->graph.nodes[start++];
@@ -1752,7 +1764,11 @@ static void do_work(struct worker *w){
 }
 
 static void work_phase2(struct worker *w, struct global *global){
+#ifdef SPIN
+    pthread_spin_lock(&global->todo_lock);
+#else
     mutex_acquire(&global->todo_lock);
+#endif
     for (;;) {
         if (global->scc_todo == NULL) {
             global->scc_nwaiting++;
@@ -1760,7 +1776,11 @@ static void work_phase2(struct worker *w, struct global *global){
                 mutex_release(&global->todo_wait);
                 break;
             }
+#ifdef SPIN
+            pthread_spin_unlock(&global->todo_lock);
+#else
             mutex_release(&global->todo_lock);
+#endif
             mutex_acquire(&global->todo_wait);
             if (global->scc_nwaiting == global->nworkers) {
                 mutex_release(&global->todo_wait);
@@ -1781,7 +1801,11 @@ static void work_phase2(struct worker *w, struct global *global){
             mutex_release(&global->todo_wait);
         }
         else {
+#ifdef SPIN
+            pthread_spin_unlock(&global->todo_lock);
+#else
             mutex_release(&global->todo_lock);
+#endif
         }
 
         for (;;) {
@@ -1790,7 +1814,11 @@ static void work_phase2(struct worker *w, struct global *global){
             scc = graph_find_scc_one(&global->graph, scc, component, &w->scc_cache);
 
             // Put new work on the list except the last (which we'll do ourselves)
+#ifdef SPIN
+            pthread_spin_lock(&global->todo_lock);
+#else
             mutex_acquire(&global->todo_lock);
+#endif
             while (scc != NULL && scc->next != NULL) {
                 struct scc *next = scc->next;
                 scc->next = global->scc_todo;
@@ -1807,7 +1835,11 @@ static void work_phase2(struct worker *w, struct global *global){
                 mutex_release(&global->todo_wait);
             }
             else {
+#ifdef SPIN
+                pthread_spin_unlock(&global->todo_lock);
+#else
                 mutex_release(&global->todo_lock);
+#endif
             }
         }
     }
@@ -2116,7 +2148,11 @@ int main(int argc, char **argv){
 
     // initialize modules
     mutex_init(&global->inv_lock);
+#ifdef SPIN
+    pthread_spin_init(&global->todo_lock, 0);
+#else
     mutex_init(&global->todo_lock);
+#endif
     mutex_init(&global->todo_wait);
     mutex_acquire(&global->todo_wait);          // Split Binary Semaphore
     value_init(&global->values, global->nworkers);

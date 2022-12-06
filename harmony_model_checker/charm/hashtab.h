@@ -11,7 +11,7 @@ struct ht_node {
     unsigned int size;
 };
 
-#define USE_SPINLOCK
+#define USE_SPINLOCK    // TODO
 
 #ifdef USE_SPINLOCK
 
