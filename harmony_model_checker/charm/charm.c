@@ -1845,6 +1845,14 @@ static void work_phase2(struct worker *w, struct global *global){
     }
 }
 
+void process_results(struct global *global, struct worker *w){
+    struct failure *f;
+    while ((f = w->failures) != NULL) {
+        w->failures = f->next;
+        minheap_insert(global->failures, f);
+    }
+}
+
 static void worker(void *arg){
     struct worker *w = arg;
     struct global *global = w->global;
@@ -1872,8 +1880,7 @@ static void worker(void *arg){
             break;
         }
 
-        // Wait for coordinator to have grown the graph table and hash tables
-        // In the mean time fix the forward edges
+        // Fix the forward edges
         for (unsigned i = 0; i < w->nworkers; i++) {
             struct edge **pe = &w->workers[i].edges[w->index], *e;
             while ((e = *pe) != NULL) {
@@ -1882,6 +1889,75 @@ static void worker(void *arg){
                 e->fwdnext = src->fwd;
                 src->fwd = e;
             }
+        }
+
+        // Prepare the grow the hash tables (but the actual work of
+        // rehashing is distributed among the threads in the next phase
+        // double before_postproc = gettime();
+        if (w->index == 0 % global->nworkers) {
+            ht_grow_prepare(w->visited);
+        }
+        if (w->index == 1 % global->nworkers) {
+            ht_grow_prepare(global->values.atoms);
+        }
+        if (w->index == 2 % global->nworkers) {
+            ht_grow_prepare(global->values.dicts);
+        }
+        if (w->index == 3 % global->nworkers) {
+            ht_grow_prepare(global->values.sets);
+        }
+        if (w->index == 4 % global->nworkers) {
+            ht_grow_prepare(global->values.lists);
+        }
+        if (w->index == 5 % global->nworkers) {
+            ht_grow_prepare(global->values.addresses);
+        }
+        if (w->index == 6 % global->nworkers) {
+            ht_grow_prepare(global->values.contexts);
+        }
+
+        if (w->index == 7 % global->nworkers) {
+            // End of a layer in the Kripke structure?
+            global->layer_done = global->todo == global->graph.size;
+            if (global->layer_done) {
+                global->diameter++;
+                // printf("Diameter %d\n", global->diameter);
+
+                // The threads completed producing the next layer of nodes in the graph.
+                // Grow the graph table.
+                unsigned int total = 0;
+                for (unsigned int i = 0; i < global->nworkers; i++) {
+                    struct worker *w2 = &w->workers[i];
+                    w2->node_id = global->todo + total;
+                    total += w2->count;
+                }
+                graph_add_multiple(&global->graph, total);
+                assert(global->graph.size <= global->graph.alloc_size);
+
+                // Collect the failures of all the workers
+                for (unsigned int i = 0; i < global->nworkers; i++) {
+                    process_results(global, &w->workers[i]);
+                }
+
+                if (!minheap_empty(global->failures)) {
+                    // Pretend we're done
+                    global->todo = global->goal = global->graph.size;
+                }
+            }
+
+            // Determine the new goal
+            unsigned int nleft = global->graph.size - global->todo;
+            if (nleft > 1024 * global->nworkers) {
+                global->goal = global->todo + 1024 * global->nworkers;
+            }
+            else {
+                global->goal = global->graph.size;
+            }
+            assert(global->goal >= global->todo);
+
+            // Compute how much table space is in use
+            global->allocated = global->graph.size * sizeof(struct node *) +
+                ht_allocated(w->visited) + value_allocated(&global->values);
         }
 
         now = gettime();
@@ -1904,14 +1980,6 @@ static void worker(void *arg){
             }
             assert(w->results == NULL);
         }
-    }
-}
-
-void process_results(struct global *global, struct worker *w){
-    struct failure *f;
-    while ((f = w->failures) != NULL) {
-        w->failures = f->next;
-        minheap_insert(global->failures, f);
     }
 }
 
@@ -2322,69 +2390,15 @@ int main(int argc, char **argv){
 
         barrier_wait(&middle_barrier);
 
-        // Back to sequential mode
-
-        // Prepare the grow the hash tables (but the actual work of
-        // rehashing is distributed among the threads in the next phase
-        // double before_postproc = gettime();
-        ht_grow_prepare(visited);
-        value_grow_prepare(&global->values);
-        // postproc += gettime() - before_postproc;
-
-        // End of a layer in the Kripke structure?
-        global->layer_done = global->todo == global->graph.size;
-        if (global->layer_done) {
-            global->diameter++;
-            // printf("Diameter %d\n", global->diameter);
-
-            // The threads completed producing the next layer of nodes in the graph.
-            // Grow the graph table.
-            unsigned int total = 0;
-            for (unsigned int i = 0; i < global->nworkers; i++) {
-                struct worker *w = &workers[i];
-                w->node_id = global->todo + total;
-                total += w->count;
-            }
-            graph_add_multiple(&global->graph, total);
-            assert(global->graph.size <= global->graph.alloc_size);
-
-            // Collect the failures of all the workers
-            for (unsigned int i = 0; i < global->nworkers; i++) {
-                process_results(global, &workers[i]);
-            }
-
-            if (!minheap_empty(global->failures)) {
-                // Pretend we're done
-                global->todo = global->goal = global->graph.size;
-            }
-            if (global->todo == global->graph.size) { // no new nodes added
-                break;
-            }
-        }
-
-        // Determine the new goal
-        unsigned int nleft = global->graph.size - global->todo;
-        if (nleft > 1024 * global->nworkers) {
-            global->goal = global->todo + 1024 * global->nworkers;
-        }
-        else {
-            global->goal = global->graph.size;
-        }
-        assert(global->goal >= global->todo);
-
-        // Compute how much table space is in use
-        global->allocated = global->graph.size * sizeof(struct node *) +
-            ht_allocated(visited) + value_allocated(&global->values);
-
-        // printf("Coordinator back to workers (%d)\n", global->diameter);
-
         barrier_wait(&end_barrier);
+
+        if (global->todo == global->graph.size) { // no new nodes added
+            break;
+        }
 
         // The threads now update the hash tables and the graph table
     }
 
-    // Get threads going on fixing hash tables
-    barrier_wait(&end_barrier);
     // Wait for threads to fix up hash tables
     barrier_wait(&start_barrier);
 

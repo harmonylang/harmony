@@ -1166,12 +1166,6 @@ void value_make_stable(struct values *values, unsigned int worker){
 }
 
 void value_grow_prepare(struct values *values) {
-    vd_grow_prepare(values->atoms);
-    vd_grow_prepare(values->dicts);
-    vd_grow_prepare(values->sets);
-    vd_grow_prepare(values->lists);
-    vd_grow_prepare(values->addresses);
-    vd_grow_prepare(values->contexts);
 }
 
 void value_set_sequential(struct values *values){
