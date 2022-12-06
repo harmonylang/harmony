@@ -1710,8 +1710,8 @@ static void do_work(struct worker *w){
         }
 
         unsigned int take = nleft / w->nworkers / 2;
-        if (take < 100) {
-            take = 100;
+        if (take < 10) {
+            take = 10;
         }
         if (take > nleft) {
             take = nleft;
