@@ -5,6 +5,48 @@
 #include "global.h"
 #include "hashtab.h"
 
+#ifdef USE_SPINLOCK
+
+#include <pthread.h>
+#include <errno.h>
+
+int pthread_spin_init(pthread_spinlock_t *lock, int pshared) {
+    __asm__ __volatile__ ("" ::: "memory");
+    *lock = 0;
+    return 0;
+}
+
+int pthread_spin_destroy(pthread_spinlock_t *lock) {
+    return 0;
+}
+
+int pthread_spin_lock(pthread_spinlock_t *lock) {
+    while (1) {
+        int i;
+        for (i=0; i < 10000; i++) {
+            if (__sync_bool_compare_and_swap(lock, 0, 1)) {
+                return 0;
+            }
+        }
+        sched_yield();
+    }
+}
+
+int pthread_spin_trylock(pthread_spinlock_t *lock) {
+    if (__sync_bool_compare_and_swap(lock, 0, 1)) {
+        return 0;
+    }
+    return EBUSY;
+}
+
+int pthread_spin_unlock(pthread_spinlock_t *lock) {
+    __asm__ __volatile__ ("" ::: "memory");
+    *lock = 0;
+    return 0;
+}
+
+#endif // USE_SPINLOCK
+
 #define hash_func meiyan
 
 static inline uint32_t meiyan(const char *key, int count) {
@@ -38,9 +80,9 @@ struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int nbuck
         atomic_init(&ht->buckets[i], NULL);
     }
     ht->nlocks = nworkers * 64;        // TODO: how much?
-    ht->locks = malloc(ht->nlocks * sizeof(mutex_t));
+    ht->locks = malloc(ht->nlocks * sizeof(ht->locks));
 	for (unsigned int i = 0; i < ht->nlocks; i++) {
-		mutex_init(&ht->locks[i]);
+		ht_lock_init(&ht->locks[i]);
 	}
     ht->nworkers = nworkers;
     ht->counts = calloc(nworkers, sizeof(*ht->counts));
@@ -48,10 +90,10 @@ struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int nbuck
 }
 
 void ht_do_resize(struct hashtab *ht, unsigned int old_nbuckets, _Atomic(struct ht_node *) *old_buckets, unsigned int first, unsigned int last){
-    // for (unsigned int i = first; i < last; i++) {
-    //     atomic_init(&ht->buckets[i], NULL);
-    // }
     unsigned int factor = ht->nbuckets / old_nbuckets;
+    if (factor == 0) {      // deal with shrinking tables
+        factor = 1;
+    }
     for (unsigned int i = first; i < last; i++) {
         unsigned int k = i;
         for (unsigned int j = 0; j < factor; j++) {
@@ -134,13 +176,13 @@ struct ht_node *ht_find(struct hashtab *ht, struct allocator *al, const void *ke
 }
 
 struct ht_node *ht_find_lock(struct hashtab *ht, struct allocator *al,
-                            const void *key, unsigned int size, bool *new, mutex_t **lock){
+                            const void *key, unsigned int size, bool *new, ht_lock_t **lock){
     struct ht_node *n = ht_find(ht, al, key, size, new);
 
     // TODO: hash computed twice...
     unsigned int hash = hash_func(key, size) % ht->nlocks;
     *lock = &ht->locks[hash];
-    mutex_acquire(*lock);
+    ht_lock_acquire(*lock);
     return n;
 }
 

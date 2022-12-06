@@ -11,12 +11,33 @@ struct ht_node {
     unsigned int size;
 };
 
+#define USE_SPINLOCK
+
+#ifdef USE_SPINLOCK
+
+typedef int pthread_spinlock_t;
+
+int pthread_spin_init(pthread_spinlock_t *lock, int pshared);
+int pthread_spin_lock(pthread_spinlock_t *lock);
+int pthread_spin_unlock(pthread_spinlock_t *lock);
+
+typedef pthread_spinlock_t ht_lock_t;
+#define ht_lock_init(ll) pthread_spin_init(ll, 0)
+#define ht_lock_acquire(ll) pthread_spin_lock(ll)
+#define ht_lock_release(ll) pthread_spin_unlock(ll)
+#else
+typedef mutex_t ht_lock_t
+#define ht_lock_init(ll) mutex_init(ll)
+#define ht_lock_acquire(ll) mutex_acquire(ll)
+#define ht_lock_release(ll) mutex_release(ll)
+#endif
+
 struct hashtab {
     unsigned int value_size;
     bool align16;
     _Atomic(struct ht_node *) *buckets;
     unsigned int nbuckets;
-    mutex_t *locks;
+    ht_lock_t *locks;
     unsigned int nlocks;
     bool concurrent;
     unsigned int nworkers;
@@ -33,7 +54,7 @@ struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int nbuck
 void ht_resize(struct hashtab *ht, unsigned int nbuckets);
 void *ht_retrieve(struct ht_node *n, unsigned int *psize);
 struct ht_node *ht_find(struct hashtab *ht, struct allocator *al, const void *key, unsigned int size, bool *is_new);
-struct ht_node *ht_find_lock(struct hashtab *ht, struct allocator *al, const void *key, unsigned int size, bool *is_new, mutex_t **plock);
+struct ht_node *ht_find_lock(struct hashtab *ht, struct allocator *al, const void *key, unsigned int size, bool *is_new, ht_lock_t **plock);
 void *ht_insert(struct hashtab *ht, struct allocator *al,
                         const void *key, unsigned int size, bool *new);
 void ht_set_concurrent(struct hashtab *ht);

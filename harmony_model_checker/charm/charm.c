@@ -605,14 +605,15 @@ static bool onestep(
 
     // See if this state has been computed before
     bool new;
-    mutex_t *lock;
     unsigned int size = state_size(sc);
 #ifdef USE_HASHTAB
+    ht_lock_t *lock;
     struct ht_node *hn = ht_find_lock(w->visited, &w->allocator,
                 sc, size, &new, &lock);
     struct node *next = (struct node *) &hn[1];
     struct state *state = (struct state *) &next[1];
 #else
+    mutex_t *lock;
     struct dict_assoc *da = dict_find_lock(w->visited, &w->allocator,
                 sc, size, &new, &lock);
     struct state *state = (struct state *) &da[1];
@@ -641,7 +642,7 @@ static bool onestep(
     edge->bwdnext = next->bwd;
     next->bwd = edge;
 
-    mutex_release(lock);
+    ht_lock_release(lock);
 
     // Don't do the forward edge at this time as that would involve lockng
     // the parent node.  Instead assign that task to one of the workers
