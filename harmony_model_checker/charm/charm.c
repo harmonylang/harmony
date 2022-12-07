@@ -1692,79 +1692,49 @@ static void do_work(struct worker *w){
     struct global *global = w->global;
 
     for (;;) {
-#ifdef SPIN
-        pthread_spin_lock(&global->todo_lock);
-#else
-        mutex_acquire(&global->todo_lock);
-#endif
-        assert(global->goal >= global->todo);
-        unsigned int start = global->todo;
-        unsigned int nleft = global->goal - start;
-        if (nleft == 0) {
-#ifdef SPIN
-            pthread_spin_unlock(&global->todo_lock);
-#else
-            mutex_release(&global->todo_lock);
-#endif
+        unsigned int next = atomic_fetch_add(&global->atodo, 1);
+        // printf("W%u gets %u out of %u (goal = %u)\n", w->index, next, global->graph.size, atomic_load(&global->goal));
+        if (next >= atomic_load(&global->goal)) {
             break;
         }
 
-        unsigned int take = nleft / w->nworkers / 2;
-        if (take < 10) {
-            take = 10;
-        }
-        if (take > nleft) {
-            take = nleft;
-        }
-        global->todo = start + take;
-        assert(global->todo <= global->graph.size);
-        assert(global->goal >= global->todo);
-#ifdef SPIN
-        pthread_spin_unlock(&global->todo_lock);
-#else
-        mutex_release(&global->todo_lock);
-#endif
+        struct node *node = global->graph.nodes[next];
+        struct state *state = node->state;
+        w->dequeued++;
 
-        while (take > 0) {
-            struct node *node = global->graph.nodes[start++];
-            struct state *state = node->state;
-            w->dequeued++;
+        if (state->choosing != 0) {
+            assert(VALUE_TYPE(state->choosing) == VALUE_CONTEXT);
 
-            if (state->choosing != 0) {
-                assert(VALUE_TYPE(state->choosing) == VALUE_CONTEXT);
-
-                struct context *cc = value_get(state->choosing, NULL);
-                assert(cc != NULL);
-                assert(cc->sp > 0);
-                hvalue_t s = ctx_stack(cc)[cc->sp - 1];
-                assert(VALUE_TYPE(s) == VALUE_SET);
-                unsigned int size;
-                hvalue_t *vals = value_get(s, &size);
-                size /= sizeof(hvalue_t);
-                assert(size > 0);
-                for (unsigned int i = 0; i < size; i++) {
-                    make_step(
-                        w,
-                        node,
-                        state->choosing,
-                        vals[i],
-                        1
-                    );
-                }
+            struct context *cc = value_get(state->choosing, NULL);
+            assert(cc != NULL);
+            assert(cc->sp > 0);
+            hvalue_t s = ctx_stack(cc)[cc->sp - 1];
+            assert(VALUE_TYPE(s) == VALUE_SET);
+            unsigned int size;
+            hvalue_t *vals = value_get(s, &size);
+            size /= sizeof(hvalue_t);
+            assert(size > 0);
+            for (unsigned int i = 0; i < size; i++) {
+                make_step(
+                    w,
+                    node,
+                    state->choosing,
+                    vals[i],
+                    1
+                );
             }
-            else {
-                for (unsigned int i = 0; i < state->bagsize; i++) {
-                    assert(VALUE_TYPE(state_contexts(state)[i]) == VALUE_CONTEXT);
-                    make_step(
-                        w,
-                        node,
-                        state_contexts(state)[i],
-                        0,
-                        multiplicities(state)[i]
-                    );
-                }
+        }
+        else {
+            for (unsigned int i = 0; i < state->bagsize; i++) {
+                assert(VALUE_TYPE(state_contexts(state)[i]) == VALUE_CONTEXT);
+                make_step(
+                    w,
+                    node,
+                    state_contexts(state)[i],
+                    0,
+                    multiplicities(state)[i]
+                );
             }
-            take--;
         }
     }
 }
@@ -1924,7 +1894,7 @@ static void worker(void *arg){
 
         if (w->index == 7 % global->nworkers) {
             // End of a layer in the Kripke structure?
-            global->layer_done = global->todo == global->graph.size;
+            global->layer_done = atomic_load(&global->goal) == global->graph.size;
             if (global->layer_done) {
                 global->diameter++;
                 // printf("Diameter %d\n", global->diameter);
@@ -1934,7 +1904,7 @@ static void worker(void *arg){
                 unsigned int total = 0;
                 for (unsigned int i = 0; i < global->nworkers; i++) {
                     struct worker *w2 = &w->workers[i];
-                    w2->node_id = global->todo + total;
+                    w2->node_id = atomic_load(&global->goal) + total;
                     total += w2->count;
                 }
                 graph_add_multiple(&global->graph, total);
@@ -1947,19 +1917,22 @@ static void worker(void *arg){
 
                 if (!minheap_empty(global->failures)) {
                     // Pretend we're done
-                    global->todo = global->goal = global->graph.size;
+                    atomic_store(&global->goal, global->graph.size);
+                    atomic_store(&global->atodo, global->graph.size);
                 }
             }
 
+            // Reset todo counter
+            atomic_store(&global->atodo, atomic_load(&global->goal));
+
             // Determine the new goal
-            unsigned int nleft = global->graph.size - global->todo;
+            unsigned int nleft = global->graph.size - atomic_load(&global->goal);
             if (nleft > 1024 * global->nworkers) {
-                global->goal = global->todo + 1024 * global->nworkers;
+                atomic_store(&global->goal, atomic_load(&global->goal) + 1024 * global->nworkers);
             }
             else {
-                global->goal = global->graph.size;
+                atomic_store(&global->goal, global->graph.size);
             }
-            assert(global->goal >= global->todo);
 
             // Compute how much table space is in use
             global->allocated = global->graph.size * sizeof(struct node *) +
@@ -2222,6 +2195,8 @@ int main(int argc, char **argv){
 
     // initialize modules
     mutex_init(&global->inv_lock);
+    atomic_init(&global->atodo, 0);
+    atomic_init(&global->goal, 0);
 #ifdef SPIN
     pthread_spin_init(&global->todo_lock, 0);
 #else
@@ -2398,7 +2373,7 @@ int main(int argc, char **argv){
 
         barrier_wait(&end_barrier);
 
-        if (global->todo == global->graph.size) { // no new nodes added
+        if (atomic_load(&global->atodo) == global->graph.size) { // no new nodes added
             break;
         }
 

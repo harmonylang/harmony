@@ -238,7 +238,7 @@ void ht_grow_prepare(struct hashtab *ht){
         ht->old_buckets = ht->buckets;
         ht->old_nbuckets = ht->nbuckets;
         ht->nbuckets = ht->nbuckets * 8;
-        while (ht->nbuckets < ht->nobjects * 10) {
+        while (ht->nbuckets < ht->nobjects * 16) {
             ht->nbuckets *= 2;
         }
         ht->buckets = malloc(ht->nbuckets * sizeof(*ht->buckets));

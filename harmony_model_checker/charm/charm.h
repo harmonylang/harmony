@@ -1,6 +1,8 @@
 #ifndef SRC_CHARM_H
 #define SRC_CHARM_H
 
+#include <stdatomic.h>
+
 #include "minheap.h"
 #include "code.h"
 #include "graph.h"
@@ -78,8 +80,9 @@ struct global {
     bool inv_pre;                   // some invariant uses "pre"
 
     struct graph graph;             // the Kripke structure
-    unsigned int todo;              // points into graph->nodes
-    unsigned int goal;              // points into graph->nodes
+    _Atomic(unsigned int) atodo;
+    _Atomic(unsigned int) goal;     // points into graph->nodes
+    // unsigned int todo;           // points into graph->nodes
     bool layer_done;                // all states in a layer completed
 
 #define SPIN        // TODO
