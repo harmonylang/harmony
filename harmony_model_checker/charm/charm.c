@@ -1690,50 +1690,55 @@ static int fail_cmp(void *f1, void *f2){
 
 static void do_work(struct worker *w){
     struct global *global = w->global;
+    unsigned int goal = atomic_load(&global->goal);
+
+#define TODO_COUNT 10
 
     for (;;) {
-        unsigned int next = atomic_fetch_add(&global->atodo, 1);
-        // printf("W%u gets %u out of %u (goal = %u)\n", w->index, next, global->graph.size, atomic_load(&global->goal));
-        if (next >= atomic_load(&global->goal)) {
-            break;
-        }
+        unsigned int next = atomic_fetch_add(&global->atodo, TODO_COUNT);
+        // printf("W%u gets %u out of %u (goal = %u)\n", w->index, next, global->graph.size, goal);
 
-        struct node *node = global->graph.nodes[next];
-        struct state *state = node->state;
-        w->dequeued++;
-
-        if (state->choosing != 0) {
-            assert(VALUE_TYPE(state->choosing) == VALUE_CONTEXT);
-
-            struct context *cc = value_get(state->choosing, NULL);
-            assert(cc != NULL);
-            assert(cc->sp > 0);
-            hvalue_t s = ctx_stack(cc)[cc->sp - 1];
-            assert(VALUE_TYPE(s) == VALUE_SET);
-            unsigned int size;
-            hvalue_t *vals = value_get(s, &size);
-            size /= sizeof(hvalue_t);
-            assert(size > 0);
-            for (unsigned int i = 0; i < size; i++) {
-                make_step(
-                    w,
-                    node,
-                    state->choosing,
-                    vals[i],
-                    1
-                );
+        for (unsigned int i = 0; i < TODO_COUNT; i++, next++) {
+            if (next >= goal) {
+                return;
             }
-        }
-        else {
-            for (unsigned int i = 0; i < state->bagsize; i++) {
-                assert(VALUE_TYPE(state_contexts(state)[i]) == VALUE_CONTEXT);
-                make_step(
-                    w,
-                    node,
-                    state_contexts(state)[i],
-                    0,
-                    multiplicities(state)[i]
-                );
+            struct node *node = global->graph.nodes[next];
+            struct state *state = node->state;
+            w->dequeued++;
+
+            if (state->choosing != 0) {
+                assert(VALUE_TYPE(state->choosing) == VALUE_CONTEXT);
+
+                struct context *cc = value_get(state->choosing, NULL);
+                assert(cc != NULL);
+                assert(cc->sp > 0);
+                hvalue_t s = ctx_stack(cc)[cc->sp - 1];
+                assert(VALUE_TYPE(s) == VALUE_SET);
+                unsigned int size;
+                hvalue_t *vals = value_get(s, &size);
+                size /= sizeof(hvalue_t);
+                assert(size > 0);
+                for (unsigned int i = 0; i < size; i++) {
+                    make_step(
+                        w,
+                        node,
+                        state->choosing,
+                        vals[i],
+                        1
+                    );
+                }
+            }
+            else {
+                for (unsigned int i = 0; i < state->bagsize; i++) {
+                    assert(VALUE_TYPE(state_contexts(state)[i]) == VALUE_CONTEXT);
+                    make_step(
+                        w,
+                        node,
+                        state_contexts(state)[i],
+                        0,
+                        multiplicities(state)[i]
+                    );
+                }
             }
         }
     }
@@ -1894,17 +1899,18 @@ static void worker(void *arg){
 
         if (w->index == 7 % global->nworkers) {
             // End of a layer in the Kripke structure?
-            global->layer_done = atomic_load(&global->goal) == global->graph.size;
+            unsigned int goal = atomic_load(&global->goal);
+            global->layer_done = goal == global->graph.size;
             if (global->layer_done) {
                 global->diameter++;
                 // printf("Diameter %d\n", global->diameter);
 
                 // The threads completed producing the next layer of nodes in the graph.
                 // Grow the graph table.
-                unsigned int total = 0;
+                unsigned int total = 0, goal = atomic_load(&global->goal);
                 for (unsigned int i = 0; i < global->nworkers; i++) {
                     struct worker *w2 = &w->workers[i];
-                    w2->node_id = atomic_load(&global->goal) + total;
+                    w2->node_id = goal + total;
                     total += w2->count;
                 }
                 graph_add_multiple(&global->graph, total);
@@ -1923,7 +1929,7 @@ static void worker(void *arg){
             }
 
             // Reset todo counter
-            atomic_store(&global->atodo, atomic_load(&global->goal));
+            atomic_store(&global->atodo, goal);
 
             // Determine the new goal
             unsigned int nleft = global->graph.size - atomic_load(&global->goal);
