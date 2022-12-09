@@ -632,7 +632,7 @@ static bool onestep(
         next->to_parent = edge;
         next->state = state;        // TODO.  Don't technically need this
     }
-    else if (0) {
+    else {
         unsigned int len = node->len + weight;
         unsigned int steps = node->steps + instrcnt;
         // TODO: not sure how to minimize.  For some cases, this works better than
@@ -658,13 +658,6 @@ static bool onestep(
     *pe = edge;
     edge->dst = next;
 
-    if (new) {
-        next->next = w->results;
-        w->results = next;
-        w->count++;
-        w->enqueued++;
-    }
-
     if (failure) {
         struct failure *f = new_alloc(struct failure);
         f->type = infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
@@ -672,21 +665,29 @@ static bool onestep(
         f->next = w->failures;
         w->failures = f;
     }
-    else if (sc->choosing == 0 && global->ninvs != 0) {
-        unsigned int inv = 0;
-        if (new) {      // try self-loop if a new node
-            inv = check_invariants(w, next, next, &w->inv_step);
+    else {
+        if (new) {
+            next->next = w->results;
+            w->results = next;
+            w->count++;
+            w->enqueued++;
         }
-        if (inv == 0) { // try new edge
-            inv = check_invariants(w, next, node, &w->inv_step);
-        }
-        if (inv != 0) {
-            struct failure *f = new_alloc(struct failure);
-            f->type = FAIL_INVARIANT;
-            f->edge = edge;
-            f->next = w->failures;
-            f->address = VALUE_TO_PC(inv);
-            w->failures = f;
+        if (sc->choosing == 0 && global->ninvs != 0) {
+            unsigned int inv = 0;
+            if (new) {      // try self-loop if a new node
+                inv = check_invariants(w, next, next, &w->inv_step);
+            }
+            if (inv == 0) { // try new edge
+                inv = check_invariants(w, next, node, &w->inv_step);
+            }
+            if (inv != 0) {
+                struct failure *f = new_alloc(struct failure);
+                f->type = FAIL_INVARIANT;
+                f->edge = edge;
+                f->next = w->failures;
+                f->address = VALUE_TO_PC(inv);
+                w->failures = f;
+            }
         }
     }
 
@@ -726,6 +727,8 @@ static void make_step(
     unsigned int size;
     struct context *cc = value_get(ctx, &size);
     assert(ctx_size(cc) == size);
+    assert(!cc->terminated);
+    assert(!cc->failed);
     memcpy(&w->ctx, cc, size);
     assert(step.engine.allocator == &w->allocator);
     step.ctx = &w->ctx;
