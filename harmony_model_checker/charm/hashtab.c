@@ -188,9 +188,9 @@ struct ht_node *ht_find_lock(struct hashtab *ht, struct allocator *al,
     struct ht_node *n = ht_find(ht, al, key, size, new);
 
     // TODO: hash computed twice...
-    unsigned int hash = hash_func(key, size) % ht->nlocks;
-    *lock = &ht->locks[hash];
-    ht_lock_acquire(*lock);
+    // unsigned int hash = hash_func(key, size) % ht->nlocks;
+    // *lock = &ht->locks[hash];
+    // ht_lock_acquire(*lock);
     return n;
 }
 

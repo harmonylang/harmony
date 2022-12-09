@@ -611,11 +611,11 @@ static bool onestep(
 #ifdef USE_HASHTAB
     ht_lock_t *lock;
     struct ht_node *hn = ht_find_lock(w->visited, &w->allocator,
-                sc, size, NULL, &lock);
+                sc, size, &new, &lock);
     struct node *next = (struct node *) &hn[1];
     struct state *state = (struct state *) &next[1];
-    new = !next->initialized;
-    next->initialized = true;
+    // new = !next->initialized;
+    // next->initialized = true;
 #else
     mutex_t *lock;
     struct dict_assoc *da = dict_find_lock(w->visited, &w->allocator,
@@ -632,7 +632,7 @@ static bool onestep(
         next->to_parent = edge;
         next->state = state;        // TODO.  Don't technically need this
     }
-    else {
+    else if (0) {
         unsigned int len = node->len + weight;
         unsigned int steps = node->steps + instrcnt;
         // TODO: not sure how to minimize.  For some cases, this works better than
@@ -648,9 +648,9 @@ static bool onestep(
     edge->bwdnext = next->bwd;
     next->bwd = edge;
 
-    ht_lock_release(lock);
+    // ht_lock_release(lock);
 
-    // Don't do the forward edge at this time as that would involve lockng
+    // Don't do the forward edge at this time as that would involve locking
     // the parent node.  Instead assign that task to one of the workers
     // in the next phase.
     struct edge **pe = &w->edges[node->id % w->nworkers];
