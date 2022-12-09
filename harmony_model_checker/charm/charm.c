@@ -2147,7 +2147,7 @@ static void usage(char *prog){
 }
 
 int main(int argc, char **argv){
-    bool cflag = false;
+    bool cflag = false, Dflag = false;
     int i, maxtime = 300000000 /* about 10 years */;
     char *outfile = NULL, *dfafile = NULL;
     unsigned int nworkers = 0;
@@ -2158,6 +2158,9 @@ int main(int argc, char **argv){
         switch (argv[i][1]) {
         case 'c':
             cflag = true;
+            break;
+        case 'D':
+            Dflag = true;
             break;
         case 't':
             maxtime = atoi(&argv[i][2]);
@@ -2566,8 +2569,7 @@ int main(int argc, char **argv){
     }
 #endif
 
-#ifdef OBSOLETE
-    if (true) {
+    if (Dflag) {
         FILE *df = fopen("charm.dump", "w");
         assert(df != NULL);
         for (unsigned int i = 0; i < global->graph.size; i++) {
@@ -2635,6 +2637,7 @@ int main(int argc, char **argv){
         fclose(df);
     }
 
+#ifdef OBSOLETE
     if (false) {
         FILE *df = fopen("charm.dump", "w");
         assert(df != NULL);
