@@ -648,7 +648,7 @@ static bool onestep(
     edge->bwdnext = next->bwd;
     next->bwd = edge;
 
-    // ht_lock_release(lock);
+    ht_lock_release(lock);
 
     // Don't do the forward edge at this time as that would involve locking
     // the parent node.  Instead assign that task to one of the workers

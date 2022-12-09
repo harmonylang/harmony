@@ -48,6 +48,8 @@ struct hashtab {
     unsigned int *counts;       // 1 per worker
     unsigned long nobjects;     // total #items in hash table
 
+    _Atomic(unsigned int) rt_count;     // number of objects in hash table
+
     // For concurrent resize
     _Atomic(struct ht_node *) *old_buckets;
     unsigned int old_nbuckets;
@@ -66,5 +68,6 @@ void ht_make_stable(struct hashtab *ht, unsigned int worker);
 void ht_set_sequential(struct hashtab *ht);
 void ht_grow_prepare(struct hashtab *ht);
 unsigned long ht_allocated(struct hashtab *ht);
+bool ht_needs_to_grow(struct hashtab *ht);
 
 #endif //SRC_HASHTAB_H

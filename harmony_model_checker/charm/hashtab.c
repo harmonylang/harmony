@@ -90,6 +90,7 @@ struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int nbuck
 	}
     ht->nworkers = nworkers;
     ht->counts = calloc(nworkers, sizeof(*ht->counts));
+    atomic_init(&ht->rt_count, 0);
     return ht;
 }
 
@@ -123,9 +124,7 @@ void ht_resize(struct hashtab *ht, unsigned int nbuckets){
 }
 
 // TODO.  is_new is not terribly useful.
-struct ht_node *ht_find(struct hashtab *ht, struct allocator *al, const void *key, unsigned int size, bool *is_new){
-    unsigned int hash = hash_func(key, size) % ht->nbuckets;
-
+struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsigned int hash, const void *key, unsigned int size, bool *is_new){
     // First do a search
     _Atomic(struct ht_node *) *chain = &ht->buckets[hash];
     for (;;) {
@@ -157,6 +156,7 @@ struct ht_node *ht_find(struct hashtab *ht, struct allocator *al, const void *ke
     for (;;) {
         struct ht_node *expected = NULL;
         if (atomic_compare_exchange_strong(chain, &expected, desired)) {
+            atomic_fetch_add(&ht->rt_count, 1);
             if (ht->concurrent) {
                 assert(al != NULL);
                 ht->counts[al->worker]++;
@@ -183,14 +183,18 @@ struct ht_node *ht_find(struct hashtab *ht, struct allocator *al, const void *ke
     }
 }
 
+struct ht_node *ht_find(struct hashtab *ht, struct allocator *al, const void *key, unsigned int size, bool *is_new){
+    unsigned int hash = hash_func(key, size) % ht->nbuckets;
+
+    return ht_find_with_hash(ht, al, hash, key, size, is_new);
+}
+
 struct ht_node *ht_find_lock(struct hashtab *ht, struct allocator *al,
                             const void *key, unsigned int size, bool *new, ht_lock_t **lock){
-    struct ht_node *n = ht_find(ht, al, key, size, new);
-
-    // TODO: hash computed twice...
-    // unsigned int hash = hash_func(key, size) % ht->nlocks;
-    // *lock = &ht->locks[hash];
-    // ht_lock_acquire(*lock);
+    unsigned int hash = hash_func(key, size) % ht->nlocks;
+    struct ht_node *n = ht_find_with_hash(ht, al, hash, key, size, new);
+    *lock = &ht->locks[hash];
+    ht_lock_acquire(*lock);
     return n;
 }
 
@@ -252,4 +256,8 @@ void ht_grow_prepare(struct hashtab *ht){
 unsigned long ht_allocated(struct hashtab *ht){
     return ht->nbuckets * sizeof(*ht->buckets) +
             ht->nlocks * sizeof(*ht->locks);
+}
+
+bool ht_needs_to_grow(struct hashtab *ht){
+    return 2 * atomic_load(&ht->rt_count) > ht->nbuckets;
 }
