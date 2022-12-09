@@ -2147,7 +2147,7 @@ static void usage(char *prog){
 }
 
 int main(int argc, char **argv){
-    bool cflag = false, Dflag = false;
+    bool cflag = false, Dflag = false, Rflag = false;
     int i, maxtime = 300000000 /* about 10 years */;
     char *outfile = NULL, *dfafile = NULL;
     unsigned int nworkers = 0;
@@ -2161,6 +2161,9 @@ int main(int argc, char **argv){
             break;
         case 'D':
             Dflag = true;
+            break;
+        case 'R':
+            Rflag = true;
             break;
         case 't':
             maxtime = atoi(&argv[i][2]);
@@ -2655,7 +2658,7 @@ int main(int argc, char **argv){
     // TODO.  Can easily be parallelized
 	// TODO.  Don't need failures/warnings distinction any more
     struct minheap *warnings = minheap_create(fail_cmp);
-    if (minheap_empty(global->failures)) {
+    if (!Rflag && minheap_empty(global->failures)) {
         printf("Check for data races\n");
         for (unsigned int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
