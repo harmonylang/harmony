@@ -30,6 +30,7 @@
 #define vd_make_stable(ht, worker) ht_make_stable(ht, worker)
 #define vd_grow_prepare(ht)        ht_grow_prepare(ht)
 #define vd_allocated(ht)           ht_allocated(ht)
+#define vd_needs_to_grow(ht)       ht_needs_to_grow(ht)
 
 #else
 
@@ -1166,6 +1167,17 @@ void value_make_stable(struct values *values, unsigned int worker){
 }
 
 void value_grow_prepare(struct values *values) {
+    panic("value_grow_prepare");
+}
+
+bool value_needs_to_grow(struct values *values) {
+    return
+        vd_needs_to_grow(values->atoms) |
+        vd_needs_to_grow(values->dicts) |
+        vd_needs_to_grow(values->sets) |
+        vd_needs_to_grow(values->lists) |
+        vd_needs_to_grow(values->addresses) |
+        vd_needs_to_grow(values->contexts);
 }
 
 void value_set_sequential(struct values *values){

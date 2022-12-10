@@ -57,6 +57,7 @@ typedef struct context {   // context value
 void value_init(struct values *values, unsigned int nworkers);
 void value_set_concurrent(struct values *values);
 void value_make_stable(struct values *values, unsigned int worker);
+bool value_needs_to_grow(struct values *values);
 void value_set_sequential(struct values *values);
 hvalue_t value_from_json(struct engine *engine, struct dict *map);
 int value_cmp(hvalue_t v1, hvalue_t v2);

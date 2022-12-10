@@ -1693,16 +1693,15 @@ static int fail_cmp(void *f1, void *f2){
 
 static void do_work(struct worker *w){
     struct global *global = w->global;
-    unsigned int goal = atomic_load(&global->goal);
 
-#define TODO_COUNT 10
+#define TODO_COUNT 25
 
     for (;;) {
         unsigned int next = atomic_fetch_add(&global->atodo, TODO_COUNT);
         // printf("W%u gets %u out of %u (goal = %u)\n", w->index, next, global->graph.size, goal);
 
         for (unsigned int i = 0; i < TODO_COUNT; i++, next++) {
-            if (next >= goal) {
+            if (next >= global->graph.size) {
                 return;
             }
             struct node *node = global->graph.nodes[next];
@@ -1743,6 +1742,39 @@ static void do_work(struct worker *w){
                     );
                 }
             }
+        }
+
+        if (next >= atomic_load(&global->goal)) {
+            break;
+        }
+
+        if (w->index == 0 % global->nworkers && ht_needs_to_grow(w->visited)) {
+            atomic_store(&global->goal, next);
+            break;
+        }
+        if (w->index == 1 % global->nworkers && ht_needs_to_grow(global->values.atoms)) {
+            atomic_store(&global->goal, next);
+            break;
+        }
+        if (w->index == 2 % global->nworkers && ht_needs_to_grow(global->values.dicts)) {
+            atomic_store(&global->goal, next);
+            break;
+        }
+        if (w->index == 3 % global->nworkers && ht_needs_to_grow(global->values.sets)) {
+            atomic_store(&global->goal, next);
+            break;
+        }
+        if (w->index == 4 % global->nworkers && ht_needs_to_grow(global->values.lists)) {
+            atomic_store(&global->goal, next);
+            break;
+        }
+        if (w->index == 5 % global->nworkers && ht_needs_to_grow(global->values.addresses)) {
+            atomic_store(&global->goal, next);
+            break;
+        }
+        if (w->index == 6 % global->nworkers && ht_needs_to_grow(global->values.contexts)) {
+            atomic_store(&global->goal, next);
+            break;
         }
     }
 }
@@ -1902,18 +1934,22 @@ static void worker(void *arg){
 
         if (w->index == 7 % global->nworkers) {
             // End of a layer in the Kripke structure?
-            unsigned int goal = atomic_load(&global->goal);
-            global->layer_done = goal == global->graph.size;
+            unsigned int todo = atomic_load(&global->atodo);
+            if (todo > global->graph.size) {
+                atomic_store(&global->atodo, global->graph.size);
+                todo = global->graph.size;
+            }
+            global->layer_done = todo == global->graph.size;
             if (global->layer_done) {
                 global->diameter++;
                 // printf("Diameter %d\n", global->diameter);
 
                 // The threads completed producing the next layer of nodes in the graph.
                 // Grow the graph table.
-                unsigned int total = 0, goal = atomic_load(&global->goal);
+                unsigned int total = 0;
                 for (unsigned int i = 0; i < global->nworkers; i++) {
                     struct worker *w2 = &w->workers[i];
-                    w2->node_id = goal + total;
+                    w2->node_id = global->graph.size + total;
                     total += w2->count;
                 }
                 graph_add_multiple(&global->graph, total);
@@ -1924,23 +1960,12 @@ static void worker(void *arg){
                     process_results(global, &w->workers[i]);
                 }
 
+                atomic_store(&global->goal, global->graph.size);
+
                 if (!minheap_empty(global->failures)) {
                     // Pretend we're done
-                    atomic_store(&global->goal, global->graph.size);
                     atomic_store(&global->atodo, global->graph.size);
                 }
-            }
-
-            // Reset todo counter
-            atomic_store(&global->atodo, goal);
-
-            // Determine the new goal
-            unsigned int nleft = global->graph.size - atomic_load(&global->goal);
-            if (nleft > 1024 * global->nworkers) {
-                atomic_store(&global->goal, atomic_load(&global->goal) + 1024 * global->nworkers);
-            }
-            else {
-                atomic_store(&global->goal, global->graph.size);
             }
 
             // Compute how much table space is in use
@@ -2211,7 +2236,7 @@ int main(int argc, char **argv){
     // initialize modules
     mutex_init(&global->inv_lock);
     atomic_init(&global->atodo, 0);
-    atomic_init(&global->goal, 0);
+    atomic_init(&global->goal, 1);
 #ifdef SPIN
     pthread_spin_init(&global->todo_lock, 0);
 #else
@@ -2323,7 +2348,6 @@ int main(int argc, char **argv){
     memset(node, 0, sizeof(*node));
     node->state = state;
     graph_add(&global->graph, node);
-    global->goal = 1;
 
     // Allocate space for worker info
     struct worker *workers = calloc(global->nworkers, sizeof(*workers));
