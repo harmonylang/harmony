@@ -655,7 +655,6 @@ static bool onestep(
 
     edge->dst = next;
 
-#define DELAY_INSERT
 #ifdef DELAY_INSERT
     // Don't do the forward edge at this time as that would involve locking
     // the parent node.  Instead assign that task to one of the workers
@@ -1915,7 +1914,7 @@ static void worker(void *arg){
 
         before = after;
 
-#ifndef DELAY_INSERT
+#ifdef DELAY_INSERT
         // Fix the forward edges
         for (unsigned i = 0; i < w->nworkers; i++) {
             struct edge **pe = &w->workers[i].edges[w->index], *e;
