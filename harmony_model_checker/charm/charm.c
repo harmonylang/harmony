@@ -45,6 +45,8 @@ struct worker {
     barrier_t *start_barrier, *middle_barrier, *end_barrier;
     double start_wait, middle_wait, end_wait;
     unsigned int start_count, middle_count, end_count;
+    double phase1, phase2a, phase2b, phase3;
+    unsigned int fix_edge;
 
     struct hashtab *visited;
 
@@ -611,11 +613,11 @@ static bool onestep(
 #ifdef USE_HASHTAB
     ht_lock_t *lock;
     struct ht_node *hn = ht_find_lock(w->visited, &w->allocator,
-                sc, size, &new, &lock);
+                sc, size, NULL, &lock);
     struct node *next = (struct node *) &hn[1];
     struct state *state = (struct state *) &next[1];
-    // new = !next->initialized;
-    // next->initialized = true;
+    new = !next->initialized;
+    next->initialized = true;
 #else
     mutex_t *lock;
     struct dict_assoc *da = dict_find_lock(w->visited, &w->allocator,
@@ -1874,20 +1876,25 @@ static void worker(void *arg){
     struct global *global = w->global;
 
     for (int epoch = 0;; epoch++) {
-        double now = gettime();
+        double before = gettime();
         barrier_wait(w->start_barrier);
-        w->start_wait += gettime() - now;
+        double after = gettime();
+        w->start_wait += after - before;
         w->start_count++;
 
         // (first) parallel phase starts now
 		// printf("WORKER %d starting epoch %d\n", w->index, epoch);
+        before = after;
 		do_work(w);
+        after = gettime();
+        w->phase1 += after - before;
 
         // wait for others to finish
 		// printf("WORKER %d finished epoch %d %u %u\n", w->index, epoch, w->count, w->node_id);
-        now = gettime();
+        before = gettime();
         barrier_wait(w->middle_barrier);
-        w->middle_wait += gettime() - now;
+        after = gettime();
+        w->middle_wait += after - before;
         w->middle_count++;
 
         if (global->phase2) {
@@ -1896,16 +1903,23 @@ static void worker(void *arg){
             break;
         }
 
+        before = after;
+
         // Fix the forward edges
         for (unsigned i = 0; i < w->nworkers; i++) {
             struct edge **pe = &w->workers[i].edges[w->index], *e;
             while ((e = *pe) != NULL) {
+                w->fix_edge++;
                 *pe = e->fwdnext;
                 struct node *src = e->src;
                 e->fwdnext = src->fwd;
                 src->fwd = e;
             }
         }
+
+        after = gettime();
+        w->phase2a += after - before;
+        before = after;
 
         // Prepare the grow the hash tables (but the actual work of
         // rehashing is distributed among the threads in the next phase
@@ -1973,10 +1987,16 @@ static void worker(void *arg){
                 ht_allocated(w->visited) + value_allocated(&global->values);
         }
 
-        now = gettime();
+        after = gettime();
+        w->phase2b += after - before;
+
+        before = after;
         barrier_wait(w->end_barrier);
-        w->end_wait += gettime() - now;
+        after = gettime();
+        w->end_wait += after - before;
         w->end_count++;
+
+        before = after;
 
 		// printf("WORKER %d make stable %d %u %u\n", w->index, epoch, w->count, w->node_id);
         value_make_stable(&global->values, w->index);
@@ -1993,6 +2013,9 @@ static void worker(void *arg){
             }
             assert(w->results == NULL);
         }
+
+        after = gettime();
+        w->phase3 += after - before;
     }
 }
 
@@ -2424,10 +2447,16 @@ int main(int argc, char **argv){
 
     // Compute how much memory was used, approximately
     unsigned long allocated = global->allocated;
-    double start_wait = 0, middle_wait = 0, end_wait = 0;
+    double phase1 = 0, phase2a = 0, phase2b = 0, phase3 = 0, start_wait = 0, middle_wait = 0, end_wait = 0;
+    unsigned int fix_edge = 0;
     for (unsigned int i = 0; i < global->nworkers; i++) {
         struct worker *w = &workers[i];
         allocated += w->allocated;
+        phase1 += w->phase1;
+        phase2a += w->phase2a;
+        phase2b += w->phase2b;
+        phase3 += w->phase3;
+        fix_edge += w->fix_edge;
         start_wait += w->start_wait;
         middle_wait += w->middle_wait;
         end_wait += w->end_wait;
@@ -2436,7 +2465,7 @@ int main(int argc, char **argv){
             w->middle_wait/w->middle_count, w->end_wait/w->end_count);
 #endif
     }
-    printf("waiting: %lf %lf %lf\n", start_wait / global->nworkers, middle_wait / global->nworkers, end_wait / global->nworkers);
+    printf("computing: %lf %lf %lf %lf (%lf %lf %lf %lf %u); waiting: %lf %lf %lf\n", phase1 / global->nworkers, phase2a / global->nworkers, phase2b / global->nworkers, phase3 / global->nworkers, phase1, phase2a, phase2b, phase3, fix_edge, start_wait / global->nworkers, middle_wait / global->nworkers, end_wait / global->nworkers);
 
     printf("#states %d (time %.2lfs, mem=%.2lfGB)\n", global->graph.size, gettime() - before, (double) allocated / (1L << 30));
 
