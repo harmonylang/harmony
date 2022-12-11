@@ -655,6 +655,7 @@ static bool onestep(
 
     edge->dst = next;
 
+#define DELAY_INSERT
 #ifdef DELAY_INSERT
     // Don't do the forward edge at this time as that would involve locking
     // the parent node.  Instead assign that task to one of the workers
