@@ -2377,9 +2377,13 @@ int main(int argc, char **argv){
 
     // Put the initial state in the visited map
     struct hashtab *visited = ht_new("visited", sizeof(struct node), 8 << 20, global->nworkers, false);
-    struct node *node = ht_insert(visited, NULL, state, state_size(state), NULL);
+    ht_lock_t *lock;
+    struct ht_node *hn = ht_find_lock(visited, NULL, state, state_size(state), NULL, &lock);
+    struct node *node = (struct node *) &hn[1];
     memset(node, 0, sizeof(*node));
     node->state = state;
+    node->lock = lock;
+    ht_lock_release(lock);
     graph_add(&global->graph, node);
 
     // Allocate space for worker info
