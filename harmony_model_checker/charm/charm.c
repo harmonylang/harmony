@@ -653,6 +653,8 @@ static bool onestep(
 
     ht_lock_release(lock);
 
+    edge->dst = next;
+
 #ifdef DELAY_INSERT
     // Don't do the forward edge at this time as that would involve locking
     // the parent node.  Instead assign that task to one of the workers
@@ -660,7 +662,6 @@ static bool onestep(
     struct edge **pe = &w->edges[node->id % w->nworkers];
     edge->fwdnext = *pe;
     *pe = edge;
-    edge->dst = next;
 #else
     ht_lock_acquire(node->lock);
     edge->fwdnext = node->fwd;
