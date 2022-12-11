@@ -5,7 +5,7 @@
 #include <stdatomic.h>
 #include "thread.h"
 
-// followed directly by data
+// followed directly by data of `size' bytes
 struct ht_node {
     _Atomic(struct ht_node *) next;
     unsigned int size;

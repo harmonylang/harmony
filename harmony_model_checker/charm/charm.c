@@ -633,6 +633,7 @@ static bool onestep(
         next->steps = node->steps + instrcnt;
         next->to_parent = edge;
         next->state = state;        // TODO.  Don't technically need this
+        next->lock = lock;
     }
     else {
         unsigned int len = node->len + weight;
@@ -652,6 +653,7 @@ static bool onestep(
 
     ht_lock_release(lock);
 
+#ifdef DELAY_INSERT
     // Don't do the forward edge at this time as that would involve locking
     // the parent node.  Instead assign that task to one of the workers
     // in the next phase.
@@ -659,6 +661,12 @@ static bool onestep(
     edge->fwdnext = *pe;
     *pe = edge;
     edge->dst = next;
+#else
+    ht_lock_acquire(node->lock);
+    edge->fwdnext = node->fwd;
+    node->fwd = edge;
+    ht_lock_release(node->lock);
+#endif
 
     if (failure) {
         struct failure *f = new_alloc(struct failure);
@@ -1905,6 +1913,7 @@ static void worker(void *arg){
 
         before = after;
 
+#ifndef DELAY_INSERT
         // Fix the forward edges
         for (unsigned i = 0; i < w->nworkers; i++) {
             struct edge **pe = &w->workers[i].edges[w->index], *e;
@@ -1916,6 +1925,7 @@ static void worker(void *arg){
                 src->fwd = e;
             }
         }
+#endif
 
         after = gettime();
         w->phase2a += after - before;

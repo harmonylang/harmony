@@ -5,6 +5,7 @@
 #include "value.h"
 #include "minheap.h"
 #include "thread.h"
+#include "hashtab.h"
 
 struct component {
     bool good;              // terminating or out-going edge
@@ -54,8 +55,10 @@ enum fail_type {
 struct node {
 	struct node *next;		// for linked list
 
+    ht_lock_t *lock;        // TODO TEST 123
+
     // Information about state
-    // TODO.  state points to end of this node??
+    // TODO.  state contiguous to this node, so don't need pointer
     struct state *state;    // state corresponding to this node
     struct edge *fwd;       // forward edges
     struct edge *bwd;       // backward edges
