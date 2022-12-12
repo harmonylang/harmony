@@ -4,6 +4,9 @@
 #include <assert.h>
 #include "global.h"
 #include "hashtab.h"
+#include "komihash.h"
+
+#define GROW_THRESHOLD 4
 
 #ifdef __APPLE__
 
@@ -47,7 +50,18 @@ int pthread_spin_unlock(pthread_spinlock_t *lock) {
 
 #endif // __APPLE__
 
-#define hash_func meiyan
+// #define hash_func(key, size) komihash(key, size, 0)
+// #define hash_func(key, size) meiyan(key, size)
+#define hash_func(key, size) djb2(key, size)
+
+static inline unsigned long djb2(const char *key, int count) {
+     unsigned long hash = 0;
+
+     while (count-- > 0) {
+          hash = (hash * 33) ^ *key++;
+     }
+     return hash;
+}
 
 static inline uint32_t meiyan(const char *key, int count) {
 	typedef uint32_t *P;
@@ -233,7 +247,7 @@ void ht_grow_prepare(struct hashtab *ht){
         ht->nobjects += ht->counts[i];
         ht->counts[i] = 0;
     }
-    if (ht->nbuckets < ht->nobjects * 2) {
+    if (ht->nbuckets < ht->nobjects * GROW_THRESHOLD) {
         ht->old_buckets = ht->buckets;
         ht->old_nbuckets = ht->nbuckets;
         ht->nbuckets = ht->nbuckets * 8;
@@ -254,5 +268,5 @@ unsigned long ht_allocated(struct hashtab *ht){
 }
 
 bool ht_needs_to_grow(struct hashtab *ht){
-    return 2 * atomic_load(&ht->rt_count) > ht->nbuckets;
+    return GROW_THRESHOLD * atomic_load(&ht->rt_count) > ht->nbuckets;
 }
