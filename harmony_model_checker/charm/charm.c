@@ -696,8 +696,7 @@ static bool onestep(
     ht_lock_t *lock;
     struct ht_node *hn = ht_find_lock(w->visited, &w->allocator,
                 sc, size, NULL, &lock);
-    struct node *next = (struct node *) &hn[1];
-    edge->dst = next;
+    edge->dst = (struct node *) &hn[1];
     ht_lock_acquire(lock);
 
     process_edge(w, edge, len, steps, lock);
