@@ -11,10 +11,6 @@ struct ht_node {
     unsigned int size;
 };
 
-// #define USE_SPINLOCK    // TODO
-
-#ifdef USE_SPINLOCK
-
 #ifdef __APPLE__
 typedef int pthread_spinlock_t;
 
@@ -25,6 +21,10 @@ int pthread_spin_unlock(pthread_spinlock_t *lock);
 #else
 #include <pthread.h>
 #endif // __APPLE__
+
+// #define USE_SPINLOCK    // TODO
+
+#ifdef USE_SPINLOCK
 
 typedef pthread_spinlock_t ht_lock_t;
 #define ht_lock_init(ll) pthread_spin_init(ll, 0)
