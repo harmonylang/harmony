@@ -51,8 +51,8 @@ int pthread_spin_unlock(pthread_spinlock_t *lock) {
 #endif // __APPLE__
 
 // #define hash_func(key, size) komihash(key, size, 0)
-// #define hash_func(key, size) meiyan(key, size)
-#define hash_func(key, size) djb2(key, size)
+#define hash_func(key, size) meiyan(key, size)
+// #define hash_func(key, size) djb2(key, size)
 
 static inline unsigned long djb2(const char *key, int count) {
      unsigned long hash = 0;
