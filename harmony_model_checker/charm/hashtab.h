@@ -20,6 +20,7 @@ typedef int pthread_spinlock_t;
 
 int pthread_spin_init(pthread_spinlock_t *lock, int pshared);
 int pthread_spin_lock(pthread_spinlock_t *lock);
+int pthread_spin_trylock(pthread_spinlock_t *lock);
 int pthread_spin_unlock(pthread_spinlock_t *lock);
 #else
 #include <pthread.h>
@@ -28,12 +29,14 @@ int pthread_spin_unlock(pthread_spinlock_t *lock);
 typedef pthread_spinlock_t ht_lock_t;
 #define ht_lock_init(ll) pthread_spin_init(ll, 0)
 #define ht_lock_acquire(ll) pthread_spin_lock(ll)
+#define ht_lock_try_acquire(ll) pthread_spin_trylock(ll)
 #define ht_lock_release(ll) pthread_spin_unlock(ll)
 #else
-typedef mutex_t ht_lock_t
-#define ht_lock_init(ll) mutex_init(ll)
-#define ht_lock_acquire(ll) mutex_acquire(ll)
-#define ht_lock_release(ll) mutex_release(ll)
+typedef pthread_mutex_t ht_lock_t;
+#define ht_lock_init(ll) pthread_mutex_init(ll, NULL);
+#define ht_lock_acquire(ll) pthread_mutex_lock(ll)
+#define ht_lock_try_acquire(ll) pthread_mutex_trylock(ll)
+#define ht_lock_release(ll) pthread_mutex_unlock(ll)
 #endif
 
 struct hashtab {

@@ -663,10 +663,16 @@ static bool onestep(
     edge->fwdnext = *pe;
     *pe = edge;
 #else
-    ht_lock_acquire(&node->lock);
-    edge->fwdnext = node->fwd;
-    node->fwd = edge;
-    ht_lock_release(&node->lock);
+    if (ht_lock_try_acquire(&node->lock) == 0) {
+        edge->fwdnext = node->fwd;
+        node->fwd = edge;
+        ht_lock_release(&node->lock);
+    }
+    else {
+        struct edge **pe = &w->edges[node->id % w->nworkers];
+        edge->fwdnext = *pe;
+        *pe = edge;
+    }
 #endif
 
     if (failure) {
@@ -1914,7 +1920,6 @@ static void worker(void *arg){
 
         before = after;
 
-#ifdef DELAY_INSERT
         // Fix the forward edges
         for (unsigned i = 0; i < w->nworkers; i++) {
             struct edge **pe = &w->workers[i].edges[w->index], *e;
@@ -1926,7 +1931,6 @@ static void worker(void *arg){
                 src->fwd = e;
             }
         }
-#endif
 
         after = gettime();
         w->phase2a += after - before;
