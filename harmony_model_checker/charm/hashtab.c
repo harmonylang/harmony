@@ -79,7 +79,8 @@ struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int nbuck
         atomic_init(&ht->buckets[i], NULL);
     }
     ht->nlocks = nworkers * 256;        // TODO: how much?
-    ht->locks = aligned_alloc(sizeof(*ht->locks), ht->nlocks * sizeof(*ht->locks));
+    // TODO ht->locks = aligned_alloc(sizeof(*ht->locks), ht->nlocks * sizeof(*ht->locks));
+    ht->locks = malloc(ht->nlocks * sizeof(*ht->locks));
 	for (unsigned int i = 0; i < ht->nlocks; i++) {
 		ht_lock_init(&ht->locks[i]);
 	}

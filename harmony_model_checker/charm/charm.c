@@ -266,10 +266,13 @@ static struct access_info *ai_alloc(struct worker *w, int multiplicity, int atom
     return ai;
 }
 
-static void process_edge(struct worker *w, struct edge *edge, unsigned int len, unsigned int steps, ht_lock_t *lock) {
+static void process_edge(struct worker *w, struct edge *edge, ht_lock_t *lock) {
     struct node *node = edge->src, *next = edge->dst;
     struct state *state = (struct state *) &next[1];
+    unsigned int len = node->len + edge->weight;
+    unsigned int steps = node->steps + edge->nsteps;
     bool initialized = next->initialized;
+
     next->initialized = true;
     if (!initialized) {
         next->len = len;
@@ -688,9 +691,6 @@ static bool onestep(
         w->failures = f;
     }
 
-    unsigned int len = node->len + weight;
-    unsigned int steps = node->steps + instrcnt;
-
     // See if this state has been computed before
     unsigned int size = state_size(sc);
     ht_lock_t *lock;
@@ -699,7 +699,7 @@ static bool onestep(
     edge->dst = (struct node *) &hn[1];
     ht_lock_acquire(lock);
 
-    process_edge(w, edge, len, steps, lock);
+    process_edge(w, edge, lock);
 
     return true;
 }
