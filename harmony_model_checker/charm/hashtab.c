@@ -77,13 +77,12 @@ struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int nbuck
 	if (nbuckets == 0) {
         nbuckets = 1024;
     }
-    nbuckets = 1024;
     ht->nbuckets = nbuckets;
     ht->buckets = malloc(nbuckets * sizeof(*ht->buckets));
     for (unsigned int i = 0; i < nbuckets; i++) {
         atomic_init(&ht->buckets[i], NULL);
     }
-    ht->nlocks = nworkers * 64;        // TODO: how much?
+    ht->nlocks = nworkers * 256;        // TODO: how much?
     ht->locks = malloc(ht->nlocks * sizeof(ht->locks));
 	for (unsigned int i = 0; i < ht->nlocks; i++) {
 		ht_lock_init(&ht->locks[i]);
