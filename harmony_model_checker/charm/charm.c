@@ -607,38 +607,41 @@ static bool onestep(
     edge->nlog = step->nlog;
     edge->nsteps = instrcnt;
 
+    unsigned int len = node->len + weight;
+    unsigned int steps = node->steps + instrcnt;
+
     // See if this state has been computed before
-    bool new;
     unsigned int size = state_size(sc);
 #ifdef USE_HASHTAB
+    bool initialized;
     ht_lock_t *lock;
     struct ht_node *hn = ht_find_lock(w->visited, &w->allocator,
                 sc, size, NULL, &lock);
     struct node *next = (struct node *) &hn[1];
     struct state *state = (struct state *) &next[1];
-    new = !next->initialized;
+    initialized = next->initialized;
     next->initialized = true;
 #else
+    bool new;
     mutex_t *lock;
     struct dict_assoc *da = dict_find_lock(w->visited, &w->allocator,
                 sc, size, &new, &lock);
     struct state *state = (struct state *) &da[1];
     struct node *next = (struct node *) ((char *) state + size);
 #endif
-    if (new) {
+    if (!initialized) {
 #ifndef USE_HASHTAB
         memset(next, 0, sizeof(*next));
 #endif
-        next->len = node->len + weight;
-        next->steps = node->steps + instrcnt;
+        next->len = len;
+        next->steps = steps;
         next->to_parent = edge;
         next->state = state;        // TODO.  Don't technically need this
         // ht_lock_init(&next->lock);
         next->lock = lock;
+        edge->bwdnext = NULL;
     }
     else {
-        unsigned int len = node->len + weight;
-        unsigned int steps = node->steps + instrcnt;
         // TODO: not sure how to minimize.  For some cases, this works better than
         //   if (len < next->len || (len == next->len && steps < next->steps)) {
         if (len < next->len || (len == next->len && steps <= next->steps)) {
@@ -646,10 +649,9 @@ static bool onestep(
             next->steps = steps;
             next->to_parent = edge;
         }
+        edge->bwdnext = next->bwd;
     }
 
-    // Backward edge from node to parent.
-    edge->bwdnext = next->bwd;
     next->bwd = edge;
 
     ht_lock_release(lock);
@@ -684,7 +686,7 @@ static bool onestep(
         w->failures = f;
     }
     else {
-        if (new) {
+        if (!initialized) {
             next->next = w->results;
             w->results = next;
             w->count++;
@@ -692,7 +694,7 @@ static bool onestep(
         }
         if (sc->choosing == 0 && global->ninvs != 0) {
             unsigned int inv = 0;
-            if (new) {      // try self-loop if a new node
+            if (!initialized) {      // try self-loop if a new node
                 inv = check_invariants(w, next, next, &w->inv_step);
             }
             if (inv == 0) { // try new edge
