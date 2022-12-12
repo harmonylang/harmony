@@ -93,7 +93,7 @@ hvalue_t value_put_atom(struct engine *engine, const void *p, unsigned int size)
     if (size == 0) {
         return VALUE_ATOM;
     }
-    void *q = vd_find(engine->values->atoms, engine->allocator, p, size, NULL);
+    void *q = vd_find(engine->values, engine->allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_ATOM;
 }
 
@@ -101,7 +101,7 @@ hvalue_t value_put_set(struct engine *engine, void *p, unsigned int size){
     if (size == 0) {
         return VALUE_SET;
     }
-    void *q = vd_find(engine->values->sets, engine->allocator, p, size, NULL);
+    void *q = vd_find(engine->values, engine->allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_SET;
 }
 
@@ -109,7 +109,7 @@ hvalue_t value_put_dict(struct engine *engine, void *p, unsigned int size){
     if (size == 0) {
         return VALUE_DICT;
     }
-    void *q = vd_find(engine->values->dicts, engine->allocator, p, size, NULL);
+    void *q = vd_find(engine->values, engine->allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_DICT;
 }
 
@@ -117,7 +117,7 @@ hvalue_t value_put_list(struct engine *engine, void *p, unsigned int size){
     if (size == 0) {
         return VALUE_LIST;
     }
-    void *q = vd_find(engine->values->lists, engine->allocator, p, size, NULL);
+    void *q = vd_find(engine->values, engine->allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_LIST;
 }
 
@@ -126,7 +126,7 @@ hvalue_t value_put_address(struct engine *engine, void *p, unsigned int size){
         return VALUE_ADDRESS_SHARED;
     }
     assert(size > sizeof(hvalue_t));
-    void *q = vd_find(engine->values->addresses, engine->allocator, p, size, NULL);
+    void *q = vd_find(engine->values, engine->allocator, p, size, NULL);
     if (* (hvalue_t *) p == VALUE_PC_SHARED) {
         return (hvalue_t) q | VALUE_ADDRESS_SHARED;
     }
@@ -137,7 +137,7 @@ hvalue_t value_put_address(struct engine *engine, void *p, unsigned int size){
 
 hvalue_t value_put_context(struct engine *engine, struct context *ctx){
 	assert(ctx->pc >= 0);
-    void *q = vd_find(engine->values->contexts, engine->allocator, ctx, ctx_size(ctx), NULL);
+    void *q = vd_find(engine->values, engine->allocator, ctx, ctx_size(ctx), NULL);
     return (hvalue_t) q | VALUE_CONTEXT;
 }
 
@@ -977,7 +977,7 @@ hvalue_t value_atom(struct engine *engine, struct dict *map){
     if (value->u.atom.len == 0) {
         return VALUE_ATOM;
     }
-    void *p = vd_find(engine->values->atoms, engine->allocator, value->u.atom.base, value->u.atom.len, NULL);
+    void *p = vd_find(engine->values, engine->allocator, value->u.atom.base, value->u.atom.len, NULL);
     return (hvalue_t) p | VALUE_ATOM;
 }
 
@@ -1000,7 +1000,7 @@ hvalue_t value_dict(struct engine *engine, struct dict *map){
     }
 
     // vals is sorted already by harmony compiler
-    void *p = vd_find(engine->values->dicts, engine->allocator, vals,
+    void *p = vd_find(engine->values, engine->allocator, vals,
                     value->u.list.nvals * sizeof(hvalue_t) * 2, NULL);
     free(vals);
     return (hvalue_t) p | VALUE_DICT;
@@ -1020,7 +1020,7 @@ hvalue_t value_set(struct engine *engine, struct dict *map){
     }
 
     // vals is sorted already by harmony compiler
-    void *p = vd_find(engine->values->sets, engine->allocator, vals, value->u.list.nvals * sizeof(hvalue_t), NULL);
+    void *p = vd_find(engine->values, engine->allocator, vals, value->u.list.nvals * sizeof(hvalue_t), NULL);
     free(vals);
     return (hvalue_t) p | VALUE_SET;
 }
@@ -1037,7 +1037,7 @@ hvalue_t value_list(struct engine *engine, struct dict *map){
         assert(jv->type == JV_MAP);
         vals[i] = value_from_json(engine, jv->u.map);
     }
-    void *p = vd_find(engine->values->lists, engine->allocator, vals, value->u.list.nvals * sizeof(hvalue_t), NULL);
+    void *p = vd_find(engine->values, engine->allocator, vals, value->u.list.nvals * sizeof(hvalue_t), NULL);
     free(vals);
     return (hvalue_t) p | VALUE_LIST;
 }
@@ -1129,65 +1129,6 @@ static bool align_test(){
 }
 
 #endif // OBSOLETE
-
-unsigned long value_allocated(struct values *values){
-    return vd_allocated(values->atoms) +
-        vd_allocated(values->dicts) +
-        vd_allocated(values->sets) +
-        vd_allocated(values->lists) +
-        vd_allocated(values->addresses) +
-        vd_allocated(values->contexts);
-}
-
-void value_init(struct values *values, unsigned int nworkers){
-    values->atoms = vd_new("atoms", 0, 0, nworkers, true);
-    values->dicts = vd_new("dicts", 0, 0, nworkers, true);
-    values->sets = vd_new("sets", 0, 0, nworkers, true);
-    values->lists = vd_new("lists", 0, 0, nworkers, true);
-    values->addresses = vd_new("addresses", 0, 0, nworkers, true);
-    values->contexts = vd_new("contexts", 0, 1 << 16, nworkers, true);
-}
-
-void value_set_concurrent(struct values *values){
-    vd_set_concurrent(values->atoms);
-    vd_set_concurrent(values->dicts);
-    vd_set_concurrent(values->sets);
-    vd_set_concurrent(values->lists);
-    vd_set_concurrent(values->addresses);
-    vd_set_concurrent(values->contexts);
-}
-
-void value_make_stable(struct values *values, unsigned int worker){
-    vd_make_stable(values->atoms, worker);
-    vd_make_stable(values->dicts, worker);
-    vd_make_stable(values->sets, worker);
-    vd_make_stable(values->lists, worker);
-    vd_make_stable(values->addresses, worker);
-    vd_make_stable(values->contexts, worker);
-}
-
-void value_grow_prepare(struct values *values) {
-    panic("value_grow_prepare");
-}
-
-bool value_needs_to_grow(struct values *values) {
-    return
-        vd_needs_to_grow(values->atoms) |
-        vd_needs_to_grow(values->dicts) |
-        vd_needs_to_grow(values->sets) |
-        vd_needs_to_grow(values->lists) |
-        vd_needs_to_grow(values->addresses) |
-        vd_needs_to_grow(values->contexts);
-}
-
-void value_set_sequential(struct values *values){
-    vd_set_sequential(values->atoms);
-    vd_set_sequential(values->dicts);
-    vd_set_sequential(values->sets);
-    vd_set_sequential(values->lists);
-    vd_set_sequential(values->addresses);
-    vd_set_sequential(values->contexts);
-}
 
 // Store key:value in the given dictionary and returns its value code
 // in *result.  May fail if allow_inserts is false and key does not exist

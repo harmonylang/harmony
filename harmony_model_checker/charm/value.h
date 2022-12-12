@@ -54,11 +54,6 @@ typedef struct context {   // context value
 #define ctx_size(c)     (sizeof(struct context) + (c)->sp * sizeof(hvalue_t) + ((c)->extended ? (ctx_extent*sizeof(hvalue_t)) : 0))
 #define ctx_stack(c)    ((c)->extended ? &context_stack(c)[ctx_extent] : context_stack(c))
 
-void value_init(struct values *values, unsigned int nworkers);
-void value_set_concurrent(struct values *values);
-void value_make_stable(struct values *values, unsigned int worker);
-bool value_needs_to_grow(struct values *values);
-void value_set_sequential(struct values *values);
 hvalue_t value_from_json(struct engine *engine, struct dict *map);
 int value_cmp(hvalue_t v1, hvalue_t v2);
 void *value_get(hvalue_t v, unsigned int *size);
@@ -129,8 +124,6 @@ void context_remove(struct state *state, hvalue_t ctx);
 bool context_add(struct state *state, hvalue_t ctx);
 char *json_escape_value(hvalue_t v);
 void value_trace(struct global *global, FILE *file, struct callstack *cs, unsigned int pc, hvalue_t vars, char *prefix);
-void value_grow_prepare(struct values *values);
-unsigned long value_allocated(struct values *values);
 void print_vars(struct global *global, FILE *file, hvalue_t v);
 
 #endif //SRC_VALUE_H

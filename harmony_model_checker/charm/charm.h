@@ -16,24 +16,6 @@ struct scc {        // Strongly Connected Component
 
 #define USE_HASHTAB
 
-struct values {
-#ifdef USE_HASHTAB
-    struct hashtab *atoms;
-    struct hashtab *dicts;
-    struct hashtab *sets;
-    struct hashtab *lists;
-    struct hashtab *addresses;
-    struct hashtab *contexts;
-#else
-    struct dict *atoms;
-    struct dict *dicts;
-    struct dict *sets;
-    struct dict *lists;
-    struct dict *addresses;
-    struct dict *contexts;
-#endif
-};
-
 struct invariant {
     unsigned int pc;                // location of invariant code
     // TODO.  May not need the following since we can get it from env
@@ -70,7 +52,7 @@ struct macrostep {
 
 struct global {
     struct code code;               // code of the Harmony program
-    struct values values;           // dictionaries of values
+    struct hashtab *values;         // dictionary of values
     hvalue_t seqs;                  // sequential variables
 
     // invariants

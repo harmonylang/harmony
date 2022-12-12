@@ -140,7 +140,7 @@ static void run_thread(struct global *global, struct state *state, struct contex
     struct step step;
     memset(&step, 0, sizeof(step));
     step.ctx = ctx;
-    step.engine.values = &global->values;
+    step.engine.values = global->values;
 
     for (;;) {
         int pc = step.ctx->pc;
@@ -727,7 +727,7 @@ static void make_step(
     struct step step;
     memset(&step, 0, sizeof(step));
     step.engine.allocator = &w->allocator;
-    step.engine.values = &w->global->values;
+    step.engine.values = w->global->values;
 
     // Make a copy of the state
     unsigned int statesz = state_size(node->state);
@@ -1009,7 +1009,7 @@ void twostep(
     struct step step;
     memset(&step, 0, sizeof(step));
     step.keep_callstack = true;
-    step.engine.values = &global->values;
+    step.engine.values = global->values;
     step.callstack = cs;
     strbuf_init(&step.explain);
 
@@ -1770,27 +1770,7 @@ static void do_work(struct worker *w){
             atomic_store(&global->goal, next);
             break;
         }
-        if (w->index == 1 % global->nworkers && ht_needs_to_grow(global->values.atoms)) {
-            atomic_store(&global->goal, next);
-            break;
-        }
-        if (w->index == 2 % global->nworkers && ht_needs_to_grow(global->values.dicts)) {
-            atomic_store(&global->goal, next);
-            break;
-        }
-        if (w->index == 3 % global->nworkers && ht_needs_to_grow(global->values.sets)) {
-            atomic_store(&global->goal, next);
-            break;
-        }
-        if (w->index == 4 % global->nworkers && ht_needs_to_grow(global->values.lists)) {
-            atomic_store(&global->goal, next);
-            break;
-        }
-        if (w->index == 5 % global->nworkers && ht_needs_to_grow(global->values.addresses)) {
-            atomic_store(&global->goal, next);
-            break;
-        }
-        if (w->index == 6 % global->nworkers && ht_needs_to_grow(global->values.contexts)) {
+        if (w->index == 1 % global->nworkers && ht_needs_to_grow(global->values)) {
             atomic_store(&global->goal, next);
             break;
         }
@@ -1944,25 +1924,10 @@ static void worker(void *arg){
             ht_grow_prepare(w->visited);
         }
         if (w->index == 1 % global->nworkers) {
-            ht_grow_prepare(global->values.atoms);
-        }
-        if (w->index == 2 % global->nworkers) {
-            ht_grow_prepare(global->values.dicts);
-        }
-        if (w->index == 3 % global->nworkers) {
-            ht_grow_prepare(global->values.sets);
-        }
-        if (w->index == 4 % global->nworkers) {
-            ht_grow_prepare(global->values.lists);
-        }
-        if (w->index == 5 % global->nworkers) {
-            ht_grow_prepare(global->values.addresses);
-        }
-        if (w->index == 6 % global->nworkers) {
-            ht_grow_prepare(global->values.contexts);
+            ht_grow_prepare(global->values);
         }
 
-        if (w->index == 7 % global->nworkers) {
+        if (w->index == 2 % global->nworkers) {
             // End of a layer in the Kripke structure?
             unsigned int todo = atomic_load(&global->atodo);
             if (todo > global->graph.size) {
@@ -2000,7 +1965,7 @@ static void worker(void *arg){
 
             // Compute how much table space is in use
             global->allocated = global->graph.size * sizeof(struct node *) +
-                ht_allocated(w->visited) + value_allocated(&global->values);
+                ht_allocated(w->visited) + ht_allocated(global->values);
         }
 
         after = gettime();
@@ -2015,7 +1980,7 @@ static void worker(void *arg){
         before = after;
 
 		// printf("WORKER %d make stable %d %u %u\n", w->index, epoch, w->count, w->node_id);
-        value_make_stable(&global->values, w->index);
+        ht_make_stable(global->values, w->index);
         ht_make_stable(w->visited, w->index);
 
         if (global->layer_done) {
@@ -2283,11 +2248,11 @@ int main(int argc, char **argv){
 #endif
     mutex_init(&global->todo_wait);
     mutex_acquire(&global->todo_wait);          // Split Binary Semaphore
-    value_init(&global->values, global->nworkers);
+    global->values = ht_new("values", 1 << 16, 0, nworkers, true);
 
     struct engine engine;
     engine.allocator = NULL;
-    engine.values = &global->values;
+    engine.values = global->values;
     ops_init(global, &engine);
 
     graph_init(&global->graph, 1024*1024);
@@ -2417,7 +2382,7 @@ int main(int argc, char **argv){
         w->inv_step.ctx->atomicFlag = true;
         w->inv_step.ctx->interruptlevel = false;
         w->inv_step.engine.allocator = &w->allocator;
-        w->inv_step.engine.values = &global->values;
+        w->inv_step.engine.values = global->values;
 
         w->alloc_buf = malloc(WALLOC_CHUNK);
         w->alloc_ptr = w->alloc_buf;
@@ -2436,12 +2401,12 @@ int main(int argc, char **argv){
     }
 
     // Put the state and value dictionaries in concurrent mode
-    value_set_concurrent(&global->values);
+    ht_set_concurrent(global->values);
     ht_set_concurrent(visited);
 
     // Compute how much table space is allocated
     global->allocated = global->graph.size * sizeof(struct node *) +
-        ht_allocated(visited) + value_allocated(&global->values);
+        ht_allocated(visited) + ht_allocated(global->values);
 
     double before = gettime();
     // double postproc = 0;
@@ -2489,7 +2454,7 @@ int main(int argc, char **argv){
 
     printf("#states %d (time %.2lfs, mem=%.2lfGB)\n", global->graph.size, gettime() - before, (double) allocated / (1L << 30));
 
-    value_set_sequential(&global->values);
+    ht_set_sequential(global->values);
     ht_set_sequential(visited);
 
     // ht_dump(visited);
