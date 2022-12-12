@@ -4,7 +4,7 @@
 #include <assert.h>
 #include "global.h"
 #include "hashtab.h"
-#include "komihash.h"
+// #include "komihash.h"
 
 #define GROW_THRESHOLD 4
 
