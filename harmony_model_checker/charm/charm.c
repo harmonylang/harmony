@@ -613,14 +613,13 @@ static bool onestep(
     // See if this state has been computed before
     unsigned int size = state_size(sc);
 #ifdef USE_HASHTAB
-    bool initialized;
     ht_lock_t *lock;
     struct ht_node *hn = ht_find_lock(w->visited, &w->allocator,
                 sc, size, NULL, &lock);
     struct node *next = (struct node *) &hn[1];
     struct state *state = (struct state *) &next[1];
     ht_lock_acquire(lock);
-    initialized = next->initialized;
+    bool initialized = next->initialized;
     next->initialized = true;
 #else
     bool new;
