@@ -619,6 +619,7 @@ static bool onestep(
                 sc, size, NULL, &lock);
     struct node *next = (struct node *) &hn[1];
     struct state *state = (struct state *) &next[1];
+    ht_lock_acquire(lock);
     initialized = next->initialized;
     next->initialized = true;
 #else
@@ -2355,7 +2356,6 @@ int main(int argc, char **argv){
     memset(node, 0, sizeof(*node));
     node->state = state;
     node->lock = lock;
-    ht_lock_release(lock);
     graph_add(&global->graph, node);
 
     // Allocate space for worker info
