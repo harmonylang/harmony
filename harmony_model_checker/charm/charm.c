@@ -633,7 +633,7 @@ static bool onestep(
         next->steps = node->steps + instrcnt;
         next->to_parent = edge;
         next->state = state;        // TODO.  Don't technically need this
-        next->lock = lock;
+        atomic_init(&next->fwd, NULL);
     }
     else {
         unsigned int len = node->len + weight;
@@ -663,10 +663,16 @@ static bool onestep(
     edge->fwdnext = *pe;
     *pe = edge;
 #else
-    ht_lock_acquire(node->lock);
-    edge->fwdnext = node->fwd;
-    node->fwd = edge;
-    ht_lock_release(node->lock);
+    // Insert the edge into the forward list
+    atomic_init(&edge->fwdnext, NULL);
+    _Atomic(struct edge *) *chain = &node->fwd;
+    for (;;) {
+        struct edge *expected = NULL;
+        if (atomic_compare_exchange_strong(chain, &expected, edge)) {
+            break;
+        }
+        chain = &expected->fwdnext;
+    }
 #endif
 
     if (failure) {
@@ -2045,6 +2051,8 @@ char *state_string(struct state *state){
     return strbuf_convert(&sb);
 }
 
+#ifdef notdef 
+
 // This routine removes all nodes that have a single incoming edge and it's
 // an "epsilon" edge (empty print log).  These are essentially useless nodes.
 // Typically about half of the nodes can be removed this way.
@@ -2092,6 +2100,8 @@ static void destutter1(struct graph *graph){
         }
     }
 }
+
+#endif // notdef
 
 static struct dict *collect_symbols(struct graph *graph){
     struct dict *symbols = dict_new("symbols", sizeof(unsigned int), 0, 0, false);
@@ -2378,13 +2388,11 @@ int main(int argc, char **argv){
 
     // Put the initial state in the visited map
     struct hashtab *visited = ht_new("visited", sizeof(struct node), 8 << 20, global->nworkers, false);
-    ht_lock_t *lock;
-    struct ht_node *hn = ht_find_lock(visited, NULL, state, state_size(state), NULL, &lock);
+    struct ht_node *hn = ht_find(visited, NULL, state, state_size(state), NULL);
     struct node *node = (struct node *) &hn[1];
     memset(node, 0, sizeof(*node));
     node->state = state;
-    node->lock = lock;
-    ht_lock_release(lock);
+    atomic_init(&node->fwd, NULL);
     graph_add(&global->graph, node);
 
     // Allocate space for worker info
@@ -2762,7 +2770,10 @@ int main(int argc, char **argv){
         json_dump(jv, out, 2);
         fprintf(out, ",\n");
 
+#ifdef notdef
+        // TODO.  Removed because of ->fwd atomic
         destutter1(&global->graph);
+#endif
 
         // Output the symbols;
         struct dict *symbols = collect_symbols(&global->graph);

@@ -27,7 +27,7 @@ struct access_info {
 };
 
 struct edge {
-    struct edge *fwdnext;    // forward linked list maintenance
+    _Atomic(struct edge *) fwdnext;    // forward linked list maintenance
     struct edge *bwdnext;    // backward linked list maintenance
     hvalue_t ctx, choice;    // ctx that made the microstep, choice if any
     struct node *src;        // source node
@@ -55,12 +55,10 @@ enum fail_type {
 struct node {
 	struct node *next;		// for linked list
 
-    ht_lock_t *lock;        // TODO TEST 123
-
     // Information about state
     // TODO.  state contiguous to this node, so don't need pointer
     struct state *state;    // state corresponding to this node
-    struct edge *fwd;       // forward edges
+    _Atomic(struct edge *) fwd;       // forward edges
     struct edge *bwd;       // backward edges
 
     struct edge *to_parent; // pointer towards initial state
