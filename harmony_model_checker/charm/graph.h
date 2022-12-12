@@ -37,7 +37,9 @@ struct edge {
     uint32_t nsteps;         // # microsteps
     bool interrupt : 1;      // set if state change is an interrupt
     uint8_t weight : 1;      // context switch or not
-    uint16_t nlog : 14;      // size of print history
+    bool choosing : 1;       // destination state is choosing
+    bool failed : 1;         // context failed
+    uint16_t nlog : 12;      // size of print history
     // hvalue_t log[];       // print history (immediately follows edge)
 };
 #define edge_log(x)     ((hvalue_t *) ((x) + 1))

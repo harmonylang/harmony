@@ -266,6 +266,81 @@ static struct access_info *ai_alloc(struct worker *w, int multiplicity, int atom
     return ai;
 }
 
+static void process_edge(struct worker *w, struct edge *edge, unsigned int len, unsigned int steps, ht_lock_t *lock) {
+    struct node *node = edge->src, *next = edge->dst;
+    struct state *state = (struct state *) &next[1];
+    bool initialized = next->initialized;
+    next->initialized = true;
+    if (!initialized) {
+        next->len = len;
+        next->steps = steps;
+        next->to_parent = edge;
+        next->state = state;        // TODO.  Don't technically need this
+        next->lock = lock;
+        edge->bwdnext = NULL;
+    }
+    else {
+        // TODO: not sure how to minimize.  For some cases, this works better than
+        //   if (len < next->len || (len == next->len && steps < next->steps)) {
+        if (len < next->len || (len == next->len && steps <= next->steps)) {
+            next->len = len;
+            next->steps = steps;
+            next->to_parent = edge;
+        }
+        edge->bwdnext = next->bwd;
+    }
+
+    next->bwd = edge;
+
+    ht_lock_release(lock);
+
+#ifdef DELAY_INSERT
+    // Don't do the forward edge at this time as that would involve locking
+    // the parent node.  Instead assign that task to one of the workers
+    // in the next phase.
+    struct edge **pe = &w->edges[node->id % w->nworkers];
+    edge->fwdnext = *pe;
+    *pe = edge;
+#else
+    if (ht_lock_try_acquire(node->lock) == 0) {
+        edge->fwdnext = node->fwd;
+        node->fwd = edge;
+        ht_lock_release(node->lock);
+    }
+    else {
+        struct edge **pe = &w->edges[node->id % w->nworkers];
+        edge->fwdnext = *pe;
+        *pe = edge;
+    }
+#endif
+
+    if (!edge->failed) {
+        if (!initialized) {
+            next->next = w->results;
+            w->results = next;
+            w->count++;
+            w->enqueued++;
+        }
+        if (!edge->choosing && w->global->ninvs != 0) {
+            unsigned int inv = 0;
+            if (!initialized) {      // try self-loop if a new node
+                inv = check_invariants(w, next, next, &w->inv_step);
+            }
+            if (inv == 0) { // try new edge
+                inv = check_invariants(w, next, node, &w->inv_step);
+            }
+            if (inv != 0) {
+                struct failure *f = new_alloc(struct failure);
+                f->type = FAIL_INVARIANT;
+                f->edge = edge;
+                f->next = w->failures;
+                f->address = VALUE_TO_PC(inv);
+                w->failures = f;
+            }
+        }
+    }
+}
+
 static bool onestep(
     struct worker *w,       // thread info
     struct node *node,      // starting node
@@ -303,7 +378,7 @@ static bool onestep(
 #endif
     hvalue_t as_context = 0;
     unsigned int as_instrcnt = 0;
-    bool rollback = false, failure = false, stopped = false;
+    bool rollback = false, stopped = false;
     bool terminated = false;
     for (;;) {
         int pc = step->ctx->pc;
@@ -406,7 +481,6 @@ static bool onestep(
             break;
         }
         if (step->ctx->failed) {
-            failure = true;
             break;
         }
         if (step->ctx->stopped) {
@@ -430,7 +504,7 @@ static bool onestep(
             if (!new) {
                 if (infloop_detect) {
                     value_ctx_failure(step->ctx, &step->engine, "infinite loop");
-                    failure = infinite_loop = true;
+                    infinite_loop = true;
                     break;
                 }
                 else {
@@ -456,7 +530,6 @@ static bool onestep(
             if (0 && step->ctx->readonly > 0) {    // TODO
                 value_ctx_failure(step->ctx, &step->engine, "can't choose in assertion or invariant");
                 instrcnt++;
-                failure = true;
                 break;
             }
 #endif
@@ -464,7 +537,6 @@ static bool onestep(
             if (VALUE_TYPE(s) != VALUE_SET) {
                 value_ctx_failure(step->ctx, &step->engine, "choose operation requires a set");
                 instrcnt++;
-                failure = true;
                 break;
             }
             unsigned int size;
@@ -476,7 +548,6 @@ static bool onestep(
             if (size == 0) {
                 value_ctx_failure(step->ctx, &step->engine, "choose operation requires a non-empty set");
                 instrcnt++;
-                failure = true;
                 break;
             }
             if (step->ctx->atomic > 0 && !step->ctx->atomicFlag) {
@@ -602,118 +673,34 @@ static bool onestep(
     edge->interrupt = interrupt;
     edge->weight = weight;
     edge->after = after;
-    edge->ai = step->ai;
+    edge->ai = step->ai;     step->ai = NULL;
     memcpy(edge_log(edge), step->log, step->nlog * sizeof(hvalue_t));
-    edge->nlog = step->nlog;
+    edge->nlog = step->nlog; step->nlog = 0;
     edge->nsteps = instrcnt;
+    edge->choosing = choosing;
+    edge->failed = step->ctx->failed;
 
-    unsigned int len = node->len + weight;
-    unsigned int steps = node->steps + instrcnt;
-
-    // See if this state has been computed before
-    unsigned int size = state_size(sc);
-#ifdef USE_HASHTAB
-    ht_lock_t *lock;
-    struct ht_node *hn = ht_find_lock(w->visited, &w->allocator,
-                sc, size, NULL, &lock);
-    struct node *next = (struct node *) &hn[1];
-    struct state *state = (struct state *) &next[1];
-    ht_lock_acquire(lock);
-    bool initialized = next->initialized;
-    next->initialized = true;
-#else
-    bool new;
-    mutex_t *lock;
-    struct dict_assoc *da = dict_find_lock(w->visited, &w->allocator,
-                sc, size, &new, &lock);
-    struct state *state = (struct state *) &da[1];
-    struct node *next = (struct node *) ((char *) state + size);
-#endif
-    if (!initialized) {
-#ifndef USE_HASHTAB
-        memset(next, 0, sizeof(*next));
-#endif
-        next->len = len;
-        next->steps = steps;
-        next->to_parent = edge;
-        next->state = state;        // TODO.  Don't technically need this
-        next->lock = lock;
-        edge->bwdnext = NULL;
-    }
-    else {
-        // TODO: not sure how to minimize.  For some cases, this works better than
-        //   if (len < next->len || (len == next->len && steps < next->steps)) {
-        if (len < next->len || (len == next->len && steps <= next->steps)) {
-            next->len = len;
-            next->steps = steps;
-            next->to_parent = edge;
-        }
-        edge->bwdnext = next->bwd;
-    }
-
-    next->bwd = edge;
-
-    ht_lock_release(lock);
-
-    edge->dst = next;
-
-#ifdef DELAY_INSERT
-    // Don't do the forward edge at this time as that would involve locking
-    // the parent node.  Instead assign that task to one of the workers
-    // in the next phase.
-    struct edge **pe = &w->edges[node->id % w->nworkers];
-    edge->fwdnext = *pe;
-    *pe = edge;
-#else
-    if (ht_lock_try_acquire(node->lock) == 0) {
-        edge->fwdnext = node->fwd;
-        node->fwd = edge;
-        ht_lock_release(node->lock);
-    }
-    else {
-        struct edge **pe = &w->edges[node->id % w->nworkers];
-        edge->fwdnext = *pe;
-        *pe = edge;
-    }
-#endif
-
-    if (failure) {
+    if (step->ctx->failed) {
         struct failure *f = new_alloc(struct failure);
         f->type = infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
         f->edge = edge;
         f->next = w->failures;
         w->failures = f;
     }
-    else {
-        if (!initialized) {
-            next->next = w->results;
-            w->results = next;
-            w->count++;
-            w->enqueued++;
-        }
-        if (sc->choosing == 0 && global->ninvs != 0) {
-            unsigned int inv = 0;
-            if (!initialized) {      // try self-loop if a new node
-                inv = check_invariants(w, next, next, &w->inv_step);
-            }
-            if (inv == 0) { // try new edge
-                inv = check_invariants(w, next, node, &w->inv_step);
-            }
-            if (inv != 0) {
-                struct failure *f = new_alloc(struct failure);
-                f->type = FAIL_INVARIANT;
-                f->edge = edge;
-                f->next = w->failures;
-                f->address = VALUE_TO_PC(inv);
-                w->failures = f;
-            }
-        }
-    }
 
-    // We stole the access info and log
-    step->ai = NULL;
-    // TODO step->log = NULL;
-    step->nlog = 0;
+    unsigned int len = node->len + weight;
+    unsigned int steps = node->steps + instrcnt;
+
+    // See if this state has been computed before
+    unsigned int size = state_size(sc);
+    ht_lock_t *lock;
+    struct ht_node *hn = ht_find_lock(w->visited, &w->allocator,
+                sc, size, NULL, &lock);
+    struct node *next = (struct node *) &hn[1];
+    edge->dst = next;
+    ht_lock_acquire(lock);
+
+    process_edge(w, edge, len, steps, lock);
 
     return true;
 }
