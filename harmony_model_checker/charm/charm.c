@@ -2248,7 +2248,7 @@ int main(int argc, char **argv){
 #endif
     mutex_init(&global->todo_wait);
     mutex_acquire(&global->todo_wait);          // Split Binary Semaphore
-    global->values = ht_new("values", 1 << 16, 0, nworkers, true);
+    global->values = ht_new("values", 0, 1 << 16, global->nworkers, true);
 
     struct engine engine;
     engine.allocator = NULL;
