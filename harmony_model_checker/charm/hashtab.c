@@ -4,7 +4,7 @@
 #include <assert.h>
 #include "global.h"
 #include "hashtab.h"
-#include "komihash.h"
+// #include "komihash.h"
 
 #define GROW_THRESHOLD   4
 #define GROW_FACTOR     16
@@ -52,8 +52,8 @@ int pthread_spin_unlock(pthread_spinlock_t *lock) {
 #endif // __APPLE__
 
 // #define hash_func(key, size) komihash(key, size, 0)
-// #define hash_func(key, size) meiyan(key, size)
-#define hash_func(key, size) djb2(key, size)
+#define hash_func(key, size) meiyan(key, size)
+// #define hash_func(key, size) djb2(key, size)
 
 static inline unsigned long djb2(const char *key, int count) {
      unsigned long hash = 0;

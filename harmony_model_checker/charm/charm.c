@@ -699,9 +699,10 @@ static bool onestep(
                 sc, size, &new, &lock);
     edge->dst = (struct node *) &hn[1];
 
-    // ht_lock_acquire(lock);
-    // process_edge(w, edge, lock);
+    ht_lock_acquire(lock);
+    process_edge(w, edge, lock);
 
+#ifdef notdef
     if (new) {
         edge->dst->state = (struct state *) &edge->dst[1];
         edge->dst->next = w->results;
@@ -709,6 +710,7 @@ static bool onestep(
         w->count++;
         w->enqueued++;
     }
+#endif
 
     return true;
 }
@@ -2448,7 +2450,7 @@ int main(int argc, char **argv){
     printf("computing: %lf %lf %lf %lf (%lf %lf %lf %lf %u); waiting: %lf %lf %lf\n", phase1 / global->nworkers, phase2a / global->nworkers, phase2b / global->nworkers, phase3 / global->nworkers, phase1, phase2a, phase2b, phase3, fix_edge, start_wait / global->nworkers, middle_wait / global->nworkers, end_wait / global->nworkers);
 
     printf("#states %d (time %.2lfs, mem=%.2lfGB)\n", global->graph.size, gettime() - before, (double) allocated / (1L << 30));
-    if (true) exit(0);  // TODO
+    // if (true) exit(0);  // TODO
 
     ht_set_sequential(global->values);
     ht_set_sequential(visited);
