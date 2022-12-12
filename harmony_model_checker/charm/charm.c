@@ -637,7 +637,6 @@ static bool onestep(
         next->steps = steps;
         next->to_parent = edge;
         next->state = state;        // TODO.  Don't technically need this
-        // ht_lock_init(&next->lock);
         next->lock = lock;
         edge->bwdnext = NULL;
     }
