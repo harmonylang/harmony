@@ -6,7 +6,8 @@
 #include "hashtab.h"
 #include "komihash.h"
 
-#define GROW_THRESHOLD 4
+#define GROW_THRESHOLD   4
+#define GROW_FACTOR     16
 
 #ifdef __APPLE__
 
@@ -251,7 +252,7 @@ void ht_grow_prepare(struct hashtab *ht){
         ht->old_buckets = ht->buckets;
         ht->old_nbuckets = ht->nbuckets;
         ht->nbuckets = ht->nbuckets * 8;
-        while (ht->nbuckets < ht->nobjects * 16) {
+        while (ht->nbuckets < ht->nobjects * GROW_FACTOR) {
             ht->nbuckets *= 2;
         }
         ht->buckets = malloc(ht->nbuckets * sizeof(*ht->buckets));
