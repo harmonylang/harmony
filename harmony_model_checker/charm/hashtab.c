@@ -5,8 +5,6 @@
 #include "global.h"
 #include "hashtab.h"
 
-#ifdef USE_SPINLOCK
-
 #ifdef __APPLE__
 
 #include <pthread.h>
@@ -48,8 +46,6 @@ int pthread_spin_unlock(pthread_spinlock_t *lock) {
 }
 
 #endif // __APPLE__
-
-#endif // USE_SPINLOCK
 
 #define hash_func meiyan
 
