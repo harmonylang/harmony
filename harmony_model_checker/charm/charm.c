@@ -46,6 +46,7 @@ struct worker {
     double start_wait, middle_wait, end_wait;
     unsigned int start_count, middle_count, end_count;
     double phase1, phase2a, phase2b, phase3;
+    unsigned long cycles;
     unsigned int fix_edge;
 
     struct hashtab *visited;
@@ -83,6 +84,12 @@ struct worker {
     struct context ctx;
     hvalue_t stack[MAX_CONTEXT_STACK];
 };
+
+static inline uint64_t get_cycles(){
+    uint64_t t;
+    __asm volatile ("rdtsc" : "=A"(t));
+    return t;
+}
 
 // Per thread one-time memory allocator (no free())
 static void *walloc(void *ctx, unsigned int size, bool zero, bool align16){
@@ -699,10 +706,9 @@ static bool onestep(
                 sc, size, &new, &lock);
     edge->dst = (struct node *) &hn[1];
 
-    ht_lock_acquire(lock);
-    process_edge(w, edge, lock);
+    // ht_lock_acquire(lock);
+    // process_edge(w, edge, lock);
 
-#ifdef notdef
     if (new) {
         edge->dst->state = (struct state *) &edge->dst[1];
         edge->dst->next = w->results;
@@ -710,7 +716,6 @@ static bool onestep(
         w->count++;
         w->enqueued++;
     }
-#endif
 
     return true;
 }
@@ -1707,8 +1712,9 @@ static int fail_cmp(void *f1, void *f2){
     return node_cmp(fail1->edge->dst, fail2->edge->dst);
 }
 
-static void do_work(struct worker *w){
+static unsigned int do_work(struct worker *w){
     struct global *global = w->global;
+    unsigned ntasks = 0;
 
 #define TODO_COUNT 25
 
@@ -1718,8 +1724,10 @@ static void do_work(struct worker *w){
 
         for (unsigned int i = 0; i < TODO_COUNT; i++, next++) {
             if (next >= global->graph.size) {
-                return;
+                // printf("DOWORK DONE\n");
+                return ntasks;
             }
+            ntasks++;
             struct node *node = global->graph.nodes[next];
             struct state *state = node->state;
             w->dequeued++;
@@ -1761,18 +1769,22 @@ static void do_work(struct worker *w){
         }
 
         if (next >= atomic_load(&global->goal)) {
+            // printf("GOAL REACHED %u %u %u\n", next, atomic_load(&global->goal), global->graph.size);
             break;
         }
 
         if (w->index == 0 % global->nworkers && ht_needs_to_grow(w->visited)) {
+            // printf("GROW VISITED\n");
             atomic_store(&global->goal, next);
             break;
         }
         if (w->index == 1 % global->nworkers && ht_needs_to_grow(global->values)) {
+            // printf("GROW VALUES\n");
             atomic_store(&global->goal, next);
             break;
         }
     }
+    return ntasks;
 }
 
 static void work_phase2(struct worker *w, struct global *global){
@@ -1879,7 +1891,13 @@ static void worker(void *arg){
         // (first) parallel phase starts now
 		// printf("WORKER %d starting epoch %d\n", w->index, epoch);
         before = after;
-		do_work(w);
+        unsigned long bef_cycles = get_cycles();
+// printf("before %lu\n", bef_cycles);
+		unsigned int ntasks = do_work(w);
+        unsigned long aft_cycles = get_cycles();
+// printf("after %lu %u\n", aft_cycles, ntasks);
+// printf("diff %lu %lu\n", aft_cycles - bef_cycles, (aft_cycles - bef_cycles) / ntasks);
+        w->cycles += aft_cycles - bef_cycles;
         after = gettime();
         w->phase1 += after - before;
 
@@ -1953,13 +1971,13 @@ static void worker(void *arg){
                     process_results(global, &w->workers[i]);
                 }
 
-                atomic_store(&global->goal, global->graph.size);
-
                 if (!minheap_empty(global->failures)) {
                     // Pretend we're done
                     atomic_store(&global->atodo, global->graph.size);
                 }
             }
+
+            atomic_store(&global->goal, global->graph.size);
 
             // Compute how much table space is in use
             global->allocated = global->graph.size * sizeof(struct node *) +
@@ -2428,12 +2446,13 @@ int main(int argc, char **argv){
     barrier_wait(&start_barrier);
 
     // Compute how much memory was used, approximately
-    unsigned long allocated = global->allocated;
+    unsigned long allocated = global->allocated, cycles = 0;
     double phase1 = 0, phase2a = 0, phase2b = 0, phase3 = 0, start_wait = 0, middle_wait = 0, end_wait = 0;
     unsigned int fix_edge = 0;
     for (unsigned int i = 0; i < global->nworkers; i++) {
         struct worker *w = &workers[i];
         allocated += w->allocated;
+        cycles += w->cycles;
         phase1 += w->phase1;
         phase2a += w->phase2a;
         phase2b += w->phase2b;
@@ -2447,10 +2466,10 @@ int main(int argc, char **argv){
             w->middle_wait/w->middle_count, w->end_wait/w->end_count);
 #endif
     }
-    printf("computing: %lf %lf %lf %lf (%lf %lf %lf %lf %u); waiting: %lf %lf %lf\n", phase1 / global->nworkers, phase2a / global->nworkers, phase2b / global->nworkers, phase3 / global->nworkers, phase1, phase2a, phase2b, phase3, fix_edge, start_wait / global->nworkers, middle_wait / global->nworkers, end_wait / global->nworkers);
+    printf("computing: %lf %lf %lf %lf (%lu %lf %lf %lf %lf %u); waiting: %lf %lf %lf\n", phase1 / global->nworkers, phase2a / global->nworkers, phase2b / global->nworkers, phase3 / global->nworkers, cycles, phase1, phase2a, phase2b, phase3, fix_edge, start_wait / global->nworkers, middle_wait / global->nworkers, end_wait / global->nworkers);
 
     printf("#states %d (time %.2lfs, mem=%.2lfGB)\n", global->graph.size, gettime() - before, (double) allocated / (1L << 30));
-    // if (true) exit(0);  // TODO
+    if (true) exit(0);  // TODO
 
     ht_set_sequential(global->values);
     ht_set_sequential(visited);
