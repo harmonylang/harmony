@@ -1,5 +1,8 @@
 #include "head.h"
 
+#define _GNU_SOURCE
+#include <sched.h>   //cpu_set_t, CPU_SET
+
 #ifdef _WIN32
 #include <windows.h>
 #else
@@ -1880,6 +1883,14 @@ void process_results(struct global *global, struct worker *w){
 static void worker(void *arg){
     struct worker *w = arg;
     struct global *global = w->global;
+
+#ifdef CPU_SET
+    // Pin worker to a core
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(w->index , &cpuset);
+    sched_setaffinity(0, sizeof(cpuset), &cpuset);
+#endif
 
     for (int epoch = 0;; epoch++) {
         double before = gettime();
