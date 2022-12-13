@@ -9,6 +9,24 @@
 #define GROW_THRESHOLD   4
 #define GROW_FACTOR     16
 
+#ifdef _WIN32
+
+#include <intrin.h>
+static inline uint64_t get_cycles(){
+    return __rdtsc();
+}
+
+//  Linux/GCC
+#else
+
+static inline uint64_t get_cycles(){
+    unsigned int lo, hi;
+    __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
+    return ((uint64_t) hi << 32) | lo;
+}
+
+#endif
+
 #ifdef __APPLE__
 
 #include <pthread.h>
@@ -101,6 +119,7 @@ struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int nbuck
 	}
     ht->nworkers = nworkers;
     ht->counts = calloc(nworkers, sizeof(*ht->counts));
+    ht->cycles = calloc(nworkers, sizeof(*ht->cycles));
     atomic_init(&ht->rt_count, 0);
     return ht;
 }
@@ -136,6 +155,8 @@ void ht_resize(struct hashtab *ht, unsigned int nbuckets){
 
 // TODO.  is_new is not terribly useful.
 struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsigned int hash, const void *key, unsigned int size, bool *is_new){
+    uint64_t before = get_cycles();
+
     // First do a search
     _Atomic(struct ht_node *) *chain = &ht->buckets[hash];
     for (;;) {
@@ -146,6 +167,10 @@ struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsi
         if (expected->size == size && memcmp((char *) &expected[1] + ht->value_size, key, size) == 0) {
             if (is_new != NULL) {
                 *is_new = false;
+            }
+            if (al != NULL) {
+                uint64_t after = get_cycles();
+                ht->cycles[al->worker] += after - before;
             }
             return expected;
         }
@@ -175,6 +200,10 @@ struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsi
             if (is_new != NULL) {
                 *is_new = true;
             }
+            if (al != NULL) {
+                uint64_t after = get_cycles();
+                ht->cycles[al->worker] += after - before;
+            }
             return desired;
         }
         else if (expected->size == size && memcmp((char *) &expected[1] + ht->value_size, key, size) == 0) {
@@ -187,6 +216,10 @@ struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsi
             }
             if (is_new != NULL) {
                 *is_new = false;
+            }
+            if (al != NULL) {
+                uint64_t after = get_cycles();
+                ht->cycles[al->worker] += after - before;
             }
             return expected;
         }

@@ -49,6 +49,7 @@ struct hashtab {
     bool concurrent;
     unsigned int nworkers;
     unsigned int *counts;       // 1 per worker
+    uint64_t *cycles;           // 1 per worker
     unsigned long nobjects;     // total #items in hash table
 
     _Atomic(unsigned int) rt_count;     // number of objects in hash table

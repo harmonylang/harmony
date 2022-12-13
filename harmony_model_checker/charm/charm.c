@@ -2482,12 +2482,15 @@ int main(int argc, char **argv){
 
     // Compute how much memory was used, approximately
     unsigned long allocated = global->allocated, cycles = 0;
+    uint64_t visited_cycles = 0, values_cycles = 0;
     double phase1 = 0, phase2a = 0, phase2b = 0, phase3 = 0, start_wait = 0, middle_wait = 0, end_wait = 0;
     unsigned int fix_edge = 0;
     for (unsigned int i = 0; i < global->nworkers; i++) {
         struct worker *w = &workers[i];
         allocated += w->allocated;
         cycles += w->cycles;
+        visited_cycles += visited->cycles[i];
+        values_cycles += global->values->cycles[i];
         phase1 += w->phase1;
         phase2a += w->phase2a;
         phase2b += w->phase2b;
@@ -2501,7 +2504,7 @@ int main(int argc, char **argv){
             w->middle_wait/w->middle_count, w->end_wait/w->end_count);
 #endif
     }
-    printf("computing: %lf %lf %lf %lf (%lu %lf %lf %lf %lf %u); waiting: %lf %lf %lf\n", phase1 / global->nworkers, phase2a / global->nworkers, phase2b / global->nworkers, phase3 / global->nworkers, cycles, phase1, phase2a, phase2b, phase3, fix_edge, start_wait / global->nworkers, middle_wait / global->nworkers, end_wait / global->nworkers);
+    printf("computing: %lf %lf %lf %lf (%lu %lu %lu %lf %lf %lf %lf %u); waiting: %lf %lf %lf\n", phase1 / global->nworkers, phase2a / global->nworkers, phase2b / global->nworkers, phase3 / global->nworkers, cycles - visited_cycles - values_cycles, visited_cycles, values_cycles, phase1, phase2a, phase2b, phase3, fix_edge, start_wait / global->nworkers, middle_wait / global->nworkers, end_wait / global->nworkers);
 
     printf("#states %d (time %.2lfs, mem=%.2lfGB)\n", global->graph.size, gettime() - before, (double) allocated / (1L << 30));
     if (true) exit(0);  // TODO
