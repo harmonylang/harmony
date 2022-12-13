@@ -2,6 +2,7 @@
 
 #define _GNU_SOURCE
 #include <sched.h>   //cpu_set_t, CPU_SET
+#include <stdint.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -88,11 +89,31 @@ struct worker {
     hvalue_t stack[MAX_CONTEXT_STACK];
 };
 
+#ifdef notdef
 static inline uint64_t get_cycles(){
     uint64_t t;
     __asm volatile ("rdtsc" : "=A"(t));
     return t;
 }
+#endif
+
+#ifdef _WIN32
+
+#include <intrin.h>
+static inline uint64_t get_cycles(){
+    return __rdtsc();
+}
+
+//  Linux/GCC
+#else
+
+static inline uint64_t get_cycles(){
+    unsigned int lo, hi;
+    __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
+    return ((uint64_t) hi << 32) | lo;
+}
+
+#endif
 
 // Per thread one-time memory allocator (no free())
 static void *walloc(void *ctx, unsigned int size, bool zero, bool align16){
@@ -1885,6 +1906,9 @@ static void worker(void *arg){
     struct global *global = w->global;
 
 #ifdef CPU_SET
+    if (w->index == 0) {
+        printf("pinning cores\n");
+    }
     // Pin worker to a core
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
