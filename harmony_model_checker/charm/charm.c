@@ -115,6 +115,9 @@ static inline uint64_t get_cycles(){
 
 #endif
 
+// TODO.  Was 0xF, but trying 0x3F for cache line debugging
+#define ALIGNMASK       0x3F
+
 // Per thread one-time memory allocator (no free())
 static void *walloc(void *ctx, unsigned int size, bool zero, bool align16){
     struct worker *w = ctx;
@@ -126,7 +129,7 @@ static void *walloc(void *ctx, unsigned int size, bool zero, bool align16){
     }
 
     if (align16) {
-        unsigned int asize = (size + 0xF) & ~0xF;     // align to 16 bytes
+        unsigned int asize = (size + ALIGNMASK) & ~ALIGNMASK;     // align to 16 bytes
         w->align_waste += asize - size;
         if (w->alloc_ptr16 + asize > w->alloc_buf16 + WALLOC_CHUNK) {
             w->frag_waste += WALLOC_CHUNK - (w->alloc_ptr16 - w->alloc_buf16);
