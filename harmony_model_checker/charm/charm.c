@@ -1915,7 +1915,13 @@ static void worker(void *arg){
     // Pin worker to a core
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
-    CPU_SET(w->index , &cpuset);
+    if (getNumCores() == 64 && global->nworkers < 32) {
+        // Try to schedule on the same chip
+        CPU_SET(2 * w->index, &cpuset);
+    }
+    else {
+        CPU_SET(w->index, &cpuset);
+    }
     sched_setaffinity(0, sizeof(cpuset), &cpuset);
 #endif
 
