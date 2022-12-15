@@ -1,3 +1,4 @@
+#include "head.h"
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
@@ -102,6 +103,7 @@ static inline uint32_t meiyan(const char *key, int count) {
 
 struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int nbuckets,
         unsigned int nworkers, bool align16) {
+    assert(sizeof(struct ht_bucket) == 64);
     struct hashtab *ht = new_alloc(struct hashtab);
     ht->align16 = align16;
     ht->value_size = value_size;
