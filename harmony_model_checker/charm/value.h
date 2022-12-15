@@ -6,7 +6,7 @@
 #include "strbuf.h"
 #include "charm.h"
 
-#define MAX_CONTEXT_STACK   1000        // maximum size of context stack
+#define MAX_CONTEXT_STACK   250        // maximum size of context stack
 #define MAX_CONTEXT_BAG       32        // maximum number of distinct contexts
 
 typedef struct state {
@@ -28,6 +28,7 @@ typedef struct state {
 
 typedef struct context {   // context value
     hvalue_t vars;            // method-local variables
+    uint16_t pc;              // program counter
     bool initial : 1;         // __init__ context
     bool atomicFlag : 1;      // to implement lazy atomicity
     bool interruptlevel : 1;  // interrupt level
@@ -38,8 +39,7 @@ typedef struct context {   // context value
     bool extended : 1;        // context extended with more values
     uint8_t readonly;         // readonly counter
     uint8_t atomic;           // atomic counter
-    uint16_t pc;              // program counter
-    uint16_t sp;              // stack size
+    uint8_t sp;              // stack size
     // hvalue_t thestack[VAR_SIZE];     // growing stack
 
 // Context can be extended with the following additional values
