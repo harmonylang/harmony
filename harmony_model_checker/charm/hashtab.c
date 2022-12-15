@@ -73,6 +73,7 @@ int pthread_spin_unlock(pthread_spinlock_t *lock) {
 #define hash_func(key, size) meiyan(key, size)
 // #define hash_func(key, size) djb2(key, size)
 
+#ifdef NOT_NEEDED
 static inline unsigned long djb2(const char *key, int count) {
      unsigned long hash = 0;
 
@@ -81,6 +82,7 @@ static inline unsigned long djb2(const char *key, int count) {
      }
      return hash;
 }
+#endif
 
 static inline uint32_t meiyan(const char *key, int count) {
 	typedef uint32_t *P;
@@ -107,13 +109,14 @@ struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int nbuck
         nbuckets = 1024;
     }
     ht->nbuckets = nbuckets;
-    ht->buckets = malloc(nbuckets * sizeof(*ht->buckets));
+    ht->buckets = aligned_alloc(64, nbuckets * sizeof(*ht->buckets));
     for (unsigned int i = 0; i < nbuckets; i++) {
-        atomic_init(&ht->buckets[i], NULL);
+        atomic_init(&ht->buckets[i].list, NULL);
+        atomic_init(&ht->buckets[i].lock, 0);
     }
     ht->nlocks = nworkers * 256;        // TODO: how much?
     // TODO ht->locks = aligned_alloc(sizeof(*ht->locks), ht->nlocks * sizeof(*ht->locks));
-    ht->locks = malloc(ht->nlocks * sizeof(*ht->locks));
+    ht->locks = aligned_alloc(sizeof(*ht->locks), ht->nlocks * sizeof(*ht->locks));
 	for (unsigned int i = 0; i < ht->nlocks; i++) {
 		ht_lock_init(&ht->locks[i]);
 	}
@@ -124,7 +127,7 @@ struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int nbuck
     return ht;
 }
 
-void ht_do_resize(struct hashtab *ht, unsigned int old_nbuckets, _Atomic(struct ht_node *) *old_buckets, unsigned int first, unsigned int last){
+void ht_do_resize(struct hashtab *ht, unsigned int old_nbuckets, struct ht_bucket *old_buckets, unsigned int first, unsigned int last){
     unsigned int factor = ht->nbuckets / old_nbuckets;
     if (factor == 0) {      // deal with shrinking tables
         factor = 1;
@@ -132,23 +135,24 @@ void ht_do_resize(struct hashtab *ht, unsigned int old_nbuckets, _Atomic(struct 
     for (unsigned int i = first; i < last; i++) {
         unsigned int k = i;
         for (unsigned int j = 0; j < factor; j++) {
-            atomic_init(&ht->buckets[k], NULL);
+            atomic_init(&ht->buckets[k].list, NULL);
+            atomic_init(&ht->buckets[k].lock, 0);
             k += old_nbuckets;
         }
-        struct ht_node *n = atomic_load(&old_buckets[i]), *next;
+        struct ht_node *n = atomic_load(&old_buckets[i].list), *next;
         for (; n != NULL; n = next) {
             next = atomic_load(&n->next);
             unsigned int hash = hash_func((char *) &n[1] + ht->value_size, n->size) % ht->nbuckets;
-            atomic_store(&n->next, atomic_load(&ht->buckets[hash]));
-            atomic_store(&ht->buckets[hash], n);
+            atomic_store(&n->next, atomic_load(&ht->buckets[hash].list));
+            atomic_store(&ht->buckets[hash].list, n);
         }
     }
 }
 
 void ht_resize(struct hashtab *ht, unsigned int nbuckets){
-    _Atomic(struct ht_node *) *old_buckets = ht->buckets;
+    struct ht_bucket *old_buckets = ht->buckets;
     unsigned int old_nbuckets = ht->nbuckets;
-    ht->buckets = malloc(nbuckets * sizeof(*ht->buckets));
+    ht->buckets = aligned_alloc(64, nbuckets * sizeof(*ht->buckets));
     ht->nbuckets = nbuckets;
     ht_do_resize(ht, old_nbuckets, old_buckets, 0, old_nbuckets);
 }
@@ -158,7 +162,7 @@ struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsi
     uint64_t before = get_cycles();
 
     // First do a search
-    _Atomic(struct ht_node *) *chain = &ht->buckets[hash];
+    _Atomic(struct ht_node *) *chain = &ht->buckets[hash].list;
     for (;;) {
         struct ht_node *expected = atomic_load(chain);
         if (expected == NULL) {
@@ -177,7 +181,7 @@ struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsi
         chain = &expected->next;
     }
 
-    // Allocated a new node
+    // Allocate a new node
     unsigned int total = sizeof(struct ht_node) + ht->value_size + size;
 	struct ht_node *desired = al == NULL ?
             malloc(total) : (*al->alloc)(al->ctx, total, false, ht->align16);
@@ -288,7 +292,7 @@ void ht_grow_prepare(struct hashtab *ht){
         while (ht->nbuckets < ht->nobjects * GROW_FACTOR) {
             ht->nbuckets *= 2;
         }
-        ht->buckets = malloc(ht->nbuckets * sizeof(*ht->buckets));
+        ht->buckets = aligned_alloc(64, ht->nbuckets * sizeof(*ht->buckets));
     }
     else {
         ht->old_buckets = NULL;

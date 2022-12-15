@@ -39,10 +39,16 @@ typedef pthread_mutex_t ht_lock_t;
 #define ht_lock_release(ll) pthread_mutex_unlock(ll)
 #endif
 
+struct ht_bucket {
+    _Atomic(struct ht_node *) list;
+    _Atomic(int) lock;
+    char padding[64 - sizeof(_Atomic(struct ht_node *)) - sizeof(_Atomic(int))];
+};
+
 struct hashtab {
     unsigned int value_size;
     bool align16;
-    _Atomic(struct ht_node *) *buckets;
+    struct ht_bucket *buckets;
     unsigned int nbuckets;
     ht_lock_t *locks;
     unsigned int nlocks;
@@ -55,7 +61,7 @@ struct hashtab {
     _Atomic(unsigned int) rt_count;     // number of objects in hash table
 
     // For concurrent resize
-    _Atomic(struct ht_node *) *old_buckets;
+    struct ht_bucket *old_buckets;
     unsigned int old_nbuckets;
 };
 

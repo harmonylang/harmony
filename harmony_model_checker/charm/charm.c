@@ -2482,7 +2482,7 @@ int main(int argc, char **argv){
 
     // Compute how much memory was used, approximately
     unsigned long allocated = global->allocated, cycles = 0;
-    uint64_t visited_cycles = 0, values_cycles = 0;
+    unsigned long visited_cycles = 0, values_cycles = 0;
     double phase1 = 0, phase2a = 0, phase2b = 0, phase3 = 0, start_wait = 0, middle_wait = 0, end_wait = 0;
     unsigned int fix_edge = 0;
     for (unsigned int i = 0; i < global->nworkers; i++) {
