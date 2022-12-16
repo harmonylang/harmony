@@ -115,8 +115,11 @@ static inline uint64_t get_cycles(){
 
 #endif
 
-// TODO.  Was 0xF, but trying 0x3F for cache line debugging
+#ifdef CACHE_LINE_ALIGNED
 #define ALIGNMASK       0x3F
+#else
+#define ALIGNMASK       0xF
+#endif
 
 // Per thread one-time memory allocator (no free())
 static void *walloc(void *ctx, unsigned int size, bool zero, bool align16){
@@ -305,8 +308,10 @@ static void process_edge(struct worker *w, struct edge *edge, ht_lock_t *lock) {
     struct state *state = (struct state *) &next[1];
     unsigned int len = node->len + edge->weight;
     unsigned int steps = node->steps + edge->nsteps;
-    bool initialized = next->initialized;
 
+    ht_lock_acquire(lock);
+
+    bool initialized = next->initialized;
     next->initialized = true;
     if (!initialized) {
         next->len = len;
@@ -733,9 +738,7 @@ static bool onestep(
                 sc, size, &new, &lock);
     edge->dst = (struct node *) &hn[1];
 
-    // ht_lock_acquire(lock);
-    // process_edge(w, edge, lock);
-
+#ifdef NO_PROCESSING
     if (new) {
         edge->dst->state = (struct state *) &edge->dst[1];
         edge->dst->next = w->results;
@@ -743,6 +746,9 @@ static bool onestep(
         w->count++;
         w->enqueued++;
     }
+#else
+    process_edge(w, edge, lock);
+#endif
 
     return true;
 }
@@ -1739,22 +1745,17 @@ static int fail_cmp(void *f1, void *f2){
     return node_cmp(fail1->edge->dst, fail2->edge->dst);
 }
 
-static unsigned int do_work(struct worker *w){
+static void do_work(struct worker *w){
     struct global *global = w->global;
-    unsigned ntasks = 0;
 
 #define TODO_COUNT 25
 
     for (;;) {
         unsigned int next = atomic_fetch_add(&global->atodo, TODO_COUNT);
-        // printf("W%u gets %u out of %u (goal = %u)\n", w->index, next, global->graph.size, goal);
-
         for (unsigned int i = 0; i < TODO_COUNT; i++, next++) {
             if (next >= global->graph.size) {
-                // printf("DOWORK DONE\n");
-                return ntasks;
+                return;
             }
-            ntasks++;
             struct node *node = global->graph.nodes[next];
             struct state *state = node->state;
             w->dequeued++;
@@ -1811,7 +1812,6 @@ static unsigned int do_work(struct worker *w){
             break;
         }
     }
-    return ntasks;
 }
 
 static void work_phase2(struct worker *w, struct global *global){
@@ -1936,11 +1936,8 @@ static void worker(void *arg){
 		// printf("WORKER %d starting epoch %d\n", w->index, epoch);
         before = after;
         unsigned long bef_cycles = get_cycles();
-// printf("before %lu\n", bef_cycles);
-		unsigned int ntasks = do_work(w);
+		do_work(w);
         unsigned long aft_cycles = get_cycles();
-// printf("after %lu %u\n", aft_cycles, ntasks);
-// printf("diff %lu %lu\n", aft_cycles - bef_cycles, (aft_cycles - bef_cycles) / ntasks);
         w->cycles += aft_cycles - bef_cycles;
         after = gettime();
         w->phase1 += after - before;
@@ -2516,7 +2513,6 @@ int main(int argc, char **argv){
     printf("computing: %lf %lf %lf %lf (%lu %lu %lu %lf %lf %lf %lf %u); waiting: %lf %lf %lf\n", phase1 / global->nworkers, phase2a / global->nworkers, phase2b / global->nworkers, phase3 / global->nworkers, cycles - visited_cycles - values_cycles, visited_cycles, values_cycles, phase1, phase2a, phase2b, phase3, fix_edge, start_wait / global->nworkers, middle_wait / global->nworkers, end_wait / global->nworkers);
 
     printf("#states %d (time %.2lfs, mem=%.2lfGB)\n", global->graph.size, gettime() - before, (double) allocated / (1L << 30));
-    if (true) exit(0);  // TODO
 
     ht_set_sequential(global->values);
     ht_set_sequential(visited);

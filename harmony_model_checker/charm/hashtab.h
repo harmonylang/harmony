@@ -41,8 +41,9 @@ typedef pthread_mutex_t ht_lock_t;
 
 struct ht_bucket {
     _Atomic(struct ht_node *) list;
-    _Atomic(int) lock;
-    char padding[64 - sizeof(_Atomic(struct ht_node *)) - sizeof(_Atomic(int))];
+#ifdef CACHE_LINE_ALIGNED
+    char padding[64 - sizeof(_Atomic(struct ht_node *))];
+#endif
 };
 
 struct hashtab {

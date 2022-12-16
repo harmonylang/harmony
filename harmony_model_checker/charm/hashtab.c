@@ -111,14 +111,20 @@ struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int nbuck
         nbuckets = 1024;
     }
     ht->nbuckets = nbuckets;
+#ifdef ALIGNED_ALLOC
     ht->buckets = aligned_alloc(64, nbuckets * sizeof(*ht->buckets));
+#else
+    ht->buckets = malloc(nbuckets * sizeof(*ht->buckets));
+#endif
     for (unsigned int i = 0; i < nbuckets; i++) {
         atomic_init(&ht->buckets[i].list, NULL);
-        atomic_init(&ht->buckets[i].lock, 0);
     }
     ht->nlocks = nworkers * 256;        // TODO: how much?
-    // TODO ht->locks = aligned_alloc(sizeof(*ht->locks), ht->nlocks * sizeof(*ht->locks));
+#ifdef ALIGNED_ALLOC
     ht->locks = aligned_alloc(sizeof(*ht->locks), ht->nlocks * sizeof(*ht->locks));
+#else
+    ht->locks = malloc(ht->nlocks * sizeof(*ht->locks));
+#endif
 	for (unsigned int i = 0; i < ht->nlocks; i++) {
 		ht_lock_init(&ht->locks[i]);
 	}
@@ -138,7 +144,6 @@ void ht_do_resize(struct hashtab *ht, unsigned int old_nbuckets, struct ht_bucke
         unsigned int k = i;
         for (unsigned int j = 0; j < factor; j++) {
             atomic_init(&ht->buckets[k].list, NULL);
-            atomic_init(&ht->buckets[k].lock, 0);
             k += old_nbuckets;
         }
         struct ht_node *n = atomic_load(&old_buckets[i].list), *next;
@@ -154,7 +159,11 @@ void ht_do_resize(struct hashtab *ht, unsigned int old_nbuckets, struct ht_bucke
 void ht_resize(struct hashtab *ht, unsigned int nbuckets){
     struct ht_bucket *old_buckets = ht->buckets;
     unsigned int old_nbuckets = ht->nbuckets;
+#ifdef ALIGNED_ALLOC
     ht->buckets = aligned_alloc(64, nbuckets * sizeof(*ht->buckets));
+#else
+    ht->buckets = malloc(nbuckets * sizeof(*ht->buckets));
+#endif
     ht->nbuckets = nbuckets;
     ht_do_resize(ht, old_nbuckets, old_buckets, 0, old_nbuckets);
 }
@@ -294,7 +303,11 @@ void ht_grow_prepare(struct hashtab *ht){
         while (ht->nbuckets < ht->nobjects * GROW_FACTOR) {
             ht->nbuckets *= 2;
         }
+#ifdef ALIGNED_ALLOC
         ht->buckets = aligned_alloc(64, ht->nbuckets * sizeof(*ht->buckets));
+#else
+        ht->buckets = malloc(ht->nbuckets * sizeof(*ht->buckets));
+#endif
     }
     else {
         ht->old_buckets = NULL;
