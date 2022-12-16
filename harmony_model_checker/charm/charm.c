@@ -344,7 +344,7 @@ static void process_edge(struct worker *w, struct edge *edge, ht_lock_t *lock) {
     edge->fwdnext = *pe;
     *pe = edge;
 #else
-    if (ht_lock_try_acquire(node->lock) == 0) {
+    if (ht_lock_try_acquire(node->lock)) {
         edge->fwdnext = node->fwd;
         node->fwd = edge;
         ht_lock_release(node->lock);
