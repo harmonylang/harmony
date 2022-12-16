@@ -36,7 +36,7 @@ typedef mutex_t ht_lock_t;
 #define ht_lock_init(ll) mutex_init(ll);
 #define ht_lock_acquire(ll) mutex_acquire(ll)
 #define ht_lock_try_acquire(ll) mutex_try_acquire(ll)
-#define ht_lock_release(ll) mutex_acquire(ll)
+#define ht_lock_release(ll) mutex_release(ll)
 #endif
 
 struct ht_bucket {

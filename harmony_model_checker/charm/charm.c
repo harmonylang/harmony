@@ -1753,6 +1753,7 @@ static void do_work(struct worker *w){
     for (;;) {
         unsigned int next = atomic_fetch_add(&global->atodo, TODO_COUNT);
         for (unsigned int i = 0; i < TODO_COUNT; i++, next++) {
+            // printf("W%d %d %d\n", w->index, next, global->graph.size);
             if (next >= global->graph.size) {
                 return;
             }
