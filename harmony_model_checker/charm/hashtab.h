@@ -1,13 +1,24 @@
 #ifndef SRC_HASHTAB_H
 #define SRC_HASHTAB_H
 
-#include <stdlib.h>
+#ifdef USE_ATOMIC
 #include <stdatomic.h>
+#define hAtomic(x)  _Atomic(x)
+#else
+
+#define hAtomic(t)          t
+#define atomic_init(p, v)   do *(p) = (v); while (0)
+#define atomic_store(p, v)  do *(p) = (v); while (0)
+#define atomic_load(p)      (*(p))
+
+#endif // USE_ATOMIC
+
+#include <stdlib.h>
 #include "thread.h"
 
 // followed directly by data of `size' bytes
 struct ht_node {
-    _Atomic(struct ht_node *) next;
+    hAtomic(struct ht_node *) next;
     unsigned int size;
 };
 
@@ -25,13 +36,13 @@ typedef mutex_t ht_lock_t;
 #define ht_lock_init(ll) mutex_init(ll);
 #define ht_lock_acquire(ll) mutex_acquire(ll)
 #define ht_lock_try_acquire(ll) mutex_try_acquire(ll)
-#define ht_lock_release(ll) mutex_release(ll)
+#define ht_lock_release(ll) mutex_acquire(ll)
 #endif
 
 struct ht_bucket {
-    _Atomic(struct ht_node *) list;
+    hAtomic(struct ht_node *) list;
 #ifdef CACHE_LINE_ALIGNED
-    char padding[64 - sizeof(_Atomic(struct ht_node *))];
+    char padding[64 - sizeof(hAtomic(struct ht_node *))];
 #endif
 };
 
@@ -48,7 +59,10 @@ struct hashtab {
     uint64_t *cycles;           // 1 per worker
     unsigned long nobjects;     // total #items in hash table
 
-    _Atomic(unsigned int) rt_count;     // number of objects in hash table
+#ifndef USE_ATOMIC
+    mutex_t mutex;
+#endif
+    hAtomic(unsigned int) rt_count;     // number of objects in hash table
 
     // For concurrent resize
     struct ht_bucket *old_buckets;

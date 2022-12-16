@@ -89,6 +89,9 @@ struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int nbuck
     ht->nworkers = nworkers;
     ht->counts = calloc(nworkers, sizeof(*ht->counts));
     ht->cycles = calloc(nworkers, sizeof(*ht->cycles));
+#ifndef USE_ATOMIC
+    mutex_init(&ht->mutex);
+#endif
     atomic_init(&ht->rt_count, 0);
     return ht;
 }
@@ -130,8 +133,10 @@ void ht_resize(struct hashtab *ht, unsigned int nbuckets){
 struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsigned int hash, const void *key, unsigned int size, bool *is_new){
     uint64_t before = get_cycles();
 
+#ifdef USE_ATOMIC
+
     // First do a search
-    _Atomic(struct ht_node *) *chain = &ht->buckets[hash].list;
+    hAtomic(struct ht_node *) *chain = &ht->buckets[hash].list;
     for (;;) {
         struct ht_node *expected = atomic_load(chain);
         if (expected == NULL) {
@@ -198,6 +203,47 @@ struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsi
         }
         chain = &expected->next;
     }
+
+#else // USE_ATOMIC
+
+    mutex_acquire(&ht->mutex):
+    struct ht_node **pn = &ht->buckets[hash].list, *n;
+    while ((n = *pn) != NULL) {
+        if (n->size == size && memcmp((char *) &n[1] + ht->value_size, key, size) == 0) {
+            break;
+        }
+    }
+    if (n == NULL) {
+        // Allocate a new node
+        unsigned int total = sizeof(struct ht_node) + ht->value_size + size;
+        n = al == NULL ?  malloc(total) :
+                (*al->alloc)(al->ctx, total, false, ht->align16);
+        n->next = NULL;
+        n->size = size;
+        if (ht->value_size > 0) {
+            memset(&n[1], 0, ht->value_size);
+        }
+        memcpy((char *) &n[1] + ht->value_size, key, size);
+        *pn = n;
+        ht->rt_count++;
+        mutex_release(&ht->mutex):
+        if (is_new != NULL) {
+            *is_new = true;
+        }
+    }
+    else {
+        mutex_release(&ht->mutex):
+        if (is_new != NULL) {
+            *is_new = false;
+        }
+    }
+    if (al != NULL) {
+        uint64_t after = get_cycles();
+        ht->cycles[al->worker] += after - before;
+    }
+    return n;
+
+#endif // USE_ATOMIC
 }
 
 struct ht_node *ht_find(struct hashtab *ht, struct allocator *al, const void *key, unsigned int size, bool *is_new){
@@ -279,5 +325,12 @@ unsigned long ht_allocated(struct hashtab *ht){
 }
 
 bool ht_needs_to_grow(struct hashtab *ht){
+#ifdef USE_ATOMIC
     return GROW_THRESHOLD * atomic_load(&ht->rt_count) > ht->nbuckets;
+#else
+    mutex_acquire(&ht->mutex);
+    bool r =  GROW_THRESHOLD * ht->rt_count > ht->nbuckets;
+    mutex_release(&ht->mutex);
+    return r;
+#endif
 }
