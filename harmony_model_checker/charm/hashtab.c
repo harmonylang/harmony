@@ -208,12 +208,14 @@ struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsi
 
 #else // USE_ATOMIC
 
+    // TODO.  Should probably not be the global lock
     mutex_acquire(&ht->mutex);
     struct ht_node **pn = &ht->buckets[hash].list, *n;
     while ((n = *pn) != NULL) {
         if (n->size == size && memcmp((char *) &n[1] + ht->value_size, key, size) == 0) {
             break;
         }
+        pn = &n->next;
     }
     if (n == NULL) {
         // Allocate a new node

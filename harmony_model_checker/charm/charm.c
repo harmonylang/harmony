@@ -323,7 +323,7 @@ static void process_edge(struct worker *w, struct edge *edge, ht_lock_t *lock) {
     }
     else {
         // TODO: not sure how to minimize.  For some cases, this works better than
-        //   if (len < next->len || (len == next->len && steps < next->steps)) {
+        //   if (len < next->len || (len == next->len && steps < next->steps))
         if (len < next->len || (len == next->len && steps <= next->steps)) {
             next->len = len;
             next->steps = steps;
@@ -1766,6 +1766,7 @@ static void do_work(struct worker *w){
         }
 #else // USE_ATOMIC
         mutex_acquire(&global->todo_lock);
+        // printf("TODO %u\n", global->atodo);
         unsigned int next = global->atodo;
         global->atodo += TODO_COUNT;
         if (next >= global->goal) {
