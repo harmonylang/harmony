@@ -738,6 +738,7 @@ static bool onestep(
                 sc, size, &new, &lock);
     edge->dst = (struct node *) &hn[1];
 
+#define NO_PROCESSING
 #ifdef NO_PROCESSING
     if (new) {
         edge->dst->state = (struct state *) &edge->dst[1];
@@ -1225,6 +1226,10 @@ void path_recompute(
         oldpid = pid;
     }
     assert(pid < global->nprocesses);
+    if (pid >= global->nprocesses) {
+        printf("PID %u %u\n", pid, global->nprocesses);
+        panic("bad pid");
+    }
 
     struct macrostep *macro = calloc(sizeof(*macro), 1);
     macro->edge = e;
