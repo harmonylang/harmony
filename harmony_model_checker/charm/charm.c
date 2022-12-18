@@ -1751,7 +1751,40 @@ static void do_work(struct worker *w){
 #define TODO_COUNT 25
 
     for (;;) {
+#ifdef USE_ATOMIC
         unsigned int next = atomic_fetch_add(&global->atodo, TODO_COUNT);
+        if (next >= atomic_load(&global->goal)) {
+            break;
+        }
+        if (w->index == 0 % global->nworkers && ht_needs_to_grow(w->visited)) {
+            atomic_store(&global->goal, next);
+            break;
+        }
+        if (w->index == 1 % global->nworkers && ht_needs_to_grow(global->values)) {
+            atomic_store(&global->goal, next);
+            break;
+        }
+#else // USE_ATOMIC
+        mutex_acquire(&global->todo_lock);
+        unsigned int next = global->atodo;
+        global->atodo += TODO_COUNT;
+        if (next >= global->goal) {
+            mutex_release(&global->todo_lock);
+            break;
+        }
+        if (w->index == 0 % global->nworkers && ht_needs_to_grow(w->visited)) {
+            global->goal = next;
+            mutex_release(&global->todo_lock);
+            break;
+        }
+        if (w->index == 1 % global->nworkers && ht_needs_to_grow(global->values)) {
+            global->goal = next;
+            mutex_release(&global->todo_lock);
+            break;
+        }
+        mutex_release(&global->todo_lock);
+#endif // USE_ATOMIC
+
         for (unsigned int i = 0; i < TODO_COUNT; i++, next++) {
             // printf("W%d %d %d\n", w->index, next, global->graph.size);
             if (next >= global->graph.size) {
@@ -1796,31 +1829,11 @@ static void do_work(struct worker *w){
                 }
             }
         }
-
-        if (next >= atomic_load(&global->goal)) {
-            // printf("GOAL REACHED %u %u %u\n", next, atomic_load(&global->goal), global->graph.size);
-            break;
-        }
-
-        if (w->index == 0 % global->nworkers && ht_needs_to_grow(w->visited)) {
-            // printf("GROW VISITED\n");
-            atomic_store(&global->goal, next);
-            break;
-        }
-        if (w->index == 1 % global->nworkers && ht_needs_to_grow(global->values)) {
-            // printf("GROW VALUES\n");
-            atomic_store(&global->goal, next);
-            break;
-        }
     }
 }
 
 static void work_phase2(struct worker *w, struct global *global){
-#ifdef SPIN
-    pthread_spin_lock(&global->todo_lock);
-#else
     mutex_acquire(&global->todo_lock);
-#endif
     for (;;) {
         if (global->scc_todo == NULL) {
             global->scc_nwaiting++;
@@ -1828,11 +1841,7 @@ static void work_phase2(struct worker *w, struct global *global){
                 mutex_release(&global->todo_wait);
                 break;
             }
-#ifdef SPIN
-            pthread_spin_unlock(&global->todo_lock);
-#else
             mutex_release(&global->todo_lock);
-#endif
             mutex_acquire(&global->todo_wait);
             if (global->scc_nwaiting == global->nworkers) {
                 mutex_release(&global->todo_wait);
@@ -1853,11 +1862,7 @@ static void work_phase2(struct worker *w, struct global *global){
             mutex_release(&global->todo_wait);
         }
         else {
-#ifdef SPIN
-            pthread_spin_unlock(&global->todo_lock);
-#else
             mutex_release(&global->todo_lock);
-#endif
         }
 
         for (;;) {
@@ -1866,11 +1871,7 @@ static void work_phase2(struct worker *w, struct global *global){
             scc = graph_find_scc_one(&global->graph, scc, component, &w->scc_cache);
 
             // Put new work on the list except the last (which we'll do ourselves)
-#ifdef SPIN
-            pthread_spin_lock(&global->todo_lock);
-#else
             mutex_acquire(&global->todo_lock);
-#endif
             while (scc != NULL && scc->next != NULL) {
                 struct scc *next = scc->next;
                 scc->next = global->scc_todo;
@@ -1887,11 +1888,7 @@ static void work_phase2(struct worker *w, struct global *global){
                 mutex_release(&global->todo_wait);
             }
             else {
-#ifdef SPIN
-                pthread_spin_unlock(&global->todo_lock);
-#else
                 mutex_release(&global->todo_lock);
-#endif
             }
         }
     }
@@ -1914,6 +1911,7 @@ static void worker(void *arg){
         printf("pinning cores\n");
     }
     // Pin worker to a core
+    // TODO.  NUMA considerations
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
     if (getNumCores() == 64 && global->nworkers < 32) {
@@ -2299,11 +2297,7 @@ int main(int argc, char **argv){
     mutex_init(&global->inv_lock);
     atomic_init(&global->atodo, 0);
     atomic_init(&global->goal, 1);
-#ifdef SPIN
-    pthread_spin_init(&global->todo_lock, 0);
-#else
     mutex_init(&global->todo_lock);
-#endif
     mutex_init(&global->todo_wait);
     mutex_acquire(&global->todo_wait);          // Split Binary Semaphore
     global->values = ht_new("values", 0, 1 << 16, global->nworkers, true);
@@ -2466,7 +2460,8 @@ int main(int argc, char **argv){
         ht_allocated(visited) + ht_allocated(global->values);
 
     double before = gettime();
-    // double postproc = 0;
+
+    // TODO.  Not clear we need this extra dummy thread
     for (;;) {
         barrier_wait(&start_barrier);
 

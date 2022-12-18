@@ -1,8 +1,6 @@
 #ifndef SRC_CHARM_H
 #define SRC_CHARM_H
 
-#include <stdatomic.h>
-
 #include "minheap.h"
 #include "code.h"
 #include "graph.h"
@@ -62,17 +60,12 @@ struct global {
     bool inv_pre;                   // some invariant uses "pre"
 
     struct graph graph;             // the Kripke structure
-    _Atomic(unsigned int) atodo;
-    _Atomic(unsigned int) goal;
+    hAtomic(unsigned int) atodo;
+    hAtomic(unsigned int) goal;
     // unsigned int todo;           // points into graph->nodes
     bool layer_done;                // all states in a layer completed
 
-#define SPIN        // TODO
-#ifdef SPIN
-    pthread_spinlock_t todo_lock;
-#else
     mutex_t todo_lock;              // to access the todo list
-#endif
     mutex_t todo_wait;              // to wait for SCC tasks
     unsigned int nworkers;          // total number of threads
     unsigned int scc_nwaiting;      // # workers waiting for SCC work
