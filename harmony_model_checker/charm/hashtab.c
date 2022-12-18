@@ -138,7 +138,7 @@ struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsi
 #ifdef USE_ATOMIC
 
     // First do a search
-    hAtomic(struct ht_node *) *chain = &ht->buckets[hash].list;
+    hAtomic(struct ht_node *) *chain = &ht->buckets[hash % ht->nbuckets].list;
     for (;;) {
         struct ht_node *expected = atomic_load(chain);
         if (expected == NULL) {
@@ -208,9 +208,8 @@ struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsi
 
 #else // USE_ATOMIC
 
-    // TODO.  Should probably not be the global lock
-    mutex_acquire(&ht->mutex);
-    struct ht_node **pn = &ht->buckets[hash].list, *n;
+    mutex_acquire(&ht->locks[hash % ht->nlocks]);
+    struct ht_node **pn = &ht->buckets[hash % ht->nbuckets].list, *n;
     while ((n = *pn) != NULL) {
         if (n->size == size && memcmp((char *) &n[1] + ht->value_size, key, size) == 0) {
             break;
@@ -230,13 +229,13 @@ struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsi
         memcpy((char *) &n[1] + ht->value_size, key, size);
         *pn = n;
         ht->rt_count++;
-        mutex_release(&ht->mutex);
+        mutex_release(&ht->locks[hash % ht->nlocks]);
         if (is_new != NULL) {
             *is_new = true;
         }
     }
     else {
-        mutex_release(&ht->mutex);
+        mutex_release(&ht->locks[hash % ht->nlocks]);
         if (is_new != NULL) {
             *is_new = false;
         }
@@ -251,15 +250,14 @@ struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsi
 }
 
 struct ht_node *ht_find(struct hashtab *ht, struct allocator *al, const void *key, unsigned int size, bool *is_new){
-    unsigned int hash = hash_func(key, size) % ht->nbuckets;
-
+    unsigned int hash = hash_func(key, size);
     return ht_find_with_hash(ht, al, hash, key, size, is_new);
 }
 
 struct ht_node *ht_find_lock(struct hashtab *ht, struct allocator *al,
                             const void *key, unsigned int size, bool *new, ht_lock_t **lock){
     unsigned int hash = hash_func(key, size);
-    struct ht_node *n = ht_find_with_hash(ht, al, hash % ht->nbuckets, key, size, new);
+    struct ht_node *n = ht_find_with_hash(ht, al, hash, key, size, new);
     *lock = &ht->locks[hash % ht->nlocks];
     return n;
 }
