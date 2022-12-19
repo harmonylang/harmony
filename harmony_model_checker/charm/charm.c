@@ -284,8 +284,6 @@ unsigned int check_invariants(struct worker *w, struct node *node,
         value_ctx_push(step->ctx, value_put_list(&step->engine, args, sizeof(args)));
 
         assert(strcmp(global->code.instrs[step->ctx->pc].oi->name, "Frame") == 0);
-        struct env_Frame *ef = (struct env_Frame *) global->code.instrs[step->ctx->pc].env;
-        ef->debug = true;
         bool b = invariant_check(global, state, step);
         if (step->ctx->failed) {
             printf("Invariant evaluation failed: %s\n", value_string(ctx_failure(step->ctx)));
