@@ -2,16 +2,25 @@ const NREPLICAS = 3     # number of replicas
 const NOPS = 3          # number of operations
 
 network = {}            # the network is a set of messages
+nreplicas = NREPLICAS
 
-def send(m):
-    atomically network |= { m }
+def send(src, payload):
+    atomically network |= { (src, payload) }
 
 def receive(predecessor):
     result = { payload for (id, payload) in network where (id == predecessor) }
 
-def replica(self, immortal):
+def crash(self):
+    atomically:
+        if nreplicas > 1:
+            nreplicas -= 1
+            send(self, "crash")
+            stop()
+
+def replica(self):
+    trap crash(self)
     var hist, predecessors = [], { 0 .. self - 1 }
-    while choose({ immortal, True }) and (len(hist) < NOPS):
+    while len(hist) < NOPS:
         if predecessors == {}:  # I'm the head
             atomically when exists update in receive("client")
                                     when update not in hist:
@@ -25,16 +34,13 @@ def replica(self, immortal):
                         all(hist[i] == payload[i] for i in {0..len(hist)-1}):
                     hist = payload
                     send(self, hist)
-    if len(hist) == NOPS:    # successful completion
-        print hist
-    else:       # replica crashed
-        send(self, "crash")
+    setintlevel(True)
+    print hist
 
 def client(self):
     send("client", self)
 
-let survivor = choose({ 0 .. NREPLICAS - 1 }):
-    for i in { 0 .. NREPLICAS - 1 }:
-        spawn replica(i, i == survivor)
+for i in { 0 .. NREPLICAS - 1 }:
+    spawn replica(i)
 for i in {1..NOPS}:
     spawn client(i)

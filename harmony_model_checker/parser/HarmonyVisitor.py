@@ -214,6 +214,11 @@ class HarmonyVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by HarmonyParser#finally_stmt.
+    def visitFinally_stmt(self, ctx:HarmonyParser.Finally_stmtContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by HarmonyParser#invariant_stmt.
     def visitInvariant_stmt(self, ctx:HarmonyParser.Invariant_stmtContext):
         return self.visitChildren(ctx)

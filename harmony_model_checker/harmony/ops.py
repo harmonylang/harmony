@@ -1184,6 +1184,30 @@ class ReadonlyDecOp(Op):
         context.readonly -= 1
         context.pc += 1
 
+class FinallyOp(Op):
+    def __init__(self, pc):
+        self.pc = pc
+
+    def __repr__(self):
+        return "Finally " + str(self.pc)
+
+    def jdump(self):
+        return '{ "op": "Finally", "pc": "%d" }'%self.pc
+
+    def tladump(self):
+        return 'OpFinally(self, %d)'%(self.pc)
+
+    def explain(self):
+        return "test predicate over final state"
+
+    def eval(self, state, context):
+        assert False
+
+    def substitute(self, map):
+        if isinstance(self.pc, LabelValue):
+            assert isinstance(map[self.pc], PcValue)
+            self.pc = map[self.pc].pc
+
 class InvariantOp(Op):
     def __init__(self, pc):
         self.pc = pc

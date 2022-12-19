@@ -61,18 +61,22 @@ struct env_AtomicInc {
     bool lazy;
 };
 
+struct env_Finally {
+    unsigned int pc;
+};
+
 struct env_Invariant {
-    int pc;
+    unsigned int pc;
     bool pre;
 };
 
 struct env_Jump {
-    int pc;
+    unsigned int pc;
 };
 
 struct env_JumpCond {
     hvalue_t cond;
-    int pc;
+    unsigned int pc;
 };
 
 struct env_Load {

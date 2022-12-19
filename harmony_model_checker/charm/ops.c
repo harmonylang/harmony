@@ -1267,6 +1267,22 @@ void op_Go(
     step->ctx->pc++;
 }
 
+void op_Finally(const void *env, struct state *state, struct step *step, struct global *global){
+    const struct env_Finally *ef = env;
+
+#ifdef notdef
+    mutex_acquire(&global->inv_lock);
+    global->invs = realloc(global->invs, (global->ninvs + 1) * sizeof(*global->invs));
+    struct invariant *inv = &global->invs[global->ninvs++];
+    inv->pc = ef->pc;
+    mutex_release(&global->inv_lock);
+#else
+    printf("ignoring Finally %u\n", ef->pc);
+#endif
+
+    step->ctx->pc += 1;
+}
+
 void op_Invariant(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_Invariant *ei = env;
 
@@ -2403,6 +2419,20 @@ void *init_Nary(struct dict *map, struct engine *engine){
         exit(1);
     }
     env->fi = fi;
+
+    return env;
+}
+
+void *init_Finally(struct dict *map, struct engine *engine){
+    struct env_Finally *env = new_alloc(struct env_Finally);
+
+    struct json_value *pc = dict_lookup(map, "pc", 2);
+    assert(pc->type == JV_ATOM);
+    char *copy = malloc(pc->u.atom.len + 1);
+    memcpy(copy, pc->u.atom.base, pc->u.atom.len);
+    copy[pc->u.atom.len] = 0;
+    env->pc = atoi(copy);
+    free(copy);
 
     return env;
 }
@@ -4062,6 +4092,7 @@ struct op_info op_table[] = {
 	{ "Del", init_Del, op_Del },
 	{ "DelVar", init_DelVar, op_DelVar },
 	{ "Dup", init_Dup, op_Dup },
+	{ "Finally", init_Finally, op_Finally },
 	{ "Frame", init_Frame, op_Frame, next_Frame },
 	{ "Go", init_Go, op_Go },
 	{ "Invariant", init_Invariant, op_Invariant },

@@ -1157,6 +1157,35 @@ class WhileAST(AST):
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_while(self, *args, **kwargs)
 
+class FinallyAST(AST):
+    def __init__(self, endtoken, cond, token, atomically):
+        AST.__init__(self, endtoken, token, atomically)
+        self.cond = cond
+
+    def __repr__(self):
+        return "Finally(" + str(self.cond) + ")"
+
+    def compile(self, scope, code, stmt):
+        startlabel = LabelValue(None, "finally")
+        endlabel = LabelValue(None, "finally")
+        stmt = self.stmt()
+        code.append(JumpOp(endlabel, reason="jump over finally definition"), self.token, self.token, stmt=stmt)
+        code.nextLabel(startlabel)
+        (_, file, line, column) = self.token
+        args = [ ("pre", file, line, column), ("post", file, line, column) ]
+        code.append(FrameOp(self.token, args), self.token, self.endtoken, stmt=stmt)
+
+        ns = Scope(scope)
+        self.define(ns, args)
+        self.cond.compile(ns, code, stmt)
+        code.append(AssertOp(self.token, False), self.token, self.endtoken, stmt=stmt)
+        result = ("result", file, line, column)
+        code.append(ReturnOp(result, AddressValue(None, [])), self.token, self.endtoken, stmt=stmt)
+        code.nextLabel(endlabel)
+        code.append(FinallyOp(startlabel), self.token, self.endtoken, stmt=stmt)
+
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_lambda(self, *args, **kwargs)
 
 class InvariantAST(AST):
     def __init__(self, endtoken, cond, token, atomically):

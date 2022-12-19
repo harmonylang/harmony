@@ -200,6 +200,7 @@ await_stmt: AWAIT expr;
 var_stmt: VAR bound EQ tuple_rule;
 trap_stmt: TRAP expr;
 pass_stmt: PASS;
+finally_stmt: FINALLY expr;
 invariant_stmt: INVARIANT expr;  // Asserts an invariant that must hold
 del_stmt: DEL expr;
 spawn_stmt: SPAWN ETERNAL? expr;
@@ -244,6 +245,7 @@ simple_stmt
     | const_assign_stmt
     | await_stmt
     | var_stmt
+    | finally_stmt
     | invariant_stmt
     | del_stmt
     | spawn_stmt
@@ -308,6 +310,7 @@ TRAP   : 'trap';
 PASS     : 'pass';
 DEL      : 'del';
 SPAWN    : 'spawn';
+FINALLY: 'finally';
 INVARIANT: 'invariant';
 GO     : 'go';
 BUILTIN: 'builtin';
