@@ -112,6 +112,140 @@ static bool is_sequential(hvalue_t seqvars, hvalue_t *indices, unsigned int n){
     return false;
 }
 
+hvalue_t d_value_put_dict(struct engine *engine, void *p, unsigned int size){
+    assert(size != 0);
+    void *q = ht_find(engine->values, engine->allocator, p, size, NULL);
+
+    unsigned int sz;
+    void *orig = ht_retrieve(q, &sz);
+    assert(sz == size);
+    assert(memcmp(p, orig, size) == 0);
+
+    return (hvalue_t) q | VALUE_DICT;
+}
+
+// Store key:value in the given dictionary and returns its value code
+// in *result.  May fail if allow_inserts is false and key does not exist
+bool d_value_dict_trystore(struct engine *engine, hvalue_t dict, hvalue_t key, hvalue_t value, hvalue_t *result){
+    assert(VALUE_TYPE(dict) == VALUE_DICT);
+
+    hvalue_t *vals;
+    unsigned int size;
+    if (dict == VALUE_DICT) {
+        vals = NULL;
+        size = 0;
+    }
+    else {
+        vals = value_get(dict, &size);
+        size /= sizeof(hvalue_t);
+        assert(size % 2 == 0);
+    }
+
+    unsigned int i;
+    for (i = 0; i < size; i += 2) {
+        if (vals[i] == key) {
+            assert(false);
+            if (vals[i + 1] == value) {
+                *result = dict;
+                return true;
+            }
+            int n = size * sizeof(hvalue_t);
+            hvalue_t copy[size];
+            memcpy(copy, vals, n);
+            copy[i + 1] = value;
+            hvalue_t v = value_put_dict(engine, copy, n);
+            *result = v;
+            return true;
+        }
+        if (value_cmp(vals[i], key) > 0) {
+            break;
+        }
+    }
+
+    hvalue_t nvals[size + 2];
+    if (i > 0) {
+        memcpy(nvals, vals, i * sizeof(hvalue_t));
+    }
+    nvals[i] = key;
+    nvals[i+1] = value;
+    if (i < size) {
+        memcpy(&nvals[i+2], &vals[i], (size - i) * sizeof(hvalue_t));
+    }
+    hvalue_t v = d_value_put_dict(engine, nvals, sizeof(nvals));
+    *result = v;
+    return true;
+}
+
+hvalue_t d_value_dict_store(struct engine *engine, hvalue_t dict, hvalue_t key, hvalue_t value){
+    hvalue_t result;
+    bool r = d_value_dict_trystore(engine, dict, key, value, &result);
+    if (!r) {
+        fprintf(stderr, "value_dict_store: failed\n");
+        exit(1);
+    }
+    return result;
+}
+
+hvalue_t d_var_match_rec(struct context *ctx, struct var_tree *vt, struct engine *engine,
+                            hvalue_t arg, hvalue_t vars){
+    switch (vt->type) {
+    case VT_NAME:
+        if (1) {
+            char *name = value_string(vt->u.name);
+            if (0 && strcmp(name, "\"post\"") == 0) {
+                printf("skip %s %d\n", name, (int) strlen(name));
+                return vars;
+            }
+            if (0 && strcmp(name, "\"pre\"") == 0) {
+                printf("skip %s %d\n", name, (int) strlen(name));
+                return vars;
+            }
+        }
+        if (vt->u.name == underscore) {
+            return vars;
+        }
+        return d_value_dict_store(engine, vars, vt->u.name, arg);
+    case VT_TUPLE:
+        if (VALUE_TYPE(arg) != VALUE_LIST) {
+            if (vt->u.tuple.n == 0) {
+                return value_ctx_failure(ctx, engine, "match: expected ()");
+            }
+            else {
+                char *v = value_string(arg);
+                return value_ctx_failure(ctx, engine, "match: expected a tuple instead of %s", v);
+            }
+        }
+        if (arg == VALUE_LIST) {
+            if (vt->u.tuple.n != 0) {
+                return value_ctx_failure(ctx, engine, "match: expected a %d-tuple",
+                                                vt->u.tuple.n);
+            }
+            return vars;
+        }
+        if (vt->u.tuple.n == 0) {
+            return value_ctx_failure(ctx, engine, "match: expected an empty tuple");
+        }
+        unsigned int size;
+        hvalue_t *vals = value_get(arg, &size);
+        size /= sizeof(hvalue_t);
+        if (vt->u.tuple.n != size) {
+            return value_ctx_failure(ctx, engine, "match: tuple size mismatch");
+        }
+        for (unsigned int i = 0; i < size; i++) {
+            vars = d_var_match_rec(ctx, vt->u.tuple.elements[i], engine, vals[i], vars);
+        }
+        return vars;
+    default:
+        assert(false);
+        panic("d_var_match_rec: bad vartree type");
+        return 0;
+    }
+}
+
+void d_var_match(struct context *ctx, struct var_tree *vt, struct engine *engine, hvalue_t arg){
+    d_var_match_rec(ctx, vt, engine, arg, ctx->vars);
+}
+
 hvalue_t var_match_rec(struct context *ctx, struct var_tree *vt, struct engine *engine,
                             hvalue_t arg, hvalue_t vars){
     switch (vt->type) {
@@ -151,7 +285,7 @@ hvalue_t var_match_rec(struct context *ctx, struct var_tree *vt, struct engine *
         }
         return vars;
     default:
-        panic("var_tree_rec: bad vartree type");
+        panic("var_match_rec: bad vartree type");
         return 0;
     }
 }
@@ -1211,7 +1345,12 @@ void op_Frame(const void *env, struct state *state, struct step *step, struct gl
     }
 
     // match argument against parameters
-    var_match(step->ctx, ef->args, &step->engine, arg);
+    if (ef->debug) {
+        d_var_match(step->ctx, ef->args, &step->engine, arg);
+    }
+    else {
+        var_match(step->ctx, ef->args, &step->engine, arg);
+    }
     if (step->ctx->failed) {
         return;
     }

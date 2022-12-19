@@ -12,8 +12,6 @@ struct scc {        // Strongly Connected Component
     unsigned int start, finish;
 };
 
-#define USE_HASHTAB
-
 struct invariant {
     unsigned int pc;                // location of invariant code
     // TODO.  May not need the following since we can get it from env

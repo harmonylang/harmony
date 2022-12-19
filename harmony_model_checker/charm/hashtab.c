@@ -65,6 +65,7 @@ struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int nbuck
     assert(sizeof(struct ht_bucket) == 64);
 #endif
     struct hashtab *ht = new_alloc(struct hashtab);
+    ht->whoami = whoami;
     ht->align16 = align16;
     ht->value_size = value_size;
 	if (nbuckets == 0) {
@@ -113,6 +114,7 @@ void ht_do_resize(struct hashtab *ht, unsigned int old_nbuckets, struct ht_bucke
         for (; n != NULL; n = next) {
             next = atomic_load(&n->next);
             unsigned int hash = hash_func((char *) &n[1] + ht->value_size, n->size) % ht->nbuckets;
+            assert(hash == i);
             atomic_store(&n->next, atomic_load(&ht->buckets[hash].list));
             atomic_store(&ht->buckets[hash].list, n);
         }
@@ -139,6 +141,8 @@ struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsi
 
     // First do a search
     hAtomic(struct ht_node *) *chain = &ht->buckets[hash % ht->nbuckets].list;
+
+    assert(atomic_load(chain) == 0 || atomic_load(chain) != 0);
     for (;;) {
         struct ht_node *expected = atomic_load(chain);
         if (expected == NULL) {
@@ -181,8 +185,13 @@ struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsi
                 *is_new = true;
             }
             if (al != NULL) {
+                assert(ht->concurrent);
                 uint64_t after = get_cycles();
                 ht->cycles[al->worker] += after - before;
+            }
+            else {
+                assert(!ht->concurrent);
+                ht->nobjects++;
             }
             return desired;
         }
@@ -219,7 +228,7 @@ struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsi
     if (n == NULL) {
         // Allocate a new node
         unsigned int total = sizeof(struct ht_node) + ht->value_size + size;
-        n = al == NULL ?  malloc(total) :
+        n = al == NULL ? malloc(total) :
                 (*al->alloc)(al->ctx, total, false, ht->align16);
         n->next = NULL;
         n->size = size;
@@ -229,6 +238,10 @@ struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsi
         memcpy((char *) &n[1] + ht->value_size, key, size);
         *pn = n;
         ht->rt_count++;
+        if (ht->concurrent) {
+            assert(al != NULL);
+            ht->counts[al->worker]++;
+        }
         mutex_release(&ht->locks[hash % ht->nlocks]);
         if (is_new != NULL) {
             *is_new = true;
@@ -273,6 +286,7 @@ void *ht_retrieve(struct ht_node *n, unsigned int *psize){
 void *ht_insert(struct hashtab *ht, struct allocator *al,
                         const void *key, unsigned int size, bool *new){
     struct ht_node *n = ht_find(ht, al, key, size, new);
+    assert(memcmp((char *) &n[1] + ht->value_size, key, size) == 0);
     return &n[1];
 }
 
@@ -305,10 +319,10 @@ void ht_grow_prepare(struct hashtab *ht){
     if (ht->nbuckets < ht->nobjects * GROW_THRESHOLD) {
         ht->old_buckets = ht->buckets;
         ht->old_nbuckets = ht->nbuckets;
-        ht->nbuckets = ht->nbuckets * 8;
-        while (ht->nbuckets < ht->nobjects * GROW_FACTOR) {
-            ht->nbuckets *= 2;
-        }
+        // ht->nbuckets = ht->nbuckets * 8;
+        // while (ht->nbuckets < ht->nobjects * GROW_FACTOR) {
+        //     ht->nbuckets *= 2;
+        // }
 #ifdef ALIGNED_ALLOC
         ht->buckets = aligned_alloc(64, ht->nbuckets * sizeof(*ht->buckets));
 #else
@@ -319,6 +333,7 @@ void ht_grow_prepare(struct hashtab *ht){
         ht->old_buckets = NULL;
         ht->old_nbuckets = 0;
     }
+    assert(ht->nobjects == atomic_load(&ht->rt_count));
 }
 
 unsigned long ht_allocated(struct hashtab *ht){

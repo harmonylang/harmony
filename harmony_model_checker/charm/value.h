@@ -57,7 +57,7 @@ typedef struct context {   // context value
 hvalue_t value_from_json(struct engine *engine, struct dict *map);
 int value_cmp(hvalue_t v1, hvalue_t v2);
 void *value_get(hvalue_t v, unsigned int *size);
-// void *value_copy(hvalue_t v, unsigned int *size);
+void *value_copy(hvalue_t v, unsigned int *size);
 void *value_copy_extend(hvalue_t v, unsigned int inc, unsigned int *psize);
 hvalue_t value_put_atom(struct engine *engine, const void *p, unsigned int size);
 hvalue_t value_put_set(struct engine *engine, void *p, unsigned int size);

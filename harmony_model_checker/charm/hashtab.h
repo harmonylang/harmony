@@ -47,6 +47,7 @@ struct ht_bucket {
 };
 
 struct hashtab {
+    char *whoami;
     unsigned int value_size;
     bool align16;
     struct ht_bucket *buckets;

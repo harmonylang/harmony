@@ -55,6 +55,7 @@ struct env_DelVar {
 struct env_Frame {
     hvalue_t name;
     struct var_tree *args;
+    bool debug;
 };
 
 struct env_AtomicInc {

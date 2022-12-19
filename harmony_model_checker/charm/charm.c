@@ -136,7 +136,8 @@ static void *walloc(void *ctx, unsigned int size, bool zero, bool align16){
         w->align_waste += asize - size;
         if (w->alloc_ptr16 + asize > w->alloc_buf16 + WALLOC_CHUNK) {
             w->frag_waste += WALLOC_CHUNK - (w->alloc_ptr16 - w->alloc_buf16);
-            w->alloc_buf16 = malloc(WALLOC_CHUNK);
+            // TODO.  aligned_alloc not always available
+            w->alloc_buf16 = aligned_alloc(ALIGNMASK + 1, WALLOC_CHUNK);
             w->alloc_ptr16 = w->alloc_buf16;
             w->allocated += WALLOC_CHUNK;
         }
@@ -236,7 +237,9 @@ bool invariant_check(struct global *global, struct state *sc, struct step *step)
     assert(step->ctx->sp == 1);     // just the (pre, post) argument
     while (!step->ctx->terminated) {
         struct op_info *oi = global->code.instrs[step->ctx->pc].oi;
+
         (*oi->op)(global->code.instrs[step->ctx->pc].env, sc, step, global);
+
         if (step->ctx->failed) {
             step->ctx->sp = 0;
             return false;
@@ -281,16 +284,19 @@ unsigned int check_invariants(struct worker *w, struct node *node,
         value_ctx_push(step->ctx, value_put_list(&step->engine, args, sizeof(args)));
 
         assert(strcmp(global->code.instrs[step->ctx->pc].oi->name, "Frame") == 0);
+        struct env_Frame *ef = (struct env_Frame *) global->code.instrs[step->ctx->pc].env;
+        ef->debug = true;
         bool b = invariant_check(global, state, step);
         if (step->ctx->failed) {
-            // printf("Invariant evaluation failed: %s\n", value_string(ctx_failure(step->ctx)));
+            printf("Invariant evaluation failed: %s\n", value_string(ctx_failure(step->ctx)));
             b = false;
         }
         if (!b) {
-            // printf("INV %u %u failed\n", i, global->invs[i].pc);
+            printf("INV %u %u failed\n", i, global->invs[i].pc);
             return global->invs[i].pc;
         }
     }
+
     return 0;
 }
 
@@ -312,14 +318,20 @@ static void process_edge(struct worker *w, struct edge *edge, ht_lock_t *lock) {
     ht_lock_acquire(lock);
 
     bool initialized = next->initialized;
-    next->initialized = true;
     if (!initialized) {
+        next->initialized = true;
         next->len = len;
         next->steps = steps;
         next->to_parent = edge;
         next->state = state;        // TODO.  Don't technically need this
         next->lock = lock;
         edge->bwdnext = NULL;
+        if (!edge->failed) {
+            next->next = w->results;
+            w->results = next;
+            w->count++;
+            w->enqueued++;
+        }
     }
     else {
         // TODO: not sure how to minimize.  For some cases, this works better than
@@ -356,29 +368,21 @@ static void process_edge(struct worker *w, struct edge *edge, ht_lock_t *lock) {
     }
 #endif
 
-    if (!edge->failed) {
-        if (!initialized) {
-            next->next = w->results;
-            w->results = next;
-            w->count++;
-            w->enqueued++;
+    if (!edge->failed && !edge->choosing && w->global->ninvs != 0) {
+        unsigned int inv = 0;
+        if (!initialized) {      // try self-loop if a new node
+            inv = check_invariants(w, next, next, &w->inv_step);
         }
-        if (!edge->choosing && w->global->ninvs != 0) {
-            unsigned int inv = 0;
-            if (!initialized) {      // try self-loop if a new node
-                inv = check_invariants(w, next, next, &w->inv_step);
-            }
-            if (inv == 0) { // try new edge
-                inv = check_invariants(w, next, node, &w->inv_step);
-            }
-            if (inv != 0) {
-                struct failure *f = new_alloc(struct failure);
-                f->type = FAIL_INVARIANT;
-                f->edge = edge;
-                f->next = w->failures;
-                f->address = VALUE_TO_PC(inv);
-                w->failures = f;
-            }
+        if (inv == 0) { // try new edge
+            inv = check_invariants(w, next, node, &w->inv_step);
+        }
+        if (inv != 0) {
+            struct failure *f = new_alloc(struct failure);
+            f->type = FAIL_INVARIANT;
+            f->edge = edge;
+            f->next = w->failures;
+            f->address = VALUE_TO_PC(inv);
+            w->failures = f;
         }
     }
 }
@@ -738,14 +742,18 @@ static bool onestep(
                 sc, size, &new, &lock);
     edge->dst = (struct node *) &hn[1];
 
-#define NO_PROCESSING
 #ifdef NO_PROCESSING
     if (new) {
         edge->dst->state = (struct state *) &edge->dst[1];
+        assert(VALUE_TYPE(edge->dst->state->vars) == VALUE_DICT);
         edge->dst->next = w->results;
         w->results = edge->dst;
         w->count++;
         w->enqueued++;
+        if (!edge->choosing) {
+            check_invariants(w, edge->dst, edge->dst, &w->inv_step);
+            assert(VALUE_TYPE(edge->dst->state->vars) == VALUE_DICT);
+        }
     }
 #else
     process_edge(w, edge, lock);
@@ -1758,36 +1766,10 @@ static void do_work(struct worker *w){
     for (;;) {
 #ifdef USE_ATOMIC
         unsigned int next = atomic_fetch_add(&global->atodo, TODO_COUNT);
-        if (next >= atomic_load(&global->goal)) {
-            break;
-        }
-        if (w->index == 0 % global->nworkers && ht_needs_to_grow(w->visited)) {
-            atomic_store(&global->goal, next);
-            break;
-        }
-        if (w->index == 1 % global->nworkers && ht_needs_to_grow(global->values)) {
-            atomic_store(&global->goal, next);
-            break;
-        }
 #else // USE_ATOMIC
         mutex_acquire(&global->todo_lock);
-        // printf("TODO %u\n", global->atodo);
         unsigned int next = global->atodo;
         global->atodo += TODO_COUNT;
-        if (next >= global->goal) {
-            mutex_release(&global->todo_lock);
-            break;
-        }
-        if (w->index == 0 % global->nworkers && ht_needs_to_grow(w->visited)) {
-            global->goal = next;
-            mutex_release(&global->todo_lock);
-            break;
-        }
-        if (w->index == 1 % global->nworkers && ht_needs_to_grow(global->values)) {
-            global->goal = next;
-            mutex_release(&global->todo_lock);
-            break;
-        }
         mutex_release(&global->todo_lock);
 #endif // USE_ATOMIC
 
@@ -1835,6 +1817,37 @@ static void do_work(struct worker *w){
                 }
             }
         }
+
+#ifdef USE_ATOMIC
+        if (next >= atomic_load(&global->goal)) {
+            break;
+        }
+        if (w->index == 0 % global->nworkers && ht_needs_to_grow(w->visited)) {
+            atomic_store(&global->goal, next);
+            break;
+        }
+        if (w->index == 1 % global->nworkers && ht_needs_to_grow(global->values)) {
+            atomic_store(&global->goal, next);
+            break;
+        }
+#else // USE_ATOMIC
+        mutex_acquire(&global->todo_lock);
+        if (next >= global->goal) {
+            mutex_release(&global->todo_lock);
+            break;
+        }
+        if (w->index == 0 % global->nworkers && ht_needs_to_grow(w->visited)) {
+            global->goal = next;
+            mutex_release(&global->todo_lock);
+            break;
+        }
+        if (w->index == 1 % global->nworkers && ht_needs_to_grow(global->values)) {
+            global->goal = next;
+            mutex_release(&global->todo_lock);
+            break;
+        }
+        mutex_release(&global->todo_lock);
+#endif // USE_ATOMIC
     }
 }
 
@@ -2049,6 +2062,7 @@ static void worker(void *arg){
             // Fill the graph table
             for (unsigned int i = 0; w->count != 0; i++) {
                 struct node *node = w->results;
+                assert(node->id == 0);
                 node->id = w->node_id;
                 global->graph.nodes[w->node_id++] = node;
                 w->results = node->next;
