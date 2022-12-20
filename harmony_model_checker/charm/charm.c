@@ -2600,6 +2600,8 @@ int main(int argc, char **argv){
 
     printf("#states %d (time %.2lfs, mem=%.2lfGB)\n", global->graph.size, gettime() - before, (double) allocated / (1L << 30));
 
+    if (true) exit(0);
+
     ht_set_sequential(global->values);
     ht_set_sequential(visited);
 

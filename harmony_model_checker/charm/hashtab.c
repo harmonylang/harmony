@@ -319,10 +319,10 @@ void ht_grow_prepare(struct hashtab *ht){
     if (ht->nbuckets < ht->nobjects * GROW_THRESHOLD) {
         ht->old_buckets = ht->buckets;
         ht->old_nbuckets = ht->nbuckets;
-        // ht->nbuckets = ht->nbuckets * 8;
-        // while (ht->nbuckets < ht->nobjects * GROW_FACTOR) {
-        //     ht->nbuckets *= 2;
-        // }
+        ht->nbuckets = ht->nbuckets * 8;
+        while (ht->nbuckets < ht->nobjects * GROW_FACTOR) {
+            ht->nbuckets *= 2;
+        }
 #ifdef ALIGNED_ALLOC
         ht->buckets = aligned_alloc(64, ht->nbuckets * sizeof(*ht->buckets));
 #else
