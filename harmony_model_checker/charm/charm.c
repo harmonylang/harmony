@@ -520,9 +520,9 @@ static bool onestep(
                             step->ctx->pc, enqueued, global->diameter,
                             enqueued - dequeued, gigs, align_waste, frag_waste, global->allocated);
 #else
-                    fprintf(stderr, "pc=%d states=%u diam=%u q=%d mem=%.2lfGB\n",
+                    fprintf(stderr, "pc=%d states=%u diam=%u q=%d mem=%.2lfGB ph=%u\n",
                             step->ctx->pc, enqueued, global->diameter,
-                            enqueued - dequeued, gigs);
+                            enqueued - dequeued, gigs, w->middle_count);
 #endif
 #endif
                     global->last_nstates = enqueued;
