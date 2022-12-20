@@ -137,9 +137,16 @@ static void *walloc(void *ctx, unsigned int size, bool zero, bool align16){
         w->align_waste += asize - size;
         if (w->alloc_ptr16 + asize > w->alloc_buf16 + WALLOC_CHUNK) {
             w->frag_waste += WALLOC_CHUNK - (w->alloc_ptr16 - w->alloc_buf16);
-            // TODO.  aligned_alloc not always available
+#ifdef ALIGNED_ALLOC
             w->alloc_buf16 = aligned_alloc(ALIGNMASK + 1, WALLOC_CHUNK);
             w->alloc_ptr16 = w->alloc_buf16;
+#else
+            w->alloc_buf16 = malloc(WALLOC_CHUNK);
+            w->alloc_ptr16 = w->alloc_buf16;
+            if (((hvalue_t) w->alloc_ptr16 & ALIGNMASK) != 0) {
+                w->alloc_ptr16 = (char *) ((hvalue_t) (w->alloc_ptr16 + ALIGNMASK) & ~ALIGNMASK);
+            }
+#endif
             w->allocated += WALLOC_CHUNK;
         }
         result = w->alloc_ptr16;
