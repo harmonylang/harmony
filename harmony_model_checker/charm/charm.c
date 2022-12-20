@@ -231,10 +231,11 @@ void spawn_thread(struct global *global, struct state *state, struct context *ct
     thread_create(wrap_thread, si);
 }
 
-// Similar to onestep, but just for some invariant
-bool invariant_check(struct global *global, struct state *sc, struct step *step){
+// Similar to onestep, but just for some predicate
+bool predicate_check(struct global *global, struct state *sc, struct step *step){
     assert(!step->ctx->failed);
-    assert(step->ctx->sp == 1);     // just the (pre, post) argument
+    assert(step->ctx->sp == 1);     // just the argument
+    printf("PC %s\n", value_string(ctx_stack(step->ctx)[0]));
     while (!step->ctx->terminated) {
         struct op_info *oi = global->code.instrs[step->ctx->pc].oi;
 
@@ -284,7 +285,7 @@ unsigned int check_invariants(struct worker *w, struct node *node,
         value_ctx_push(step->ctx, value_put_list(&step->engine, args, sizeof(args)));
 
         assert(strcmp(global->code.instrs[step->ctx->pc].oi->name, "Frame") == 0);
-        bool b = invariant_check(global, state, step);
+        bool b = predicate_check(global, state, step);
         if (step->ctx->failed) {
             printf("Invariant evaluation failed: %s\n", value_string(ctx_failure(step->ctx)));
             b = false;
@@ -292,6 +293,37 @@ unsigned int check_invariants(struct worker *w, struct node *node,
         if (!b) {
             printf("INV %u %u failed\n", i, global->invs[i].pc);
             return global->invs[i].pc;
+        }
+    }
+
+    return 0;
+}
+
+// Returns 0 if there are no issues, or the pc of the finally predicate if it failed.
+unsigned int check_finals(struct worker *w, struct node *node, struct step *step){
+    struct global *global = w->global;
+    struct state *state = node->state;
+    assert(node->state != NULL);
+    assert(state != NULL);
+
+    // Check each finally predicate
+    for (unsigned int i = 0; i < global->nfinals; i++) {
+        assert(step->ctx->sp == 0);
+        step->ctx->terminated = step->ctx->failed = false;
+        ctx_failure(step->ctx) = 0;
+        step->ctx->pc = global->finals[i];
+        step->ctx->vars = VALUE_DICT;
+        value_ctx_push(step->ctx, VALUE_LIST);
+
+        assert(strcmp(global->code.instrs[step->ctx->pc].oi->name, "Frame") == 0);
+        bool b = predicate_check(global, state, step);
+        if (step->ctx->failed) {
+            printf("Finally evaluation failed: %s\n", value_string(ctx_failure(step->ctx)));
+            b = false;
+        }
+        if (!b) {
+            printf("FIN %u %u failed\n", i, global->finals[i]);
+            return global->finals[i];
         }
     }
 
@@ -366,21 +398,49 @@ static void process_edge(struct worker *w, struct edge *edge, ht_lock_t *lock) {
     }
 #endif
 
-    if (!edge->failed && !edge->choosing && w->global->ninvs != 0) {
-        unsigned int inv = 0;
-        if (!initialized) {      // try self-loop if a new node
-            inv = check_invariants(w, next, next, &w->inv_step);
+    if (!edge->failed && !edge->choosing) {
+        // Check invariants
+        if (w->global->ninvs != 0) {
+            unsigned int inv = 0;
+            if (!initialized) {      // try self-loop if a new node
+                inv = check_invariants(w, next, next, &w->inv_step);
+            }
+            if (inv == 0) { // try new edge
+                inv = check_invariants(w, next, node, &w->inv_step);
+            }
+            if (inv != 0) {
+                struct failure *f = new_alloc(struct failure);
+                f->type = FAIL_INVARIANT;
+                f->edge = edge;
+                f->next = w->failures;
+                f->address = VALUE_TO_PC(inv);
+                w->failures = f;
+            }
         }
-        if (inv == 0) { // try new edge
-            inv = check_invariants(w, next, node, &w->inv_step);
-        }
-        if (inv != 0) {
-            struct failure *f = new_alloc(struct failure);
-            f->type = FAIL_INVARIANT;
-            f->edge = edge;
-            f->next = w->failures;
-            f->address = VALUE_TO_PC(inv);
-            w->failures = f;
+        
+        // Check final state if there are no non-eternal contexts
+        if (!initialized && w->global->nfinals != 0) {
+            hvalue_t *ctxs = state_contexts(state);
+            bool all_eternal = true;
+            for (unsigned int i = 0; i < state->bagsize; i++) {
+                assert(VALUE_TYPE(ctxs[i]) == VALUE_CONTEXT);
+                if (!(ctxs[i] & VALUE_CONTEXT_ETERNAL)) {
+                    all_eternal = false;
+                    break;
+                }
+            }
+            if (!all_eternal) {
+                printf("FINAL STATE\n");
+                unsigned int fin = check_finals(w, next, &w->inv_step);
+                if (fin != 0) {
+                    struct failure *f = new_alloc(struct failure);
+                    f->type = FAIL_INVARIANT;
+                    f->edge = edge;
+                    f->next = w->failures;
+                    f->address = VALUE_TO_PC(fin);
+                    w->failures = f;
+                }
+            }
         }
     }
 }

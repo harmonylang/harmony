@@ -112,7 +112,12 @@ hvalue_t value_put_address(struct engine *engine, void *p, unsigned int size){
 hvalue_t value_put_context(struct engine *engine, struct context *ctx){
 	assert(ctx->pc >= 0);
     void *q = ht_find(engine->values, engine->allocator, ctx, ctx_size(ctx), NULL);
-    return (hvalue_t) q | VALUE_CONTEXT;
+    if (ctx->eternal) {
+        return (hvalue_t) q | VALUE_CONTEXT | VALUE_CONTEXT_ETERNAL;
+    }
+    else {
+        return (hvalue_t) q | VALUE_CONTEXT;
+    }
 }
 
 int value_cmp_bool(hvalue_t v1, hvalue_t v2){

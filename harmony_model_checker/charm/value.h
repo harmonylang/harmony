@@ -73,7 +73,9 @@ void strbuf_value_string(strbuf *sb, hvalue_t v);
 void strbuf_value_json(strbuf *sb, hvalue_t v, struct global *global);
 
 #define VALUE_BITS      4
-#define VALUE_MASK      ((hvalue_t) ((1 << VALUE_BITS) - 1))
+#define VALUE_HIBITS    ((hvalue_t) 0xFF << 48)
+#define VALUE_LOBITS    ((hvalue_t) ((1 << VALUE_BITS) - 1))
+#define VALUE_MASK      (VALUE_HIBITS | VALUE_LOBITS)
 
 #define VALUE_BOOL      1
 #define VALUE_INT       2
@@ -86,13 +88,15 @@ void strbuf_value_json(strbuf *sb, hvalue_t v, struct global *global);
 #define VALUE_ADDRESS_PRIVATE   9
 #define VALUE_CONTEXT  10
 
+#define VALUE_CONTEXT_ETERNAL   ((hvalue_t) 1 << 48)
+
 #define VALUE_FALSE     VALUE_BOOL
 #define VALUE_TRUE      ((1 << VALUE_BITS) | VALUE_BOOL)
 
 #define VALUE_MAX   ((int64_t) ((~(hvalue_t)0) >> (VALUE_BITS + 1)))
 #define VALUE_MIN   ((int64_t) ((~(hvalue_t)0) << (64 - (VALUE_BITS + 1))))
 
-#define VALUE_TYPE(v)      ((v) & VALUE_MASK)
+#define VALUE_TYPE(v)      ((v) & VALUE_LOBITS)
 
 #define VALUE_TO_INT(i)    (((hvalue_t) (i) << VALUE_BITS) | VALUE_INT)
 #define VALUE_TO_BOOL(i)   (((hvalue_t) (i) << VALUE_BITS) | VALUE_BOOL)

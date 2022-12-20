@@ -1171,14 +1171,12 @@ class FinallyAST(AST):
         stmt = self.stmt()
         code.append(JumpOp(endlabel, reason="jump over finally definition"), self.token, self.token, stmt=stmt)
         code.nextLabel(startlabel)
-        (_, file, line, column) = self.token
-        args = [ ("pre", file, line, column), ("post", file, line, column) ]
-        code.append(FrameOp(self.token, args), self.token, self.endtoken, stmt=stmt)
+        code.append(FrameOp(self.token, []), self.token, self.endtoken, stmt=stmt)
 
         ns = Scope(scope)
-        self.define(ns, args)
         self.cond.compile(ns, code, stmt)
         code.append(AssertOp(self.token, False), self.token, self.endtoken, stmt=stmt)
+        (_, file, line, column) = self.token
         result = ("result", file, line, column)
         code.append(ReturnOp(result, AddressValue(None, [])), self.token, self.endtoken, stmt=stmt)
         code.nextLabel(endlabel)

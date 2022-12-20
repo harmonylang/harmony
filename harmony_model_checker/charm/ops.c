@@ -1270,15 +1270,11 @@ void op_Go(
 void op_Finally(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_Finally *ef = env;
 
-#ifdef notdef
     mutex_acquire(&global->inv_lock);
-    global->invs = realloc(global->invs, (global->ninvs + 1) * sizeof(*global->invs));
-    struct invariant *inv = &global->invs[global->ninvs++];
-    inv->pc = ef->pc;
+    global->finals = realloc(global->finals, (global->nfinals + 1) * sizeof(*global->finals));
+    unsigned int *fin = &global->finals[global->nfinals++];
+    *fin = ef->pc;
     mutex_release(&global->inv_lock);
-#else
-    printf("ignoring Finally %u\n", ef->pc);
-#endif
 
     step->ctx->pc += 1;
 }

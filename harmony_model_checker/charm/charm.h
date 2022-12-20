@@ -52,10 +52,12 @@ struct global {
     hvalue_t seqs;                  // sequential variables
 
     // invariants
-    mutex_t inv_lock;               // lock on list of invariants
+    mutex_t inv_lock;               // lock on list of invariants and finals
     unsigned int ninvs;             // number of invariants
     struct invariant *invs;         // list of invariants
     bool inv_pre;                   // some invariant uses "pre"
+    unsigned int nfinals;           // #finally predicates
+    unsigned int *finals;           // program counters of finally preds
 
     struct graph graph;             // the Kripke structure
     hAtomic(unsigned int) atodo;
