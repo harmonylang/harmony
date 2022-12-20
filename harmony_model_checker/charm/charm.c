@@ -594,7 +594,8 @@ static bool onestep(
 
         if (infloop_detect || instrcnt > 1000) {
             if (infloop == NULL) {
-                infloop = dict_new("infloop1", 0, 0, 0, false);
+                infloop = dict_new("infloop1", sizeof(unsigned int),
+                                                0, 0, false);
             }
 
             int ctxsize = ctx_size(step->ctx);
@@ -603,12 +604,19 @@ static bool onestep(
             memcpy(combo, step->ctx, ctxsize);
             memcpy(combo + ctxsize, sc, state_size(sc));
             bool new;
-            dict_insert(infloop, NULL, combo, combosize, &new);
+            unsigned int *loc = dict_insert(infloop, NULL, combo, combosize, &new);
             free(combo);
-            if (!new) {
+            if (new) {
+                *loc = instrcnt;
+            }
+            else {
                 if (infloop_detect) {
-                    value_ctx_failure(step->ctx, &step->engine, "infinite loop");
-                    infinite_loop = true;
+                    // printf("INFLOOP %u - %u\n", *loc, instrcnt);
+                    if (*loc != 0) {
+                        instrcnt = *loc;
+                    }
+                    // value_ctx_failure(step->ctx, &step->engine, "infinite loop");
+                    // infinite_loop = true;
                     break;
                 }
                 else {
@@ -2697,7 +2705,12 @@ int main(int argc, char **argv){
                     nbad++;
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_TERMINATION;
-                    f->edge = node->to_parent;
+                    if (node->fwd != NULL && node->fwd->fwdnext == NULL) {
+                        f->edge = node->fwd;
+                    }
+                    else {
+                        f->edge = node->to_parent;
+                    }
                     minheap_insert(global->failures, f);
                     // break;
                 }
