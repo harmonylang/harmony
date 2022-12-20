@@ -33,6 +33,7 @@
 #include "thread.h"
 #include "spawn.h"
 
+#define MAX_STEPS       4096        // limit on partial order reduction
 #define WALLOC_CHUNK    (16 * 1024 * 1024)
 
 static unsigned int oldpid = 0;
@@ -623,6 +624,10 @@ static bool onestep(
         assert(step->ctx->pc != pc);
 		assert(step->ctx->pc >= 0);
 		assert(step->ctx->pc < global->code.len);
+
+        if (step->ctx->atomic == 0 && instrcnt > MAX_STEPS) {
+            break;
+        }
 
         /* Peek at the next instruction.
          */
