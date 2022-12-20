@@ -235,7 +235,6 @@ void spawn_thread(struct global *global, struct state *state, struct context *ct
 bool predicate_check(struct global *global, struct state *sc, struct step *step){
     assert(!step->ctx->failed);
     assert(step->ctx->sp == 1);     // just the argument
-    printf("PC %s\n", value_string(ctx_stack(step->ctx)[0]));
     while (!step->ctx->terminated) {
         struct op_info *oi = global->code.instrs[step->ctx->pc].oi;
 
@@ -434,7 +433,7 @@ static void process_edge(struct worker *w, struct edge *edge, ht_lock_t *lock) {
                 unsigned int fin = check_finals(w, next, &w->inv_step);
                 if (fin != 0) {
                     struct failure *f = new_alloc(struct failure);
-                    f->type = FAIL_INVARIANT;
+                    f->type = FAIL_FINALLY;
                     f->edge = edge;
                     f->next = w->failures;
                     f->address = VALUE_TO_PC(fin);
@@ -2957,6 +2956,14 @@ int main(int argc, char **argv){
                 fprintf(out, "  \"invpc\": %d,\n", (int) VALUE_FROM_PC(bad->address));
             }
             break;
+        case FAIL_FINALLY:
+            {
+                printf("Finally Predicate Violation\n");
+                assert(VALUE_TYPE(bad->address) == VALUE_PC);
+                fprintf(out, "  \"issue\": \"Finally predicate violation\",\n");
+                fprintf(out, "  \"finpc\": %d,\n", (int) VALUE_FROM_PC(bad->address));
+            }
+            break;
         case FAIL_BEHAVIOR:
             printf("Behavior Violation: terminal state not final\n");
             fprintf(out, "  \"issue\": \"Behavior violation: terminal state not final\",\n");
@@ -3003,6 +3010,42 @@ int main(int argc, char **argv){
             args[0] = bad->edge->src->state->vars;
             args[1] = bad->edge->dst->state->vars;
             value_ctx_push(inv_ctx, value_put_list(&engine, args, sizeof(args)));
+
+            hvalue_t inv_context = value_put_context(&engine, inv_ctx);
+
+            edge = calloc(1, sizeof(struct edge));
+            edge->src = edge->dst = bad->edge->dst;
+            edge->ctx = inv_context;
+            edge->choice = 0;
+            edge->interrupt = false;
+            edge->weight = 0;
+            edge->after = inv_context;
+            edge->ai = NULL;
+            edge->nlog = 0;
+            edge->nsteps = 10000000;
+
+            global->processes = realloc(global->processes, (global->nprocesses + 1) * sizeof(hvalue_t));
+            global->callstacks = realloc(global->callstacks, (global->nprocesses + 1) * sizeof(struct callstack *));
+            global->processes[global->nprocesses] = inv_context;
+            struct callstack *cs = new_alloc(struct callstack);
+            cs->pc = inv_ctx->pc;
+            cs->arg = VALUE_LIST;
+            cs->vars = VALUE_DICT;
+            cs->return_address = (inv_ctx->pc << CALLTYPE_BITS) | CALLTYPE_PROCESS;
+            global->callstacks[global->nprocesses] = cs;
+            global->nprocesses++;
+        }
+        // TODO: Should be able to reuse more from last case
+        else if (bad->type == FAIL_FINALLY) {
+            struct context *inv_ctx = calloc(1, sizeof(struct context) +
+                                MAX_CONTEXT_STACK * sizeof(hvalue_t));
+            inv_ctx->pc = VALUE_FROM_PC(bad->address);
+            inv_ctx->vars = VALUE_DICT;
+            inv_ctx->atomic = 1;
+            inv_ctx->atomicFlag = true;
+            inv_ctx->readonly = 1;
+
+            value_ctx_push(inv_ctx, VALUE_LIST);
 
             hvalue_t inv_context = value_put_context(&engine, inv_ctx);
 

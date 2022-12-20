@@ -1213,6 +1213,7 @@ void op_Frame(const void *env, struct state *state, struct step *step, struct gl
     // match argument against parameters
     var_match(step->ctx, ef->args, &step->engine, arg);
     if (step->ctx->failed) {
+        printf("Frame match failed\n");
         return;
     }
 
