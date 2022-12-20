@@ -428,7 +428,7 @@ static void process_edge(struct worker *w, struct edge *edge, ht_lock_t *lock) {
                     break;
                 }
             }
-            if (!all_eternal) {
+            if (all_eternal) {
                 printf("FINAL STATE\n");
                 unsigned int fin = check_finals(w, next, &w->inv_step);
                 if (fin != 0) {
