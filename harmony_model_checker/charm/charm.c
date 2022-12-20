@@ -479,7 +479,7 @@ static bool onestep(
     // Copy the choice
     hvalue_t choice_copy = choice;
 
-    bool choosing = false, infinite_loop = false;
+    bool choosing = false;
     struct dict *infloop = NULL;        // infinite loop detector
     unsigned int instrcnt = 0;
 #ifdef HEAP_ALLOC
@@ -622,8 +622,6 @@ static bool onestep(
                     if (*loc != 0) {
                         instrcnt = *loc;
                     }
-                    // value_ctx_failure(step->ctx, &step->engine, "infinite loop");
-                    // infinite_loop = true;
                     break;
                 }
                 else {
@@ -805,7 +803,7 @@ static bool onestep(
 
     if (step->ctx->failed) {
         struct failure *f = new_alloc(struct failure);
-        f->type = infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
+        f->type = FAIL_SAFETY;
         f->edge = edge;
         f->next = w->failures;
         w->failures = f;
