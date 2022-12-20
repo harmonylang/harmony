@@ -1209,9 +1209,9 @@ class FinallyOp(Op):
             self.pc = map[self.pc].pc
 
 class InvariantOp(Op):
-    def __init__(self, pc):
+    def __init__(self, pc, uses_pre):
         self.pc = pc
-        self.uses_pre = True        # invariant optimization
+        self.uses_pre = uses_pre        # invariant optimization
 
     def __repr__(self):
         return "Invariant " + str(self.pc)

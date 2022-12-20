@@ -1210,7 +1210,7 @@ class InvariantAST(AST):
         result = ("result", file, line, column)
         code.append(ReturnOp(result, AddressValue(None, [])), self.token, self.endtoken, stmt=stmt)
         code.nextLabel(endlabel)
-        code.append(InvariantOp(startlabel), self.token, self.endtoken, stmt=stmt)
+        code.append(InvariantOp(startlabel, ns.uses_pre), self.token, self.endtoken, stmt=stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_lambda(self, *args, **kwargs)
