@@ -1,26 +1,3 @@
-const NREPLICAS = 3     # number of replicas
-const NOPS = 3          # number of operations (or clients)
-
-network = {}            # the network is a set of messages
-
-def send(self, dst, msg):           # send msg to replica dst
-    atomically network |= { (dst, (self, msg)) }
-
-def broadcast(self, msg):           # broadcast msg to all
-    atomically for dst in {1..NREPLICAS}:
-        network |= { (dst, (self, msg)) }
-
-def receive(self) returns msgs:     # return messages for me
-    msgs = { payload for (dst, payload) in network where (dst == self) }
-
-def crash(self):                    # server 'self' is crashing
-    broadcast(self, "crash")        # notify all other replicas
-    stop()
-
-def is_prefix(hist1, hist2) returns result: # hist1 is a strict prefix of hist2
-    result = (len(hist1) < len(hist2)) and
-                all(hist1[i] == hist2[i] for i in {0..len(hist1)-1})
-
 def replica(self, immortal):        # replica 'self'
     if not immortal:        # if not immortal, crash sometime
         trap crash(self)
