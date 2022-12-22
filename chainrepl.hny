@@ -1,0 +1,65 @@
+import list, action
+
+const N = 3
+const VALUES = { "a", "b" }
+
+# Global state
+procs = [{ .live: True, .log: [], .detected: {}, .received: {} },] * N
+
+# If p is left of q in the chain, then q's log is a prefix of p's
+invariant all(list.startswith(procs[p].log, procs[q].log)
+                    for p in {0..N-1} where procs[p].live
+                    for q in {p+1..N-1} where procs[q].live)
+
+# get_conf(p) returns the configuration according to process p
+const get_conf = lambda(p): [ q for q in {0..N-1}
+                                    where q not in procs[p].detected ] end
+
+# is_head(p) returns whether process p thinks it's the head
+const is_head = lambda(p): get_conf(p)[0] == p end
+
+# is_successor(self, p) returns whether self thinks p is its successor
+def is_successor(self, p):
+    let conf = get_conf(self)
+    let me = list.index(conf, self):
+        result = (me < (len(conf) - 1)) and (p == conf[me + 1])
+
+def do_gotClientUpdate(self, v):
+    procs[self].log += [v,]
+
+const gotClientUpdate = lambda(): { (do_gotClientUpdate, (p, v))
+    for p in {0..N-1} where procs[p].live and is_head(p)
+    for v in VALUES where v not in procs[p].log } end
+
+def do_sendLog(self, p):
+    procs[p].received |= { procs[self].log }
+
+const sendLog = lambda(): { (do_sendLog, (p, q))
+    for p in {0..N-1} where procs[p].live and is_head(p)
+    for q in {0..N-1}
+        where is_successor(p, q) and (procs[p].log not in procs[q].received) } end
+
+def do_gotLog(self, log):
+    procs[self].log = log
+
+const gotLog = lambda(): { (do_gotLog, (p, log))
+    for p in {0..N-1} where procs[p].live
+    for log in procs[p].received
+      where (len(procs[p].log) < len(log)) and list.startswith(log, procs[p].log) } end
+
+def do_crash(self):
+    procs[self].live = False
+
+const crash = lambda(): { (do_crash, p)
+    for p in {0..N-1} where procs[p].live and
+        not all((not procs[q].live) for q in {0..N-1} where (q != p)) } end
+
+def do_detect(self, p):
+    procs[self].detected |= { p }
+
+const detect = lambda(): { (do_detect, (p, q))
+    for p in {0..N-1} where procs[p].live
+    for q in {0..N-1} where (not procs[q].live) and
+                (q not in procs[p].detected) } end
+
+action.explore({gotClientUpdate, sendLog, gotLog, crash, detect})

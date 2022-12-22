@@ -1,0 +1,59 @@
+const NREPLICAS = 3     # number of replicas
+const NOPS = 3          # number of operations (or clients)
+
+network = {}            # the network is a set of messages
+
+def send(self, dst, msg):           # send msg to replica dst
+    atomically network |= { (dst, (self, msg)) }
+
+def broadcast(self, msg):           # broadcast msg to all
+    atomically for dst in {1..NREPLICAS}:
+        network |= { (dst, (self, msg)) }
+
+def receive(self) returns msgs:     # return messages for me
+    msgs = { payload for (dst, payload) in network where (dst == self) }
+
+def crash(self):                    # server 'self' is crashing
+    broadcast(self, "crash")        # notify all other replicas
+    stop()
+
+def is_prefix(hist1, hist2) returns result: # hist1 is a strict prefix of hist2
+    result = (len(hist1) < len(hist2)) and
+                all(hist1[i] == hist2[i] for i in {0..len(hist1)-1})
+
+def replica(self, immortal):        # replica 'self'
+    if not immortal:        # if not immortal, crash sometime
+        trap crash(self)
+
+    var received  = {}              # messages received
+    var requests  = {}              # client requests received
+    var config    = {1..NREPLICAS}  # servers in chain configuration
+    var hist      = []              # history of client requests
+    var delivered = 0               # number requests delivered
+
+    while True:
+        atomically when exists (src, payload) in receive(self) - received:
+            received |= { (src, payload ) }     # don't handle twice
+            if src == "client":                 # received a client request
+                requests |= { payload }
+            elif payload == "crash":            # a server crashed
+                config -= { src }               # remove from configuration
+            elif (self != min(config)) and is_prefix(hist, payload):
+                hist = payload    # received better hist from predecessor
+
+            if self == min(config):     # I'm the head
+                for update in requests where update not in hist:
+                    hist += [update,]
+            if self == max(config):     # I'm the tail, deliver updates
+                while delivered < len(hist):
+                    print(self, hist[delivered])
+                    delivered += 1
+            else:                  # Not tail: send hist to successor
+                let successor = min(i for i in config where i > self):
+                    send(self, successor, hist)
+
+let immortal = choose {1..NREPLICAS}:
+    for i in {1..NREPLICAS}:
+        spawn eternal replica(i, i == immortal)
+for i in {1..NOPS}:
+    spawn broadcast("client", i)
