@@ -230,6 +230,10 @@ class ConstantAST(AST):
     def __repr__(self):
         return "ConstantAST" + str(self.const)
 
+    def ph1(self, scope, code, stmt):
+        (lexeme, file, line, column) = self.const
+        code.append(PushOp((AddressValue(lexeme, []), file, line, column)), self.token, self.endtoken, stmt=stmt)
+
     def compile(self, scope, code, stmt):
         code.append(PushOp(self.const), self.token, self.endtoken, stmt=stmt)
 
@@ -272,13 +276,7 @@ class NameAST(AST):
         (t, v) = scope.lookup(self.name)
         if t in {"constant", "local-const"}:
             (lexeme, file, line, column) = v
-            raise HarmonyCompilerError(
-                filename=file,
-                lexeme=lexeme,
-                # stmt=stmt,
-                column=column,
-                message="constant cannot be an lvalue: %s" % str(self.name),
-            )
+            code.append(PushOp((AddressValue(lexeme, []), file, line, column)), self.token, self.endtoken, stmt=stmt)
         elif t == "local-var":
             (lexeme, file, line, column) = v
             # TODO: what if lexeme == "_"?
@@ -703,11 +701,9 @@ class ApplyAST(AST):
                 )
 
         if isinstance(self.method, ConstantAST):
-            (t2, v2) = v.lookup(self.arg.const)
-            assert t2 == "constant"
-            code.append(PushOp(v2), self.token, self.endtoken, stmt=stmt)
+            code.append(PushOp(self.method.const), self.token, self.endtoken, stmt=stmt)
             self.arg.compile(scope, code, stmt)
-            code.append(ClosureOp(), self.token, self.endtoken, stmt=stmt)
+            code.append(NaryOp(("Closure", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
         else:
             self.method.ph1(scope, code, stmt)
             self.arg.compile(scope, code, stmt)
@@ -968,20 +964,6 @@ class AddressAST(AST):
         if isinstance(lv, NameAST):
             (t, v) = scope.lookup(lv.name)
             lexeme, file, line, column = lv.name
-            if t in {"local-var", "local-const"}:
-                raise HarmonyCompilerError(
-                    filename=file,
-                    lexeme=lexeme,
-                    column=column,
-                    message="Can't take address of local variable %s" % str(lv),
-                )
-            if t == "constant":
-                raise HarmonyCompilerError(
-                    filename=file,
-                    lexeme=lexeme,
-                    column=column,
-                    message="Can't take address of constant %s" % str(lv),
-                )
             if t == "module":
                 raise HarmonyCompilerError(
                     filename=file,
@@ -995,7 +977,7 @@ class AddressAST(AST):
             pass
         elif isinstance(lv, TupleAST):
             pass
-        else:
+        elif False:
             lexeme, file, line, column = lv.token if isinstance(lv, AST) else (None, None, None, None)
             raise HarmonyCompilerError(
                 filename=file,
