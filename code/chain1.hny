@@ -1,5 +1,5 @@
 const NREPLICAS = 3     # number of replicas
-const NOPS = 3          # number of operations (or clients)
+const NOPS = 2          # number of operations (or clients)
 
 network = {}            # the network is a set of messages
 

@@ -1,5 +1,5 @@
 const NREPLICAS = 3     # number of replicas
-const NOPS = 3          # number of operations (or clients)
+const NOPS = 2          # number of operations (or clients)
 
 network = {}            # the network is a set of messages
 
@@ -52,8 +52,12 @@ def replica(self, immortal):        # replica 'self'
                 let successor = min(i for i in config where i > self):
                     send(self, successor, hist)
 
+def client(self):
+    print(self)
+    broadcast("client", self)
+
 let immortal = choose {1..NREPLICAS}:
     for i in {1..NREPLICAS}:
         spawn eternal replica(i, i == immortal)
 for i in {1..NOPS}:
-    spawn broadcast("client", i)
+    spawn client(i)

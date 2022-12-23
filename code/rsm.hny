@@ -1,0 +1,30 @@
+const NREPLICAS = 3     # number of replicas
+const NOPS = 2          # number of operations
+
+network = []            # the network is a queue of messages
+
+def crash():
+    stop()
+
+def send(msg):
+    atomically network += [msg,]
+
+def replica(self, immortal):
+    if not immortal:
+        trap crash()
+    var delivered = 0
+    while True:
+        atomically when len(network) > delivered:
+            let msg = network[delivered]:
+                print(self, msg)
+                delivered += 1
+
+def client(self):
+    print(self)
+    send(self)
+
+let immortal = choose {1..NREPLICAS}:
+    for i in {1..NREPLICAS}:
+        spawn eternal replica(i, i == immortal)
+for i in {1..NOPS}:
+    spawn client(i)
