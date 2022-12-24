@@ -2076,9 +2076,20 @@ static bool store_match(struct state *state, struct step *step,
         value_ctx_failure(step->ctx, &step->engine, "Store: address is None");
         return false;
     }
-
     unsigned int size;
     hvalue_t *indices = value_get(av, &size);
+
+    if (VALUE_TYPE(av) != VALUE_ADDRESS_SHARED && VALUE_TYPE(av) != VALUE_ADDRESS_PRIVATE) {
+        char *p = value_string(av);
+        value_ctx_failure(step->ctx, &step->engine, "Store %s: not an address", p);
+        free(p);
+        return false;
+    }
+    if (av == VALUE_ADDRESS_SHARED || av == VALUE_ADDRESS_PRIVATE) {
+        value_ctx_failure(step->ctx, &step->engine, "Store: address is None");
+        return false;
+    }
+
     if (indices[0] != VALUE_PC_SHARED) {
         char *p = value_string(av);
         value_ctx_failure(step->ctx, &step->engine, "Store %s: not the address of a shared variable", p);
@@ -2683,6 +2694,20 @@ hvalue_t f_add_arg(struct state *state, struct step *step, hvalue_t *args, int n
     hvalue_t *list = value_get(args[1], &size);
     assert(size > 0);
 
+    if (size == sizeof(hvalue_t) && VALUE_TYPE(list[0]) == VALUE_LIST) {
+        if (VALUE_TYPE(args[0]) != VALUE_INT) {
+            return value_ctx_failure(step->ctx, &step->engine, "AddArg: not an integer");
+        }
+        unsigned int n;
+        hvalue_t *tuple = value_get(list[0], &n);
+        n /= sizeof(hvalue_t);
+        unsigned int index = VALUE_FROM_INT(args[0]);
+        if (index >= n) {
+            return value_ctx_failure(step->ctx, &step->engine, "AddArg: index out of range");
+        }
+        return value_put_address(&step->engine, &tuple[index], sizeof(hvalue_t));
+    }
+
 #ifdef HEAP_ALLOC
     char *nl = malloc(size + sizeof(hvalue_t));
     memcpy(nl, list, size);
@@ -2699,31 +2724,10 @@ hvalue_t f_add_arg(struct state *state, struct step *step, hvalue_t *args, int n
 }
 
 hvalue_t f_closure(struct state *state, struct step *step, hvalue_t *args, int n){
-    assert(n == 2);
-
-    // Sanity check on function
-    switch (VALUE_TYPE(args[1])) {
-    case VALUE_BOOL:
-    case VALUE_INT:
-    case VALUE_SET:
-    case VALUE_ADDRESS_SHARED:
-    case VALUE_ADDRESS_PRIVATE:
-    case VALUE_CONTEXT:
-        {
-            char *p = value_string(args[1]);
-            value_ctx_failure(step->ctx, &step->engine, "Closure: bad function type: %s", p);
-            free(p);
-            return 0;
-        }
-    case VALUE_ATOM:
-    case VALUE_PC:
-    case VALUE_LIST:
-    case VALUE_DICT:
-        break;
-    default:
-        assert(false);
+    if (n == 1) {
+        return value_put_address(&step->engine, &args[0], sizeof(hvalue_t));
     }
-
+    assert(n == 2);
     hvalue_t list[2];
     list[0] = args[1];
     list[1] = args[0];

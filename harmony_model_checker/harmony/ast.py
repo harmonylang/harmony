@@ -116,6 +116,18 @@ class AST:
             message='Cannot use in left-hand side expression: %s' % str(self)
         )
 
+    # This is supposed to push the address of an lvalue
+    def address(self, scope, code, stmt):
+        lexeme, file, line, column = self.token
+        assert False, str(self)
+        raise HarmonyCompilerError(
+            lexeme=lexeme,
+            filename=file,
+            # stmt=stmt,
+            column=column,
+            message='Cannot take address of %s' % str(self)
+        )
+
     def gencode(self, scope: Scope, code: Code, stmt):
         assert False, self
 
@@ -234,7 +246,12 @@ class ConstantAST(AST):
         (lexeme, file, line, column) = self.const
         code.append(PushOp((AddressValue(lexeme, []), file, line, column)), self.token, self.endtoken, stmt=stmt)
 
+    def address(self, scope, code, stmt):
+        (lexeme, file, line, column) = self.const
+        code.append(PushOp((AddressValue(lexeme, []), file, line, column)), self.token, self.endtoken, stmt=stmt)
+
     def ph2(self, scope, code, skip, start, stop, stmt):
+        assert False
         if skip > 0:
             code.append(MoveOp(skip + 2), self.token, self.endtoken, stmt=stmt)
             code.append(MoveOp(2), self.token, self.endtoken, stmt=stmt)
@@ -296,7 +313,11 @@ class NameAST(AST):
             else:
                 code.append(PushOp((AddressValue(PcValue(-1), [scope.prefix + '$' + lexeme]), file, line, column)), self.token, self.endtoken, stmt=stmt)
 
+    def address(self, scope, code, stmt):
+        return self.ph1(scope, code, stmt)
+
     def ph2(self, scope, code, skip, start, stop, stmt):
+        assert False
         if skip > 0:
             code.append(MoveOp(skip + 2), self.token, self.endtoken, stmt=stmt)
             code.append(MoveOp(2), self.token, self.endtoken, stmt=stmt)
@@ -401,7 +422,13 @@ class TupleAST(AST):
             lv.ph1(scope, code, stmt)
             code.append(NaryOp(("ListAdd", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
 
+    def address(self, scope, code, stmt):
+        self.gencode(scope, code, stmt)
+        (lexeme, file, line, column) = self.token
+        code.append(NaryOp(("Closure", file, line, column), 1), self.token, self.endtoken, stmt=stmt)
+
     def ph2(self, scope, code, skip, start, stop, stmt):
+        assert False
         n = len(self.list)
         code.append(SplitOp(n), self.token, self.endtoken, stmt=stmt)
         for lv in reversed(self.list):
@@ -719,7 +746,34 @@ class ApplyAST(AST):
             code.append(NaryOp(("AddArg", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
             # code.append(AddressOp(), self.token, self.endtoken, stmt=stmt)
 
+    def address(self, scope, code, stmt):
+        lexeme, file, line, column = self.token
+
+        # See if it's of the form "module.constant":
+        if isinstance(self.method, NameAST):
+            (t, v) = scope.lookup(self.method.name)
+            if t == "module" and isinstance(self.arg, ConstantAST) and isinstance(self.arg.const[0], str):
+                (t2, v2) = v.lookup(self.arg.const)
+                assert t2 == "constant"
+                raise HarmonyCompilerError(
+                    message="Cannot assign to constant %s %s" % (self.method.name, self.arg.const),
+                    lexeme=lexeme,
+                    filename=file,
+                    column=column
+                )
+
+        if isinstance(self.method, ConstantAST):
+            code.append(PushOp(self.method.const), self.token, self.endtoken, stmt=stmt)
+            self.arg.compile(scope, code, stmt)
+            code.append(NaryOp(("Closure", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
+        else:
+            self.method.address(scope, code, stmt)
+            self.arg.compile(scope, code, stmt)
+            code.append(NaryOp(("AddArg", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
+            # code.append(AddressOp(), self.token, self.endtoken, stmt=stmt)
+
     def ph2(self, scope, code, skip, start, stop, stmt):
+        assert False
         if skip > 0:
             code.append(MoveOp(skip + 2), self.token, self.endtoken, stmt=stmt)
             code.append(MoveOp(2), self.token, self.endtoken, stmt=stmt)
@@ -750,6 +804,7 @@ class PointerAST(AST):
         self.expr.compile(scope, code, stmt)
 
     def ph2(self, scope, code, skip, start, stop, stmt):
+        assert False
         if skip > 0:
             code.append(MoveOp(skip + 2), self.token, self.endtoken, stmt=stmt)
             code.append(MoveOp(2), self.token, self.endtoken, stmt=stmt)
@@ -998,7 +1053,7 @@ class AddressAST(AST):
 
     def gencode(self, scope, code, stmt):
         self.check(self.lv, scope)
-        self.lv.ph1(scope, code, stmt)
+        self.lv.address(scope, code, stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_address(self, *args, **kwargs)
