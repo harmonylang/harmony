@@ -2079,20 +2079,28 @@ static bool store_match(struct state *state, struct step *step,
         return false;
     }
 
-    if (VALUE_TYPE(av) != VALUE_ADDRESS_SHARED && VALUE_TYPE(av) != VALUE_ADDRESS_PRIVATE) {
-        char *p = value_string(av);
-        value_ctx_failure(step->ctx, &step->engine, "Store %s: not an address", p);
-        free(p);
-        return false;
-    }
-    if (av == VALUE_ADDRESS_SHARED || av == VALUE_ADDRESS_PRIVATE) {
-        value_ctx_failure(step->ctx, &step->engine, "Store: address is None");
-        return false;
-    }
-
     unsigned int size;
     hvalue_t *indices = value_get(av, &size);
     size /= sizeof(hvalue_t);
+
+    if (VALUE_TYPE(indices[0]) == VALUE_BOOL ||
+            VALUE_TYPE(indices[0]) == VALUE_INT ||
+            VALUE_TYPE(indices[0]) == VALUE_ATOM ||
+            VALUE_TYPE(indices[0]) == VALUE_LIST ||
+            VALUE_TYPE(indices[0]) == VALUE_DICT ||
+            VALUE_TYPE(indices[0]) == VALUE_SET ||
+            VALUE_TYPE(indices[0]) == VALUE_ADDRESS_SHARED) {
+        if (indices[0] != v || size != 1) {
+            char *addr = value_string(av);
+            char *val = value_string(v);
+            value_ctx_failure(step->ctx, &step->engine, "Store %s: value is %s", addr, val);
+            free(addr);
+            free(val);
+            return false;
+        }
+        return true;
+    }
+
     if (indices[0] == VALUE_PC_LOCAL) {
         if (step->keep_callstack) {
             char *x = indices_string(indices, size);

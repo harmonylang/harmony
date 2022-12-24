@@ -102,7 +102,14 @@ class AST:
 
     # Return local var name if local access
     def localVar(self, scope):
-        assert False, self
+        lexeme, file, line, column = self.token
+        raise HarmonyCompilerError(
+            lexeme=lexeme,
+            filename=file,
+            # stmt=stmt,
+            column=column,
+            message='Not a variable: %s' % str(self)
+        )
 
     # This is supposed to push the address of an lvalue
     def ph1(self, scope, code, stmt):
