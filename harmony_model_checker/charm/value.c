@@ -1553,6 +1553,7 @@ hvalue_t value_ctx_failure(struct context *ctx, struct engine *engine, char *fmt
     va_start(args, fmt);
     strbuf_vprintf(&sb, fmt, args);
     va_end(args);
+    // printf("FAIL %.*s\n", strbuf_getlen(&sb), strbuf_getstr(&sb));
     ctx_failure(ctx) = value_put_atom(engine, strbuf_getstr(&sb), strbuf_getlen(&sb));
     ctx->failed = true;
     strbuf_deinit(&sb);

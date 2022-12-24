@@ -107,7 +107,7 @@ class AST:
     # This is supposed to push the address of an lvalue
     def ph1(self, scope, code, stmt):
         lexeme, file, line, column = self.token
-        assert False, str(self)
+        # assert False, str(self)
         raise HarmonyCompilerError(
             lexeme=lexeme,
             filename=file,
@@ -251,7 +251,6 @@ class ConstantAST(AST):
         code.append(PushOp((AddressValue(lexeme, []), file, line, column)), self.token, self.endtoken, stmt=stmt)
 
     def ph2(self, scope, code, skip, start, stop, stmt):
-        assert False
         if skip > 0:
             code.append(MoveOp(skip + 2), self.token, self.endtoken, stmt=stmt)
             code.append(MoveOp(2), self.token, self.endtoken, stmt=stmt)
@@ -317,7 +316,6 @@ class NameAST(AST):
         return self.ph1(scope, code, stmt)
 
     def ph2(self, scope, code, skip, start, stop, stmt):
-        assert False
         if skip > 0:
             code.append(MoveOp(skip + 2), self.token, self.endtoken, stmt=stmt)
             code.append(MoveOp(2), self.token, self.endtoken, stmt=stmt)
@@ -417,10 +415,10 @@ class TupleAST(AST):
 
     def ph1(self, scope, code, stmt):
         (lexeme, file, line, column) = self.token
-        code.append(PushOp((emptytuple, file, line, column), reason="building a tuple"), self.token, self.endtoken, stmt=stmt)
+        # code.append(PushOp((emptytuple, file, line, column), reason="building a tuple"), self.token, self.endtoken, stmt=stmt)
         for lv in self.list:
             lv.ph1(scope, code, stmt)
-            code.append(NaryOp(("ListAdd", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
+            # code.append(NaryOp(("ListAdd", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
 
     def address(self, scope, code, stmt):
         self.gencode(scope, code, stmt)
@@ -428,7 +426,6 @@ class TupleAST(AST):
         code.append(NaryOp(("Closure", file, line, column), 1), self.token, self.endtoken, stmt=stmt)
 
     def ph2(self, scope, code, skip, start, stop, stmt):
-        assert False
         n = len(self.list)
         code.append(SplitOp(n), self.token, self.endtoken, stmt=stmt)
         for lv in reversed(self.list):
@@ -457,6 +454,19 @@ class DictAST(AST):
             k.compile(scope, code, stmt)
             v.compile(scope, code, stmt)
             code.append(NaryOp(("DictAdd", None, None, None), 3), self.token, self.endtoken, stmt=stmt)
+
+    def XXXph1(self, scope, code, stmt):
+        (lexeme, file, line, column) = self.token
+        code.append(PushOp((emptydict, None, None, None)), self.token, self.endtoken, stmt=stmt)
+        for (k, v) in self.record:
+            k.compile(scope, code, stmt)
+            v.ph1(scope, code, stmt)
+            code.append(NaryOp(("DictAdd", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
+
+    def address(self, scope, code, stmt):
+        self.gencode(scope, code, stmt)
+        (lexeme, file, line, column) = self.token
+        code.append(NaryOp(("Closure", file, line, column), 1), self.token, self.endtoken, stmt=stmt)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_dict(self, *args, **kwargs)
@@ -773,7 +783,6 @@ class ApplyAST(AST):
             # code.append(AddressOp(), self.token, self.endtoken, stmt=stmt)
 
     def ph2(self, scope, code, skip, start, stop, stmt):
-        assert False
         if skip > 0:
             code.append(MoveOp(skip + 2), self.token, self.endtoken, stmt=stmt)
             code.append(MoveOp(2), self.token, self.endtoken, stmt=stmt)
@@ -803,8 +812,10 @@ class PointerAST(AST):
     def ph1(self, scope, code, stmt):
         self.expr.compile(scope, code, stmt)
 
+    def address(self, scope, code, stmt):
+        self.expr.compile(scope, code, stmt)
+
     def ph2(self, scope, code, skip, start, stop, stmt):
-        assert False
         if skip > 0:
             code.append(MoveOp(skip + 2), self.token, self.endtoken, stmt=stmt)
             code.append(MoveOp(2), self.token, self.endtoken, stmt=stmt)
@@ -870,8 +881,11 @@ class AssignmentAST(AST):
                     st = StoreOp(lvs.name, lvs.name, scope.prefix) if t == "global" else StoreVarOp(lvs.name)
                     code.append(st, lvs.token, self.ops[skip], stmt=stmt)
             else:
-                # lvs.ph2(scope, code, skip, lvs.token, self.ops[skip], stmt)
-                code.append(StoreOp(None, self.token, None), lvs.token, self.ops[skip], stmt=stmt)
+                # if skip > 0:
+                #     code.append(MoveOp(skip + 2), self.token, self.endtoken, stmt=stmt)
+                #     code.append(MoveOp(2), self.token, self.endtoken, stmt=stmt)
+                # code.append(StoreOp(None, self.token, None), lvs.token, self.ops[skip], stmt=stmt)
+                lvs.ph2(scope, code, skip, lvs.token, self.ops[skip], stmt)
 
         if self.atomically:
             code.append(AtomicDecOp(), self.token, self.endtoken, stmt=stmt)

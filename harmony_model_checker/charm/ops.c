@@ -2047,6 +2047,7 @@ void next_Store(const void *env, struct context *ctx, struct global *global, FIL
 
 static bool store_match(struct state *state, struct step *step,
                     struct global *global, hvalue_t av, hvalue_t v){
+#ifdef notdef
     if (VALUE_TYPE(av) == VALUE_LIST) {
         if (VALUE_TYPE(v) != VALUE_LIST) {
             value_ctx_failure(step->ctx, &step->engine, "Store: value not a tuple");
@@ -2066,6 +2067,7 @@ static bool store_match(struct state *state, struct step *step,
         }
         return true;
     }
+#endif // notdef
     if (VALUE_TYPE(av) != VALUE_ADDRESS_SHARED && VALUE_TYPE(av) != VALUE_ADDRESS_PRIVATE) {
         char *p = value_string(av);
         value_ctx_failure(step->ctx, &step->engine, "Store %s: not an address", p);
@@ -2076,27 +2078,64 @@ static bool store_match(struct state *state, struct step *step,
         value_ctx_failure(step->ctx, &step->engine, "Store: address is None");
         return false;
     }
+
+    if (VALUE_TYPE(av) != VALUE_ADDRESS_SHARED && VALUE_TYPE(av) != VALUE_ADDRESS_PRIVATE) {
+        char *p = value_string(av);
+        value_ctx_failure(step->ctx, &step->engine, "Store %s: not an address", p);
+        free(p);
+        return false;
+    }
+    if (av == VALUE_ADDRESS_SHARED || av == VALUE_ADDRESS_PRIVATE) {
+        value_ctx_failure(step->ctx, &step->engine, "Store: address is None");
+        return false;
+    }
+
     unsigned int size;
     hvalue_t *indices = value_get(av, &size);
+    size /= sizeof(hvalue_t);
+    if (indices[0] == VALUE_PC_LOCAL) {
+        if (step->keep_callstack) {
+            char *x = indices_string(indices, size);
+            char *val = value_string(v);
+            strbuf_printf(&step->explain, "pop value (%s) and address (%s) and store locally", val, x);
+            free(x);
+            free(val);
+        }
 
-    if (VALUE_TYPE(av) != VALUE_ADDRESS_SHARED && VALUE_TYPE(av) != VALUE_ADDRESS_PRIVATE) {
-        char *p = value_string(av);
-        value_ctx_failure(step->ctx, &step->engine, "Store %s: not an address", p);
-        free(p);
-        return false;
-    }
-    if (av == VALUE_ADDRESS_SHARED || av == VALUE_ADDRESS_PRIVATE) {
-        value_ctx_failure(step->ctx, &step->engine, "Store: address is None");
-        return false;
-    }
+        bool result;
+        if (indices[1] == this_atom) {      // TODOADDR
+            assert(size > 2);
+            if (!step->ctx->extended) {
+                value_ctx_extend(step->ctx);
+            }
+            if (VALUE_TYPE(ctx_this(step->ctx)) != VALUE_DICT) {
+                value_ctx_failure(step->ctx, &step->engine, "Store: 'this' is not a dictionary");
+                return false;
+            }
+            result = ind_trystore(ctx_this(step->ctx), &indices[2], size - 2, v, &step->engine, &ctx_this(step->ctx));
+        }
 
+        else {
+            result = ind_trystore(step->ctx->vars, indices + 1, size - 1, v, &step->engine, &step->ctx->vars);
+        }
+        if (!result) {
+            char *x = indices_string(indices, size);
+            value_ctx_failure(step->ctx, &step->engine, "Store: bad local address: %s", x);
+            free(x);
+            return false;
+        }
+        return true;
+    }
     if (indices[0] != VALUE_PC_SHARED) {
         char *p = value_string(av);
         value_ctx_failure(step->ctx, &step->engine, "Store %s: not the address of a shared variable", p);
         free(p);
         return false;
     }
-    size /= sizeof(hvalue_t);
+    if (step->ctx->readonly > 0) {
+        value_ctx_failure(step->ctx, &step->engine, "Can't update state in assert or invariant (including acquiring locks)");
+        return false;
+    }
     ai_add(step, indices, size, is_sequential(global->seqs, indices, size));
     if (step->keep_callstack) {
         char *x = indices_string(indices, size);
@@ -2130,11 +2169,6 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
 
     assert(VALUE_TYPE(state->vars) == VALUE_DICT);
 
-    if (step->ctx->readonly > 0) {
-        value_ctx_failure(step->ctx, &step->engine, "Can't update state in assert or invariant (including acquiring locks)");
-        return;
-    }
-
     hvalue_t v = ctx_pop(step->ctx);
 
     if (es == 0) {
@@ -2144,6 +2178,10 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
         }
     }
     else {
+        if (step->ctx->readonly > 0) {
+            value_ctx_failure(step->ctx, &step->engine, "Can't update state in assert or invariant (including acquiring locks)");
+            return;
+        }
         if (step->keep_callstack) {
             char *x = indices_string(es->indices, es->n);
             char *val = value_string(v);
@@ -2187,7 +2225,7 @@ void op_StoreVar(const void *env, struct state *state, struct step *step, struct
         hvalue_t *indices = value_get(av, &size);
         if (indices[0] != VALUE_PC_LOCAL) {
             char *p = value_string(av);
-            value_ctx_failure(step->ctx, &step->engine, "DelVar %s: not the address of a method variable", p);
+            value_ctx_failure(step->ctx, &step->engine, "StoreVar %s: not the address of a method variable", p);
             free(p);
             return;
         }
@@ -2694,6 +2732,7 @@ hvalue_t f_add_arg(struct state *state, struct step *step, hvalue_t *args, int n
     hvalue_t *list = value_get(args[1], &size);
     assert(size > 0);
 
+#ifdef notdef
     if (size == sizeof(hvalue_t) && VALUE_TYPE(list[0]) == VALUE_LIST) {
         if (VALUE_TYPE(args[0]) != VALUE_INT) {
             return value_ctx_failure(step->ctx, &step->engine, "AddArg: not an integer");
@@ -2707,6 +2746,7 @@ hvalue_t f_add_arg(struct state *state, struct step *step, hvalue_t *args, int n
         }
         return value_put_address(&step->engine, &tuple[index], sizeof(hvalue_t));
     }
+#endif
 
 #ifdef HEAP_ALLOC
     char *nl = malloc(size + sizeof(hvalue_t));

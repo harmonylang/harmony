@@ -294,11 +294,11 @@ unsigned int check_invariants(struct worker *w, struct node *node,
         assert(strcmp(global->code.instrs[step->ctx->pc].oi->name, "Frame") == 0);
         bool b = predicate_check(global, state, step);
         if (step->ctx->failed) {
-            printf("Invariant evaluation failed: %s\n", value_string(ctx_failure(step->ctx)));
+            // printf("Invariant evaluation failed: %s\n", value_string(ctx_failure(step->ctx)));
             b = false;
         }
         if (!b) {
-            printf("INV %u %u failed\n", i, global->invs[i].pc);
+            // printf("INV %u %u failed\n", i, global->invs[i].pc);
             return global->invs[i].pc;
         }
     }
@@ -537,6 +537,7 @@ static bool onestep(
         w->profile[pc]++;       // for profiling
         struct instr *instrs = global->code.instrs;
         struct op_info *oi = instrs[pc].oi;
+        // printf("--> %u %s %u\n", pc, oi->name, step->ctx->sp);
         if (instrs[pc].choose) {
             assert(step->ctx->sp > 0);
             assert(choice != 0);
@@ -567,6 +568,7 @@ static bool onestep(
         }
 		assert(step->ctx->pc >= 0);
 		assert(step->ctx->pc < global->code.len);
+        // printf("<-- %u %s %u\n", pc, oi->name, step->ctx->sp);
 
         instrcnt++;
 
