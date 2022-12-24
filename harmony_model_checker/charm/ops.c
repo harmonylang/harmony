@@ -1046,6 +1046,20 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
     value_ctx_failure(step->ctx, &step->engine, "op_Cut: not an iterable type");
 }
 
+// For tracking data races
+static void ai_add(struct step *step, hvalue_t *indices, unsigned int n, bool load){
+    struct allocator *al = step->engine.allocator;
+    if (al != NULL) {
+        struct access_info *ai = (*al->alloc)(al->ctx, sizeof(*ai), true, false);
+        ai->indices = indices;
+        ai->n = n;
+        ai->atomic = step->ctx->atomic > 0;
+        ai->load = load;
+        ai->next = step->ai;
+        step->ai = ai;
+    }
+}
+
 void op_Del(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_Del *ed = env;
 
@@ -1078,11 +1092,7 @@ void op_Del(const void *env, struct state *state, struct step *step, struct glob
             return;
         }
         size /= sizeof(hvalue_t);
-        if (step->ai != NULL) {
-            step->ai->indices = indices;
-            step->ai->n = size;
-            step->ai->load = false;
-        }
+        ai_add(step, indices, size, false);
         hvalue_t nd;
         if (!ind_remove(state->vars, indices + 1, size - 1, &step->engine, &nd)) {
             value_ctx_failure(step->ctx, &step->engine, "Del: no such variable");
@@ -1093,11 +1103,7 @@ void op_Del(const void *env, struct state *state, struct step *step, struct glob
         }
     }
     else {
-        if (step->ai != NULL) {
-            step->ai->indices = ed->indices;
-            step->ai->n = ed->n;
-            step->ai->load = false;
-        }
+        ai_add(step, ed->indices, ed->n, false);
         hvalue_t nd;
         if (!ind_remove(state->vars, ed->indices + 1, ed->n - 1, &step->engine, &nd)) {
             value_ctx_failure(step->ctx, &step->engine, "Del: bad variable");
@@ -1449,11 +1455,7 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
             // Keep track for race detection
             // TODO.  Should it check the entire address?  Maybe part
             //        of it is not memory.
-            if (step->ai != NULL) {
-                step->ai->indices = indices;
-                step->ai->n = size;
-                step->ai->load = true;
-            }
+            ai_add(step, indices, size, true);
 
             do_Load(state, step, global, av, state->vars, indices + 1, size - 1);
         }
@@ -1476,11 +1478,7 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
             return;
         }
 
-        if (step->ai != NULL) {
-            step->ai->indices = el->indices;
-            step->ai->n = el->n;
-            step->ai->load = true;
-        }
+        ai_add(step, el->indices, el->n, true);
         hvalue_t v;
         unsigned int k = ind_tryload(&step->engine, state->vars, el->indices + 1, el->n - 1, &v);
         if (k != el->n - 1) {
@@ -2047,6 +2045,75 @@ void next_Store(const void *env, struct context *ctx, struct global *global, FIL
     }
 }
 
+static bool store_match(struct state *state, struct step *step,
+                    struct global *global, hvalue_t av, hvalue_t v){
+    if (VALUE_TYPE(av) == VALUE_LIST) {
+        if (VALUE_TYPE(v) != VALUE_LIST) {
+            value_ctx_failure(step->ctx, &step->engine, "Store: value not a tuple");
+            return false;
+        }
+        unsigned int lhssize, rhssize;
+        hvalue_t *lhs = value_get(av, &lhssize);
+        hvalue_t *rhs = value_get(v, &rhssize);
+        if (lhssize != rhssize) {
+            value_ctx_failure(step->ctx, &step->engine, "Store: tuple sizes don't match");
+            return false;
+        }
+        for (unsigned int i = 0; i < lhssize / sizeof(hvalue_t); i++) {
+            if (!store_match(state, step, global, lhs[i], rhs[i])) {
+                return false;
+            }
+        }
+        return true;
+    }
+    if (VALUE_TYPE(av) != VALUE_ADDRESS_SHARED && VALUE_TYPE(av) != VALUE_ADDRESS_PRIVATE) {
+        char *p = value_string(av);
+        value_ctx_failure(step->ctx, &step->engine, "Store %s: not an address", p);
+        free(p);
+        return false;
+    }
+    if (av == VALUE_ADDRESS_SHARED || av == VALUE_ADDRESS_PRIVATE) {
+        value_ctx_failure(step->ctx, &step->engine, "Store: address is None");
+        return false;
+    }
+
+    unsigned int size;
+    hvalue_t *indices = value_get(av, &size);
+    if (indices[0] != VALUE_PC_SHARED) {
+        char *p = value_string(av);
+        value_ctx_failure(step->ctx, &step->engine, "Store %s: not the address of a shared variable", p);
+        free(p);
+        return false;
+    }
+    size /= sizeof(hvalue_t);
+    ai_add(step, indices, size, is_sequential(global->seqs, indices, size));
+    if (step->keep_callstack) {
+        char *x = indices_string(indices, size);
+        char *val = value_string(v);
+        strbuf_printf(&step->explain, "pop value (%s) and address (%s) and store", val, x);
+        free(x);
+        free(val);
+    }
+
+    if (size == 2 && !step->ctx->initial) {
+        hvalue_t newvars;
+        if (!value_dict_trystore(&step->engine, state->vars, indices[1], v, false, &newvars)){
+            char *x = indices_string(indices, size);
+            value_ctx_failure(step->ctx, &step->engine, "Store: declare a local variable %s (or set during initialization)", x);
+            free(x);
+            return false;
+        }
+        state->vars = newvars;
+    }
+    else if (!ind_trystore(state->vars, indices + 1, size - 1, v, &step->engine, &state->vars)) {
+        char *x = indices_string(indices, size);
+        value_ctx_failure(step->ctx, &step->engine, "Store: bad address: %s", x);
+        free(x);
+        return false;
+    }
+    return true;
+}
+
 void op_Store(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_Store *es = env;
 
@@ -2061,53 +2128,7 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
 
     if (es == 0) {
         hvalue_t av = ctx_pop(step->ctx);
-        if (VALUE_TYPE(av) != VALUE_ADDRESS_SHARED) {
-            char *p = value_string(av);
-            value_ctx_failure(step->ctx, &step->engine, "Store %s: not an address", p);
-            free(p);
-            return;
-        }
-        if (av == VALUE_ADDRESS_SHARED) {
-            value_ctx_failure(step->ctx, &step->engine, "Store: address is None");
-            return;
-        }
-
-        unsigned int size;
-        hvalue_t *indices = value_get(av, &size);
-        if (indices[0] != VALUE_PC_SHARED) {
-            char *p = value_string(av);
-            value_ctx_failure(step->ctx, &step->engine, "Store %s: not the address of a shared variable", p);
-            free(p);
-            return;
-        }
-        size /= sizeof(hvalue_t);
-        if (step->ai != NULL) {
-            step->ai->indices = indices;
-            step->ai->n = size;
-            step->ai->load = is_sequential(global->seqs, step->ai->indices, step->ai->n);
-        }
-        if (step->keep_callstack) {
-            char *x = indices_string(indices, size);
-            char *val = value_string(v);
-            strbuf_printf(&step->explain, "pop value (%s) and address (%s) and store", val, x);
-            free(x);
-            free(val);
-        }
-
-        if (size == 2 && !step->ctx->initial) {
-            hvalue_t newvars;
-            if (!value_dict_trystore(&step->engine, state->vars, indices[1], v, false, &newvars)){
-                char *x = indices_string(indices, size);
-                value_ctx_failure(step->ctx, &step->engine, "Store: declare a local variable %s (or set during initialization)", x);
-                free(x);
-                return;
-            }
-            state->vars = newvars;
-        }
-        else if (!ind_trystore(state->vars, indices + 1, size - 1, v, &step->engine, &state->vars)) {
-            char *x = indices_string(indices, size);
-            value_ctx_failure(step->ctx, &step->engine, "Store: bad address: %s", x);
-            free(x);
+        if (!store_match(state, step, global, av, v)) {
             return;
         }
     }
@@ -2119,11 +2140,8 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
             free(x);
             free(val);
         }
-        if (step->ai != NULL) {
-            step->ai->indices = es->indices;
-            step->ai->n = es->n;
-            step->ai->load = is_sequential(global->seqs, step->ai->indices, step->ai->n);
-        }
+        ai_add(step, es->indices, es->n,
+                    is_sequential(global->seqs, es->indices, es->n));
         if (es->n == 2 && !step->ctx->initial) {
             hvalue_t newvars;
             if (!value_dict_trystore(&step->engine, state->vars, es->indices[1], v, false, &newvars)){

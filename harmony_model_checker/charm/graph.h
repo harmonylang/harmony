@@ -21,7 +21,6 @@ struct access_info {
 
     // TODO.  The following 32 bits could be packed differently
     uint8_t n;                       // length of address
-    uint8_t multiplicity;            // #identical contexts
     bool atomic : 1;                 // atomic or not
     bool load : 1;                   // store or del if false
 };
@@ -34,9 +33,10 @@ struct edge {
     struct node *dst;        // destination node
     hvalue_t after;          // resulting context
     struct access_info *ai;  // to detect data races
-    uint32_t nsteps;         // # microsteps
-    bool interrupt : 1;      // set if state change is an interrupt
+    uint16_t nsteps;         // # microsteps
+    uint16_t multiplicity;   // multiplicity of context
     uint8_t weight : 1;      // context switch or not
+    bool interrupt : 1;      // set if state change is an interrupt
     bool choosing : 1;       // destination state is choosing
     bool failed : 1;         // context failed
     uint16_t nlog : 12;      // size of print history

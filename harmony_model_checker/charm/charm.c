@@ -337,15 +337,6 @@ unsigned int check_finals(struct worker *w, struct node *node, struct step *step
     return 0;
 }
 
-// For tracking data races
-static struct access_info *ai_alloc(struct worker *w, int multiplicity, int atomic) {
-    struct access_info *ai = walloc(w, sizeof(*ai), true, false);
-    assert(multiplicity < 256);     // only 8 bits in ai->multiplicity
-    ai->multiplicity = multiplicity;
-    ai->atomic = atomic > 0;
-    return ai;
-}
-
 static void process_edge(struct worker *w, struct edge *edge, ht_lock_t *lock) {
     struct node *node = edge->src, *next = edge->dst;
     struct state *state = (struct state *) &next[1];
@@ -572,15 +563,7 @@ static bool onestep(
             }
         }
         else {
-            // Keep track of access for data race detection
-            if (instrs[pc].load || instrs[pc].store || instrs[pc].del) {
-                struct access_info *ai = ai_alloc(w, multiplicity, step->ctx->atomic);
-                ai->next = step->ai;
-                step->ai = ai;
-            }
-            assert(step->engine.allocator == &w->allocator);
             (*oi->op)(instrs[pc].env, sc, step, global);
-            assert(step->engine.allocator == &w->allocator);
         }
 		assert(step->ctx->pc >= 0);
 		assert(step->ctx->pc < global->code.len);
@@ -793,6 +776,7 @@ static bool onestep(
     edge->choice = choice_copy;
     edge->interrupt = interrupt;
     edge->weight = weight;
+    edge->multiplicity = multiplicity;
     edge->after = after;
     edge->ai = step->ai;     step->ai = NULL;
     memcpy(edge_log(edge), step->log, step->nlog * sizeof(hvalue_t));
@@ -3045,7 +3029,7 @@ int main(int argc, char **argv){
             edge->after = inv_context;
             edge->ai = NULL;
             edge->nlog = 0;
-            edge->nsteps = 10000000;
+            edge->nsteps = 65000;
 
             global->processes = realloc(global->processes, (global->nprocesses + 1) * sizeof(hvalue_t));
             global->callstacks = realloc(global->callstacks, (global->nprocesses + 1) * sizeof(struct callstack *));
@@ -3081,7 +3065,7 @@ int main(int argc, char **argv){
             edge->after = inv_context;
             edge->ai = NULL;
             edge->nlog = 0;
-            edge->nsteps = 10000000;
+            edge->nsteps = 65000;
 
             global->processes = realloc(global->processes, (global->nprocesses + 1) * sizeof(hvalue_t));
             global->callstacks = realloc(global->callstacks, (global->nprocesses + 1) * sizeof(struct callstack *));

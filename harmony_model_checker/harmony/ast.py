@@ -234,6 +234,12 @@ class ConstantAST(AST):
         (lexeme, file, line, column) = self.const
         code.append(PushOp((AddressValue(lexeme, []), file, line, column)), self.token, self.endtoken, stmt=stmt)
 
+    def ph2(self, scope, code, skip, start, stop, stmt):
+        if skip > 0:
+            code.append(MoveOp(skip + 2), self.token, self.endtoken, stmt=stmt)
+            code.append(MoveOp(2), self.token, self.endtoken, stmt=stmt)
+        code.append(StoreOp(None, self.token, None), start, stop, stmt=stmt)
+
     def compile(self, scope, code, stmt):
         code.append(PushOp(self.const), self.token, self.endtoken, stmt=stmt)
 
@@ -389,8 +395,11 @@ class TupleAST(AST):
         )
 
     def ph1(self, scope, code, stmt):
+        (lexeme, file, line, column) = self.token
+        code.append(PushOp((emptytuple, file, line, column), reason="building a tuple"), self.token, self.endtoken, stmt=stmt)
         for lv in self.list:
             lv.ph1(scope, code, stmt)
+            code.append(NaryOp(("ListAdd", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
 
     def ph2(self, scope, code, skip, start, stop, stmt):
         n = len(self.list)
@@ -806,7 +815,8 @@ class AssignmentAST(AST):
                     st = StoreOp(lvs.name, lvs.name, scope.prefix) if t == "global" else StoreVarOp(lvs.name)
                     code.append(st, lvs.token, self.ops[skip], stmt=stmt)
             else:
-                lvs.ph2(scope, code, skip, lvs.token, self.ops[skip], stmt)
+                # lvs.ph2(scope, code, skip, lvs.token, self.ops[skip], stmt)
+                code.append(StoreOp(None, self.token, None), lvs.token, self.ops[skip], stmt=stmt)
 
         if self.atomically:
             code.append(AtomicDecOp(), self.token, self.endtoken, stmt=stmt)
