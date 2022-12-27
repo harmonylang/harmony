@@ -1666,8 +1666,10 @@ class NaryOp(Op):
                 if not self.checktype(state, context, sa, isinstance(e, DictValue)):
                     return
                 context.push(SetValue(set(e.d.keys())))
-            elif op == "hash":
-                context.push((e,).__hash__())
+            # elif op == "hash":
+            #     context.push((e,).__hash__())
+            elif op == "Closure":
+                context.push(AddressValue(e, []))
             else:
                 assert False, self
         elif self.n == 2:
@@ -1765,6 +1767,8 @@ class NaryOp(Op):
                 else:
                     d[e2] = 1
                 context.push(DictValue(d))
+            elif op == "Closure":
+                context.push(AddressValue(e2, [e1]))
             else:
                 assert False, self
         elif self.n == 3:

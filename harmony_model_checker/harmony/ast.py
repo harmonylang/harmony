@@ -1063,7 +1063,9 @@ class AddressAST(AST):
             pass
         elif isinstance(lv, TupleAST):
             pass
-        elif False:
+        elif isinstance(lv, ConstantAST):
+            pass
+        else:
             lexeme, file, line, column = lv.token if isinstance(lv, AST) else (None, None, None, None)
             raise HarmonyCompilerError(
                 filename=file,
