@@ -51,7 +51,7 @@ struct worker {
     double start_wait, middle_wait, end_wait;
     unsigned int start_count, middle_count, end_count;
     double phase1, phase2a, phase2b, phase3;
-    unsigned long cycles;
+    unsigned long cycles, work_cycles;
     unsigned int fix_edge;
 
     struct hashtab *visited;
@@ -108,10 +108,61 @@ static inline uint64_t get_cycles(){
 //  Linux/GCC
 #else
 
+#ifdef notdef
 static inline uint64_t get_cycles(){
     unsigned int lo, hi;
     __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
     return ((uint64_t) hi << 32) | lo;
+}
+
+static inline uint64_t get_cycles(){
+    uint64_t msr;
+    asm volatile ( "rdtsc\n\t"    // Returns the time in EDX:EAX.
+               "shl $32, %%rdx\n\t"  // Shift the upper bits left.
+               "or %%rdx, %0"        // 'Or' in the lower bits.
+               : "=a" (msr)
+               :
+               : "rdx");
+    return msr;
+}
+#endif
+
+static inline void rdtscp(uint64_t *cycles, uint64_t *pid) {
+  // rdtscp
+  // high cycles : edx
+  // low cycles  : eax
+  // processor id: ecx
+
+  asm volatile
+    (
+     // Assembleur
+     "rdtscp;\n"
+     "shl $32, %%rdx;\n"
+     "or %%rdx, %%rax;\n"
+     "mov %%rax, (%[_cy]);\n"
+     "mov %%ecx, (%[_pid]);\n"
+
+     // outputs
+     :
+
+     // inputs
+     :
+     [_cy] "r" (cycles),
+     [_pid] "r" (pid)
+
+     // clobbers
+     :
+     "cc", "memory", "%eax", "%edx", "%ecx"
+     );
+
+  return;
+}
+
+static inline uint64_t get_cycles(){
+    uint64_t cycles, pid;
+
+    rdtscp(&cycles, &pid);
+    return cycles;
 }
 
 #endif
@@ -458,6 +509,8 @@ static bool onestep(
     assert(!step->ctx->failed);
     assert(step->engine.allocator == &w->allocator);
 
+    unsigned long before = get_cycles();
+
     struct global *global = w->global;
 
     // See if we should also try an interrupt.
@@ -611,6 +664,7 @@ static bool onestep(
                 }
                 else {
                     // start over, as twostep does not have instrcnt optimization
+                    w->work_cycles += get_cycles() - before;
                     return false;
                 }
             }
@@ -820,6 +874,7 @@ static bool onestep(
     process_edge(w, edge, lock);
 #endif
 
+    w->work_cycles += get_cycles() - before;
     return true;
 }
 
@@ -1994,7 +2049,7 @@ static void worker(void *arg){
     // TODO.  NUMA considerations
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
-    if (getNumCores() == 64 && global->nworkers < 32) {
+    if (getNumCores() == 64 && global->nworkers <= 32) {
         // Try to schedule on the same chip
         CPU_SET(2 * w->index, &cpuset);
     }
@@ -2565,13 +2620,14 @@ int main(int argc, char **argv){
 
     // Compute how much memory was used, approximately
     unsigned long allocated = global->allocated, cycles = 0;
-    unsigned long visited_cycles = 0, values_cycles = 0;
+    unsigned long visited_cycles = 0, values_cycles = 0, work_cycles = 0;
     double phase1 = 0, phase2a = 0, phase2b = 0, phase3 = 0, start_wait = 0, middle_wait = 0, end_wait = 0;
     unsigned int fix_edge = 0;
     for (unsigned int i = 0; i < global->nworkers; i++) {
         struct worker *w = &workers[i];
         allocated += w->allocated;
         cycles += w->cycles;
+        work_cycles += w->work_cycles;
         visited_cycles += visited->cycles[i];
         values_cycles += global->values->cycles[i];
         phase1 += w->phase1;
@@ -2587,9 +2643,11 @@ int main(int argc, char **argv){
             w->middle_wait/w->middle_count, w->end_wait/w->end_count);
 #endif
     }
-    printf("computing: %lf %lf %lf %lf (%lu %lu %lu %lf %lf %lf %lf %u); waiting: %lf %lf %lf\n", phase1 / global->nworkers, phase2a / global->nworkers, phase2b / global->nworkers, phase3 / global->nworkers, cycles - visited_cycles - values_cycles, visited_cycles, values_cycles, phase1, phase2a, phase2b, phase3, fix_edge, start_wait / global->nworkers, middle_wait / global->nworkers, end_wait / global->nworkers);
+    printf("computing: %lf %lf %lf %lf (%lu %lu %lu %lu %lf %lf %lf %lf %u); waiting: %lf %lf %lf\n", phase1 / global->nworkers, phase2a / global->nworkers, phase2b / global->nworkers, phase3 / global->nworkers, cycles - work_cycles, work_cycles - visited_cycles - values_cycles, visited_cycles, values_cycles, phase1, phase2a, phase2b, phase3, fix_edge, start_wait / global->nworkers, middle_wait / global->nworkers, end_wait / global->nworkers);
 
     printf("#states %d (time %.2lfs, mem=%.2lfGB)\n", global->graph.size, gettime() - before, (double) allocated / (1L << 30));
+
+    // if (true) exit(0);
 
     ht_set_sequential(global->values);
     ht_set_sequential(visited);

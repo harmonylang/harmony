@@ -39,6 +39,7 @@ typedef mutex_t ht_lock_t;
 #define ht_lock_release(ll) mutex_release(ll)
 #endif
 
+// #define CACHE_LINE_ALIGNED
 struct ht_bucket {
     hAtomic(struct ht_node *) list;
 #ifdef CACHE_LINE_ALIGNED
