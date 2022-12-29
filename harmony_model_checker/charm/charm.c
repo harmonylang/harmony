@@ -1877,7 +1877,7 @@ static int fail_cmp(void *f1, void *f2){
 static void do_work(struct worker *w){
     struct global *global = w->global;
 
-#define TODO_COUNT 25
+#define TODO_COUNT 10
 
     for (;;) {
 #ifdef USE_ATOMIC

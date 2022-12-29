@@ -7,7 +7,7 @@
 #include "hashtab.h"
 // #include "komihash.h"
 
-#define N_UNSTABLE      1024
+#define N_UNSTABLE      4096
 #define GROW_THRESHOLD     2
 #define GROW_FACTOR        8
 
