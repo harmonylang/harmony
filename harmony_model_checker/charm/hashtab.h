@@ -18,7 +18,10 @@
 
 // followed directly by data of `size' bytes
 struct ht_node {
-    hAtomic(struct ht_node *) next;
+    union {
+        struct ht_node *stable;
+        hAtomic(struct ht_node *) unstable;
+    } next;
     unsigned int size;
 };
 
@@ -40,7 +43,7 @@ typedef mutex_t ht_lock_t;
 #endif
 
 // #define CACHE_LINE_ALIGNED
-struct ht_bucket {
+struct ht_unstable {
     hAtomic(struct ht_node *) list;
 #ifdef CACHE_LINE_ALIGNED
     char padding[64 - sizeof(hAtomic(struct ht_node *))];
@@ -51,8 +54,9 @@ struct hashtab {
     char *whoami;
     unsigned int value_size;
     bool align16;
-    struct ht_bucket *buckets;
     unsigned int nbuckets;
+    struct ht_node **stable;
+    struct ht_unstable *unstable;
     ht_lock_t *locks;
     unsigned int nlocks;
     bool concurrent;
@@ -64,10 +68,12 @@ struct hashtab {
 #ifndef USE_ATOMIC
     mutex_t mutex;
 #endif
-    hAtomic(unsigned int) rt_count;     // number of objects in hash table
+    unsigned int stable_count;  // #objects in stable buckets
+    hAtomic(unsigned int) unstable_count;     // #objects in unstable buckets
 
     // For concurrent resize
-    struct ht_bucket *old_buckets;
+    struct ht_node **old_stable;
+    struct ht_unstable *old_unstable;
     unsigned int old_nbuckets;
 };
 
