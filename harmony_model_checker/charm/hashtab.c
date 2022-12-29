@@ -211,7 +211,7 @@ struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsi
 #ifdef USE_ATOMIC
 
     // First do a search in the unstable bucket
-    hAtomic(struct ht_node *) *chain = &ht->unstable[hash % ht->n_stable].list;
+    hAtomic(struct ht_node *) *chain = &ht->unstable[hash % ht->n_unstable].list;
 
     assert(atomic_load(chain) == 0 || atomic_load(chain) != 0);
     for (;;) {
@@ -289,7 +289,7 @@ struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsi
 #else // USE_ATOMIC
 
     mutex_acquire(&ht->locks[hash % ht->nlocks]);
-    struct ht_node **pn = &ht->unstable[hash % ht->n_stable].list, *n;
+    struct ht_node **pn = &ht->unstable[hash % ht->n_unstable].list, *n;
     while ((n = *pn) != NULL) {
         if (n->size == size && memcmp((char *) &n[1] + ht->value_size, key, size) == 0) {
             break;
@@ -374,10 +374,12 @@ void ht_set_sequential(struct hashtab *ht){
 void ht_make_stable(struct hashtab *ht, unsigned int worker){
     assert(ht->concurrent);
 
-    printf("MS %s\n", ht->whoami);
+    // printf("MS %s\n", ht->whoami);
 
     // Flush the unstable table
-    for (unsigned int i = 0; i < ht->n_unstable; i++) {
+    unsigned int first = (uint64_t) worker * ht->n_unstable / ht->nworkers;
+    unsigned int last = (uint64_t) (worker + 1) * ht->n_unstable / ht->nworkers;
+    for (unsigned int i = first; i < last; i++) {
         struct ht_node *n = atomic_load(&ht->unstable[i].list), *next;
         for (; n != NULL; n = next) {
             next = atomic_load(&n->next.unstable);
@@ -389,8 +391,8 @@ void ht_make_stable(struct hashtab *ht, unsigned int worker){
     }
 
     if (ht->old_stable != NULL) {
-        unsigned int first = (uint64_t) worker * ht->old_n_stable / ht->nworkers;
-        unsigned int last = (uint64_t) (worker + 1) * ht->old_n_stable / ht->nworkers;
+        first = (uint64_t) worker * ht->old_n_stable / ht->nworkers;
+        last = (uint64_t) (worker + 1) * ht->old_n_stable / ht->nworkers;
         ht_do_resize(ht, ht->old_n_stable, ht->old_stable, first, last);
     }
 }
@@ -402,7 +404,7 @@ void ht_grow_prepare(struct hashtab *ht){
     // TODO.  Make work without USE_ATOMIC
     unsigned int unstable_count = atomic_load(&ht->unstable_count);
     if (ht->n_unstable < unstable_count * GROW_THRESHOLD) {
-        printf("GROW %s %u %u %u\n", ht->whoami, unstable_count, ht->n_stable, unstable_count * GROW_THRESHOLD);
+        // printf("GROW %s %u %u %u\n", ht->whoami, unstable_count, ht->n_stable, unstable_count * GROW_THRESHOLD);
         // Need to flush the unstable entries.  See if I also need to grow the
         // number of stable buckets
         ht->stable_count += unstable_count;
