@@ -376,10 +376,25 @@ void ht_make_stable(struct hashtab *ht, unsigned int worker){
 
     // printf("MS %s\n", ht->whoami);
 
+    // First grow the hash table if needed
     if (ht->old_stable != NULL) {
         unsigned int first = (uint64_t) worker * ht->old_n_stable / ht->nworkers;
         unsigned int last = (uint64_t) (worker + 1) * ht->old_n_stable / ht->nworkers;
         ht_do_resize(ht, ht->old_n_stable, ht->old_stable, first, last);
+    }
+
+    // Flush the unstable table
+    unsigned int first = (uint64_t) worker * ht->n_unstable / ht->nworkers;
+    unsigned int last = (uint64_t) (worker + 1) * ht->n_unstable / ht->nworkers;
+    for (unsigned int i = first; i < last; i++) {
+        struct ht_node *n = atomic_load(&ht->unstable[i].list), *next;
+        for (; n != NULL; n = next) {
+            next = atomic_load(&n->next.unstable);
+            unsigned int hash = hash_func((char *) &n[1] + ht->value_size, n->size) % ht->n_stable;
+            n->next.stable = ht->stable[hash];
+            ht->stable[hash] = n;
+        }
+        atomic_store(&ht->unstable[i].list, NULL);
     }
 }
 
@@ -392,23 +407,11 @@ void ht_grow_prepare(struct hashtab *ht){
     // TODO.  Make work without USE_ATOMIC
     unsigned int unstable_count = atomic_load(&ht->unstable_count);
     if (ht->n_unstable < unstable_count * GROW_THRESHOLD) {
-        // Flush the unstable table
-        for (unsigned int i = 0; i < ht->n_unstable; i++) {
-            struct ht_node *n = atomic_load(&ht->unstable[i].list), *next;
-            for (; n != NULL; n = next) {
-                next = atomic_load(&n->next.unstable);
-                unsigned int hash = hash_func((char *) &n[1] + ht->value_size, n->size) % ht->n_stable;
-                n->next.stable = ht->stable[hash];
-                ht->stable[hash] = n;
-            }
-            atomic_store(&ht->unstable[i].list, NULL);
-        }
-        ht->stable_count += unstable_count;
-        atomic_store(&ht->unstable_count,  0);
-
         // printf("GROW %s %u %u %u\n", ht->whoami, unstable_count, ht->n_stable, unstable_count * GROW_THRESHOLD);
         // Need to flush the unstable entries.  See if I also need to grow the
         // number of stable buckets
+        ht->stable_count += unstable_count;
+        atomic_store(&ht->unstable_count,  0);
         if (ht->n_stable < ht->stable_count * GROW_THRESHOLD) {
             ht->old_n_stable = ht->n_stable;
             ht->old_stable = ht->stable;
