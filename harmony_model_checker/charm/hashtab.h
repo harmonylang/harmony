@@ -42,7 +42,7 @@ typedef mutex_t ht_lock_t;
 #define ht_lock_release(ll) mutex_release(ll)
 #endif
 
-// #define CACHE_LINE_ALIGNED
+#define CACHE_LINE_ALIGNED
 struct ht_unstable {
     hAtomic(struct ht_node *) list;
 #ifdef CACHE_LINE_ALIGNED
@@ -54,7 +54,7 @@ struct hashtab {
     char *whoami;
     unsigned int value_size;
     bool align16;
-    unsigned int nbuckets;
+    unsigned int n_stable, n_unstable;
     struct ht_node **stable;
     struct ht_unstable *unstable;
     ht_lock_t *locks;
@@ -73,8 +73,7 @@ struct hashtab {
 
     // For concurrent resize
     struct ht_node **old_stable;
-    struct ht_unstable *old_unstable;
-    unsigned int old_nbuckets;
+    unsigned int old_n_stable;
 };
 
 struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int nbuckets,

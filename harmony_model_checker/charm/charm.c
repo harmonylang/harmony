@@ -2111,10 +2111,10 @@ static void worker(void *arg){
         // Prepare the grow the hash tables (but the actual work of
         // rehashing is distributed among the threads in the next phase
         // double before_postproc = gettime();
-        if (w->index == 0 % global->nworkers && ht_needs_to_grow(w->visited)) {
+        if (w->index == 0 % global->nworkers) {
             ht_grow_prepare(w->visited);
         }
-        if (w->index == 1 % global->nworkers && ht_needs_to_grow(global->values)) {
+        if (w->index == 1 % global->nworkers) {
             ht_grow_prepare(global->values);
         }
 
