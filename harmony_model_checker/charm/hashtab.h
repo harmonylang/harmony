@@ -73,6 +73,8 @@ struct hashtab {
     unsigned int mask_stable, mask_unstable;
     struct ht_node **stable;
     struct ht_unstable *unstable;
+    bool needs_flush;
+    hAtomic(unsigned int) todo;
     ht_lock_t *locks;
     unsigned int nlocks;
     bool concurrent;

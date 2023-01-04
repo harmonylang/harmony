@@ -7,9 +7,9 @@
 #include "hashtab.h"
 // #include "komihash.h"
 
-#define LOG_UNSTABLE      10
+#define LOG_UNSTABLE      12
 #define GROW_THRESHOLD     2
-#define GROW_FACTOR        8
+#define GROW_FACTOR       16
 
 #ifdef _WIN32
 
@@ -123,6 +123,7 @@ struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int log_b
 	if (log_buckets == 0) {
         log_buckets = LOG_UNSTABLE;
     }
+log_buckets = LOG_UNSTABLE;     // TODO
     ht->log_unstable = log_buckets;
     ht->mask_unstable = (1 << ht->log_unstable) - 1;
 #ifdef ALIGNED_ALLOC
@@ -135,6 +136,7 @@ struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int log_b
     }
     ht->log_stable = 0; // stable and unstable tables same size
     ht->mask_stable = (1 << ht->log_stable) - 1;
+    assert(ht->mask_stable == 0);
     ht->stable = calloc(1 << (ht->log_stable + ht->log_unstable), sizeof(*ht->stable));
     ht->nlocks = nworkers * 256;        // TODO: how much?
 #ifdef ALIGNED_ALLOC
@@ -151,7 +153,10 @@ struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int log_b
 #ifndef USE_ATOMIC
     mutex_init(&ht->mutex);
 #endif
+
+    // TODO
     atomic_init(&ht->unstable_count, 0);
+    atomic_init(&ht->todo, 0);
     return ht;
 }
 
@@ -162,15 +167,14 @@ void ht_do_resize(struct hashtab *ht,
     memset(&ht->stable[segment << ht->log_stable], 0, sizeof(*ht->stable) << ht->log_stable);
 
     // Now redistribute the items in the old buckets
-    for (unsigned int i = segment << old_log_stable;
-                                i < (1 << old_log_stable); i++) {
-        struct ht_node *n = old_stable[i], *next;
+    unsigned int high = segment << ht->log_stable;
+    for (unsigned int i = 0; i < (1 << old_log_stable); i++) {
+        struct ht_node *n = old_stable[(segment << old_log_stable) + i], *next;
         for (; n != NULL; n = next) {
             next = n->next.stable;
             unsigned int hash = hash_func((char *) &n[1] + ht->value_size, n->size);
-            unsigned int segment = hash & ht->mask_unstable;
             unsigned int bucket = (hash >> ht->log_unstable) & ht->mask_stable;
-            unsigned int index = (segment << ht->log_stable) | bucket;
+            unsigned int index = high | bucket;
             n->next.stable = ht->stable[index];
             ht->stable[index] = n;
         }
@@ -179,6 +183,7 @@ void ht_do_resize(struct hashtab *ht,
 
 // TODO.  FIGURE THIS OUT
 void ht_resize(struct hashtab *ht, unsigned int log_buckets){
+    assert(false);
     struct ht_node **old_stable = ht->stable;
     unsigned int old_log_stable = ht->log_stable;
     ht->stable = malloc(sizeof(*ht->stable) << log_buckets);
@@ -380,33 +385,34 @@ void ht_set_sequential(struct hashtab *ht){
 void ht_make_stable(struct hashtab *ht, unsigned int worker){
     assert(ht->concurrent);
 
-    // Divvy up the unstable table among the workers.
-    // This will in turn determine how the stable table
-    // is split up between the workers.
-    unsigned int n = 1 << ht->log_unstable;
-    unsigned int first = (uint64_t) worker * n / ht->nworkers;
-    unsigned int last = (uint64_t) (worker + 1) * n / ht->nworkers;
-
-    // First grow the hash table if needed
-    if (ht->old_stable != NULL) {
-        for (unsigned int segment = first; segment < last; segment++) {
-            ht_do_resize(ht, ht->old_log_stable, ht->old_stable, segment);
-        }
+    if (!ht->needs_flush) {
+        return;
     }
 
-    // Flush the unstable table
-    for (unsigned int i = first; i < last; i++) {
-        struct ht_node *n = atomic_load(&ht->unstable[i].list), *next;
+    for (;;) {
+        unsigned int segment = atomic_fetch_add(&ht->todo, 1);
+        if (segment >= (1 << ht->log_unstable)) {
+            break;
+        }
+
+        // First grow the hash table if needed
+        if (ht->old_stable != NULL) {
+            ht_do_resize(ht, ht->old_log_stable, ht->old_stable, segment);
+        }
+
+        // Flush the unstable table
+        struct ht_node *n = atomic_load(&ht->unstable[segment].list), *next;
+        unsigned int high = segment << ht->log_stable;
         for (; n != NULL; n = next) {
             next = atomic_load(&n->next.unstable);
             unsigned int hash = hash_func((char *) &n[1] + ht->value_size, n->size);
             unsigned int segment = hash & ht->mask_unstable;
             unsigned int bucket = (hash >> ht->log_unstable) & ht->mask_stable;
-            unsigned int index = (segment << ht->log_stable) | bucket;
+            unsigned int index = high | bucket;
             n->next.stable = ht->stable[index];
             ht->stable[index] = n;
         }
-        atomic_store(&ht->unstable[i].list, NULL);
+        atomic_store(&ht->unstable[segment].list, NULL);
     }
 }
 
@@ -421,14 +427,16 @@ void ht_grow_prepare(struct hashtab *ht){
     // TODO.  Make work without USE_ATOMIC
     unsigned int unstable_count = atomic_load(&ht->unstable_count);
     if ((1 << ht->log_unstable) < unstable_count * GROW_THRESHOLD) {
-        // printf("GROW %s %u %u %u\n", ht->whoami, unstable_count, ht->log_stable, unstable_count * GROW_THRESHOLD);
         // Need to flush the unstable entries.  See if I also need to grow the
         // number of stable buckets
+        ht->needs_flush = true;
+        atomic_store(&ht->todo, 0);
         ht->stable_count += unstable_count;
         atomic_store(&ht->unstable_count,  0);
 
         // See if the stable table needs to grow
         if ((1 << (ht->log_unstable + ht->log_stable)) < ht->stable_count * GROW_THRESHOLD) {
+            printf("GROW %s %u %u %u\n", ht->whoami, unstable_count, ht->log_stable, unstable_count * GROW_THRESHOLD);
             ht->old_log_stable = ht->log_stable;
             ht->old_stable = ht->stable;
             ht->log_stable = ht->log_stable + 2;
@@ -438,6 +446,9 @@ void ht_grow_prepare(struct hashtab *ht){
             ht->mask_stable = (1 << ht->log_stable) - 1;
             ht->stable = malloc(sizeof(*ht->stable) << (ht->log_unstable + ht->log_stable));
         }
+    }
+    else {
+        ht->needs_flush = false;
     }
 }
 
