@@ -8,8 +8,8 @@
 // #include "komihash.h"
 
 #define LOG_UNSTABLE      12
-#define GROW_THRESHOLD     1
-#define GROW_FACTOR        8
+#define GROW_THRESHOLD     2
+#define GROW_FACTOR       16
 
 #ifdef _WIN32
 
@@ -391,26 +391,29 @@ void ht_make_stable(struct hashtab *ht, unsigned int worker){
         return;
     }
 
+    unsigned int chunk = (1u << ht->log_unstable) / ht->nworkers;
     for (;;) {
-        unsigned int segment = atomic_fetch_add(&ht->todo, 1);
-        if (segment >= (1u << ht->log_unstable)) {
-            break;
-        }
+        unsigned int segment = atomic_fetch_add(&ht->todo, chunk);
+        for (unsigned int i = 0; i < chunk; i++, segment++) {
+            if (segment >= (1u << ht->log_unstable)) {
+                return;
+            }
 
-        // First grow the hash table if needed
-        if (ht->old_stable != NULL) {
-            ht_do_resize(ht, ht->old_log_stable, ht->old_stable, segment);
-        }
+            // First grow the hash table if needed
+            if (ht->old_stable != NULL) {
+                ht_do_resize(ht, ht->old_log_stable, ht->old_stable, segment);
+            }
 
-        // Flush the unstable table
-        struct ht_node *n = atomic_load(&ht->unstable[segment].list), *next;
-        for (; n != NULL; n = next) {
-            next = atomic_load(&n->next.unstable);
-            unsigned int index = n->hash >> (32 - ht->log_unstable - ht->log_stable);
-            n->next.stable = ht->stable[index];
-            ht->stable[index] = n;
+            // Flush the unstable table
+            struct ht_node *n = atomic_load(&ht->unstable[segment].list), *next;
+            for (; n != NULL; n = next) {
+                next = atomic_load(&n->next.unstable);
+                unsigned int index = n->hash >> (32 - ht->log_unstable - ht->log_stable);
+                n->next.stable = ht->stable[index];
+                ht->stable[index] = n;
+            }
+            atomic_store(&ht->unstable[segment].list, NULL);
         }
-        atomic_store(&ht->unstable[segment].list, NULL);
     }
 }
 
