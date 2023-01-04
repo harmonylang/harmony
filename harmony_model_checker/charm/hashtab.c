@@ -108,16 +108,14 @@ static inline uint32_t meiyan(const char *key, int count) {
 	if (count & 2) { tmp }
 	if (count & 1) { h = (h ^ *key) * 0xad3e7; }
 	#undef tmp
-	return h ^ (h >> 16);
-}
+	h ^= (h >> 16);
 
-// Reverse the bits in x
-uint32_t reverse(uint32_t x) {
-	x = ((x & 0xaaaaaaaa) >> 1) | ((x & 0x55555555) << 1);
-	x = ((x & 0xcccccccc) >> 2) | ((x & 0x33333333) << 2);
-	x = ((x & 0xf0f0f0f0) >> 4) | ((x & 0x0f0f0f0f) << 4);
-	x = ((x & 0xff00ff00) >> 8) | ((x & 0x00ff00ff) << 8);
-    return (x >> 16) | (x << 16);
+    // now reverse the bits
+	h = ((h & 0xaaaaaaaa) >> 1) | ((h & 0x55555555) << 1);
+	h = ((h & 0xcccccccc) >> 2) | ((h & 0x33333333) << 2);
+	h = ((h & 0xf0f0f0f0) >> 4) | ((h & 0x0f0f0f0f) << 4);
+	h = ((h & 0xff00ff00) >> 8) | ((h & 0x00ff00ff) << 8);
+    return (h >> 16) | (h << 16);
 }
 
 struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int log_buckets,
@@ -175,13 +173,11 @@ void ht_do_resize(struct hashtab *ht,
     memset(&ht->stable[segment << ht->log_stable], 0, sizeof(*ht->stable) << ht->log_stable);
 
     // Now redistribute the items in the old buckets
-    unsigned int high = segment << ht->log_stable;
     for (unsigned int i = 0; i < (1 << old_log_stable); i++) {
         struct ht_node *n = old_stable[(segment << old_log_stable) + i], *next;
         for (; n != NULL; n = next) {
             next = n->next.stable;
-            unsigned int bucket = (n->hash >> ht->log_unstable) & ht->mask_stable;
-            unsigned int index = high | bucket;
+            unsigned int index = n->hash >> (32 - ht->log_unstable - ht->log_stable);
             n->next.stable = ht->stable[index];
             ht->stable[index] = n;
         }
@@ -205,12 +201,10 @@ struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsi
     uint64_t before = get_cycles();
 
     // First check the (read-only at this point) stable list
-    // The lowest log_unstable bits of the hash determine
+    // The highest log_unstable bits of the hash determine
     // the segment of the bucket.  The next log_stable bits
     // determine the bucket inside the segment.
-    unsigned int segment = hash & ht->mask_unstable;
-    unsigned int bucket = (hash >> ht->log_unstable) & ht->mask_stable;
-    unsigned int index = (segment << ht->log_stable) | bucket;
+    unsigned int index = hash >> (32 - ht->log_unstable - ht->log_stable);
     struct ht_node *hn = ht->stable[index];
     while (hn != NULL) {
         if (hn->hash == hash && hn->size == size && memcmp((char *) &hn[1] + ht->value_size, key, size) == 0) {
@@ -225,6 +219,8 @@ struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsi
         }
         hn = hn->next.stable;
     }
+
+    unsigned int segment = hash >> (32 - ht->log_unstable);
 
 #ifdef USE_ATOMIC
 
@@ -411,11 +407,9 @@ void ht_make_stable(struct hashtab *ht, unsigned int worker){
 
         // Flush the unstable table
         struct ht_node *n = atomic_load(&ht->unstable[segment].list), *next;
-        unsigned int high = segment << ht->log_stable;
         for (; n != NULL; n = next) {
             next = atomic_load(&n->next.unstable);
-            unsigned int bucket = (n->hash >> ht->log_unstable) & ht->mask_stable;
-            unsigned int index = high | bucket;
+            unsigned int index = n->hash >> (32 - ht->log_unstable - ht->log_stable);
             n->next.stable = ht->stable[index];
             ht->stable[index] = n;
         }
