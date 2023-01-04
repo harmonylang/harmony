@@ -131,19 +131,16 @@ struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int log_b
         log_buckets = LOG_UNSTABLE;
     }
     ht->log_unstable = log_buckets;
-    ht->mask_unstable = (1 << ht->log_unstable) - 1;
 #ifdef ALIGNED_ALLOC
     ht->unstable = aligned_alloc(64, sizeof(*ht->unstable) << ht->log_unstable);
 #else
     ht->unstable = malloc(sizeof(*ht->unstable) << ht->log_unstable);
 #endif
-    for (unsigned int i = 0; i < (1 << ht->log_unstable); i++) {
+    for (unsigned int i = 0; i < (1u << ht->log_unstable); i++) {
         atomic_init(&ht->unstable[i].list, NULL);
     }
     ht->log_stable = 0; // stable and unstable tables same size
-    ht->mask_stable = (1 << ht->log_stable) - 1;
-    assert(ht->mask_stable == 0);
-    ht->stable = calloc(1 << (ht->log_stable + ht->log_unstable), sizeof(*ht->stable));
+    ht->stable = calloc(1u << (ht->log_stable + ht->log_unstable), sizeof(*ht->stable));
     ht->nlocks = nworkers * 256;        // TODO: how much?
 #ifdef ALIGNED_ALLOC
     ht->locks = aligned_alloc(sizeof(*ht->locks), ht->nlocks * sizeof(*ht->locks));
@@ -173,7 +170,7 @@ void ht_do_resize(struct hashtab *ht,
     memset(&ht->stable[segment << ht->log_stable], 0, sizeof(*ht->stable) << ht->log_stable);
 
     // Now redistribute the items in the old buckets
-    for (unsigned int i = 0; i < (1 << old_log_stable); i++) {
+    for (unsigned int i = 0; i < (1u << old_log_stable); i++) {
         struct ht_node *n = old_stable[(segment << old_log_stable) + i], *next;
         for (; n != NULL; n = next) {
             next = n->next.stable;
@@ -191,7 +188,7 @@ void ht_resize(struct hashtab *ht, unsigned int log_buckets){
     unsigned int old_log_stable = ht->log_stable;
     ht->stable = malloc(sizeof(*ht->stable) << log_buckets);
     ht->log_stable = log_buckets;
-    for (unsigned int segment = 0; segment < (1 << ht->log_unstable); segment++) {
+    for (unsigned int segment = 0; segment < (1u << ht->log_unstable); segment++) {
         ht_do_resize(ht, old_log_stable, old_stable, segment);
     }
 }
@@ -396,7 +393,7 @@ void ht_make_stable(struct hashtab *ht, unsigned int worker){
 
     for (;;) {
         unsigned int segment = atomic_fetch_add(&ht->todo, 1);
-        if (segment >= (1 << ht->log_unstable)) {
+        if (segment >= (1u << ht->log_unstable)) {
             break;
         }
 
@@ -427,7 +424,7 @@ void ht_grow_prepare(struct hashtab *ht){
     // See if we need to flush the unstable table
     // TODO.  Make work without USE_ATOMIC
     unsigned int unstable_count = atomic_load(&ht->unstable_count);
-    if ((1 << ht->log_unstable) < unstable_count * GROW_THRESHOLD) {
+    if ((1u << ht->log_unstable) < unstable_count * GROW_THRESHOLD) {
         // Need to flush the unstable entries.  See if I also need to grow the
         // number of stable buckets
         ht->needs_flush = true;
@@ -436,15 +433,14 @@ void ht_grow_prepare(struct hashtab *ht){
         atomic_store(&ht->unstable_count,  0);
 
         // See if the stable table needs to grow
-        if ((1 << (ht->log_unstable + ht->log_stable)) < ht->stable_count * GROW_THRESHOLD) {
+        if ((1u << (ht->log_unstable + ht->log_stable)) < ht->stable_count * GROW_THRESHOLD) {
             // printf("GROW %s %u %u %u\n", ht->whoami, unstable_count, ht->log_stable, unstable_count * GROW_THRESHOLD);
             ht->old_log_stable = ht->log_stable;
             ht->old_stable = ht->stable;
             ht->log_stable = ht->log_stable + 2;
-            while ((1 << (ht->log_unstable + ht->log_stable)) < ht->stable_count * GROW_FACTOR) {
+            while ((1u << (ht->log_unstable + ht->log_stable)) < ht->stable_count * GROW_FACTOR) {
                 ht->log_stable++;
             }
-            ht->mask_stable = (1 << ht->log_stable) - 1;
             ht->stable = malloc(sizeof(*ht->stable) << (ht->log_unstable + ht->log_stable));
         }
     }
@@ -463,10 +459,10 @@ unsigned long ht_allocated(struct hashtab *ht){
 // TODO.  Rename to needs_to_be_flushed?
 bool ht_needs_to_grow(struct hashtab *ht){
 #ifdef USE_ATOMIC
-    return GROW_THRESHOLD * atomic_load(&ht->unstable_count) > (1 << ht->log_unstable);
+    return GROW_THRESHOLD * atomic_load(&ht->unstable_count) > (1u << ht->log_unstable);
 #else
     mutex_acquire(&ht->mutex);
-    bool r = GROW_THRESHOLD * ht->unstable_count > (1 << ht->log_unstable);
+    bool r = GROW_THRESHOLD * ht->unstable_count > (1u << ht->log_unstable);
     mutex_release(&ht->mutex);
     return r;
 #endif

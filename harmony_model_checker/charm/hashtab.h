@@ -71,7 +71,6 @@ struct hashtab {
     unsigned int value_size;
     bool align16;
     unsigned int log_stable, log_unstable;
-    unsigned int mask_stable, mask_unstable;
     struct ht_node **stable;
     struct ht_unstable *unstable;
     bool needs_flush;
