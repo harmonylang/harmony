@@ -8,8 +8,8 @@
 // #include "komihash.h"
 
 #define LOG_UNSTABLE      12
-#define GROW_THRESHOLD     2
-#define GROW_FACTOR       16
+#define GROW_THRESHOLD     1
+#define GROW_FACTOR        8
 
 #ifdef _WIN32
 
@@ -111,6 +111,15 @@ static inline uint32_t meiyan(const char *key, int count) {
 	return h ^ (h >> 16);
 }
 
+// Reverse the bits in x
+uint32_t reverse(uint32_t x) {
+	x = ((x & 0xaaaaaaaa) >> 1) | ((x & 0x55555555) << 1);
+	x = ((x & 0xcccccccc) >> 2) | ((x & 0x33333333) << 2);
+	x = ((x & 0xf0f0f0f0) >> 4) | ((x & 0x0f0f0f0f) << 4);
+	x = ((x & 0xff00ff00) >> 8) | ((x & 0x00ff00ff) << 8);
+    return (x >> 16) | (x << 16);
+}
+
 struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int log_buckets,
         unsigned int nworkers, bool align16) {
 #ifdef CACHE_LINE_ALIGNED
@@ -123,7 +132,6 @@ struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int log_b
 	if (log_buckets == 0) {
         log_buckets = LOG_UNSTABLE;
     }
-log_buckets = LOG_UNSTABLE;     // TODO
     ht->log_unstable = log_buckets;
     ht->mask_unstable = (1 << ht->log_unstable) - 1;
 #ifdef ALIGNED_ALLOC
@@ -172,8 +180,7 @@ void ht_do_resize(struct hashtab *ht,
         struct ht_node *n = old_stable[(segment << old_log_stable) + i], *next;
         for (; n != NULL; n = next) {
             next = n->next.stable;
-            unsigned int hash = hash_func((char *) &n[1] + ht->value_size, n->size);
-            unsigned int bucket = (hash >> ht->log_unstable) & ht->mask_stable;
+            unsigned int bucket = (n->hash >> ht->log_unstable) & ht->mask_stable;
             unsigned int index = high | bucket;
             n->next.stable = ht->stable[index];
             ht->stable[index] = n;
@@ -206,7 +213,7 @@ struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsi
     unsigned int index = (segment << ht->log_stable) | bucket;
     struct ht_node *hn = ht->stable[index];
     while (hn != NULL) {
-        if (hn->size == size && memcmp((char *) &hn[1] + ht->value_size, key, size) == 0) {
+        if (hn->hash == hash && hn->size == size && memcmp((char *) &hn[1] + ht->value_size, key, size) == 0) {
             if (is_new != NULL) {
                 *is_new = false;
             }
@@ -230,7 +237,7 @@ struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsi
         if (expected == NULL) {
             break;
         }
-        if (expected->size == size && memcmp((char *) &expected[1] + ht->value_size, key, size) == 0) {
+        if (expected->hash == hash && expected->size == size && memcmp((char *) &expected[1] + ht->value_size, key, size) == 0) {
             if (is_new != NULL) {
                 *is_new = false;
             }
@@ -249,6 +256,7 @@ struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsi
             malloc(total) : (*al->alloc)(al->ctx, total, false, ht->align16);
     atomic_init(&desired->next.unstable, NULL);
     desired->size = size;
+    desired->hash = hash;
     if (ht->value_size > 0) {
         memset(&desired[1], 0, ht->value_size);
     }
@@ -277,7 +285,7 @@ struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsi
             }
             return desired;
         }
-        else if (expected->size == size && memcmp((char *) &expected[1] + ht->value_size, key, size) == 0) {
+        else if (expected->hash == hash && expected->size == size && memcmp((char *) &expected[1] + ht->value_size, key, size) == 0) {
             // somebody else beat me to it
             if (al == NULL) {
                 free(desired);
@@ -302,7 +310,7 @@ struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsi
     mutex_acquire(&ht->locks[hash % ht->nlocks]);
     struct ht_node **pn = &ht->unstable[segment].list, *n;
     while ((n = *pn) != NULL) {
-        if (n->size == size && memcmp((char *) &n[1] + ht->value_size, key, size) == 0) {
+        if (n->hash == hash && n->size == size && memcmp((char *) &n[1] + ht->value_size, key, size) == 0) {
             break;
         }
         pn = &n->next.unstable;
@@ -314,6 +322,7 @@ struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsi
                 (*al->alloc)(al->ctx, total, false, ht->align16);
         n->next.unstable = NULL;
         n->size = size;
+        n->hash = hash;
         if (ht->value_size > 0) {
             memset(&n[1], 0, ht->value_size);
         }
@@ -405,8 +414,7 @@ void ht_make_stable(struct hashtab *ht, unsigned int worker){
         unsigned int high = segment << ht->log_stable;
         for (; n != NULL; n = next) {
             next = atomic_load(&n->next.unstable);
-            unsigned int hash = hash_func((char *) &n[1] + ht->value_size, n->size);
-            unsigned int bucket = (hash >> ht->log_unstable) & ht->mask_stable;
+            unsigned int bucket = (n->hash >> ht->log_unstable) & ht->mask_stable;
             unsigned int index = high | bucket;
             n->next.stable = ht->stable[index];
             ht->stable[index] = n;
@@ -435,7 +443,7 @@ void ht_grow_prepare(struct hashtab *ht){
 
         // See if the stable table needs to grow
         if ((1 << (ht->log_unstable + ht->log_stable)) < ht->stable_count * GROW_THRESHOLD) {
-            printf("GROW %s %u %u %u\n", ht->whoami, unstable_count, ht->log_stable, unstable_count * GROW_THRESHOLD);
+            // printf("GROW %s %u %u %u\n", ht->whoami, unstable_count, ht->log_stable, unstable_count * GROW_THRESHOLD);
             ht->old_log_stable = ht->log_stable;
             ht->old_stable = ht->stable;
             ht->log_stable = ht->log_stable + 2;

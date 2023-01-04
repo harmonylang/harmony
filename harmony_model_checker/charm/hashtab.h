@@ -22,7 +22,8 @@ struct ht_node {
         struct ht_node *stable;
         hAtomic(struct ht_node *) unstable;
     } next;
-    unsigned int size;
+    uint32_t size;
+    uint32_t hash;
 };
 
 // #define USE_SPINLOCK    // TODO
