@@ -406,7 +406,6 @@ void ht_make_stable(struct hashtab *ht, unsigned int worker){
         for (; n != NULL; n = next) {
             next = atomic_load(&n->next.unstable);
             unsigned int hash = hash_func((char *) &n[1] + ht->value_size, n->size);
-            unsigned int segment = hash & ht->mask_unstable;
             unsigned int bucket = (hash >> ht->log_unstable) & ht->mask_stable;
             unsigned int index = high | bucket;
             n->next.stable = ht->stable[index];
