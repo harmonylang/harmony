@@ -2436,7 +2436,7 @@ int main(int argc, char **argv){
     mutex_init(&global->todo_lock);
     mutex_init(&global->todo_wait);
     mutex_acquire(&global->todo_wait);          // Split Binary Semaphore
-    global->values = ht_new("values", 0, 1 << 16, global->nworkers, true);
+    global->values = ht_new("values", 0, 16, global->nworkers, true);
 
     struct engine engine;
     engine.allocator = NULL;
@@ -2535,7 +2535,7 @@ int main(int argc, char **argv){
     }
 
     // Put the initial state in the visited map
-    struct hashtab *visited = ht_new("visited", sizeof(struct node), 8 << 20, global->nworkers, false);
+    struct hashtab *visited = ht_new("visited", sizeof(struct node), 23, global->nworkers, false);
     ht_lock_t *lock;
     struct ht_node *hn = ht_find_lock(visited, NULL, state, state_size(state), NULL, &lock);
     struct node *node = (struct node *) &hn[1];

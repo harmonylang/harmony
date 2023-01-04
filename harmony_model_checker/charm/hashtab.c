@@ -7,7 +7,7 @@
 #include "hashtab.h"
 // #include "komihash.h"
 
-#define N_UNSTABLE      4096
+#define LOG_UNSTABLE      10
 #define GROW_THRESHOLD     2
 #define GROW_FACTOR        8
 
@@ -111,7 +111,7 @@ static inline uint32_t meiyan(const char *key, int count) {
 	return h ^ (h >> 16);
 }
 
-struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int nbuckets,
+struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int log_buckets,
         unsigned int nworkers, bool align16) {
 #ifdef CACHE_LINE_ALIGNED
     assert(sizeof(struct ht_unstable) == 64);
@@ -120,20 +120,22 @@ struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int nbuck
     ht->whoami = whoami;
     ht->align16 = align16;
     ht->value_size = value_size;
-	if (nbuckets == 0) {
-        nbuckets = 1024;
+	if (log_buckets == 0) {
+        log_buckets = LOG_UNSTABLE;
     }
-    ht->n_stable = nbuckets;
-    ht->stable = calloc(ht->n_stable, sizeof(*ht->stable));
-    ht->n_unstable = N_UNSTABLE;
+    ht->log_unstable = log_buckets;
+    ht->mask_unstable = (1 << ht->log_unstable) - 1;
 #ifdef ALIGNED_ALLOC
-    ht->unstable = aligned_alloc(64, ht->n_unstable * sizeof(*ht->unstable));
+    ht->unstable = aligned_alloc(64, sizeof(*ht->unstable) << ht->log_unstable);
 #else
-    ht->unstable = malloc(ht->n_unstable * sizeof(*ht->unstable));
+    ht->unstable = malloc(sizeof(*ht->unstable) << ht->log_unstable);
 #endif
-    for (unsigned int i = 0; i < ht->n_unstable; i++) {
+    for (unsigned int i = 0; i < (1 << ht->log_unstable); i++) {
         atomic_init(&ht->unstable[i].list, NULL);
     }
+    ht->log_stable = 0; // stable and unstable tables same size
+    ht->mask_stable = (1 << ht->log_stable) - 1;
+    ht->stable = calloc(1 << (ht->log_stable + ht->log_unstable), sizeof(*ht->stable));
     ht->nlocks = nworkers * 256;        // TODO: how much?
 #ifdef ALIGNED_ALLOC
     ht->locks = aligned_alloc(sizeof(*ht->locks), ht->nlocks * sizeof(*ht->locks));
@@ -154,38 +156,36 @@ struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int nbuck
 }
 
 void ht_do_resize(struct hashtab *ht,
-        unsigned int old_n_stable, struct ht_node **old_stable,
-        unsigned int first, unsigned int last){
-    unsigned int factor = ht->n_stable / old_n_stable;
-    if (factor == 0) {      // deal with shrinking tables
-        factor = 1;
-    }
-    for (unsigned int i = first; i < last; i++) {
-        unsigned int k = i;
-        for (unsigned int j = 0; j < factor; j++) {
-            assert(k % old_n_stable == i);
-            ht->stable[k] = NULL;
-            k += old_n_stable;
-        }
+        unsigned int old_log_stable, struct ht_node **old_stable,
+        unsigned int segment) {
+    // First clear the new segment
+    memset(&ht->stable[segment << ht->log_stable], 0, sizeof(*ht->stable) << ht->log_stable);
 
-        // Move the old stable entries into the new stable buckets
+    // Now redistribute the items in the old buckets
+    for (unsigned int i = segment << old_log_stable;
+                                i < (1 << old_log_stable); i++) {
         struct ht_node *n = old_stable[i], *next;
         for (; n != NULL; n = next) {
             next = n->next.stable;
-            unsigned int hash = hash_func((char *) &n[1] + ht->value_size, n->size) % ht->n_stable;
-            assert(hash % old_n_stable == i);
-            n->next.stable = ht->stable[hash];
-            ht->stable[hash] = n;
+            unsigned int hash = hash_func((char *) &n[1] + ht->value_size, n->size);
+            unsigned int segment = hash & ht->mask_unstable;
+            unsigned int bucket = (hash >> ht->log_unstable) & ht->mask_stable;
+            unsigned int index = (segment << ht->log_stable) | bucket;
+            n->next.stable = ht->stable[index];
+            ht->stable[index] = n;
         }
     }
 }
 
-void ht_resize(struct hashtab *ht, unsigned int nbuckets){
+// TODO.  FIGURE THIS OUT
+void ht_resize(struct hashtab *ht, unsigned int log_buckets){
     struct ht_node **old_stable = ht->stable;
-    unsigned int old_n_stable = ht->n_stable;
-    ht->stable = malloc(nbuckets * sizeof(*ht->stable));
-    ht->n_stable = nbuckets;
-    ht_do_resize(ht, old_n_stable, old_stable, 0, old_n_stable);
+    unsigned int old_log_stable = ht->log_stable;
+    ht->stable = malloc(sizeof(*ht->stable) << log_buckets);
+    ht->log_stable = log_buckets;
+    for (unsigned int segment = 0; segment < (1 << ht->log_unstable); segment++) {
+        ht_do_resize(ht, old_log_stable, old_stable, segment);
+    }
 }
 
 // TODO.  is_new is not terribly useful.
@@ -193,7 +193,13 @@ struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsi
     uint64_t before = get_cycles();
 
     // First check the (read-only at this point) stable list
-    struct ht_node *hn = ht->stable[hash % ht->n_stable];
+    // The lowest log_unstable bits of the hash determine
+    // the segment of the bucket.  The next log_stable bits
+    // determine the bucket inside the segment.
+    unsigned int segment = hash & ht->mask_unstable;
+    unsigned int bucket = (hash >> ht->log_unstable) & ht->mask_stable;
+    unsigned int index = (segment << ht->log_stable) | bucket;
+    struct ht_node *hn = ht->stable[index];
     while (hn != NULL) {
         if (hn->size == size && memcmp((char *) &hn[1] + ht->value_size, key, size) == 0) {
             if (is_new != NULL) {
@@ -211,7 +217,7 @@ struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsi
 #ifdef USE_ATOMIC
 
     // First do a search in the unstable bucket
-    hAtomic(struct ht_node *) *chain = &ht->unstable[hash % ht->n_unstable].list;
+    hAtomic(struct ht_node *) *chain = &ht->unstable[segment].list;
 
     assert(atomic_load(chain) == 0 || atomic_load(chain) != 0);
     for (;;) {
@@ -289,7 +295,7 @@ struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsi
 #else // USE_ATOMIC
 
     mutex_acquire(&ht->locks[hash % ht->nlocks]);
-    struct ht_node **pn = &ht->unstable[hash % ht->n_unstable].list, *n;
+    struct ht_node **pn = &ht->unstable[segment].list, *n;
     while ((n = *pn) != NULL) {
         if (n->size == size && memcmp((char *) &n[1] + ht->value_size, key, size) == 0) {
             break;
@@ -374,69 +380,81 @@ void ht_set_sequential(struct hashtab *ht){
 void ht_make_stable(struct hashtab *ht, unsigned int worker){
     assert(ht->concurrent);
 
-    // printf("MS %s\n", ht->whoami);
+    // Divvy up the unstable table among the workers.
+    // This will in turn determine how the stable table
+    // is split up between the workers.
+    unsigned int n = 1 << ht->log_unstable;
+    unsigned int first = (uint64_t) worker * n / ht->nworkers;
+    unsigned int last = (uint64_t) (worker + 1) * n / ht->nworkers;
 
     // First grow the hash table if needed
     if (ht->old_stable != NULL) {
-        unsigned int first = (uint64_t) worker * ht->old_n_stable / ht->nworkers;
-        unsigned int last = (uint64_t) (worker + 1) * ht->old_n_stable / ht->nworkers;
-        ht_do_resize(ht, ht->old_n_stable, ht->old_stable, first, last);
+        for (unsigned int segment = first; segment < last; segment++) {
+            ht_do_resize(ht, ht->old_log_stable, ht->old_stable, segment);
+        }
     }
 
     // Flush the unstable table
-    unsigned int first = (uint64_t) worker * ht->n_unstable / ht->nworkers;
-    unsigned int last = (uint64_t) (worker + 1) * ht->n_unstable / ht->nworkers;
     for (unsigned int i = first; i < last; i++) {
         struct ht_node *n = atomic_load(&ht->unstable[i].list), *next;
         for (; n != NULL; n = next) {
             next = atomic_load(&n->next.unstable);
-            unsigned int hash = hash_func((char *) &n[1] + ht->value_size, n->size) % ht->n_stable;
-            n->next.stable = ht->stable[hash];
-            ht->stable[hash] = n;
+            unsigned int hash = hash_func((char *) &n[1] + ht->value_size, n->size);
+            unsigned int segment = hash & ht->mask_unstable;
+            unsigned int bucket = (hash >> ht->log_unstable) & ht->mask_stable;
+            unsigned int index = (segment << ht->log_stable) | bucket;
+            n->next.stable = ht->stable[index];
+            ht->stable[index] = n;
         }
         atomic_store(&ht->unstable[i].list, NULL);
     }
 }
 
+// TODO.  Rename to flush_prepare?
 void ht_grow_prepare(struct hashtab *ht){
     assert(ht->concurrent);
     free(ht->old_stable);
-    ht->old_n_stable = 0;
+    ht->old_log_stable = 0;
     ht->old_stable = NULL;
 
+    // See if we need to flush the unstable table
     // TODO.  Make work without USE_ATOMIC
     unsigned int unstable_count = atomic_load(&ht->unstable_count);
-    if (ht->n_unstable < unstable_count * GROW_THRESHOLD) {
-        // printf("GROW %s %u %u %u\n", ht->whoami, unstable_count, ht->n_stable, unstable_count * GROW_THRESHOLD);
+    if ((1 << ht->log_unstable) < unstable_count * GROW_THRESHOLD) {
+        // printf("GROW %s %u %u %u\n", ht->whoami, unstable_count, ht->log_stable, unstable_count * GROW_THRESHOLD);
         // Need to flush the unstable entries.  See if I also need to grow the
         // number of stable buckets
         ht->stable_count += unstable_count;
         atomic_store(&ht->unstable_count,  0);
-        if (ht->n_stable < ht->stable_count * GROW_THRESHOLD) {
-            ht->old_n_stable = ht->n_stable;
+
+        // See if the stable table needs to grow
+        if ((1 << (ht->log_unstable + ht->log_stable)) < ht->stable_count * GROW_THRESHOLD) {
+            ht->old_log_stable = ht->log_stable;
             ht->old_stable = ht->stable;
-            ht->n_stable = ht->n_stable * 4;
-            while (ht->n_stable < ht->stable_count * GROW_FACTOR) {
-                ht->n_stable *= 2;
+            ht->log_stable = ht->log_stable + 2;
+            while ((1 << (ht->log_unstable + ht->log_stable)) < ht->stable_count * GROW_FACTOR) {
+                ht->log_stable++;
             }
-            ht->stable = malloc(ht->n_stable * sizeof(*ht->stable));
+            ht->mask_stable = (1 << ht->log_stable) - 1;
+            ht->stable = malloc(sizeof(*ht->stable) << (ht->log_unstable + ht->log_stable));
         }
     }
 }
 
 unsigned long ht_allocated(struct hashtab *ht){
-    return ht->n_stable * (sizeof(*ht->stable) +
-                            sizeof(*ht->unstable)) +
+    return (sizeof(*ht->unstable) << ht->log_unstable) +
+            (sizeof(*ht->stable) << (ht->log_unstable + ht->log_stable)) +
             ht->nlocks * sizeof(*ht->locks);
 }
 
 // See if the unstable buckets need to be flushed
+// TODO.  Rename to needs_to_be_flushed?
 bool ht_needs_to_grow(struct hashtab *ht){
 #ifdef USE_ATOMIC
-    return GROW_THRESHOLD * atomic_load(&ht->unstable_count) > ht->n_unstable;
+    return GROW_THRESHOLD * atomic_load(&ht->unstable_count) > (1 << ht->log_unstable);
 #else
     mutex_acquire(&ht->mutex);
-    bool r =  GROW_THRESHOLD * ht->unstable_count > ht->n_unstable;
+    bool r = GROW_THRESHOLD * ht->unstable_count > (1 << ht->log_unstable);
     mutex_release(&ht->mutex);
     return r;
 #endif

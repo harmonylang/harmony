@@ -50,11 +50,27 @@ struct ht_unstable {
 #endif
 };
 
+// The hash table is "grow-only" and has two arrays of buckets:
+// unstable and stable buckets.  The array of unstable buckets
+// is used to add new items and uses a lock-free mechanism
+// based on cas, and for cache efficiency each bucket is
+// aligned to 64 bytes and the number of buckets is fixed.
+// The array of stable buckets is (usually) read-only.  Both
+// have a power of 2 buckets.  Let U be the number of unstable
+// buckets.  Then the array of stable buckets is subdivided
+// into U contiguous segments.  There is a mechanism to grow
+// the array of stable buckets and to flush the unstable items
+// into the stable corresponding stable segments.
+// log_unstable below gives the number of unstable buckets or
+// segments in that U == (1 << log_unstable).  log_stable
+// gives the number of stable buckets per segment.
+
 struct hashtab {
     char *whoami;
     unsigned int value_size;
     bool align16;
-    unsigned int n_stable, n_unstable;
+    unsigned int log_stable, log_unstable;
+    unsigned int mask_stable, mask_unstable;
     struct ht_node **stable;
     struct ht_unstable *unstable;
     ht_lock_t *locks;
@@ -73,12 +89,11 @@ struct hashtab {
 
     // For concurrent resize
     struct ht_node **old_stable;
-    unsigned int old_n_stable;
+    unsigned int old_log_stable;
 };
 
-struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int nbuckets,
-        unsigned int nworkers, bool align16);
-void ht_resize(struct hashtab *ht, unsigned int nbuckets);
+struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int log_buckets, unsigned int nworkers, bool align16);
+void ht_resize(struct hashtab *ht, unsigned int log_buckets);
 void *ht_retrieve(struct ht_node *n, unsigned int *psize);
 struct ht_node *ht_find(struct hashtab *ht, struct allocator *al, const void *key, unsigned int size, bool *is_new);
 struct ht_node *ht_find_lock(struct hashtab *ht, struct allocator *al, const void *key, unsigned int size, bool *is_new, ht_lock_t **plock);
