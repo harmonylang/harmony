@@ -63,7 +63,7 @@ struct global {
 
     struct graph graph;             // the Kripke structure
 #ifdef NEWWAY
-    struct node *todo;
+    struct node *todo, *todo_last;
 #endif
     hAtomic(unsigned int) atodo;
     hAtomic(unsigned int) goal;

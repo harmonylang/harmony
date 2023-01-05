@@ -491,7 +491,6 @@ static void process_edge(struct worker *w, struct edge *edge, ht_lock_t *lock) {
                 }
             }
             if (all_eternal) {
-                printf("FINAL STATE\n");
                 unsigned int fin = check_finals(w, next, &w->inv_step);
                 if (fin != 0) {
                     struct failure *f = new_alloc(struct failure);
@@ -1907,24 +1906,28 @@ static void do_work(struct worker *w){
 #endif // USE_ATOMIC
 
 #ifdef NEWWAY
-        printf("DO_WORK %u: %u %u\n", w->index, w->todo_index, next);
+        // printf("DO_WORK %u: ind=%u next=%u size=%u\n", w->index, w->todo_index, next, global->graph.size);
         while (w->todo_index < next) {
             struct node *n = *w->todo_ptr;
             if (n == NULL) {
+                // printf("DO_WORK %u: NOTHING\n", w->index);
                 return;
             }
             w->todo_ptr = &n->next;
+            w->todo_index++;
         }
 #endif
 
         for (unsigned int i = 0; i < TODO_COUNT; i++, next++) {
 #ifdef NEWWAY
-            printf("DO_WORK %u: handle %u\n", w->index, next);
+            // printf("DO_WORK %u: handle ind=%u next=%u size=%u\n", w->index, w->todo_index, next, global->graph.size);
             struct node *node = *w->todo_ptr;
             if (node == NULL) {
+                // printf("DO_WORK %u: DONE\n", w->index);
                 return;
             }
             w->todo_ptr = &node->next;
+            w->todo_index++;
 #else
             // printf("W%d %d %d\n", w->index, next, global->graph.size);
             if (next >= global->graph.size) {
@@ -2162,6 +2165,7 @@ static void worker(void *arg){
                 atomic_store(&global->atodo, global->graph.size);
                 todo = global->graph.size;
             }
+            // printf("SEQ: todo=%u size=%u\n", todo, global->graph.size);
             global->layer_done = todo == global->graph.size;
             if (global->layer_done) {
                 global->diameter++;
@@ -2175,14 +2179,16 @@ static void worker(void *arg){
                     total += w2->count;
 #ifdef NEWWAY
                     if (w2->last != NULL) {
-                        w2->last->next = global->todo;
-                        global->todo = w2->results;
+                        global->todo_last->next = w2->results;
+                        global->todo_last = w2->last;
                         w2->results = w2->last = NULL;
                     }
 #endif
+                    w2->count = 0;
                 }
 
 #ifdef NEWWAY
+                // printf("SEQ: ADD %u\n", total);
                 global->graph.size += total;
 #else
                 // The threads completed producing the next layer of nodes in the graph.
@@ -2234,6 +2240,7 @@ static void worker(void *arg){
                 w->count--;
             }
             assert(w->results == NULL);
+            assert(w->count == 0);
         }
 
         after = gettime();
@@ -2591,7 +2598,12 @@ int main(int argc, char **argv){
     memset(node, 0, sizeof(*node));
     node->state = state;
     node->lock = lock;
+#ifdef NEWWAY
+    global->todo = global->todo_last = node;
+    global->graph.size = 1;
+#else
     graph_add(&global->graph, node);
+#endif
 
     // Allocate space for worker info
     struct worker *workers = calloc(global->nworkers, sizeof(*workers));
