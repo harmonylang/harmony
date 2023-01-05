@@ -2151,14 +2151,14 @@ static void worker(void *arg){
         // Prepare the grow the hash tables (but the actual work of
         // rehashing is distributed among the threads in the next phase
         // double before_postproc = gettime();
-        if (w->index == 0 % global->nworkers) {
+        if (w->index == 1 % global->nworkers) {
             ht_grow_prepare(w->visited);
         }
-        if (w->index == 1 % global->nworkers) {
+        if (w->index == 2 % global->nworkers) {
             ht_grow_prepare(global->values);
         }
 
-        if (w->index == 2 % global->nworkers) {
+        if (w->index == 3 % global->nworkers) {
             // End of a layer in the Kripke structure?
             unsigned int todo = atomic_load(&global->atodo);
             if (todo > global->graph.size) {
@@ -2229,7 +2229,8 @@ static void worker(void *arg){
         ht_make_stable(global->values, w->index);
         ht_make_stable(w->visited, w->index);
 
-        if (0 && global->layer_done) {
+#ifndef NEWWAY
+        if (global->layer_done) {
             // Fill the graph table
             for (unsigned int i = 0; w->count != 0; i++) {
                 struct node *node = w->results;
@@ -2242,6 +2243,7 @@ static void worker(void *arg){
             assert(w->results == NULL);
             assert(w->count == 0);
         }
+#endif
 
         after = gettime();
         w->phase3 += after - before;
@@ -2703,12 +2705,29 @@ int main(int argc, char **argv){
         start_wait += w->start_wait;
         middle_wait += w->middle_wait;
         end_wait += w->end_wait;
+#define REPORT_WORKERS
 #ifdef REPORT_WORKERS
         printf("W%u: %lf %lf %lf\n", i, w->start_wait/w->start_count,
             w->middle_wait/w->middle_count, w->end_wait/w->end_count);
 #endif
     }
-    printf("computing: %lf %lf %lf %lf (%lu %lu %lu %lu %lf %lf %lf %lf %u); waiting: %lf %lf %lf\n", phase1 / global->nworkers, phase2a / global->nworkers, phase2b / global->nworkers, phase3 / global->nworkers, cycles - work_cycles, work_cycles - visited_cycles - values_cycles, visited_cycles, values_cycles, phase1, phase2a, phase2b, phase3, fix_edge, start_wait / global->nworkers, middle_wait / global->nworkers, end_wait / global->nworkers);
+    printf("computing: %lf %lf %lf %lf (%lu %lu %lu %lu %lf %lf %lf %lf %u); waiting: %lf %lf %lf\n",
+        phase1 / global->nworkers,
+        phase2a / global->nworkers,
+        phase2b / global->nworkers,
+        phase3 / global->nworkers,
+        cycles - work_cycles,
+        work_cycles - visited_cycles - values_cycles,
+        visited_cycles,
+        values_cycles,
+        phase1,
+        phase2a,
+        phase2b,
+        phase3,
+        fix_edge,
+        start_wait / global->nworkers,
+        middle_wait / global->nworkers,
+        end_wait / global->nworkers);
 
     printf("#states %d (time %.2lfs, mem=%.2lfGB)\n", global->graph.size, gettime() - before, (double) allocated / (1L << 30));
 
