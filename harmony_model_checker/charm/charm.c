@@ -1910,13 +1910,16 @@ static void do_work(struct worker *w){
         printf("DO_WORK %u: %u %u\n", w->index, w->todo_index, next);
         while (w->todo_index < next) {
             struct node *n = *w->todo_ptr;
+            if (n == NULL) {
+                return;
+            }
             w->todo_ptr = &n->next;
         }
 #endif
 
         for (unsigned int i = 0; i < TODO_COUNT; i++, next++) {
 #ifdef NEWWAY
-            printf("DO_WORK %u: handle %u\n", next);
+            printf("DO_WORK %u: handle %u\n", w->index, next);
             struct node *node = *w->todo_ptr;
             if (node == NULL) {
                 return;
