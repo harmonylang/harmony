@@ -7,7 +7,7 @@
 #include "json.h"
 #include "hashtab.h"
 
-#define NEWWAY
+// #define NEWWAY
 
 struct scc {        // Strongly Connected Component
     struct scc *next;

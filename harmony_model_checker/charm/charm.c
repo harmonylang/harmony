@@ -2080,6 +2080,7 @@ void process_results(struct global *global, struct worker *w){
 static void worker(void *arg){
     struct worker *w = arg;
     struct global *global = w->global;
+    bool done = false;
 
 #ifdef CPU_SET
     if (w->index == 0) {
@@ -2105,6 +2106,11 @@ static void worker(void *arg){
         double after = gettime();
         w->start_wait += after - before;
         w->start_count++;
+
+        // Worker 0 may need to move on.
+        if (done) {
+            break;
+        }
 
         // (first) parallel phase starts now
 		// printf("WORKER %d starting epoch %d\n", w->index, epoch);
@@ -2158,7 +2164,8 @@ static void worker(void *arg){
             ht_grow_prepare(global->values);
         }
 
-        if (w->index == 3 % global->nworkers) {
+        // Only the coordinator (worker 0) does this
+        if (w->index == 0 % global->nworkers) {
             // End of a layer in the Kripke structure?
             unsigned int todo = atomic_load(&global->atodo);
             if (todo > global->graph.size) {
@@ -2204,6 +2211,12 @@ static void worker(void *arg){
                 if (!minheap_empty(global->failures)) {
                     // Pretend we're done
                     atomic_store(&global->atodo, global->graph.size);
+                }
+
+                // Worker 0 is the coordinator and may need to go do
+                // other stuff
+                if (total == 0) {
+                    done = true;
                 }
             }
 
@@ -2483,9 +2496,9 @@ int main(int argc, char **argv){
 	printf("nworkers = %d\n", global->nworkers);
 
     barrier_t start_barrier, middle_barrier, end_barrier;
-    barrier_init(&start_barrier, global->nworkers + 1);
-    barrier_init(&middle_barrier, global->nworkers + 1);
-    barrier_init(&end_barrier, global->nworkers + 1);
+    barrier_init(&start_barrier, global->nworkers);
+    barrier_init(&middle_barrier, global->nworkers);
+    barrier_init(&end_barrier, global->nworkers);
 
     // initialize modules
     mutex_init(&global->inv_lock);
@@ -2649,11 +2662,6 @@ int main(int argc, char **argv){
         w->allocator.worker = i;
     }
 
-    // Start the workers, who'll wait on the start barrier
-    for (unsigned int i = 0; i < global->nworkers; i++) {
-        thread_create(worker, &workers[i]);
-    }
-
     // Put the state and value dictionaries in concurrent mode
     ht_set_concurrent(global->values);
     ht_set_concurrent(visited);
@@ -2662,28 +2670,15 @@ int main(int argc, char **argv){
     global->allocated = global->graph.size * sizeof(struct node *) +
         ht_allocated(visited) + ht_allocated(global->values);
 
-    double before = gettime();
-
-    // TODO.  Not clear we need this extra dummy thread
-    for (;;) {
-        barrier_wait(&start_barrier);
-
-        // Threads are working to create the next layer of nodes.
-        // Stay out of their way!
-
-        barrier_wait(&middle_barrier);
-
-        barrier_wait(&end_barrier);
-
-        if (atomic_load(&global->atodo) == global->graph.size) { // no new nodes added
-            break;
-        }
-
-        // The threads now update the hash tables and the graph table
+    // Start all but one of the workers, who'll wait on the start barrier
+    for (unsigned int i = 1; i < global->nworkers; i++) {
+        thread_create(worker, &workers[i]);
     }
 
-    // Wait for threads to fix up hash tables
-    barrier_wait(&start_barrier);
+    double before = gettime();
+
+    // Run the last worker.
+    worker(&workers[0]);
 
     // Compute how much memory was used, approximately
     unsigned long allocated = global->allocated, cycles = 0;
