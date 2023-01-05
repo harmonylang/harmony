@@ -1,5 +1,9 @@
 #include "head.h"
 
+#define _GNU_SOURCE
+#include <sched.h>   //cpu_set_t, CPU_SET
+#include <stdint.h>
+
 #ifdef _WIN32
 #include <windows.h>
 #else
@@ -1793,6 +1797,24 @@ static void work_phase2(struct worker *w, struct global *global){
 static void worker(void *arg){
     struct worker *w = arg;
     struct global *global = w->global;
+
+#ifdef CPU_SET
+    if (w->index == 0) {
+        printf("pinning cores\n");
+    }
+    // Pin worker to a core
+    // TODO.  NUMA considerations
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    if (getNumCores() == 64 && global->nworkers <= 32) {
+        // Try to schedule on the same chip
+        CPU_SET(2 * w->index, &cpuset);
+    }
+    else {
+        CPU_SET(w->index, &cpuset);
+    }
+    sched_setaffinity(0, sizeof(cpuset), &cpuset);
+#endif
 
     for (int epoch = 0;; epoch++) {
         barrier_wait(w->start_barrier);
