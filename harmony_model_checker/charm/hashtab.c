@@ -449,6 +449,8 @@ void ht_grow_prepare(struct hashtab *ht){
         ht->stable_count += unstable_count;
         atomic_store(&ht->unstable_count,  0);
 
+// #define EVEN_DISTR
+#ifdef EVEN_DISTR
         // Now divide them evenly
         unsigned int cut = unstable_count / ht->nworkers, worker = 0;
         unsigned int count = 0, last = 0;
@@ -467,6 +469,13 @@ void ht_grow_prepare(struct hashtab *ht){
         if (worker != ht->nworkers) panic("bad1");
         // if (count != unstable_count) panic("bad2");
         ht->workers[worker - 1].last = 1u << ht->log_unstable;
+#else
+        unsigned int nbuckets = (1u << ht->log_unstable);
+        for (unsigned int i = 0; i < ht->nworkers; i++) {
+            ht->workers[i].first = i * nbuckets / ht->nworkers;
+            ht->workers[i].last = (i + 1) * nbuckets / ht->nworkers;
+        }
+#endif
 
         // See if the stable table needs to grow
         if ((1u << (ht->log_unstable + ht->log_stable)) < ht->stable_count * GROW_THRESHOLD) {
