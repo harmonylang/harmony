@@ -26,6 +26,10 @@ struct ht_node {
     uint32_t hash;
 };
 
+struct ht_worker {
+    unsigned int first, last;
+};
+
 // #define USE_SPINLOCK    // TODO
 
 #ifdef USE_SPINLOCK
@@ -79,6 +83,7 @@ struct hashtab {
     unsigned int nlocks;
     bool concurrent;
     unsigned int nworkers;
+    struct ht_worker *workers;
     unsigned int *counts;       // 1 per worker
     uint64_t *cycles;           // 1 per worker
     unsigned long nobjects;     // total #items in hash table

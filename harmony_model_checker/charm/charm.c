@@ -66,10 +66,16 @@ struct worker {
     unsigned int enqueued;      // total number of enqueued states
 
     struct node *results;       // list of resulting states
+    struct node *last;          // last entry in the list
     unsigned int count;         // number of resulting states
     struct edge **edges;        // lists of edges to fix, one for each worker
     unsigned int node_id;       // node_ids to use for resulting states
     struct failure *failures;   // list of failures
+
+#ifdef NEWWAY
+    struct node **todo_ptr;
+    unsigned int todo_index;
+#endif
 
     char *alloc_buf;            // allocated buffer
     char *alloc_ptr;            // pointer into allocated buffer
@@ -159,10 +165,11 @@ static inline void rdtscp(uint64_t *cycles, uint64_t *pid) {
 }
 
 static inline uint64_t get_cycles(){
-    uint64_t cycles, pid;
+    // uint64_t cycles, pid;
 
-    rdtscp(&cycles, &pid);
-    return cycles;
+    // rdtscp(&cycles, &pid);
+    // return cycles;
+    return 0;
 }
 
 #endif
@@ -406,8 +413,13 @@ static void process_edge(struct worker *w, struct edge *edge, ht_lock_t *lock) {
         next->lock = lock;
         edge->bwdnext = NULL;
         if (!edge->failed) {
-            next->next = w->results;
-            w->results = next;
+            if (w->last == NULL) {
+                w->results = next;
+            }
+            else {
+                w->last->next = next;
+            }
+            w->last = next;
             w->count++;
             w->enqueued++;
         }
@@ -861,8 +873,13 @@ static bool onestep(
     if (new) {
         edge->dst->state = (struct state *) &edge->dst[1];
         assert(VALUE_TYPE(edge->dst->state->vars) == VALUE_DICT);
-        edge->dst->next = w->results;
-        w->results = edge->dst;
+        if (w->last == NULL) {
+            w->results = edge->dst;
+        }
+        else {
+            w->last->next = edge->dst;
+        }
+        w->last = edge->dst;
         w->count++;
         w->enqueued++;
         if (!edge->choosing) {
@@ -1889,12 +1906,29 @@ static void do_work(struct worker *w){
         mutex_release(&global->todo_lock);
 #endif // USE_ATOMIC
 
+#ifdef NEWWAY
+        printf("DO_WORK %u: %u %u\n", w->index, w->todo_index, next);
+        while (w->todo_index < next) {
+            struct node *n = *w->todo_ptr;
+            w->todo_ptr = &n->next;
+        }
+#endif
+
         for (unsigned int i = 0; i < TODO_COUNT; i++, next++) {
+#ifdef NEWWAY
+            printf("DO_WORK %u: handle %u\n", next);
+            struct node *node = *w->todo_ptr;
+            if (node == NULL) {
+                return;
+            }
+            w->todo_ptr = &node->next;
+#else
             // printf("W%d %d %d\n", w->index, next, global->graph.size);
             if (next >= global->graph.size) {
                 return;
             }
             struct node *node = global->graph.nodes[next];
+#endif
             struct state *state = node->state;
             w->dequeued++;
 
@@ -2130,16 +2164,28 @@ static void worker(void *arg){
                 global->diameter++;
                 // printf("Diameter %d\n", global->diameter);
 
-                // The threads completed producing the next layer of nodes in the graph.
                 // Grow the graph table.
                 unsigned int total = 0;
                 for (unsigned int i = 0; i < global->nworkers; i++) {
                     struct worker *w2 = &w->workers[i];
                     w2->node_id = global->graph.size + total;
                     total += w2->count;
+#ifdef NEWWAY
+                    if (w2->last != NULL) {
+                        w2->last->next = global->todo;
+                        global->todo = w2->results;
+                        w2->results = w2->last = NULL;
+                    }
+#endif
                 }
+
+#ifdef NEWWAY
+                global->graph.size += total;
+#else
+                // The threads completed producing the next layer of nodes in the graph.
                 graph_add_multiple(&global->graph, total);
                 assert(global->graph.size <= global->graph.alloc_size);
+#endif
 
                 // Collect the failures of all the workers
                 for (unsigned int i = 0; i < global->nworkers; i++) {
@@ -2174,7 +2220,7 @@ static void worker(void *arg){
         ht_make_stable(global->values, w->index);
         ht_make_stable(w->visited, w->index);
 
-        if (global->layer_done) {
+        if (0 && global->layer_done) {
             // Fill the graph table
             for (unsigned int i = 0; w->count != 0; i++) {
                 struct node *node = w->results;
@@ -2436,7 +2482,7 @@ int main(int argc, char **argv){
     mutex_init(&global->todo_lock);
     mutex_init(&global->todo_wait);
     mutex_acquire(&global->todo_wait);          // Split Binary Semaphore
-    global->values = ht_new("values", 0, 14, global->nworkers, true);
+    global->values = ht_new("values", 0, 10, global->nworkers, true);
 
     struct engine engine;
     engine.allocator = NULL;
@@ -2535,7 +2581,7 @@ int main(int argc, char **argv){
     }
 
     // Put the initial state in the visited map
-    struct hashtab *visited = ht_new("visited", sizeof(struct node), 16, global->nworkers, false);
+    struct hashtab *visited = ht_new("visited", sizeof(struct node), 14, global->nworkers, false);
     ht_lock_t *lock;
     struct ht_node *hn = ht_find_lock(visited, NULL, state, state_size(state), NULL, &lock);
     struct node *node = (struct node *) &hn[1];
@@ -2570,6 +2616,10 @@ int main(int argc, char **argv){
         w->inv_step.ctx->interruptlevel = false;
         w->inv_step.engine.allocator = &w->allocator;
         w->inv_step.engine.values = global->values;
+
+#ifdef NEWWAY
+        w->todo_ptr = &global->todo;
+#endif
 
         w->alloc_buf = malloc(WALLOC_CHUNK);
         w->alloc_ptr = w->alloc_buf;
@@ -2647,7 +2697,7 @@ int main(int argc, char **argv){
 
     printf("#states %d (time %.2lfs, mem=%.2lfGB)\n", global->graph.size, gettime() - before, (double) allocated / (1L << 30));
 
-    // if (true) exit(0);
+    if (true) exit(0);
 
     ht_set_sequential(global->values);
     ht_set_sequential(visited);

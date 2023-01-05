@@ -8,8 +8,8 @@
 // #include "komihash.h"
 
 #define LOG_UNSTABLE      12
-#define GROW_THRESHOLD     2
-#define GROW_FACTOR       16
+#define GROW_THRESHOLD     1
+#define GROW_FACTOR        8
 
 #ifdef _WIN32
 
@@ -72,10 +72,11 @@ static inline void rdtscp(uint64_t *cycles, uint64_t *pid) {
 }
 
 static inline uint64_t get_cycles(){
-    uint64_t cycles, pid;
+    // uint64_t cycles, pid;
 
-    rdtscp(&cycles, &pid);
-    return cycles;
+    // rdtscp(&cycles, &pid);
+    // return cycles;
+    return 0;
 }
 
 #endif
@@ -139,7 +140,10 @@ struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int log_b
     for (unsigned int i = 0; i < (1u << ht->log_unstable); i++) {
         atomic_init(&ht->unstable[i].list, NULL);
     }
-    ht->log_stable = 0; // stable and unstable tables same size
+    ht->log_stable = 4;
+    if (0 && strcmp(ht->whoami, "visited") == 0) {
+        ht->log_stable = 26 - ht->log_unstable;
+    }
     ht->stable = calloc(1u << (ht->log_stable + ht->log_unstable), sizeof(*ht->stable));
     ht->nlocks = nworkers * 256;        // TODO: how much?
 #ifdef ALIGNED_ALLOC
@@ -153,6 +157,7 @@ struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int log_b
     ht->nworkers = nworkers;
     ht->counts = calloc(nworkers, sizeof(*ht->counts));
     ht->cycles = calloc(nworkers, sizeof(*ht->cycles));
+    ht->workers = calloc(nworkers, sizeof(*ht->workers));
 #ifndef USE_ATOMIC
     mutex_init(&ht->mutex);
 #endif
@@ -391,29 +396,38 @@ void ht_make_stable(struct hashtab *ht, unsigned int worker){
         return;
     }
 
-    unsigned int chunk = (1u << ht->log_unstable) / ht->nworkers;
-    for (;;) {
-        unsigned int segment = atomic_fetch_add(&ht->todo, chunk);
-        for (unsigned int i = 0; i < chunk; i++, segment++) {
-            if (segment >= (1u << ht->log_unstable)) {
-                return;
-            }
-
-            // First grow the hash table if needed
-            if (ht->old_stable != NULL) {
-                ht_do_resize(ht, ht->old_log_stable, ht->old_stable, segment);
-            }
-
-            // Flush the unstable table
-            struct ht_node *n = atomic_load(&ht->unstable[segment].list), *next;
-            for (; n != NULL; n = next) {
-                next = atomic_load(&n->next.unstable);
-                unsigned int index = n->hash >> (32 - ht->log_unstable - ht->log_stable);
-                n->next.stable = ht->stable[index];
-                ht->stable[index] = n;
-            }
-            atomic_store(&ht->unstable[segment].list, NULL);
+    // unsigned int chunk = (1u << ht->log_unstable) / ht->nworkers;
+    // unsigned int chunk = 1;
+    // unsigned int first = (1u << ht->log_unstable) * worker / ht->nworkers;
+    // unsigned int last = (1u << ht->log_unstable) * (worker + 1) / ht->nworkers;
+    unsigned int first = ht->workers[worker].first;
+    unsigned int last = ht->workers[worker].last;
+    for (unsigned int segment = first; segment < last; segment++) {
+        // First grow the hash table if needed
+        if (ht->old_stable != NULL) {
+            ht_do_resize(ht, ht->old_log_stable, ht->old_stable, segment);
         }
+
+        // Flush the unstable table
+        struct ht_node *n = atomic_load(&ht->unstable[segment].list), *next;
+        for (; n != NULL; n = next) {
+            next = atomic_load(&n->next.unstable);
+            unsigned int index = n->hash >> (32 - ht->log_unstable - ht->log_stable);
+            n->next.stable = ht->stable[index];
+            ht->stable[index] = n;
+        }
+        atomic_store(&ht->unstable[segment].list, NULL);
+    }
+}
+
+unsigned int ht_length(struct hashtab *ht, unsigned int segment) {
+    hAtomic(struct ht_node *) *chain = &ht->unstable[segment].list;
+    for (unsigned int length = 0;; length++) {
+        struct ht_node *expected = atomic_load(chain);
+        if (expected == NULL) {
+            return length;
+        }
+        chain = &expected->next.unstable;
     }
 }
 
@@ -435,9 +449,28 @@ void ht_grow_prepare(struct hashtab *ht){
         ht->stable_count += unstable_count;
         atomic_store(&ht->unstable_count,  0);
 
+        // Now divide them evenly
+        unsigned int cut = unstable_count / ht->nworkers, worker = 0;
+        unsigned int count = 0, last = 0;
+        for (unsigned int i = 0; i < (1u << ht->log_unstable); i++) {
+            count += ht_length(ht, i);
+            if (count >= cut) {
+                ht->workers[worker].first = last;
+                ht->workers[worker].last = last = i + 1;
+                worker++;
+                if (worker == ht->nworkers) {
+                    break;
+                }
+                cut = (unstable_count * (worker + 1)) / ht->nworkers;
+            }
+        }
+        if (worker != ht->nworkers) panic("bad1");
+        // if (count != unstable_count) panic("bad2");
+        ht->workers[worker - 1].last = 1u << ht->log_unstable;
+
         // See if the stable table needs to grow
         if ((1u << (ht->log_unstable + ht->log_stable)) < ht->stable_count * GROW_THRESHOLD) {
-            // printf("GROW %s %u %u %u\n", ht->whoami, unstable_count, ht->log_stable, unstable_count * GROW_THRESHOLD);
+            printf("GROW %s %u %u %u\n", ht->whoami, unstable_count, ht->log_stable, ht->log_unstable);
             ht->old_log_stable = ht->log_stable;
             ht->old_stable = ht->stable;
             ht->log_stable = ht->log_stable + 2;
