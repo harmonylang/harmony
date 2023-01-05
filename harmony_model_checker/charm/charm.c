@@ -66,16 +66,15 @@ struct worker {
     unsigned int enqueued;      // total number of enqueued states
 
     struct node *results;       // list of resulting states
+#ifdef NEWWAY
     struct node *last;          // last entry in the list
+    struct node **todo_ptr;
+    unsigned int todo_index;
+#endif
     unsigned int count;         // number of resulting states
     struct edge **edges;        // lists of edges to fix, one for each worker
     unsigned int node_id;       // node_ids to use for resulting states
     struct failure *failures;   // list of failures
-
-#ifdef NEWWAY
-    struct node **todo_ptr;
-    unsigned int todo_index;
-#endif
 
     char *alloc_buf;            // allocated buffer
     char *alloc_ptr;            // pointer into allocated buffer
@@ -413,6 +412,7 @@ static void process_edge(struct worker *w, struct edge *edge, ht_lock_t *lock) {
         next->lock = lock;
         edge->bwdnext = NULL;
         if (!edge->failed) {
+#ifdef NEWWAY
             if (w->last == NULL) {
                 w->results = next;
             }
@@ -420,6 +420,10 @@ static void process_edge(struct worker *w, struct edge *edge, ht_lock_t *lock) {
                 w->last->next = next;
             }
             w->last = next;
+#else
+            next->next = w->results;
+            w->results = next;
+#endif
             w->count++;
             w->enqueued++;
         }
@@ -872,6 +876,7 @@ static bool onestep(
     if (new) {
         edge->dst->state = (struct state *) &edge->dst[1];
         assert(VALUE_TYPE(edge->dst->state->vars) == VALUE_DICT);
+#ifdef NEWWAY
         if (w->last == NULL) {
             w->results = edge->dst;
         }
@@ -879,6 +884,10 @@ static bool onestep(
             w->last->next = edge->dst;
         }
         w->last = edge->dst;
+#else
+        edge->dst->next = w->results;
+        w->results = edge->dst;
+#endif
         w->count++;
         w->enqueued++;
         if (!edge->choosing) {
@@ -2190,8 +2199,8 @@ static void worker(void *arg){
                         global->todo_last = w2->last;
                         w2->results = w2->last = NULL;
                     }
-#endif
                     w2->count = 0;
+#endif
                 }
 
 #ifdef NEWWAY
@@ -2254,7 +2263,6 @@ static void worker(void *arg){
                 w->count--;
             }
             assert(w->results == NULL);
-            assert(w->count == 0);
         }
 #endif
 
