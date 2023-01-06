@@ -6,22 +6,22 @@
 #include <stdint.h> /* uint32_t */
 #include <string.h> /* memcpy/memcmp */
 
-#define DICT_ALIGN      sizeof(void *)
-
 #include "thread.h"
 
 typedef void (*dict_enumfunc)(void *env, const void *key, unsigned int key_size,
                                 void *value);
 
-// This header is followed directly by first the key and
-// then the value (aligned to DICT_ALIGN).
+// This header is followed directly by first the data and then the key.
 // The value is of length dict->value_len.
+// TODO.  Do we need 2 next pointers?
+// TODO.  Does it make sense to save the hash here?
 struct dict_assoc {
 	struct dict_assoc *next;
     struct dict_assoc *unstable_next;
 	unsigned int len;               // key length
 };
 
+// TODO.  Split into two tables, one for stable, one for unstable.
 struct dict_bucket {
     struct dict_assoc *stable, *unstable;
 };

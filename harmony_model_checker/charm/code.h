@@ -19,7 +19,7 @@ struct code {
 
 struct engine {
     struct allocator *allocator;
-    struct hashtab *values;
+    struct dict *values;
 };
 
 struct callstack {

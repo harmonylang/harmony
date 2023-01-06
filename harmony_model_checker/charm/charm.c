@@ -51,10 +51,9 @@ struct worker {
     double start_wait, middle_wait, end_wait;
     unsigned int start_count, middle_count, end_count;
     double phase1, phase2a, phase2b, phase3;
-    unsigned long cycles, work_cycles;
     unsigned int fix_edge;
 
-    struct hashtab *visited;
+    struct dict *visited;
 
     unsigned int index;          // index of worker
     struct worker *workers;      // points to list of workers
@@ -394,13 +393,13 @@ unsigned int check_finals(struct worker *w, struct node *node, struct step *step
     return 0;
 }
 
-static void process_edge(struct worker *w, struct edge *edge, ht_lock_t *lock) {
+static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock) {
     struct node *node = edge->src, *next = edge->dst;
     struct state *state = (struct state *) &next[1];
     unsigned int len = node->len + edge->weight;
     unsigned int steps = node->steps + edge->nsteps;
 
-    ht_lock_acquire(lock);
+    mutex_acquire(lock);
 
     bool initialized = next->initialized;
     if (!initialized) {
@@ -441,7 +440,7 @@ static void process_edge(struct worker *w, struct edge *edge, ht_lock_t *lock) {
 
     next->bwd = edge;
 
-    ht_lock_release(lock);
+    mutex_release(lock);
 
 #ifdef DELAY_INSERT
     // Don't do the forward edge at this time as that would involve locking
@@ -451,10 +450,10 @@ static void process_edge(struct worker *w, struct edge *edge, ht_lock_t *lock) {
     edge->fwdnext = *pe;
     *pe = edge;
 #else
-    if (ht_lock_try_acquire(node->lock)) {
+    if (mutex_try_acquire(node->lock)) {
         edge->fwdnext = node->fwd;
         node->fwd = edge;
-        ht_lock_release(node->lock);
+        mutex_release(node->lock);
     }
     else {
         struct edge **pe = &w->edges[node->id % w->nworkers];
@@ -523,8 +522,6 @@ static bool onestep(
     assert(!step->ctx->terminated);
     assert(!step->ctx->failed);
     assert(step->engine.allocator == &w->allocator);
-
-    unsigned long before = get_cycles();
 
     struct global *global = w->global;
 
@@ -679,7 +676,6 @@ static bool onestep(
                 }
                 else {
                     // start over, as twostep does not have instrcnt optimization
-                    w->work_cycles += get_cycles() - before;
                     return false;
                 }
             }
@@ -866,9 +862,9 @@ static bool onestep(
 
     // See if this state has been computed before
     unsigned int size = state_size(sc);
-    ht_lock_t *lock;
+    mutex_t *lock;
     bool new;
-    struct ht_node *hn = ht_find_lock(w->visited, &w->allocator,
+    struct dict_assoc *hn = dict_find_lock(w->visited, &w->allocator,
                 sc, size, &new, &lock);
     edge->dst = (struct node *) &hn[1];
 
@@ -899,7 +895,6 @@ static bool onestep(
     process_edge(w, edge, lock);
 #endif
 
-    w->work_cycles += get_cycles() - before;
     return true;
 }
 
@@ -1987,26 +1982,13 @@ static void do_work(struct worker *w){
         if (next >= atomic_load(&global->goal)) {
             break;
         }
-        if (w->index == 0 % global->nworkers && ht_needs_to_grow(w->visited)) {
-            atomic_store(&global->goal, next);
-            break;
-        }
-        if (w->index == 1 % global->nworkers && ht_needs_to_grow(global->values)) {
-            atomic_store(&global->goal, next);
-            break;
-        }
 #else // USE_ATOMIC
         mutex_acquire(&global->todo_lock);
         if (next >= global->goal) {
             mutex_release(&global->todo_lock);
             break;
         }
-        if (w->index == 0 % global->nworkers && ht_needs_to_grow(w->visited)) {
-            global->goal = next;
-            mutex_release(&global->todo_lock);
-            break;
-        }
-        if (w->index == 1 % global->nworkers && ht_needs_to_grow(global->values)) {
+        if (w->index == 0 % global->nworkers && dict_needs_to_grow(w->visited)) {
             global->goal = next;
             mutex_release(&global->todo_lock);
             break;
@@ -2124,10 +2106,7 @@ static void worker(void *arg){
         // (first) parallel phase starts now
 		// printf("WORKER %d starting epoch %d\n", w->index, epoch);
         before = after;
-        unsigned long bef_cycles = get_cycles();
 		do_work(w);
-        unsigned long aft_cycles = get_cycles();
-        w->cycles += aft_cycles - bef_cycles;
         after = gettime();
         w->phase1 += after - before;
 
@@ -2167,10 +2146,10 @@ static void worker(void *arg){
         // rehashing is distributed among the threads in the next phase
         // double before_postproc = gettime();
         if (w->index == 1 % global->nworkers) {
-            ht_grow_prepare(w->visited);
+            dict_grow_prepare(w->visited);
         }
         if (w->index == 2 % global->nworkers) {
-            ht_grow_prepare(global->values);
+            dict_grow_prepare(global->values);
         }
 
         // Only the coordinator (worker 0) does this
@@ -2233,7 +2212,7 @@ static void worker(void *arg){
 
             // Compute how much table space is in use
             global->allocated = global->graph.size * sizeof(struct node *) +
-                ht_allocated(w->visited) + ht_allocated(global->values);
+                dict_allocated(w->visited) + dict_allocated(global->values);
         }
 
         after = gettime();
@@ -2248,8 +2227,8 @@ static void worker(void *arg){
         before = after;
 
 		// printf("WORKER %d make stable %d %u %u\n", w->index, epoch, w->count, w->node_id);
-        ht_make_stable(global->values, w->index);
-        ht_make_stable(w->visited, w->index);
+        dict_make_stable(global->values, w->index);
+        dict_make_stable(w->visited, w->index);
 
 #ifndef NEWWAY
         if (global->layer_done) {
@@ -2515,7 +2494,7 @@ int main(int argc, char **argv){
     mutex_init(&global->todo_lock);
     mutex_init(&global->todo_wait);
     mutex_acquire(&global->todo_wait);          // Split Binary Semaphore
-    global->values = ht_new("values", 0, 10, global->nworkers, true);
+    global->values = dict_new("values", 0, 0, global->nworkers, true);
 
     struct engine engine;
     engine.allocator = NULL;
@@ -2614,9 +2593,9 @@ int main(int argc, char **argv){
     }
 
     // Put the initial state in the visited map
-    struct hashtab *visited = ht_new("visited", sizeof(struct node), 14, global->nworkers, false);
-    ht_lock_t *lock;
-    struct ht_node *hn = ht_find_lock(visited, NULL, state, state_size(state), NULL, &lock);
+    struct dict *visited = dict_new("visited", sizeof(struct node), 0, global->nworkers, false);
+    mutex_t *lock;
+    struct dict_assoc *hn = dict_find_lock(visited, NULL, state, state_size(state), NULL, &lock);
     struct node *node = (struct node *) &hn[1];
     memset(node, 0, sizeof(*node));
     node->state = state;
@@ -2671,12 +2650,12 @@ int main(int argc, char **argv){
     }
 
     // Put the state and value dictionaries in concurrent mode
-    ht_set_concurrent(global->values);
-    ht_set_concurrent(visited);
+    dict_set_concurrent(global->values);
+    dict_set_concurrent(visited);
 
     // Compute how much table space is allocated
     global->allocated = global->graph.size * sizeof(struct node *) +
-        ht_allocated(visited) + ht_allocated(global->values);
+        dict_allocated(visited) + dict_allocated(global->values);
 
     // Start all but one of the workers, who'll wait on the start barrier
     for (unsigned int i = 1; i < global->nworkers; i++) {
@@ -2689,17 +2668,12 @@ int main(int argc, char **argv){
     worker(&workers[0]);
 
     // Compute how much memory was used, approximately
-    unsigned long allocated = global->allocated, cycles = 0;
-    unsigned long visited_cycles = 0, values_cycles = 0, work_cycles = 0;
+    unsigned long allocated = global->allocated;
     double phase1 = 0, phase2a = 0, phase2b = 0, phase3 = 0, start_wait = 0, middle_wait = 0, end_wait = 0;
     unsigned int fix_edge = 0;
     for (unsigned int i = 0; i < global->nworkers; i++) {
         struct worker *w = &workers[i];
         allocated += w->allocated;
-        cycles += w->cycles;
-        work_cycles += w->work_cycles;
-        visited_cycles += visited->cycles[i];
-        values_cycles += global->values->cycles[i];
         phase1 += w->phase1;
         phase2a += w->phase2a;
         phase2b += w->phase2b;
@@ -2719,10 +2693,10 @@ int main(int argc, char **argv){
         phase2a / global->nworkers,
         phase2b / global->nworkers,
         phase3 / global->nworkers,
-        cycles - work_cycles,
-        work_cycles - visited_cycles - values_cycles,
-        visited_cycles,
-        values_cycles,
+        0L,
+        0L,
+        0L,
+        0L,
         phase1,
         phase2a,
         phase2b,
@@ -2736,17 +2710,9 @@ int main(int argc, char **argv){
 
     if (true) exit(0);
 
-    ht_set_sequential(global->values);
-    ht_set_sequential(visited);
+    dict_set_sequential(global->values);
+    dict_set_sequential(visited);
 
-    // ht_dump(visited);
-    // ht_dump(global->values.dicts);
-    // ht_dump(global->values.addresses);
-    // ht_dump(global->values.atoms);
-    // ht_dump(global->values.lists);
-    // ht_dump(global->values.sets);
-    // ht_dump(global->values.contexts);
- 
     printf("Phase 3: analysis\n");
     if (minheap_empty(global->failures)) {
         double now = gettime();

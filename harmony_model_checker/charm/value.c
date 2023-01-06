@@ -25,7 +25,7 @@ void *value_get(hvalue_t v, unsigned int *psize){
         *psize = 0;
         return NULL;
     }
-    return ht_retrieve((void *) v, psize);
+    return dict_retrieve((void *) v, psize);
 }
 
 // Like value_get, but allocate dynamic memory for it
@@ -37,7 +37,7 @@ void *value_copy(hvalue_t v, unsigned int *psize){
         return NULL;
     }
     unsigned int size;
-    void *p = ht_retrieve((void *) v, &size);
+    void *p = dict_retrieve((void *) v, &size);
     void *r = malloc(size);
     memcpy(r, p, size);
     if (psize != NULL) {
@@ -54,7 +54,7 @@ void *value_copy_extend(hvalue_t v, unsigned int inc, unsigned int *psize){
         return inc == 0 ? NULL : malloc(inc);
     }
     unsigned int size;
-    void *p = ht_retrieve((void *) v, &size);
+    void *p = dict_retrieve((void *) v, &size);
     void *r = malloc(size + inc);
     memcpy(r, p, size);
     if (psize != NULL) {
@@ -67,7 +67,7 @@ hvalue_t value_put_atom(struct engine *engine, const void *p, unsigned int size)
     if (size == 0) {
         return VALUE_ATOM;
     }
-    void *q = ht_find(engine->values, engine->allocator, p, size, NULL);
+    void *q = dict_find(engine->values, engine->allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_ATOM;
 }
 
@@ -75,7 +75,7 @@ hvalue_t value_put_set(struct engine *engine, void *p, unsigned int size){
     if (size == 0) {
         return VALUE_SET;
     }
-    void *q = ht_find(engine->values, engine->allocator, p, size, NULL);
+    void *q = dict_find(engine->values, engine->allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_SET;
 }
 
@@ -83,7 +83,7 @@ hvalue_t value_put_dict(struct engine *engine, void *p, unsigned int size){
     if (size == 0) {
         return VALUE_DICT;
     }
-    void *q = ht_find(engine->values, engine->allocator, p, size, NULL);
+    void *q = dict_find(engine->values, engine->allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_DICT;
 }
 
@@ -91,7 +91,7 @@ hvalue_t value_put_list(struct engine *engine, void *p, unsigned int size){
     if (size == 0) {
         return VALUE_LIST;
     }
-    void *q = ht_find(engine->values, engine->allocator, p, size, NULL);
+    void *q = dict_find(engine->values, engine->allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_LIST;
 }
 
@@ -100,7 +100,7 @@ hvalue_t value_put_address(struct engine *engine, void *p, unsigned int size){
         return VALUE_ADDRESS_SHARED;
     }
     assert(size > sizeof(hvalue_t));
-    void *q = ht_find(engine->values, engine->allocator, p, size, NULL);
+    void *q = dict_find(engine->values, engine->allocator, p, size, NULL);
     if (* (hvalue_t *) p == VALUE_PC_SHARED) {
         return (hvalue_t) q | VALUE_ADDRESS_SHARED;
     }
@@ -111,7 +111,7 @@ hvalue_t value_put_address(struct engine *engine, void *p, unsigned int size){
 
 hvalue_t value_put_context(struct engine *engine, struct context *ctx){
 	assert(ctx->pc >= 0);
-    void *q = ht_find(engine->values, engine->allocator, ctx, ctx_size(ctx), NULL);
+    void *q = dict_find(engine->values, engine->allocator, ctx, ctx_size(ctx), NULL);
     if (ctx->eternal) {
         return (hvalue_t) q | VALUE_CONTEXT | VALUE_CONTEXT_ETERNAL;
     }
@@ -154,8 +154,8 @@ int value_cmp_dict(hvalue_t v1, hvalue_t v2){
     }
     void *p1 = (void *) v1, *p2 = (void *) v2;
     unsigned int size1, size2;
-    hvalue_t *vals1 = ht_retrieve(p1, &size1);
-    hvalue_t *vals2 = ht_retrieve(p2, &size2);
+    hvalue_t *vals1 = dict_retrieve(p1, &size1);
+    hvalue_t *vals2 = dict_retrieve(p2, &size2);
     size1 /= sizeof(hvalue_t);
     size2 /= sizeof(hvalue_t);
     unsigned int size = size1 < size2 ? size1 : size2;
@@ -177,8 +177,8 @@ int value_cmp_set(hvalue_t v1, hvalue_t v2){
     }
     void *p1 = (void *) v1, *p2 = (void *) v2;
     unsigned int size1, size2;
-    hvalue_t *vals1 = ht_retrieve(p1, &size1);
-    hvalue_t *vals2 = ht_retrieve(p2, &size2);
+    hvalue_t *vals1 = dict_retrieve(p1, &size1);
+    hvalue_t *vals2 = dict_retrieve(p2, &size2);
     size1 /= sizeof(hvalue_t);
     size2 /= sizeof(hvalue_t);
     unsigned int size = size1 < size2 ? size1 : size2;
@@ -200,8 +200,8 @@ int value_cmp_list(hvalue_t v1, hvalue_t v2){
     }
     void *p1 = (void *) v1, *p2 = (void *) v2;
     unsigned int size1, size2;
-    hvalue_t *vals1 = ht_retrieve(p1, &size1);
-    hvalue_t *vals2 = ht_retrieve(p2, &size2);
+    hvalue_t *vals1 = dict_retrieve(p1, &size1);
+    hvalue_t *vals2 = dict_retrieve(p2, &size2);
     size1 /= sizeof(hvalue_t);
     size2 /= sizeof(hvalue_t);
     unsigned int size = size1 < size2 ? size1 : size2;
@@ -223,8 +223,8 @@ int value_cmp_address(hvalue_t v1, hvalue_t v2){
     }
     void *p1 = (void *) v1, *p2 = (void *) v2;
     unsigned int size1, size2;
-    hvalue_t *vals1 = ht_retrieve(p1, &size1);
-    hvalue_t *vals2 = ht_retrieve(p2, &size2);
+    hvalue_t *vals1 = dict_retrieve(p1, &size1);
+    hvalue_t *vals2 = dict_retrieve(p2, &size2);
     size1 /= sizeof(hvalue_t);
     size2 /= sizeof(hvalue_t);
     unsigned int size = size1 < size2 ? size1 : size2;
@@ -241,8 +241,8 @@ int value_cmp_address(hvalue_t v1, hvalue_t v2){
 int value_cmp_context(hvalue_t v1, hvalue_t v2){
     void *p1 = (void *) v1, *p2 = (void *) v2;
     unsigned int size1, size2;
-    char *s1 = ht_retrieve(p1, &size1);
-    char *s2 = ht_retrieve(p2, &size2);
+    char *s1 = dict_retrieve(p1, &size1);
+    char *s2 = dict_retrieve(p2, &size2);
     int size = size1 < size2 ? size1 : size2;
     int cmp = memcmp(s1, s2, size);
     if (cmp != 0) {
@@ -370,7 +370,7 @@ static void value_string_dict(struct strbuf *sb, hvalue_t v) {
 
     void *p = (void *) v;
     unsigned int size;
-    hvalue_t *vals = ht_retrieve(p, &size);
+    hvalue_t *vals = dict_retrieve(p, &size);
     size /= 2 * sizeof(hvalue_t);
     strbuf_printf(sb, "{ ");
     for (unsigned int i = 0; i < size; i++) {
@@ -392,7 +392,7 @@ static void value_json_dict(struct strbuf *sb, hvalue_t v, struct global *global
 
     void *p = (void *) v;
     unsigned int size;
-    hvalue_t *vals = ht_retrieve(p, &size);
+    hvalue_t *vals = dict_retrieve(p, &size);
     size /= 2 * sizeof(hvalue_t);
 
     strbuf_printf(sb, "{ \"type\": \"dict\", \"value\": [");
@@ -417,7 +417,7 @@ static void value_string_list(struct strbuf *sb, hvalue_t v) {
 
     void *p = (void *) v;
     unsigned int size;
-    hvalue_t *vals = ht_retrieve(p, &size);
+    hvalue_t *vals = dict_retrieve(p, &size);
     size /= sizeof(hvalue_t);
 
     strbuf_printf(sb, "[");
@@ -438,7 +438,7 @@ static void value_string_set(struct strbuf *sb, hvalue_t v) {
 
     void *p = (void *) v;
     unsigned int size;
-    hvalue_t *vals = ht_retrieve(p, &size);
+    hvalue_t *vals = dict_retrieve(p, &size);
     size /= sizeof(hvalue_t);
 
     strbuf_printf(sb, "{ ");
@@ -459,7 +459,7 @@ static void value_json_list(struct strbuf *sb, hvalue_t v, struct global *global
 
     void *p = (void *) v;
     unsigned int size;
-    hvalue_t *vals = ht_retrieve(p, &size);
+    hvalue_t *vals = dict_retrieve(p, &size);
     size /= sizeof(hvalue_t);
 
     strbuf_printf(sb, "{ \"type\": \"list\", \"value\": [");
@@ -480,7 +480,7 @@ static void value_json_set(struct strbuf *sb, hvalue_t v, struct global *global)
 
     void *p = (void *) v;
     unsigned int size;
-    hvalue_t *vals = ht_retrieve(p, &size);
+    hvalue_t *vals = dict_retrieve(p, &size);
     size /= sizeof(hvalue_t);
 
     strbuf_printf(sb, "{ \"type\": \"set\", \"value\": [");
@@ -546,7 +546,7 @@ static void value_string_address(struct strbuf *sb, hvalue_t v) {
 
     void *p = (void *) v;
     unsigned int size;
-    hvalue_t *indices = ht_retrieve(p, &size);
+    hvalue_t *indices = dict_retrieve(p, &size);
     size /= sizeof(hvalue_t);
     assert(size > 0);
     strbuf_indices_string(sb, indices, size);
@@ -560,7 +560,7 @@ static void value_json_address(struct strbuf *sb, hvalue_t v, struct global *glo
 
     void *p = (void *) v;
     unsigned int size;
-    hvalue_t *vals = ht_retrieve(p, &size);
+    hvalue_t *vals = dict_retrieve(p, &size);
     size /= sizeof(hvalue_t);
     assert(size > 0);
     strbuf_printf(sb, "{ \"type\": \"address\", \"func\": ");
@@ -956,7 +956,7 @@ hvalue_t value_atom(struct engine *engine, struct dict *map){
     if (value->u.atom.len == 0) {
         return VALUE_ATOM;
     }
-    void *p = ht_find(engine->values, engine->allocator, value->u.atom.base, value->u.atom.len, NULL);
+    void *p = dict_find(engine->values, engine->allocator, value->u.atom.base, value->u.atom.len, NULL);
     return (hvalue_t) p | VALUE_ATOM;
 }
 
@@ -979,7 +979,7 @@ hvalue_t value_dict(struct engine *engine, struct dict *map){
     }
 
     // vals is sorted already by harmony compiler
-    void *p = ht_find(engine->values, engine->allocator, vals,
+    void *p = dict_find(engine->values, engine->allocator, vals,
                     value->u.list.nvals * sizeof(hvalue_t) * 2, NULL);
     free(vals);
     return (hvalue_t) p | VALUE_DICT;
@@ -999,7 +999,7 @@ hvalue_t value_set(struct engine *engine, struct dict *map){
     }
 
     // vals is sorted already by harmony compiler
-    void *p = ht_find(engine->values, engine->allocator, vals, value->u.list.nvals * sizeof(hvalue_t), NULL);
+    void *p = dict_find(engine->values, engine->allocator, vals, value->u.list.nvals * sizeof(hvalue_t), NULL);
     free(vals);
     return (hvalue_t) p | VALUE_SET;
 }
@@ -1016,7 +1016,7 @@ hvalue_t value_list(struct engine *engine, struct dict *map){
         assert(jv->type == JV_MAP);
         vals[i] = value_from_json(engine, jv->u.map);
     }
-    void *p = ht_find(engine->values, engine->allocator, vals, value->u.list.nvals * sizeof(hvalue_t), NULL);
+    void *p = dict_find(engine->values, engine->allocator, vals, value->u.list.nvals * sizeof(hvalue_t), NULL);
     free(vals);
     return (hvalue_t) p | VALUE_LIST;
 }

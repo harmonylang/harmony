@@ -50,7 +50,7 @@ struct macrostep {
 
 struct global {
     struct code code;               // code of the Harmony program
-    struct hashtab *values;         // dictionary of values
+    struct dict *values;            // dictionary of values
     hvalue_t seqs;                  // sequential variables
 
     // invariants

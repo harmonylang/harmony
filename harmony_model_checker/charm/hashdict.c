@@ -28,13 +28,12 @@ static inline uint32_t meiyan(const char *key, int count) {
 
 static inline struct dict_assoc *dict_assoc_new(struct dict *dict,
         struct allocator *al, char *key, unsigned int len, uint32_t hash){
-    unsigned int alen = (len + DICT_ALIGN - 1) & ~(DICT_ALIGN - 1);
-    unsigned int total = sizeof(struct dict_assoc) + alen + dict->value_len;
+    unsigned int total = sizeof(struct dict_assoc) + dict->value_len + len;
 	struct dict_assoc *k = al == NULL ?  malloc(total) :
                         (*al->alloc)(al->ctx, total, false, dict->align16);
+    memset(k, 0, sizeof(*k) + dict->value_len);
 	k->len = len;
-	memcpy(k+1, key, len);
-	k->next = k->unstable_next = NULL;
+	memcpy((char *) &k[1] + dict->value_len, key, len);
 	return k;
 }
 
@@ -131,7 +130,7 @@ struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
     // a lock
 	struct dict_assoc *k = db->stable;
 	while (k != NULL) {
-		if (k->len == keylen && memcmp((char *) (k+1), key, keylen) == 0) {
+		if (k->len == keylen && memcmp((char *) &k[1] + dict->value_len, key, keylen) == 0) {
             if (new != NULL) {
                 *new = false;
             }
@@ -146,7 +145,7 @@ struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
         // See if the item is in the unstable list
         k = db->unstable;
         while (k != NULL) {
-            if (k->len == keylen && memcmp((char *) (k+1), key, keylen) == 0) {
+            if (k->len == keylen && memcmp((char *) &k[1] + dict->value_len, key, keylen) == 0) {
                 mutex_release(&dict->locks[index % dict->nlocks]);
                 dict->workers[al->worker].clashes++;
                 if (new != NULL) {
@@ -208,7 +207,7 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
             if (new != NULL) {
                 *new = false;
             }
-            mutex_acquire(*lock);
+            // mutex_acquire(*lock);
 			return k;
 		}
 		k = k->next;
@@ -226,6 +225,7 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
             if (new != NULL) {
                 *new = false;
             }
+            mutex_release(*lock);
             return k;
         }
         k = k->next;
@@ -241,6 +241,8 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
     dw->unstable[worker] = k;
     dw->count++;
 
+    mutex_release(*lock);
+
     if (new != NULL) {
         *new = true;
     }
@@ -251,19 +253,8 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
 void *dict_insert(struct dict *dict, struct allocator *al,
                             const void *key, unsigned int keylen, bool *new){
     struct dict_assoc *k = dict_find(dict, al, key, keylen, new);
-    unsigned int alen = (keylen + DICT_ALIGN - 1) & ~(DICT_ALIGN - 1);
-    return (char *) (k+1) + alen;
+    return (char *) &k[1] + dict->value_len;
 }
-
-#ifdef notdef
-// Returns a pointer to the value
-void *dict_insert_lock(struct dict *dict, struct allocator *al,
-                            const void *key, unsigned int keylen, bool *new, mutex_t **lock){
-    struct dict_assoc *k = dict_find_lock(dict, al, key, keylen, new, lock);
-    unsigned int alen = (keylen + DICT_ALIGN - 1) & ~(DICT_ALIGN - 1);
-    return (char *) (k+1) + alen;
-}
-#endif
 
 void *dict_retrieve(const void *p, unsigned int *psize){
     const struct dict_assoc *k = p;
@@ -284,10 +275,8 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keylen) {
     // First look in the stable list, which does not require a lock
 	struct dict_assoc *k = db->stable;
 	while (k != NULL) {
-		if (k->len == keylen && !memcmp((char *) (k+1), key, keylen)) {
-            unsigned int alen = (keylen + DICT_ALIGN - 1) & ~(DICT_ALIGN - 1);
-			void **p = (void **) ((char *) (k+1) + alen);
-            return *p;
+		if (k->len == keylen && !memcmp((char *) &k[1] + dict->value_len, key, keylen)) {
+            return &k[1];
 		}
 		k = k->next;
 	}
@@ -297,11 +286,9 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keylen) {
         mutex_acquire(&dict->locks[index % dict->nlocks]);
         k = db->unstable;
         while (k != NULL) {
-            if (k->len == keylen && !memcmp((char *) (k+1) + dict->value_len, key, keylen)) {
+            if (k->len == keylen && !memcmp((char *) &k[1] + dict->value_len, key, keylen)) {
                 mutex_release(&dict->locks[index % dict->nlocks]);
-                unsigned int alen = (keylen + DICT_ALIGN - 1) & ~(DICT_ALIGN - 1);
-                void **p = (void **) ((char *) (k+1) + alen);
-                return *p;
+                return &k[1];
             }
             k = k->next;
         }
@@ -316,16 +303,14 @@ void dict_iter(struct dict *dict, dict_enumfunc f, void *env) {
         struct dict_bucket *db = &dict->table[i];
         struct dict_assoc *k = db->stable;
         while (k != NULL) {
-            unsigned int alen = (k->len + DICT_ALIGN - 1) & ~(DICT_ALIGN - 1);
-            (*f)(env, (char *) (k+1), k->len, (char *) (k+1) + alen);
+            (*f)(env, (char *) &k[1] + dict->value_len, k->len, &k[1]);
             k = k->next;
         }
         if (dict->concurrent) {
             mutex_acquire(&dict->locks[i % dict->nlocks]);
             k = db->unstable;
             while (k != NULL) {
-                unsigned int alen = (k->len + DICT_ALIGN - 1) & ~(DICT_ALIGN - 1);
-                (*f)(env, (char *) (k+1), k->len, (char *) (k+1) + alen);
+                (*f)(env, (char *) &k[1] + dict->value_len, k->len, &k[1]);
                 k = k->next;
             }
             mutex_release(&dict->locks[i % dict->nlocks]);
