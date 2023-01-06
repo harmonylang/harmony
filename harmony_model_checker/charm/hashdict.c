@@ -347,7 +347,7 @@ void dict_make_stable(struct dict *dict, unsigned int worker){
         struct dict_worker *dw = &dict->workers[i];
         struct dict_assoc *k;
         while ((k = dw->unstable[worker]) != NULL) {
-            uint32_t hash = hash_func((char *) (k+1), k->len);
+            uint32_t hash = hash_func((char *) &k[1] + dict->value_len, k->len);
             unsigned int index = hash % dict->length;
             struct dict_bucket *db = &dict->table[index];
             dw->unstable[worker] = k->unstable_next;
