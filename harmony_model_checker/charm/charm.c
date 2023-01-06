@@ -2592,20 +2592,8 @@ int main(int argc, char **argv){
         exit(0);
     }
 
-    // Put the initial state in the visited map
+    // Create the hash table that maps states to nodes
     struct dict *visited = dict_new("visited", sizeof(struct node), 0, global->nworkers, false);
-    mutex_t *lock;
-    struct dict_assoc *hn = dict_find_lock(visited, NULL, state, state_size(state), NULL, &lock);
-    struct node *node = (struct node *) &hn[1];
-    memset(node, 0, sizeof(*node));
-    node->state = state;
-    node->lock = lock;
-#ifdef NEWWAY
-    global->todo = global->todo_last = node;
-    global->graph.size = 1;
-#else
-    graph_add(&global->graph, node);
-#endif
 
     // Allocate space for worker info
     struct worker *workers = calloc(global->nworkers, sizeof(*workers));
@@ -2652,6 +2640,20 @@ int main(int argc, char **argv){
     // Put the state and value dictionaries in concurrent mode
     dict_set_concurrent(global->values);
     dict_set_concurrent(visited);
+
+    // Put the initial state in the visited map
+    mutex_t *lock;
+    struct dict_assoc *hn = dict_find_lock(visited, &workers[0].allocator, state, state_size(state), NULL, &lock);
+    struct node *node = (struct node *) &hn[1];
+    memset(node, 0, sizeof(*node));
+    node->state = state;
+    node->lock = lock;
+#ifdef NEWWAY
+    global->todo = global->todo_last = node;
+    global->graph.size = 1;
+#else
+    graph_add(&global->graph, node);
+#endif
 
     // Compute how much table space is allocated
     global->allocated = global->graph.size * sizeof(struct node *) +

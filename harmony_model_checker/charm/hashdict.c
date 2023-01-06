@@ -253,7 +253,7 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
 void *dict_insert(struct dict *dict, struct allocator *al,
                             const void *key, unsigned int keylen, bool *new){
     struct dict_assoc *k = dict_find(dict, al, key, keylen, new);
-    return (char *) &k[1] + dict->value_len;
+    return (char *) &k[1];
 }
 
 void *dict_retrieve(const void *p, unsigned int *psize){
@@ -276,7 +276,7 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keylen) {
 	struct dict_assoc *k = db->stable;
 	while (k != NULL) {
 		if (k->len == keylen && !memcmp((char *) &k[1] + dict->value_len, key, keylen)) {
-            return &k[1];
+            return * ((void **) &k[1]);
 		}
 		k = k->next;
 	}
@@ -288,7 +288,7 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keylen) {
         while (k != NULL) {
             if (k->len == keylen && !memcmp((char *) &k[1] + dict->value_len, key, keylen)) {
                 mutex_release(&dict->locks[index % dict->nlocks]);
-                return &k[1];
+                return * ((void **) &k[1]);
             }
             k = k->next;
         }
