@@ -382,6 +382,7 @@ void dict_grow_prepare(struct dict *dict){
     }
     dict->count += total;
 	if ((double) dict->count / dict->length > dict->growth_threshold) {
+        printf("GROW %s\n", dict->whoami);
         int factor = dict->growth_factor;
         while (factor * dict->length < dict->count) {
             factor++;

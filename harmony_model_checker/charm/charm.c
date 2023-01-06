@@ -2203,7 +2203,12 @@ static void worker(void *arg){
                 }
             }
 
-            atomic_store(&global->goal, global->graph.size);
+            // if (global->graph.size - todo > 100000) {
+            //     atomic_store(&global->goal, todo + 100000);
+            // }
+            // else {
+                atomic_store(&global->goal, global->graph.size);
+            // }
 
             // Compute how much table space is in use
             global->allocated = global->graph.size * sizeof(struct node *) +
@@ -2489,14 +2494,14 @@ int main(int argc, char **argv){
     mutex_init(&global->todo_lock);
     mutex_init(&global->todo_wait);
     mutex_acquire(&global->todo_wait);          // Split Binary Semaphore
-    global->values = dict_new("values", 0, 0, global->nworkers, true);
+    global->values = dict_new("values", 0, 1<<20, global->nworkers, true);
 
     struct engine engine;
     engine.allocator = NULL;
     engine.values = global->values;
     ops_init(global, &engine);
 
-    graph_init(&global->graph, 1024*1024);
+    graph_init(&global->graph, 1 << 28);
     global->failures = minheap_create(fail_cmp);
     global->seqs = VALUE_SET;
 
@@ -2588,7 +2593,7 @@ int main(int argc, char **argv){
     }
 
     // Create the hash table that maps states to nodes
-    struct dict *visited = dict_new("visited", sizeof(struct node), 0, global->nworkers, false);
+    struct dict *visited = dict_new("visited", sizeof(struct node), 1 << 28, global->nworkers, false);
 
     // Allocate space for worker info
     struct worker *workers = calloc(global->nworkers, sizeof(*workers));
