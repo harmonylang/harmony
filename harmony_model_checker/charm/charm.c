@@ -65,11 +65,6 @@ struct worker {
     unsigned int enqueued;      // total number of enqueued states
 
     struct node *results;       // list of resulting states
-#ifdef NEWWAY
-    struct node *last;          // last entry in the list
-    struct node **todo_ptr;
-    unsigned int todo_index;
-#endif
     unsigned int count;         // number of resulting states
     struct edge **edges;        // lists of edges to fix, one for each worker
     unsigned int node_id;       // node_ids to use for resulting states
@@ -411,18 +406,8 @@ static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock) {
         next->lock = lock;
         edge->bwdnext = NULL;
         if (!edge->failed) {
-#ifdef NEWWAY
-            if (w->last == NULL) {
-                w->results = next;
-            }
-            else {
-                w->last->next = next;
-            }
-            w->last = next;
-#else
             next->next = w->results;
             w->results = next;
-#endif
             w->count++;
             w->enqueued++;
         }
@@ -872,18 +857,8 @@ static bool onestep(
     if (new) {
         edge->dst->state = (struct state *) &edge->dst[1];
         assert(VALUE_TYPE(edge->dst->state->vars) == VALUE_DICT);
-#ifdef NEWWAY
-        if (w->last == NULL) {
-            w->results = edge->dst;
-        }
-        else {
-            w->last->next = edge->dst;
-        }
-        w->last = edge->dst;
-#else
         edge->dst->next = w->results;
         w->results = edge->dst;
-#endif
         w->count++;
         w->enqueued++;
         if (!edge->choosing) {
@@ -1909,36 +1884,12 @@ static void do_work(struct worker *w){
         mutex_release(&global->todo_lock);
 #endif // USE_ATOMIC
 
-#ifdef NEWWAY
-        // printf("DO_WORK %u: ind=%u next=%u size=%u\n", w->index, w->todo_index, next, global->graph.size);
-        while (w->todo_index < next) {
-            struct node *n = *w->todo_ptr;
-            if (n == NULL) {
-                // printf("DO_WORK %u: NOTHING\n", w->index);
-                return;
-            }
-            w->todo_ptr = &n->next;
-            w->todo_index++;
-        }
-#endif
-
         for (unsigned int i = 0; i < TODO_COUNT; i++, next++) {
-#ifdef NEWWAY
-            // printf("DO_WORK %u: handle ind=%u next=%u size=%u\n", w->index, w->todo_index, next, global->graph.size);
-            struct node *node = *w->todo_ptr;
-            if (node == NULL) {
-                // printf("DO_WORK %u: DONE\n", w->index);
-                return;
-            }
-            w->todo_ptr = &node->next;
-            w->todo_index++;
-#else
             // printf("W%d %d %d\n", w->index, next, global->graph.size);
             if (next >= global->graph.size) {
                 return;
             }
             struct node *node = global->graph.nodes[next];
-#endif
             struct state *state = node->state;
             w->dequeued++;
 
@@ -2167,24 +2118,11 @@ static void worker(void *arg){
                     struct worker *w2 = &w->workers[i];
                     w2->node_id = global->graph.size + total;
                     total += w2->count;
-#ifdef NEWWAY
-                    if (w2->last != NULL) {
-                        global->todo_last->next = w2->results;
-                        global->todo_last = w2->last;
-                        w2->results = w2->last = NULL;
-                    }
-                    w2->count = 0;
-#endif
                 }
 
-#ifdef NEWWAY
-                // printf("SEQ: ADD %u\n", total);
-                global->graph.size += total;
-#else
                 // The threads completed producing the next layer of nodes in the graph.
                 graph_add_multiple(&global->graph, total);
                 assert(global->graph.size <= global->graph.alloc_size);
-#endif
 
                 // Collect the failures of all the workers
                 for (unsigned int i = 0; i < global->nworkers; i++) {
@@ -2230,7 +2168,6 @@ static void worker(void *arg){
         dict_make_stable(global->values, w->index);
         dict_make_stable(w->visited, w->index);
 
-#ifndef NEWWAY
         if (global->layer_done) {
             // Fill the graph table
             for (unsigned int i = 0; w->count != 0; i++) {
@@ -2243,7 +2180,6 @@ static void worker(void *arg){
             }
             assert(w->results == NULL);
         }
-#endif
 
         after = gettime();
         w->phase3 += after - before;
@@ -2494,14 +2430,14 @@ int main(int argc, char **argv){
     mutex_init(&global->todo_lock);
     mutex_init(&global->todo_wait);
     mutex_acquire(&global->todo_wait);          // Split Binary Semaphore
-    global->values = dict_new("values", 0, 1<<20, global->nworkers, true);
+    global->values = dict_new("values", 0, 0, global->nworkers, true);
 
     struct engine engine;
     engine.allocator = NULL;
     engine.values = global->values;
     ops_init(global, &engine);
 
-    graph_init(&global->graph, 1 << 28);
+    graph_init(&global->graph, 1 << 20);
     global->failures = minheap_create(fail_cmp);
     global->seqs = VALUE_SET;
 
@@ -2593,7 +2529,7 @@ int main(int argc, char **argv){
     }
 
     // Create the hash table that maps states to nodes
-    struct dict *visited = dict_new("visited", sizeof(struct node), 1 << 28, global->nworkers, false);
+    struct dict *visited = dict_new("visited", sizeof(struct node), 0, global->nworkers, false);
 
     // Allocate space for worker info
     struct worker *workers = calloc(global->nworkers, sizeof(*workers));
@@ -2622,10 +2558,6 @@ int main(int argc, char **argv){
         w->inv_step.engine.allocator = &w->allocator;
         w->inv_step.engine.values = global->values;
 
-#ifdef NEWWAY
-        w->todo_ptr = &global->todo;
-#endif
-
         w->alloc_buf = malloc(WALLOC_CHUNK);
         w->alloc_ptr = w->alloc_buf;
         w->alloc_buf16 = malloc(WALLOC_CHUNK);
@@ -2649,12 +2581,7 @@ int main(int argc, char **argv){
     node->state = state;
     node->lock = lock;
     mutex_release(lock);
-#ifdef NEWWAY
-    global->todo = global->todo_last = node;
-    global->graph.size = 1;
-#else
     graph_add(&global->graph, node);
-#endif
 
     // Compute how much table space is allocated
     global->allocated = global->graph.size * sizeof(struct node *) +
