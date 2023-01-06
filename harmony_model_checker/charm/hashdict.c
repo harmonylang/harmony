@@ -207,7 +207,7 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
             if (new != NULL) {
                 *new = false;
             }
-            // mutex_acquire(*lock);
+            mutex_acquire(*lock);
 			return k;
 		}
 		k = k->next;
@@ -225,7 +225,7 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
             if (new != NULL) {
                 *new = false;
             }
-            mutex_release(*lock);
+            // mutex_release(*lock);
             return k;
         }
         k = k->next;
@@ -241,7 +241,7 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
     dw->unstable[worker] = k;
     dw->count++;
 
-    mutex_release(*lock);
+    // mutex_release(*lock);
 
     if (new != NULL) {
         *new = true;

@@ -399,7 +399,7 @@ static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock) {
     unsigned int len = node->len + edge->weight;
     unsigned int steps = node->steps + edge->nsteps;
 
-    mutex_acquire(lock);
+    // mutex_acquire(lock);
 
     bool initialized = next->initialized;
     if (!initialized) {
@@ -1988,11 +1988,6 @@ static void do_work(struct worker *w){
             mutex_release(&global->todo_lock);
             break;
         }
-        if (w->index == 0 % global->nworkers && dict_needs_to_grow(w->visited)) {
-            global->goal = next;
-            mutex_release(&global->todo_lock);
-            break;
-        }
         mutex_release(&global->todo_lock);
 #endif // USE_ATOMIC
     }
@@ -2648,6 +2643,7 @@ int main(int argc, char **argv){
     memset(node, 0, sizeof(*node));
     node->state = state;
     node->lock = lock;
+    mutex_release(lock);
 #ifdef NEWWAY
     global->todo = global->todo_last = node;
     global->graph.size = 1;
