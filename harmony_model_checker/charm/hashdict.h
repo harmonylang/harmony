@@ -13,17 +13,11 @@ typedef void (*dict_enumfunc)(void *env, const void *key, unsigned int key_size,
 
 // This header is followed directly by first the data and then the key.
 // The value is of length dict->value_len.
-// TODO.  Do we need 2 next pointers?
-// TODO.  Does it make sense to save the hash here?
 struct dict_assoc {
 	struct dict_assoc *next;
     struct dict_assoc *unstable_next;
+    uint32_t hash;
 	unsigned int len;               // key length
-};
-
-// TODO.  Split into two tables, one for stable, one for unstable.
-struct dict_bucket {
-    struct dict_assoc *stable, *unstable;
 };
 
 struct dict_worker {
@@ -35,9 +29,9 @@ struct dict_worker {
 struct dict {
     char *whoami;
     unsigned int value_len;
-	struct dict_bucket *table;
+	struct dict_assoc **stable, **unstable;
 	unsigned int length, count;
-	struct dict_bucket *old_table;
+	struct dict_assoc **old_stable, **old_unstable;
 	unsigned int old_length, old_count;
     struct dict_worker *workers;
     unsigned int nworkers;
