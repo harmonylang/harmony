@@ -203,7 +203,7 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
 
 	struct dict_assoc *k = db->stable;
 	while (k != NULL) {
-		if (k->len == keylen && memcmp((char *) (k+1), key, keylen) == 0) {
+		if (k->len == keylen && memcmp((char *) &k[1] + dict->value_len, key, keylen) == 0) {
             if (new != NULL) {
                 *new = false;
             }
@@ -220,7 +220,7 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
     // See if the item is in the unstable list
     k = db->unstable;
     while (k != NULL) {
-        if (k->len == keylen && memcmp((char *) (k+1), key, keylen) == 0) {
+        if (k->len == keylen && memcmp((char *) &k[1] + dict->value_len, key, keylen) == 0) {
             dict->workers[al->worker].clashes++;
             if (new != NULL) {
                 *new = false;
@@ -261,7 +261,7 @@ void *dict_retrieve(const void *p, unsigned int *psize){
     if (psize != NULL) {
         *psize = k->len;
     }
-    return (char *) (k+1);
+    return (char *) &k[1];
 }
 
 // This assumes that the value is a pointer.  Returns NULL if there is
