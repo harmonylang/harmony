@@ -90,7 +90,7 @@ void dict_delete(struct dict *dict) {
 }
 
 static inline void dict_reinsert_when_resizing(struct dict *dict, struct dict_assoc *k) {
-    unsigned int n = hash_func((char *) (k+1), k->len) % dict->length;
+    unsigned int n = hash_func((char *) &k[1] + dict->value_len, k->len) % dict->length;
 	struct dict_bucket *db = &dict->table[n];
     k->next = db->stable;
     db->stable = k;
