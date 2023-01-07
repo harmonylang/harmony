@@ -2141,12 +2141,12 @@ static void worker(void *arg){
                 }
             }
 
-            // if (global->graph.size - todo > 100000) {
-            //     atomic_store(&global->goal, todo + 100000);
-            // }
-            // else {
+            if (global->graph.size - todo > 1000) {
+                atomic_store(&global->goal, todo + 1000);
+            }
+            else {
                 atomic_store(&global->goal, global->graph.size);
-            // }
+            }
 
             // Compute how much table space is in use
             global->allocated = global->graph.size * sizeof(struct node *) +
@@ -2614,8 +2614,14 @@ int main(int argc, char **argv){
         end_wait += w->end_wait;
 #define REPORT_WORKERS
 #ifdef REPORT_WORKERS
-        printf("W%u: %lf %lf %lf\n", i, w->start_wait/w->start_count,
-            w->middle_wait/w->middle_count, w->end_wait/w->end_count);
+        printf("W%u: %lf %lf %lf %lf %lf %lf %lf\n", i,
+                w->phase1,
+                w->phase2a,
+                w->phase2b,
+                w->phase3,
+                w->start_wait/w->start_count,
+                w->middle_wait/w->middle_count,
+                w->end_wait/w->end_count);
 #endif
     }
     printf("computing: %lf %lf %lf %lf (%lu %lu %lu %lu %lf %lf %lf %lf %u); waiting: %lf %lf %lf\n",
