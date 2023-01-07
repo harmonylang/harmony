@@ -2141,8 +2141,8 @@ static void worker(void *arg){
                 }
             }
 
-            if (global->graph.size - todo > 1000) {
-                atomic_store(&global->goal, todo + 1000);
+            if (global->graph.size - todo > 10000) {
+                atomic_store(&global->goal, todo + 10000);
             }
             else {
                 atomic_store(&global->goal, global->graph.size);
