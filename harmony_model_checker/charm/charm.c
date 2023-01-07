@@ -388,7 +388,7 @@ unsigned int check_finals(struct worker *w, struct node *node, struct step *step
     return 0;
 }
 
-static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock) {
+static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock, struct node **results) {
     struct node *node = edge->src, *next = edge->dst;
     struct state *state = (struct state *) &next[1];
     unsigned int len = node->len + edge->weight;
@@ -406,8 +406,8 @@ static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock) {
         next->lock = lock;
         edge->bwdnext = NULL;
         if (!edge->failed) {
-            next->next = w->results;
-            w->results = next;
+            next->next = *results;
+            *results = next;
             w->count++;
             w->enqueued++;
         }
@@ -502,7 +502,8 @@ static bool onestep(
     hvalue_t choice,        // if about to make a choice, which choice?
     bool interrupt,         // start with invoking interrupt handler
     bool infloop_detect,    // try to detect infloop from the start
-    int multiplicity        // #contexts that are in the current state
+    int multiplicity,       // #contexts that are in the current state
+    struct node **results   // where to place the resulting new states
 ) {
     assert(!step->ctx->terminated);
     assert(!step->ctx->failed);
@@ -857,8 +858,8 @@ static bool onestep(
     if (new) {
         edge->dst->state = (struct state *) &edge->dst[1];
         assert(VALUE_TYPE(edge->dst->state->vars) == VALUE_DICT);
-        edge->dst->next = w->results;
-        w->results = edge->dst;
+        edge->dst->next = *results;
+        *results = edge->dst;
         w->count++;
         w->enqueued++;
         if (!edge->choosing) {
@@ -867,7 +868,7 @@ static bool onestep(
         }
     }
 #else
-    process_edge(w, edge, lock);
+    process_edge(w, edge, lock, results);
 #endif
 
     return true;
@@ -878,7 +879,8 @@ static void make_step(
     struct node *node,
     hvalue_t ctx,
     hvalue_t choice,       // if about to make a choice, which choice?
-    int multiplicity       // #contexts that are in the current state
+    int multiplicity,      // #contexts that are in the current state
+    struct node **results  // where to place the resulting new states
 ) {
     struct step step;
     memset(&step, 0, sizeof(step));
@@ -909,13 +911,13 @@ static void make_step(
 
     // See if we need to interrupt
     if (sc->choosing == 0 && cc->extended && ctx_trap_pc(cc) != 0 && !cc->interruptlevel) {
-        bool succ = onestep(w, node, sc, ctx, &step, choice, true, false, multiplicity);
+        bool succ = onestep(w, node, sc, ctx, &step, choice, true, false, multiplicity, results);
         assert(step.engine.allocator == &w->allocator);
         if (!succ) {        // ran into an infinite loop
             memcpy(sc, node->state, statesz);
             memcpy(&w->ctx, cc, size);
             assert(step.engine.allocator == &w->allocator);
-            (void) onestep(w, node, sc, ctx, &step, choice, true, true, multiplicity);
+            (void) onestep(w, node, sc, ctx, &step, choice, true, true, multiplicity, results);
             assert(step.engine.allocator == &w->allocator);
         }
 
@@ -925,13 +927,13 @@ static void make_step(
     }
 
     sc->choosing = 0;
-    bool succ = onestep(w, node, sc, ctx, &step, choice, false, false, multiplicity);
+    bool succ = onestep(w, node, sc, ctx, &step, choice, false, false, multiplicity, results);
     assert(step.engine.allocator == &w->allocator);
     if (!succ) {        // ran into an infinite loop
         memcpy(sc, node->state, statesz);
         memcpy(&w->ctx, cc, size);
         assert(step.engine.allocator == &w->allocator);
-        (void) onestep(w, node, sc, ctx, &step, choice, false, true, multiplicity);
+        (void) onestep(w, node, sc, ctx, &step, choice, false, true, multiplicity, results);
         assert(step.engine.allocator == &w->allocator);
     }
 
@@ -1869,6 +1871,60 @@ static int fail_cmp(void *f1, void *f2){
     return node_cmp(fail1->edge->dst, fail2->edge->dst);
 }
 
+void do_work1(struct worker *w, struct node *node, unsigned int level){
+    if (node->evaluated) {
+        return;
+    }
+    node->evaluated = true;
+
+    struct state *state = node->state;
+    unsigned int count = w->count;
+    if (state->choosing != 0) {
+        assert(VALUE_TYPE(state->choosing) == VALUE_CONTEXT);
+
+        struct context *cc = value_get(state->choosing, NULL);
+        assert(cc != NULL);
+        assert(cc->sp > 0);
+        hvalue_t s = ctx_stack(cc)[cc->sp - 1];
+        assert(VALUE_TYPE(s) == VALUE_SET);
+        unsigned int size;
+        hvalue_t *vals = value_get(s, &size);
+        size /= sizeof(hvalue_t);
+        assert(size > 0);
+        for (unsigned int i = 0; i < size; i++) {
+            make_step(
+                w,
+                node,
+                state->choosing,
+                vals[i],
+                1,
+                &w->results
+            );
+        }
+    }
+    else {
+        for (unsigned int i = 0; i < state->bagsize; i++) {
+            assert(VALUE_TYPE(state_contexts(state)[i]) == VALUE_CONTEXT);
+            make_step(
+                w,
+                node,
+                state_contexts(state)[i],
+                0,
+                multiplicities(state)[i],
+                &w->results
+            );
+        }
+    }
+
+    if (level == 0) {
+        struct node *n = w->results;
+        for (unsigned int i = count; i < w->count; i++) {
+            do_work1(w, n, 1);
+            n = n->next;
+        }
+    }
+}
+
 static void do_work(struct worker *w){
     struct global *global = w->global;
 
@@ -1889,44 +1945,8 @@ static void do_work(struct worker *w){
             if (next >= global->graph.size) {
                 return;
             }
-            struct node *node = global->graph.nodes[next];
-            struct state *state = node->state;
             w->dequeued++;
-
-            if (state->choosing != 0) {
-                assert(VALUE_TYPE(state->choosing) == VALUE_CONTEXT);
-
-                struct context *cc = value_get(state->choosing, NULL);
-                assert(cc != NULL);
-                assert(cc->sp > 0);
-                hvalue_t s = ctx_stack(cc)[cc->sp - 1];
-                assert(VALUE_TYPE(s) == VALUE_SET);
-                unsigned int size;
-                hvalue_t *vals = value_get(s, &size);
-                size /= sizeof(hvalue_t);
-                assert(size > 0);
-                for (unsigned int i = 0; i < size; i++) {
-                    make_step(
-                        w,
-                        node,
-                        state->choosing,
-                        vals[i],
-                        1
-                    );
-                }
-            }
-            else {
-                for (unsigned int i = 0; i < state->bagsize; i++) {
-                    assert(VALUE_TYPE(state_contexts(state)[i]) == VALUE_CONTEXT);
-                    make_step(
-                        w,
-                        node,
-                        state_contexts(state)[i],
-                        0,
-                        multiplicities(state)[i]
-                    );
-                }
-            }
+            do_work1(w, global->graph.nodes[next], 0);
         }
 
 #ifdef USE_ATOMIC
