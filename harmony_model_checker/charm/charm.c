@@ -1878,7 +1878,7 @@ void do_work1(struct worker *w, struct node *node, unsigned int level){
     node->evaluated = true;
 
     struct state *state = node->state;
-    unsigned int count = w->count;
+    unsigned int before = w->count;
     if (state->choosing != 0) {
         assert(VALUE_TYPE(state->choosing) == VALUE_CONTEXT);
 
@@ -1916,9 +1916,10 @@ void do_work1(struct worker *w, struct node *node, unsigned int level){
         }
     }
 
-    if (level == 0) {
+    if (0 && level == 0) {
+        unsigned int after = w->count;
         struct node *n = w->results;
-        for (unsigned int i = count; i < w->count; i++) {
+        for (unsigned int i = before; i < after; i++) {
             do_work1(w, n, 1);
             n = n->next;
         }
@@ -1928,7 +1929,7 @@ void do_work1(struct worker *w, struct node *node, unsigned int level){
 static void do_work(struct worker *w){
     struct global *global = w->global;
 
-#define TODO_COUNT 10
+#define TODO_COUNT 256
 
     for (;;) {
 #ifdef USE_ATOMIC
