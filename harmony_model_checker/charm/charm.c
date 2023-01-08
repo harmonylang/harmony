@@ -1928,20 +1928,19 @@ void do_work1(struct worker *w, struct node *node, unsigned int level){
 
 static void do_work(struct worker *w){
     struct global *global = w->global;
-
-#define TODO_COUNT 64
+    unsigned int todo_count = 256;
 
     for (;;) {
 #ifdef USE_ATOMIC
-        unsigned int next = atomic_fetch_add(&global->atodo, TODO_COUNT);
+        unsigned int next = atomic_fetch_add(&global->atodo, todo_count);
 #else // USE_ATOMIC
         mutex_acquire(&global->todo_lock);
         unsigned int next = global->atodo;
-        global->atodo += TODO_COUNT;
+        global->atodo += todo_count;
         mutex_release(&global->todo_lock);
 #endif // USE_ATOMIC
 
-        for (unsigned int i = 0; i < TODO_COUNT; i++, next++) {
+        for (unsigned int i = 0; i < todo_count; i++, next++) {
             // printf("W%d %d %d\n", w->index, next, global->graph.size);
             if (next >= global->graph.size) {
                 return;
@@ -1951,17 +1950,22 @@ static void do_work(struct worker *w){
         }
 
 #ifdef USE_ATOMIC
-        if (next >= atomic_load(&global->goal)) {
-            break;
-        }
+        unsigned int goal = atomic_load(&global->goal);
 #else // USE_ATOMIC
         mutex_acquire(&global->todo_lock);
-        if (next >= global->goal) {
-            mutex_release(&global->todo_lock);
-            break;
-        }
+        unsigned int goal = global->goal);
         mutex_release(&global->todo_lock);
 #endif // USE_ATOMIC
+        if (next >= goal) {
+            break;
+        }
+        unsigned int remainder = (goal - next) / global->nworkers;
+        if (remainder > 256) {
+            todo_count = 256;
+        }
+        else {
+            todo_count = remainder;
+        }
     }
 }
 
