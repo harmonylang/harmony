@@ -123,11 +123,11 @@ static void dict_resize(struct dict *dict, unsigned int newsize) {
 struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
                 const void *key, unsigned int keylen, bool *new){
     uint32_t hash = hash_func(key, keylen);
-    unsigned int index = hash % dict->length;
-    struct dict_bucket *db = &dict->table[index];
 
     // First see if the item is in the stable list, which does not require
     // a lock
+    unsigned int index = hash % dict->length;
+    struct dict_bucket *db = &dict->table[index];
 	struct dict_assoc *k = db->stable;
 	while (k != NULL) {
 		if (k->len == keylen && memcmp((char *) &k[1] + dict->value_len, key, keylen) == 0) {
@@ -196,11 +196,12 @@ struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
 struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
                             const void *key, unsigned int keylen, bool *new, mutex_t **lock){
     assert(dict->concurrent);
+    assert(al != NULL);
     uint32_t hash = hash_func(key, keylen);
     unsigned int index = hash % dict->length;
-    struct dict_bucket *db = &dict->table[index];
     *lock = &dict->locks[index % dict->nlocks];
 
+    struct dict_bucket *db = &dict->table[index];
 	struct dict_assoc *k = db->stable;
 	while (k != NULL) {
 		if (k->len == keylen && memcmp((char *) &k[1] + dict->value_len, key, keylen) == 0) {
@@ -221,7 +222,7 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
     k = db->unstable;
     while (k != NULL) {
         if (k->len == keylen && memcmp((char *) &k[1] + dict->value_len, key, keylen) == 0) {
-            dict->workers[al->worker].clashes++;
+            dw->clashes++;
             if (new != NULL) {
                 *new = false;
             }

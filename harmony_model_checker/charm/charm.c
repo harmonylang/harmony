@@ -1929,7 +1929,7 @@ void do_work1(struct worker *w, struct node *node, unsigned int level){
 static void do_work(struct worker *w){
     struct global *global = w->global;
 
-#define TODO_COUNT 256
+#define TODO_COUNT 64
 
     for (;;) {
 #ifdef USE_ATOMIC
