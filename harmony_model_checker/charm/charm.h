@@ -7,8 +7,6 @@
 #include "json.h"
 #include "hashtab.h"
 
-// #define NEWWAY
-
 struct scc {        // Strongly Connected Component
     struct scc *next;
     unsigned int start, finish;
@@ -62,11 +60,9 @@ struct global {
     unsigned int *finals;           // program counters of finally preds
 
     struct graph graph;             // the Kripke structure
-#ifdef NEWWAY
-    struct node *todo, *todo_last;
-#endif
     hAtomic(unsigned int) atodo;
     hAtomic(unsigned int) goal;
+    unsigned int agoal;
     // unsigned int todo;           // points into graph->nodes
     bool layer_done;                // all states in a layer completed
 

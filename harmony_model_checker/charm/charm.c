@@ -1928,7 +1928,7 @@ void do_work1(struct worker *w, struct node *node, unsigned int level){
 
 static void do_work(struct worker *w){
     struct global *global = w->global;
-    unsigned int todo_count = 256;
+    unsigned int todo_count = 8;
 
     for (;;) {
 #ifdef USE_ATOMIC
@@ -1949,22 +1949,15 @@ static void do_work(struct worker *w){
             do_work1(w, global->graph.nodes[next], 0);
         }
 
-#ifdef USE_ATOMIC
-        unsigned int goal = atomic_load(&global->goal);
-#else // USE_ATOMIC
-        mutex_acquire(&global->todo_lock);
-        unsigned int goal = global->goal);
-        mutex_release(&global->todo_lock);
-#endif // USE_ATOMIC
-        if (next >= goal) {
+// #ifdef USE_ATOMIC
+//         unsigned int goal = atomic_load(&global->goal);
+// #else // USE_ATOMIC
+//         mutex_acquire(&global->todo_lock);
+//         unsigned int goal = global->goal);
+//         mutex_release(&global->todo_lock);
+// #endif // USE_ATOMIC
+        if (next >= global->goal) {
             break;
-        }
-        unsigned int remainder = (goal - next) / global->nworkers;
-        if (remainder > 256) {
-            todo_count = 256;
-        }
-        else {
-            todo_count = remainder;
         }
     }
 }
@@ -2172,6 +2165,7 @@ static void worker(void *arg){
             else {
                 atomic_store(&global->goal, global->graph.size);
             }
+            global->agoal = atomic_load(&global->goal);
 
             // Compute how much table space is in use
             global->allocated = global->graph.size * sizeof(struct node *) +
