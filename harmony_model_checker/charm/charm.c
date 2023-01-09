@@ -47,7 +47,7 @@ mutex_t run_waiting;     // for main thread to wait on
 struct worker {
     struct global *global;     // global state
     double timeout;
-    barrier_t *start_barrier, *middle_barrier, *end_barrier;
+    barrier_t *start_barrier, *middle_barrier, *end_barrier, *scc_barrier;
     double start_wait, middle_wait, end_wait;
     unsigned int start_count, middle_count, end_count;
     double phase1, phase2a, phase2b, phase3;
@@ -1962,7 +1962,8 @@ static void do_work(struct worker *w){
     }
 }
 
-static void work_phase2(struct worker *w, struct global *global){
+static void work_phase2(struct worker *w){
+    struct global *global = w->global;
     mutex_acquire(&global->todo_lock);
     for (;;) {
         if (global->scc_todo == NULL) {
@@ -2086,13 +2087,6 @@ static void worker(void *arg){
         after = gettime();
         w->middle_wait += after - before;
         w->middle_count++;
-
-        if (global->phase2) {
-            work_phase2(w, global);
-            barrier_wait(w->end_barrier);
-            break;
-        }
-
         before = after;
 
         // Fix the forward edges
@@ -2208,6 +2202,12 @@ static void worker(void *arg){
         after = gettime();
         w->phase3 += after - before;
     }
+}
+
+static void scc_worker(void *arg){
+    struct worker *w = arg;
+    work_phase2(w);
+    barrier_wait(w->scc_barrier);
 }
 
 char *state_string(struct state *state){
@@ -2443,10 +2443,11 @@ int main(int argc, char **argv){
 	printf("nworkers = %d\n", global->nworkers);
     global->numa = ((unsigned int) gettime() % 2) == 0;
 
-    barrier_t start_barrier, middle_barrier, end_barrier;
+    barrier_t start_barrier, middle_barrier, end_barrier, scc_barrier;
     barrier_init(&start_barrier, global->nworkers);
     barrier_init(&middle_barrier, global->nworkers);
     barrier_init(&end_barrier, global->nworkers);
+    barrier_init(&scc_barrier, global->nworkers);
 
     // initialize modules
     mutex_init(&global->inv_lock);
@@ -2566,6 +2567,7 @@ int main(int argc, char **argv){
         w->start_barrier = &start_barrier;
         w->middle_barrier = &middle_barrier;
         w->end_barrier = &end_barrier;
+        w->scc_barrier = &end_barrier;
         w->index = i;
         w->workers = workers;
         w->nworkers = global->nworkers;
@@ -2669,8 +2671,6 @@ int main(int argc, char **argv){
 
     printf("#states %d (time %.2lfs, mem=%.2lfGB)\n", global->graph.size, gettime() - before, (double) allocated / (1L << 30));
 
-    if (true) exit(0);
-
     dict_set_sequential(global->values);
     dict_set_sequential(visited);
 
@@ -2679,9 +2679,12 @@ int main(int argc, char **argv){
         double now = gettime();
         global->phase2 = true;
         global->scc_todo = scc_alloc(0, global->graph.size, NULL, NULL);
-        barrier_wait(&middle_barrier);
-        // Workers working on finding SCCs
-        barrier_wait(&end_barrier);
+
+        // Start all but one of the workers, who'll wait on the start barrier
+        for (unsigned int i = 1; i < global->nworkers; i++) {
+            thread_create(scc_worker, &workers[i]);
+        }
+        scc_worker(&workers[0]);
 
         printf("%u components (%.2lf seconds)\n", global->ncomponents, gettime() - now);
 
