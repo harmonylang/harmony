@@ -47,7 +47,7 @@ mutex_t run_waiting;     // for main thread to wait on
 struct worker {
     struct global *global;     // global state
     double timeout;
-    barrier_t *start_barrier, *middle_barrier, *end_barrier, *scc_barrier;
+    barrier_t *start_barrier, *middle_barrier, *end_barrier;
     double start_wait, middle_wait, end_wait;
     unsigned int start_count, middle_count, end_count;
     double phase1, phase2a, phase2b, phase3;
@@ -82,11 +82,17 @@ struct worker {
 
     unsigned int *profile;      // one integer for every instruction in the HVM code
 
-    void *scc_cache;            // for SCC alloc/free
-
     // These need to be next to one another
     struct context ctx;
     hvalue_t stack[MAX_CONTEXT_STACK];
+};
+
+// One of these per SCC worker thread
+struct scc_worker {
+    struct global *global;     // global state
+    double timeout;
+    barrier_t *scc_barrier;
+    void *scc_cache;            // for SCC alloc/free
 };
 
 #ifdef notdef
@@ -1962,69 +1968,6 @@ static void do_work(struct worker *w){
     }
 }
 
-static void work_phase2(struct worker *w){
-    struct global *global = w->global;
-    mutex_acquire(&global->todo_lock);
-    for (;;) {
-        if (global->scc_todo == NULL) {
-            global->scc_nwaiting++;
-            if (global->scc_nwaiting == global->nworkers) {
-                mutex_release(&global->todo_wait);
-                break;
-            }
-            mutex_release(&global->todo_lock);
-            mutex_acquire(&global->todo_wait);
-            if (global->scc_nwaiting == global->nworkers) {
-                mutex_release(&global->todo_wait);
-                break;
-            }
-            global->scc_nwaiting--;
-        }
-
-        // Grab work
-        unsigned int component = global->ncomponents++;
-        struct scc *scc = global->scc_todo;
-        assert(scc != NULL);
-        global->scc_todo = scc->next;
-        scc->next = NULL;
-
-        // Split binary semaphore release
-        if (global->scc_todo != NULL && global->scc_nwaiting > 0) {
-            mutex_release(&global->todo_wait);
-        }
-        else {
-            mutex_release(&global->todo_lock);
-        }
-
-        for (;;) {
-            // Do the work
-            assert(scc->next == NULL);
-            scc = graph_find_scc_one(&global->graph, scc, component, &w->scc_cache);
-
-            // Put new work on the list except the last (which we'll do ourselves)
-            mutex_acquire(&global->todo_lock);
-            while (scc != NULL && scc->next != NULL) {
-                struct scc *next = scc->next;
-                scc->next = global->scc_todo;
-                global->scc_todo = scc;
-                scc = next;
-            }
-            if (scc == NULL) {      // get more work
-                break;
-            }
-            component = global->ncomponents++;
-
-            // Split binary semaphore release
-            if (global->scc_todo != NULL && global->scc_nwaiting > 0) {
-                mutex_release(&global->todo_wait);
-            }
-            else {
-                mutex_release(&global->todo_lock);
-            }
-        }
-    }
-}
-
 void process_results(struct global *global, struct worker *w){
     struct failure *f;
     while ((f = w->failures) != NULL) {
@@ -2205,8 +2148,67 @@ static void worker(void *arg){
 }
 
 static void scc_worker(void *arg){
-    struct worker *w = arg;
-    work_phase2(w);
+    struct scc_worker *w = arg;
+    struct global *global = w->global;
+    mutex_acquire(&global->todo_lock);
+    for (;;) {
+        if (global->scc_todo == NULL) {
+            global->scc_nwaiting++;
+            if (global->scc_nwaiting == global->nworkers) {
+                mutex_release(&global->todo_wait);
+                break;
+            }
+            mutex_release(&global->todo_lock);
+            mutex_acquire(&global->todo_wait);
+            if (global->scc_nwaiting == global->nworkers) {
+                mutex_release(&global->todo_wait);
+                break;
+            }
+            global->scc_nwaiting--;
+        }
+
+        // Grab work
+        unsigned int component = global->ncomponents++;
+        struct scc *scc = global->scc_todo;
+        assert(scc != NULL);
+        global->scc_todo = scc->next;
+        scc->next = NULL;
+
+        // Split binary semaphore release
+        if (global->scc_todo != NULL && global->scc_nwaiting > 0) {
+            mutex_release(&global->todo_wait);
+        }
+        else {
+            mutex_release(&global->todo_lock);
+        }
+
+        for (;;) {
+            // Do the work
+            assert(scc->next == NULL);
+            scc = graph_find_scc_one(&global->graph, scc, component, &w->scc_cache);
+
+            // Put new work on the list except the last (which we'll do ourselves)
+            mutex_acquire(&global->todo_lock);
+            while (scc != NULL && scc->next != NULL) {
+                struct scc *next = scc->next;
+                scc->next = global->scc_todo;
+                global->scc_todo = scc;
+                scc = next;
+            }
+            if (scc == NULL) {      // get more work
+                break;
+            }
+            component = global->ncomponents++;
+
+            // Split binary semaphore release
+            if (global->scc_todo != NULL && global->scc_nwaiting > 0) {
+                mutex_release(&global->todo_wait);
+            }
+            else {
+                mutex_release(&global->todo_lock);
+            }
+        }
+    }
     barrier_wait(w->scc_barrier);
 }
 
@@ -2567,7 +2569,6 @@ int main(int argc, char **argv){
         w->start_barrier = &start_barrier;
         w->middle_barrier = &middle_barrier;
         w->end_barrier = &end_barrier;
-        w->scc_barrier = &end_barrier;
         w->index = i;
         w->workers = workers;
         w->nworkers = global->nworkers;
@@ -2594,6 +2595,13 @@ int main(int argc, char **argv){
         w->allocator.free = wfree;
         w->allocator.ctx = w;
         w->allocator.worker = i;
+    }
+
+    struct scc_worker *scc_workers = calloc(global->nworkers, sizeof(*scc_workers));
+    for (unsigned int i = 0; i < global->nworkers; i++) {
+        struct scc_worker *w = &scc_workers[i];
+        w->global = global;
+        w->scc_barrier = &scc_barrier;
     }
 
     // Put the state and value dictionaries in concurrent mode
@@ -2682,9 +2690,9 @@ int main(int argc, char **argv){
 
         // Start all but one of the workers, who'll wait on the start barrier
         for (unsigned int i = 1; i < global->nworkers; i++) {
-            thread_create(scc_worker, &workers[i]);
+            thread_create(scc_worker, &scc_workers[i]);
         }
-        scc_worker(&workers[0]);
+        scc_worker(&scc_workers[0]);
 
         printf("%u components (%.2lf seconds)\n", global->ncomponents, gettime() - now);
 
