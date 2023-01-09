@@ -1928,7 +1928,7 @@ void do_work1(struct worker *w, struct node *node, unsigned int level){
 
 static void do_work(struct worker *w){
     struct global *global = w->global;
-    unsigned int todo_count = 8;
+    unsigned int todo_count = 5;
 
     for (;;) {
 #ifdef USE_ATOMIC
@@ -2047,7 +2047,12 @@ static void worker(void *arg){
     CPU_ZERO(&cpuset);
     if (getNumCores() == 64 && global->nworkers <= 32) {
         // Try to schedule on the same chip
-        CPU_SET(2 * w->index, &cpuset);
+        if (global->numa) {
+            CPU_SET(2 * w->index, &cpuset);
+        }
+        else {
+            CPU_SET(2 * w->index + 1, &cpuset);
+        }
     }
     else {
         CPU_SET(w->index, &cpuset);
@@ -2436,6 +2441,7 @@ int main(int argc, char **argv){
     struct global *global = new_alloc(struct global);
     global->nworkers = nworkers == 0 ? getNumCores() : nworkers;
 	printf("nworkers = %d\n", global->nworkers);
+    global->numa = ((unsigned int) gettime() % 2) == 0;
 
     barrier_t start_barrier, middle_barrier, end_barrier;
     barrier_init(&start_barrier, global->nworkers);
