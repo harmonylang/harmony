@@ -95,84 +95,6 @@ struct scc_worker {
     void *scc_cache;            // for SCC alloc/free
 };
 
-#ifdef notdef
-static inline uint64_t get_cycles(){
-    uint64_t t;
-    __asm volatile ("rdtsc" : "=A"(t));
-    return t;
-}
-#endif
-
-#ifdef _WIN32
-
-#include <intrin.h>
-static inline uint64_t get_cycles(){
-    return __rdtsc();
-}
-
-//  Linux/GCC
-#else
-
-#ifdef notdef
-static inline uint64_t get_cycles(){
-    unsigned int lo, hi;
-    __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
-    return ((uint64_t) hi << 32) | lo;
-}
-
-static inline uint64_t get_cycles(){
-    uint64_t msr;
-    asm volatile ( "rdtsc\n\t"    // Returns the time in EDX:EAX.
-               "shl $32, %%rdx\n\t"  // Shift the upper bits left.
-               "or %%rdx, %0"        // 'Or' in the lower bits.
-               : "=a" (msr)
-               :
-               : "rdx");
-    return msr;
-}
-#endif
-
-static inline void rdtscp(uint64_t *cycles, uint64_t *pid) {
-  // rdtscp
-  // high cycles : edx
-  // low cycles  : eax
-  // processor id: ecx
-
-  asm volatile
-    (
-     // Assembleur
-     "rdtscp;\n"
-     "shl $32, %%rdx;\n"
-     "or %%rdx, %%rax;\n"
-     "mov %%rax, (%[_cy]);\n"
-     "mov %%ecx, (%[_pid]);\n"
-
-     // outputs
-     :
-
-     // inputs
-     :
-     [_cy] "r" (cycles),
-     [_pid] "r" (pid)
-
-     // clobbers
-     :
-     "cc", "memory", "%eax", "%edx", "%ecx"
-     );
-
-  return;
-}
-
-static inline uint64_t get_cycles(){
-    // uint64_t cycles, pid;
-
-    // rdtscp(&cycles, &pid);
-    // return cycles;
-    return 0;
-}
-
-#endif
-
 #ifdef CACHE_LINE_ALIGNED
 #define ALIGNMASK       0x3F
 #else
@@ -1878,11 +1800,6 @@ static int fail_cmp(void *f1, void *f2){
 }
 
 void do_work1(struct worker *w, struct node *node, unsigned int level){
-    if (node->evaluated) {
-        return;
-    }
-    node->evaluated = true;
-
     struct state *state = node->state;
     unsigned int before = w->count;
     if (state->choosing != 0) {
@@ -1919,15 +1836,6 @@ void do_work1(struct worker *w, struct node *node, unsigned int level){
                 multiplicities(state)[i],
                 &w->results
             );
-        }
-    }
-
-    if (0 && level == 0) {
-        unsigned int after = w->count;
-        struct node *n = w->results;
-        for (unsigned int i = before; i < after; i++) {
-            do_work1(w, n, 1);
-            n = n->next;
         }
     }
 }
@@ -2647,7 +2555,6 @@ int main(int argc, char **argv){
         start_wait += w->start_wait;
         middle_wait += w->middle_wait;
         end_wait += w->end_wait;
-#define REPORT_WORKERS
 #ifdef REPORT_WORKERS
         printf("W%u: %lf %lf %lf %lf %lf %lf %lf\n", i,
                 w->phase1,

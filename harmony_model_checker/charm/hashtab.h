@@ -85,7 +85,6 @@ struct hashtab {
     unsigned int nworkers;
     struct ht_worker *workers;
     unsigned int *counts;       // 1 per worker
-    uint64_t *cycles;           // 1 per worker
     unsigned long nobjects;     // total #items in hash table
 
 #ifndef USE_ATOMIC
