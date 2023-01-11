@@ -1801,7 +1801,6 @@ static int fail_cmp(void *f1, void *f2){
 
 void do_work1(struct worker *w, struct node *node, unsigned int level){
     struct state *state = node->state;
-    unsigned int before = w->count;
     if (state->choosing != 0) {
         assert(VALUE_TYPE(state->choosing) == VALUE_CONTEXT);
 
@@ -2351,7 +2350,7 @@ int main(int argc, char **argv){
     struct global *global = new_alloc(struct global);
     global->nworkers = nworkers == 0 ? getNumCores() : nworkers;
 	printf("nworkers = %d\n", global->nworkers);
-    global->numa = ((unsigned int) gettime() % 2) == 0;
+    global->numa = ((unsigned int) (gettime() * 1000) % 2) == 0;
 
     barrier_t start_barrier, middle_barrier, end_barrier, scc_barrier;
     barrier_init(&start_barrier, global->nworkers);
