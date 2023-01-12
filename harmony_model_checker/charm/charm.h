@@ -61,7 +61,6 @@ struct global {
 
     struct graph graph;             // the Kripke structure
     hAtomic(unsigned int) atodo;
-    hAtomic(unsigned int) goal;
     unsigned int agoal;
     // unsigned int todo;           // points into graph->nodes
     bool layer_done;                // all states in a layer completed

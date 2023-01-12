@@ -1862,14 +1862,7 @@ static void do_work(struct worker *w){
             do_work1(w, global->graph.nodes[next], 0);
         }
 
-// #ifdef USE_ATOMIC
-//         unsigned int goal = atomic_load(&global->goal);
-// #else // USE_ATOMIC
-//         mutex_acquire(&global->todo_lock);
-//         unsigned int goal = global->goal);
-//         mutex_release(&global->todo_lock);
-// #endif // USE_ATOMIC
-        if (next >= global->goal) {
+        if (next >= global->agoal) {
             break;
         }
     }
@@ -2009,12 +2002,11 @@ static void worker(void *arg){
             }
 
             if (global->graph.size - todo > 10000) {
-                atomic_store(&global->goal, todo + 10000);
+                global->agoal = todo + 10000;
             }
             else {
-                atomic_store(&global->goal, global->graph.size);
+                global->agoal = global->graph.size;
             }
-            global->agoal = atomic_load(&global->goal);
 
             // Compute how much table space is in use
             global->allocated = global->graph.size * sizeof(struct node *) +
@@ -2361,7 +2353,7 @@ int main(int argc, char **argv){
     // initialize modules
     mutex_init(&global->inv_lock);
     atomic_init(&global->atodo, 0);
-    atomic_init(&global->goal, 1);
+    global->agoal = 1;
     mutex_init(&global->todo_lock);
     mutex_init(&global->todo_wait);
     mutex_acquire(&global->todo_wait);          // Split Binary Semaphore
