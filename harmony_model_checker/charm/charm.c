@@ -2287,7 +2287,7 @@ static void usage(char *prog){
 }
 
 int main(int argc, char **argv){
-    bool cflag = false, Dflag = false, Rflag = false;
+    bool cflag = false, dflag = false, Dflag = false, Rflag = false;
     int i, maxtime = 300000000 /* about 10 years */;
     char *outfile = NULL, *dfafile = NULL;
     unsigned int nworkers = 0;
@@ -2298,6 +2298,9 @@ int main(int argc, char **argv){
         switch (argv[i][1]) {
         case 'c':
             cflag = true;
+            break;
+        case 'd':               // run direct (no model check)
+            dflag = true;
             break;
         case 'D':
             Dflag = true;
@@ -2434,7 +2437,7 @@ int main(int argc, char **argv){
     global->nprocesses = 1;
 
     // Run direct
-    if (outfile == NULL) {
+    if (dflag) {
         global->run_direct = true;
         mutex_init(&run_mutex);
         mutex_init(&run_waiting);
@@ -2576,6 +2579,10 @@ int main(int argc, char **argv){
         end_wait / global->nworkers);
 
     printf("#states %d (time %.2lfs, mem=%.2lfGB)\n", global->graph.size, gettime() - before, (double) allocated / (1L << 30));
+
+    if (outfile == NULL) {
+        exit(0);
+    }
 
     dict_set_sequential(global->values);
     dict_set_sequential(visited);
