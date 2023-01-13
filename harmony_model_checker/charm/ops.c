@@ -2673,8 +2673,8 @@ hvalue_t f_abs(struct state *state, struct step *step, hvalue_t *args, int n){
     if (VALUE_TYPE(e) != VALUE_INT) {
         return value_ctx_failure(step->ctx, &step->engine, "abs() can only be applied to integers");
     }
-    e = VALUE_FROM_INT(e);
-    return e >= 0 ? args[0] : VALUE_TO_INT(-e);
+    int64_t r = VALUE_FROM_INT(e);
+    return r >= 0 ? e : VALUE_TO_INT(-r);
 }
 
 hvalue_t f_all(struct state *state, struct step *step, hvalue_t *args, int n){
