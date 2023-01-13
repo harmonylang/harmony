@@ -1,7 +1,6 @@
 #include "head.h"
 
 #define _GNU_SOURCE
-#include <sched.h>   //cpu_set_t, CPU_SET
 #include <stdint.h>
 
 #ifdef USE_ATOMIC
@@ -14,6 +13,7 @@
 #include <sys/param.h>
 #include <unistd.h>
 #include <signal.h>
+#include <sched.h>   //cpu_set_t, CPU_SET
 #endif
 
 #include <stdio.h>
