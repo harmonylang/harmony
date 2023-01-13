@@ -30,7 +30,7 @@
 #include "strbuf.h"
 #include "ops.h"
 #include "dot.h"
-#include "iface/iface.h"
+// #include "iface/iface.h"
 #include "hashdict.h"
 #include "dfa.h"
 #include "thread.h"
@@ -3105,8 +3105,8 @@ int main(int argc, char **argv){
     fprintf(out, "}\n");
 	fclose(out);
 
-    iface_write_spec_graph_to_file(global, "iface.gv");
-    iface_write_spec_graph_to_json_file(global, "iface.json");
+    // iface_write_spec_graph_to_file(global, "iface.gv");
+    // iface_write_spec_graph_to_json_file(global, "iface.json");
 
     free(global);
     return 0;
