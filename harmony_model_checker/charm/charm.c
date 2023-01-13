@@ -4,6 +4,10 @@
 #include <sched.h>   //cpu_set_t, CPU_SET
 #include <stdint.h>
 
+#ifdef USE_ATOMIC
+#include <stdatomic.h>
+#endif
+
 #ifdef _WIN32
 #include <windows.h>
 #else
@@ -1847,8 +1851,8 @@ static void do_work(struct worker *w){
         unsigned int next = atomic_fetch_add(&global->atodo, todo_count);
 #else // USE_ATOMIC
         mutex_acquire(&global->todo_lock);
-        unsigned int next = global->atodo;
-        global->atodo += todo_count;
+        unsigned int next = global->todo;
+        global->todo += todo_count;
         mutex_release(&global->todo_lock);
 #endif // USE_ATOMIC
 
@@ -1861,7 +1865,7 @@ static void do_work(struct worker *w){
             do_work1(w, global->graph.nodes[next], 0);
         }
 
-        if (next >= global->agoal) {
+        if (next >= global->goal) {
             break;
         }
     }
@@ -1960,9 +1964,17 @@ static void worker(void *arg){
         // Only the coordinator (worker 0) does this
         if (w->index == 0 % global->nworkers) {
             // End of a layer in the Kripke structure?
+#ifdef USE_ATOMIC
             unsigned int todo = atomic_load(&global->atodo);
+#else
+            unsigned int todo = global->todo;
+#endif
             if (todo > global->graph.size) {
+#ifdef USE_ATOMIC
                 atomic_store(&global->atodo, global->graph.size);
+#else
+                global->todo = global->graph.size;
+#endif
                 todo = global->graph.size;
             }
             // printf("SEQ: todo=%u size=%u\n", todo, global->graph.size);
@@ -1990,7 +2002,11 @@ static void worker(void *arg){
 
                 if (!minheap_empty(global->failures)) {
                     // Pretend we're done
+#ifdef USE_ATOMIC
                     atomic_store(&global->atodo, global->graph.size);
+#else
+                    global->todo = global->graph.size;
+#endif
                 }
 
                 // Worker 0 is the coordinator and may need to go do
@@ -2001,10 +2017,10 @@ static void worker(void *arg){
             }
 
             if (global->graph.size - todo > 10000) {
-                global->agoal = todo + 10000;
+                global->goal = todo + 10000;
             }
             else {
-                global->agoal = global->graph.size;
+                global->goal = global->graph.size;
             }
 
             // Compute how much table space is in use
@@ -2048,7 +2064,7 @@ static void worker(void *arg){
 static void scc_worker(void *arg){
     struct scc_worker *w = arg;
     struct global *global = w->global;
-    mutex_acquire(&global->todo_lock);
+    mutex_acquire(&global->todo_enter);
     for (;;) {
         if (global->scc_todo == NULL) {
             global->scc_nwaiting++;
@@ -2056,7 +2072,7 @@ static void scc_worker(void *arg){
                 mutex_release(&global->todo_wait);
                 break;
             }
-            mutex_release(&global->todo_lock);
+            mutex_release(&global->todo_enter);
             mutex_acquire(&global->todo_wait);
             if (global->scc_nwaiting == global->nworkers) {
                 mutex_release(&global->todo_wait);
@@ -2077,7 +2093,7 @@ static void scc_worker(void *arg){
             mutex_release(&global->todo_wait);
         }
         else {
-            mutex_release(&global->todo_lock);
+            mutex_release(&global->todo_enter);
         }
 
         for (;;) {
@@ -2086,7 +2102,7 @@ static void scc_worker(void *arg){
             scc = graph_find_scc_one(&global->graph, scc, component, &w->scc_cache);
 
             // Put new work on the list except the last (which we'll do ourselves)
-            mutex_acquire(&global->todo_lock);
+            mutex_acquire(&global->todo_enter);
             while (scc != NULL && scc->next != NULL) {
                 struct scc *next = scc->next;
                 scc->next = global->scc_todo;
@@ -2103,7 +2119,7 @@ static void scc_worker(void *arg){
                 mutex_release(&global->todo_wait);
             }
             else {
-                mutex_release(&global->todo_lock);
+                mutex_release(&global->todo_enter);
             }
         }
     }
@@ -2354,9 +2370,13 @@ int main(int argc, char **argv){
 
     // initialize modules
     mutex_init(&global->inv_lock);
+#ifdef USE_ATOMIC
     atomic_init(&global->atodo, 0);
-    global->agoal = 1;
+#else
     mutex_init(&global->todo_lock);
+#endif
+    global->goal = 1;
+    mutex_init(&global->todo_enter);
     mutex_init(&global->todo_wait);
     mutex_acquire(&global->todo_wait);          // Split Binary Semaphore
     global->values = dict_new("values", 0, 0, global->nworkers, true);

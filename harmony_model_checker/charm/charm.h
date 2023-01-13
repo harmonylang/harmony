@@ -60,13 +60,17 @@ struct global {
     unsigned int *finals;           // program counters of finally preds
 
     struct graph graph;             // the Kripke structure
+#ifdef USE_ATOMIC
     hAtomic(unsigned int) atodo;
-    unsigned int agoal;
-    // unsigned int todo;           // points into graph->nodes
+#else
+    mutex_t todo_lock;              // to access the todo list
+    unsigned int todo;
+#endif
+    unsigned int goal;
     bool layer_done;                // all states in a layer completed
 
-    mutex_t todo_lock;              // to access the todo list
-    mutex_t todo_wait;              // to wait for SCC tasks
+    mutex_t todo_enter;             // entry semaphore for SCC tasks
+    mutex_t todo_wait;              // wait semaphore for SCC tasks
     unsigned int nworkers;          // total number of threads
     unsigned int scc_nwaiting;      // # workers waiting for SCC work
     unsigned int ncomponents;       // to generate component identifiers
