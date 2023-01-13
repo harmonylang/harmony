@@ -13,7 +13,6 @@
 
 #include "global.h"
 #include "hashdict.h"
-#include "hashtab.h"
 #include "value.h"
 #include "strbuf.h"
 #include "ops.h"

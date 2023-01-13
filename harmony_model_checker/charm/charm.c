@@ -28,7 +28,6 @@
 #include "dot.h"
 #include "iface/iface.h"
 #include "hashdict.h"
-#include "hashtab.h"
 #include "dfa.h"
 #include "thread.h"
 #include "spawn.h"
