@@ -2579,15 +2579,11 @@ int main(int argc, char **argv){
                 w->end_wait/w->end_count);
 #endif
     }
-    printf("computing: %lf %lf %lf %lf (%lu %lu %lu %lu %lf %lf %lf %lf %u); waiting: %lf %lf %lf\n",
+    printf("computing: %lf %lf %lf %lf (%lf %lf %lf %lf %u); waiting: %lf %lf %lf\n",
         phase1 / global->nworkers,
         phase2a / global->nworkers,
         phase2b / global->nworkers,
         phase3 / global->nworkers,
-        0L,
-        0L,
-        0L,
-        0L,
         phase1,
         phase2a,
         phase2b,
