@@ -674,7 +674,11 @@ static bool onestep(
                     breakable = false;
                 }
 #else
-                assert(VALUE_TYPE(addr) == VALUE_ADDRESS_SHARED || VALUE_TYPE(addr) == VALUE_ADDRESS_PRIVATE);
+                if (VALUE_TYPE(addr) != VALUE_ADDRESS_SHARED && VALUE_TYPE(addr) != VALUE_ADDRESS_PRIVATE) {
+                    value_ctx_failure(step->ctx, &step->engine, "Load: not an address");
+                    instrcnt++;
+                    break;
+                }
                 if ((VALUE_TYPE(addr)) == VALUE_ADDRESS_PRIVATE) {
                     breakable = false;
                 }
