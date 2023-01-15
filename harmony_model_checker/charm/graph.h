@@ -5,6 +5,7 @@
 #include "value.h"
 #include "minheap.h"
 #include "thread.h"
+#include "hashtab.h"
 
 struct component {
     bool good;              // terminating or out-going edge
@@ -20,7 +21,6 @@ struct access_info {
 
     // TODO.  The following 32 bits could be packed differently
     uint8_t n;                       // length of address
-    uint8_t multiplicity;            // #identical contexts
     bool atomic : 1;                 // atomic or not
     bool load : 1;                   // store or del if false
 };
@@ -33,10 +33,13 @@ struct edge {
     struct node *dst;        // destination node
     hvalue_t after;          // resulting context
     struct access_info *ai;  // to detect data races
-    uint32_t nsteps;         // # microsteps
-    bool interrupt : 1;      // set if state change is an interrupt
+    uint16_t nsteps;         // # microsteps
+    uint16_t multiplicity;   // multiplicity of context
     uint8_t weight : 1;      // context switch or not
-    uint16_t nlog : 14;      // size of print history
+    bool interrupt : 1;      // set if state change is an interrupt
+    bool choosing : 1;       // destination state is choosing
+    bool failed : 1;         // context failed
+    uint16_t nlog : 12;      // size of print history
     // hvalue_t log[];       // print history (immediately follows edge)
 };
 #define edge_log(x)     ((hvalue_t *) ((x) + 1))
@@ -46,6 +49,7 @@ enum fail_type {
     FAIL_SAFETY,
     FAIL_BEHAVIOR,
     FAIL_INVARIANT,
+    FAIL_FINALLY,
     FAIL_TERMINATION,
     FAIL_BUSYWAIT,
     FAIL_RACE
@@ -55,16 +59,18 @@ struct node {
 	struct node *next;		// for linked list
 
     // Information about state
-    // TODO.  state points to end of this node??
+    // TODO.  state contiguous to this node, so don't need pointer
     struct state *state;    // state corresponding to this node
-    struct edge *fwd;       // forward edges
     struct edge *bwd;       // backward edges
+    struct edge *fwd;       // forward edges
+    ht_lock_t *lock;         // lock for forward edges
 
     struct edge *to_parent; // pointer towards initial state
     uint32_t id;            // nodes are numbered starting from 0
     uint32_t component;     // strongly connected component id
     uint16_t len;           // length of path to initial state
     uint16_t steps;         // #microsteps from root
+    bool initialized : 1;   // this node structure has been initialized
     bool final : 1;         // only eternal threads left (TODO: need this?)
     bool visited : 1;       // for busy wait detection
 

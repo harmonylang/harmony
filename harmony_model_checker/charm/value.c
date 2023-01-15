@@ -28,6 +28,7 @@ void *value_get(hvalue_t v, unsigned int *psize){
 }
 
 // Like value_get, but allocate dynamic memory for it
+// TODO: OBSOLETE
 void *value_copy(hvalue_t v, unsigned int *psize){
     v &= ~VALUE_MASK;
     if (v == 0) {
@@ -65,7 +66,7 @@ hvalue_t value_put_atom(struct engine *engine, const void *p, unsigned int size)
     if (size == 0) {
         return VALUE_ATOM;
     }
-    void *q = dict_find(engine->values->atoms, engine->allocator, p, size, NULL);
+    void *q = dict_find(engine->values, engine->allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_ATOM;
 }
 
@@ -73,7 +74,7 @@ hvalue_t value_put_set(struct engine *engine, void *p, unsigned int size){
     if (size == 0) {
         return VALUE_SET;
     }
-    void *q = dict_find(engine->values->sets, engine->allocator, p, size, NULL);
+    void *q = dict_find(engine->values, engine->allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_SET;
 }
 
@@ -81,7 +82,7 @@ hvalue_t value_put_dict(struct engine *engine, void *p, unsigned int size){
     if (size == 0) {
         return VALUE_DICT;
     }
-    void *q = dict_find(engine->values->dicts, engine->allocator, p, size, NULL);
+    void *q = dict_find(engine->values, engine->allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_DICT;
 }
 
@@ -89,7 +90,7 @@ hvalue_t value_put_list(struct engine *engine, void *p, unsigned int size){
     if (size == 0) {
         return VALUE_LIST;
     }
-    void *q = dict_find(engine->values->lists, engine->allocator, p, size, NULL);
+    void *q = dict_find(engine->values, engine->allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_LIST;
 }
 
@@ -98,7 +99,7 @@ hvalue_t value_put_address(struct engine *engine, void *p, unsigned int size){
         return VALUE_ADDRESS_SHARED;
     }
     assert(size > sizeof(hvalue_t));
-    void *q = dict_find(engine->values->addresses, engine->allocator, p, size, NULL);
+    void *q = dict_find(engine->values, engine->allocator, p, size, NULL);
     if (* (hvalue_t *) p == VALUE_PC_SHARED) {
         return (hvalue_t) q | VALUE_ADDRESS_SHARED;
     }
@@ -109,8 +110,13 @@ hvalue_t value_put_address(struct engine *engine, void *p, unsigned int size){
 
 hvalue_t value_put_context(struct engine *engine, struct context *ctx){
 	assert(ctx->pc >= 0);
-    void *q = dict_find(engine->values->contexts, engine->allocator, ctx, ctx_size(ctx), NULL);
-    return (hvalue_t) q | VALUE_CONTEXT;
+    void *q = dict_find(engine->values, engine->allocator, ctx, ctx_size(ctx), NULL);
+    if (ctx->eternal) {
+        return (hvalue_t) q | VALUE_CONTEXT | VALUE_CONTEXT_ETERNAL;
+    }
+    else {
+        return (hvalue_t) q | VALUE_CONTEXT;
+    }
 }
 
 int value_cmp_bool(hvalue_t v1, hvalue_t v2){
@@ -255,13 +261,13 @@ int value_cmp(hvalue_t v1, hvalue_t v2){
     }
     switch (t1) {
     case VALUE_BOOL:
-        return value_cmp_bool(v1 & ~VALUE_MASK, v2 & ~VALUE_MASK);
+        return value_cmp_bool(v1 & ~VALUE_LOBITS, v2 & ~VALUE_LOBITS);
     case VALUE_INT:
-        return value_cmp_int(v1 & ~VALUE_MASK, v2 & ~VALUE_MASK);
+        return value_cmp_int(v1 & ~VALUE_LOBITS, v2 & ~VALUE_LOBITS);
     case VALUE_ATOM:
         return value_cmp_atom(v1 & ~VALUE_MASK, v2 & ~VALUE_MASK);
     case VALUE_PC:
-        return value_cmp_pc(v1 & ~VALUE_MASK, v2 & ~VALUE_MASK);
+        return value_cmp_pc(v1 & ~VALUE_LOBITS, v2 & ~VALUE_LOBITS);
     case VALUE_LIST:
         return value_cmp_list(v1 & ~VALUE_MASK, v2 & ~VALUE_MASK);
     case VALUE_DICT:
@@ -300,8 +306,8 @@ static void value_json_bool(struct strbuf *sb, hvalue_t v) {
 }
 
 static void value_string_int(struct strbuf *sb, hvalue_t v) {
-    int64_t w = (int64_t) VALUE_FROM_INT(v);
-    strbuf_printf(sb, "%"PRId64"", (int64_t) w);
+    int64_t w = VALUE_FROM_INT(v);
+    strbuf_printf(sb, "%"PRId64"", w);
 }
 
 static void value_json_int(struct strbuf *sb, hvalue_t v) {
@@ -808,16 +814,16 @@ static void value_json_context(struct strbuf *sb, hvalue_t v, struct global *glo
 void strbuf_value_string(struct strbuf *sb, hvalue_t v){
     switch (VALUE_TYPE(v)) {
     case VALUE_BOOL:
-        value_string_bool(sb, v & ~VALUE_MASK);
+        value_string_bool(sb, v & ~VALUE_LOBITS);
         break;
     case VALUE_INT:
-        value_string_int(sb, v & ~VALUE_MASK);
+        value_string_int(sb, v & ~VALUE_LOBITS);
         break;
     case VALUE_ATOM:
         value_string_atom(sb, v & ~VALUE_MASK);
         break;
     case VALUE_PC:
-        value_string_pc(sb, v & ~VALUE_MASK);
+        value_string_pc(sb, v & ~VALUE_LOBITS);
         break;
     case VALUE_LIST:
         value_string_list(sb, v & ~VALUE_MASK);
@@ -851,16 +857,16 @@ char *value_string(hvalue_t v){
 void strbuf_value_json(struct strbuf *sb, hvalue_t v, struct global *global){
     switch VALUE_TYPE(v) {
     case VALUE_BOOL:
-        value_json_bool(sb, v & ~VALUE_MASK);
+        value_json_bool(sb, v & ~VALUE_LOBITS);
         break;
     case VALUE_INT:
-        value_json_int(sb, v & ~VALUE_MASK);
+        value_json_int(sb, v & ~VALUE_LOBITS);
         break;
     case VALUE_ATOM:
         value_json_atom(sb, v & ~VALUE_MASK);
         break;
     case VALUE_PC:
-        value_json_pc(sb, v & ~VALUE_MASK);
+        value_json_pc(sb, v & ~VALUE_LOBITS);
         break;
     case VALUE_LIST:
         value_json_list(sb, v & ~VALUE_MASK, global);
@@ -928,6 +934,7 @@ hvalue_t value_int(struct dict *map){
         copy[value->u.atom.len] = 0;
         v = atol(copy);
         free(copy);
+
     }
     return VALUE_TO_INT(v);
 }
@@ -949,7 +956,7 @@ hvalue_t value_atom(struct engine *engine, struct dict *map){
     if (value->u.atom.len == 0) {
         return VALUE_ATOM;
     }
-    void *p = dict_find(engine->values->atoms, engine->allocator, value->u.atom.base, value->u.atom.len, NULL);
+    void *p = dict_find(engine->values, engine->allocator, value->u.atom.base, value->u.atom.len, NULL);
     return (hvalue_t) p | VALUE_ATOM;
 }
 
@@ -972,7 +979,7 @@ hvalue_t value_dict(struct engine *engine, struct dict *map){
     }
 
     // vals is sorted already by harmony compiler
-    void *p = dict_find(engine->values->dicts, engine->allocator, vals,
+    void *p = dict_find(engine->values, engine->allocator, vals,
                     value->u.list.nvals * sizeof(hvalue_t) * 2, NULL);
     free(vals);
     return (hvalue_t) p | VALUE_DICT;
@@ -992,7 +999,7 @@ hvalue_t value_set(struct engine *engine, struct dict *map){
     }
 
     // vals is sorted already by harmony compiler
-    void *p = dict_find(engine->values->sets, engine->allocator, vals, value->u.list.nvals * sizeof(hvalue_t), NULL);
+    void *p = dict_find(engine->values, engine->allocator, vals, value->u.list.nvals * sizeof(hvalue_t), NULL);
     free(vals);
     return (hvalue_t) p | VALUE_SET;
 }
@@ -1009,7 +1016,7 @@ hvalue_t value_list(struct engine *engine, struct dict *map){
         assert(jv->type == JV_MAP);
         vals[i] = value_from_json(engine, jv->u.map);
     }
-    void *p = dict_find(engine->values->lists, engine->allocator, vals, value->u.list.nvals * sizeof(hvalue_t), NULL);
+    void *p = dict_find(engine->values, engine->allocator, vals, value->u.list.nvals * sizeof(hvalue_t), NULL);
     free(vals);
     return (hvalue_t) p | VALUE_LIST;
 }
@@ -1101,60 +1108,6 @@ static bool align_test(){
 }
 
 #endif // OBSOLETE
-
-unsigned long value_allocated(struct values *values){
-    return dict_allocated(values->atoms) +
-        dict_allocated(values->dicts) +
-        dict_allocated(values->sets) +
-        dict_allocated(values->lists) +
-        dict_allocated(values->addresses) +
-        dict_allocated(values->contexts);
-}
-
-void value_init(struct values *values, unsigned int nworkers){
-    values->atoms = dict_new("atoms", 0, 0, nworkers, true);
-    values->dicts = dict_new("dicts", 0, 0, nworkers, true);
-    values->sets = dict_new("sets", 0, 0, nworkers, true);
-    values->lists = dict_new("lists", 0, 0, nworkers, true);
-    values->addresses = dict_new("addresses", 0, 0, nworkers, true);
-    values->contexts = dict_new("contexts", 0, 0, nworkers, true);
-}
-
-void value_set_concurrent(struct values *values){
-    dict_set_concurrent(values->atoms);
-    dict_set_concurrent(values->dicts);
-    dict_set_concurrent(values->sets);
-    dict_set_concurrent(values->lists);
-    dict_set_concurrent(values->addresses);
-    dict_set_concurrent(values->contexts);
-}
-
-void value_make_stable(struct values *values, unsigned int worker){
-    dict_make_stable(values->atoms, worker);
-    dict_make_stable(values->dicts, worker);
-    dict_make_stable(values->sets, worker);
-    dict_make_stable(values->lists, worker);
-    dict_make_stable(values->addresses, worker);
-    dict_make_stable(values->contexts, worker);
-}
-
-void value_grow_prepare(struct values *values) {
-    dict_grow_prepare(values->atoms);
-    dict_grow_prepare(values->dicts);
-    dict_grow_prepare(values->sets);
-    dict_grow_prepare(values->lists);
-    dict_grow_prepare(values->addresses);
-    dict_grow_prepare(values->contexts);
-}
-
-void value_set_sequential(struct values *values){
-    dict_set_sequential(values->atoms);
-    dict_set_sequential(values->dicts);
-    dict_set_sequential(values->sets);
-    dict_set_sequential(values->lists);
-    dict_set_sequential(values->addresses);
-    dict_set_sequential(values->contexts);
-}
 
 // Store key:value in the given dictionary and returns its value code
 // in *result.  May fail if allow_inserts is false and key does not exist
@@ -1600,6 +1553,7 @@ hvalue_t value_ctx_failure(struct context *ctx, struct engine *engine, char *fmt
     va_start(args, fmt);
     strbuf_vprintf(&sb, fmt, args);
     va_end(args);
+    // printf("FAIL %.*s\n", strbuf_getlen(&sb), strbuf_getstr(&sb));
     ctx_failure(ctx) = value_put_atom(engine, strbuf_getstr(&sb), strbuf_getlen(&sb));
     ctx->failed = true;
     strbuf_deinit(&sb);

@@ -1184,10 +1184,34 @@ class ReadonlyDecOp(Op):
         context.readonly -= 1
         context.pc += 1
 
-class InvariantOp(Op):
+class FinallyOp(Op):
     def __init__(self, pc):
         self.pc = pc
-        self.uses_pre = True        # invariant optimization
+
+    def __repr__(self):
+        return "Finally " + str(self.pc)
+
+    def jdump(self):
+        return '{ "op": "Finally", "pc": "%d" }'%self.pc
+
+    def tladump(self):
+        return 'OpFinally(self, %d)'%(self.pc)
+
+    def explain(self):
+        return "test predicate over final state"
+
+    def eval(self, state, context):
+        assert False
+
+    def substitute(self, map):
+        if isinstance(self.pc, LabelValue):
+            assert isinstance(map[self.pc], PcValue)
+            self.pc = map[self.pc].pc
+
+class InvariantOp(Op):
+    def __init__(self, pc, uses_pre):
+        self.pc = pc
+        self.uses_pre = uses_pre        # invariant optimization
 
     def __repr__(self):
         return "Invariant " + str(self.pc)
@@ -1642,8 +1666,10 @@ class NaryOp(Op):
                 if not self.checktype(state, context, sa, isinstance(e, DictValue)):
                     return
                 context.push(SetValue(set(e.d.keys())))
-            elif op == "hash":
-                context.push((e,).__hash__())
+            # elif op == "hash":
+            #     context.push((e,).__hash__())
+            elif op == "Closure":
+                context.push(AddressValue(e, []))
             else:
                 assert False, self
         elif self.n == 2:
@@ -1741,6 +1767,8 @@ class NaryOp(Op):
                 else:
                     d[e2] = 1
                 context.push(DictValue(d))
+            elif op == "Closure":
+                context.push(AddressValue(e2, [e1]))
             else:
                 assert False, self
         elif self.n == 3:

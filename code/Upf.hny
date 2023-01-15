@@ -1,0 +1,9 @@
+count = 0
+
+finally count == 2
+
+def incrementer():
+    count = count + 1
+
+spawn incrementer()
+spawn incrementer()

@@ -6,7 +6,7 @@
 #include "strbuf.h"
 #include "charm.h"
 
-#define MAX_CONTEXT_STACK   1000        // maximum size of context stack
+#define MAX_CONTEXT_STACK   250        // maximum size of context stack
 #define MAX_CONTEXT_BAG       32        // maximum number of distinct contexts
 
 typedef struct state {
@@ -28,6 +28,7 @@ typedef struct state {
 
 typedef struct context {   // context value
     hvalue_t vars;            // method-local variables
+    uint16_t pc;              // program counter
     bool initial : 1;         // __init__ context
     bool atomicFlag : 1;      // to implement lazy atomicity
     bool interruptlevel : 1;  // interrupt level
@@ -38,8 +39,7 @@ typedef struct context {   // context value
     bool extended : 1;        // context extended with more values
     uint8_t readonly;         // readonly counter
     uint8_t atomic;           // atomic counter
-    uint16_t pc;              // program counter
-    uint16_t sp;              // stack size
+    uint8_t sp;              // stack size
     // hvalue_t thestack[VAR_SIZE];     // growing stack
 
 // Context can be extended with the following additional values
@@ -54,14 +54,10 @@ typedef struct context {   // context value
 #define ctx_size(c)     (sizeof(struct context) + (c)->sp * sizeof(hvalue_t) + ((c)->extended ? (ctx_extent*sizeof(hvalue_t)) : 0))
 #define ctx_stack(c)    ((c)->extended ? &context_stack(c)[ctx_extent] : context_stack(c))
 
-void value_init(struct values *values, unsigned int nworkers);
-void value_set_concurrent(struct values *values);
-void value_make_stable(struct values *values, unsigned int worker);
-void value_set_sequential(struct values *values);
 hvalue_t value_from_json(struct engine *engine, struct dict *map);
 int value_cmp(hvalue_t v1, hvalue_t v2);
 void *value_get(hvalue_t v, unsigned int *size);
-// void *value_copy(hvalue_t v, unsigned int *size);
+void *value_copy(hvalue_t v, unsigned int *size);
 void *value_copy_extend(hvalue_t v, unsigned int inc, unsigned int *psize);
 hvalue_t value_put_atom(struct engine *engine, const void *p, unsigned int size);
 hvalue_t value_put_set(struct engine *engine, void *p, unsigned int size);
@@ -77,7 +73,9 @@ void strbuf_value_string(strbuf *sb, hvalue_t v);
 void strbuf_value_json(strbuf *sb, hvalue_t v, struct global *global);
 
 #define VALUE_BITS      4
-#define VALUE_MASK      ((hvalue_t) ((1 << VALUE_BITS) - 1))
+#define VALUE_HIBITS    ((hvalue_t) 0xFF << 48)
+#define VALUE_LOBITS    ((hvalue_t) ((1 << VALUE_BITS) - 1))
+#define VALUE_MASK      (VALUE_HIBITS | VALUE_LOBITS)
 
 #define VALUE_BOOL      1
 #define VALUE_INT       2
@@ -90,13 +88,15 @@ void strbuf_value_json(strbuf *sb, hvalue_t v, struct global *global);
 #define VALUE_ADDRESS_PRIVATE   9
 #define VALUE_CONTEXT  10
 
+#define VALUE_CONTEXT_ETERNAL   ((hvalue_t) 1 << 48)
+
 #define VALUE_FALSE     VALUE_BOOL
 #define VALUE_TRUE      ((1 << VALUE_BITS) | VALUE_BOOL)
 
 #define VALUE_MAX   ((int64_t) ((~(hvalue_t)0) >> (VALUE_BITS + 1)))
 #define VALUE_MIN   ((int64_t) ((~(hvalue_t)0) << (64 - (VALUE_BITS + 1))))
 
-#define VALUE_TYPE(v)      ((v) & VALUE_MASK)
+#define VALUE_TYPE(v)      ((v) & VALUE_LOBITS)
 
 #define VALUE_TO_INT(i)    (((hvalue_t) (i) << VALUE_BITS) | VALUE_INT)
 #define VALUE_TO_BOOL(i)   (((hvalue_t) (i) << VALUE_BITS) | VALUE_BOOL)
@@ -128,8 +128,6 @@ void context_remove(struct state *state, hvalue_t ctx);
 bool context_add(struct state *state, hvalue_t ctx);
 char *json_escape_value(hvalue_t v);
 void value_trace(struct global *global, FILE *file, struct callstack *cs, unsigned int pc, hvalue_t vars, char *prefix);
-void value_grow_prepare(struct values *values);
-unsigned long value_allocated(struct values *values);
 void print_vars(struct global *global, FILE *file, hvalue_t v);
 
 #endif //SRC_VALUE_H

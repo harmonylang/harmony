@@ -6,15 +6,12 @@
 #include <stdint.h> /* uint32_t */
 #include <string.h> /* memcpy/memcmp */
 
-#define DICT_ALIGN      sizeof(void *)
-
 #include "thread.h"
 
 typedef void (*dict_enumfunc)(void *env, const void *key, unsigned int key_size,
                                 void *value);
 
-// This header is followed directly by first the key and
-// then the value (aligned to DICT_ALIGN).
+// This header is followed directly by first the data and then the key.
 // The value is of length dict->value_len.
 struct dict_assoc {
 	struct dict_assoc *next;
@@ -22,6 +19,7 @@ struct dict_assoc {
 	unsigned int len;               // key length
 };
 
+// TODO.  Split into two tables, one for stable, one for unstable.
 struct dict_bucket {
     struct dict_assoc *stable, *unstable;
 };

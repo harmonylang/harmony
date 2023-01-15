@@ -5,19 +5,11 @@
 #include "code.h"
 #include "graph.h"
 #include "json.h"
+#include "hashtab.h"
 
 struct scc {        // Strongly Connected Component
     struct scc *next;
     unsigned int start, finish;
-};
-
-struct values {
-    struct dict *atoms;
-    struct dict *dicts;
-    struct dict *sets;
-    struct dict *lists;
-    struct dict *addresses;
-    struct dict *contexts;
 };
 
 struct invariant {
@@ -56,21 +48,29 @@ struct macrostep {
 
 struct global {
     struct code code;               // code of the Harmony program
-    struct values values;           // dictionaries of values
+    struct dict *values;            // dictionary of values
     hvalue_t seqs;                  // sequential variables
 
     // invariants
-    mutex_t inv_lock;               // lock on list of invariants
+    mutex_t inv_lock;               // lock on list of invariants and finals
     unsigned int ninvs;             // number of invariants
     struct invariant *invs;         // list of invariants
     bool inv_pre;                   // some invariant uses "pre"
+    unsigned int nfinals;           // #finally predicates
+    unsigned int *finals;           // program counters of finally preds
 
     struct graph graph;             // the Kripke structure
-    unsigned int todo;              // points into graph->nodes
-    unsigned int goal;              // points into graph->nodes
-    bool layer_done;                // all states in a layer completed
+#ifdef USE_ATOMIC
+    hAtomic(unsigned int) atodo;
+#else
     mutex_t todo_lock;              // to access the todo list
-    mutex_t todo_wait;              // to wait for SCC tasks
+    unsigned int todo;
+#endif
+    unsigned int goal;
+    bool layer_done;                // all states in a layer completed
+
+    mutex_t todo_enter;             // entry semaphore for SCC tasks
+    mutex_t todo_wait;              // wait semaphore for SCC tasks
     unsigned int nworkers;          // total number of threads
     unsigned int scc_nwaiting;      // # workers waiting for SCC work
     unsigned int ncomponents;       // to generate component identifiers
@@ -87,6 +87,7 @@ struct global {
     struct json_value *pretty;      // for output
     bool run_direct;                // non-model-checked mode
     unsigned long allocated;        // allocated table space
+    bool numa;                      // for distribution across chips
 
     // Reconstructed error trace stored here
     unsigned int nmacrosteps, alloc_macrosteps;

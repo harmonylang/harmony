@@ -1,0 +1,13 @@
+count = 0
+done = [ False, False ]
+
+def incrementer(self):
+    var register = count    # load count
+    register += 1           # increment
+    count = register        # store count
+    done[self] = True
+    await done[1 - self]
+    assert count == 2
+
+spawn incrementer(0)
+spawn incrementer(1)

@@ -34,7 +34,7 @@ unsigned int graph_add_multiple(struct graph *graph, unsigned int n) {
     unsigned int node_id = graph->size;
     graph->size += n;
     if (graph->size > graph->alloc_size) {
-        graph->alloc_size = (graph->alloc_size + 1) * 2;
+        graph->alloc_size = (graph->size + 1) * 2;
         graph->nodes = realloc(graph->nodes, (graph->alloc_size * sizeof(struct node *)));
     }
     return node_id;
@@ -208,7 +208,7 @@ void graph_check_for_data_race(
         for (struct access_info *ai = edge->ai; ai != NULL; ai = ai->next) {
             if (ai->indices != NULL) {
                 assert(ai->n > 0);
-                if (ai->multiplicity > 1 && !ai->load && !ai->atomic) {
+                if (edge->multiplicity > 1 && !ai->load && !ai->atomic) {
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_RACE;
                     f->edge = node->to_parent;

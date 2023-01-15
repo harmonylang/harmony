@@ -3,6 +3,48 @@
 #include <assert.h>
 #include "thread.h"
 
+#ifdef __APPLE__
+
+#include <pthread.h>
+#include <errno.h>
+
+int pthread_spin_init(pthread_spinlock_t *lock, int pshared) {
+    __asm__ __volatile__ ("" ::: "memory");
+    *lock = 0;
+    return 0;
+}
+
+int pthread_spin_destroy(pthread_spinlock_t *lock) {
+    return 0;
+}
+
+int pthread_spin_lock(pthread_spinlock_t *lock) {
+    while (1) {
+        int i;
+        for (i=0; i < 10000; i++) {
+            if (__sync_bool_compare_and_swap(lock, 0, 1)) {
+                return 0;
+            }
+        }
+        sched_yield();
+    }
+}
+
+int pthread_spin_trylock(pthread_spinlock_t *lock) {
+    if (__sync_bool_compare_and_swap(lock, 0, 1)) {
+        return 0;
+    }
+    return EBUSY;
+}
+
+int pthread_spin_unlock(pthread_spinlock_t *lock) {
+    __asm__ __volatile__ ("" ::: "memory");
+    *lock = 0;
+    return 0;
+}
+
+#endif // __APPLE__
+
 #ifdef CHARM_WINDOWS
 
 void thread_create(void (*f)(void *arg), void *arg){
@@ -30,6 +72,11 @@ void mutex_init(mutex_t *mutex){
 void mutex_acquire(mutex_t *mutex){
     DWORD r = WaitForSingleObject(*mutex, INFINITE);
     assert(r == WAIT_OBJECT_0);
+}
+
+bool mutex_try_acquire(mutex_t *mutex){
+    DWORD r = WaitForSingleObject(*mutex, 0);
+    return r == WAIT_OBJECT_0;
 }
 
 void mutex_release(mutex_t *mutex){
@@ -90,6 +137,10 @@ void mutex_init(mutex_t *mutex){
 
 void mutex_acquire(mutex_t *mutex){
     pthread_mutex_lock(mutex);
+}
+
+bool mutex_try_acquire(mutex_t *mutex){
+    return pthread_mutex_trylock(mutex) == 0;
 }
 
 void mutex_release(mutex_t *mutex){
@@ -155,3 +206,85 @@ unsigned int getNumCores(){
     return count;
 #endif
 }
+
+#ifdef CYCLES
+
+#ifdef notdef
+static inline uint64_t get_cycles(){
+    uint64_t t;
+    __asm volatile ("rdtsc" : "=A"(t));
+    return t;
+}
+#endif
+
+#ifdef _WIN32
+
+#include <intrin.h>
+static inline uint64_t get_cycles(){
+    return __rdtsc();
+}
+
+//  Linux/GCC
+#else
+
+#ifdef notdef
+static inline uint64_t get_cycles(){
+    unsigned int lo, hi;
+    __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
+    return ((uint64_t) hi << 32) | lo;
+}
+
+static inline uint64_t get_cycles(){
+    uint64_t msr;
+    asm volatile ( "rdtsc\n\t"    // Returns the time in EDX:EAX.
+               "shl $32, %%rdx\n\t"  // Shift the upper bits left.
+               "or %%rdx, %0"        // 'Or' in the lower bits.
+               : "=a" (msr)
+               :
+               : "rdx");
+    return msr;
+}
+#endif
+
+static inline void rdtscp(uint64_t *cycles, uint64_t *pid) {
+  // rdtscp
+  // high cycles : edx
+  // low cycles  : eax
+  // processor id: ecx
+
+  asm volatile
+    (
+     // Assembleur
+     "rdtscp;\n"
+     "shl $32, %%rdx;\n"
+     "or %%rdx, %%rax;\n"
+     "mov %%rax, (%[_cy]);\n"
+     "mov %%ecx, (%[_pid]);\n"
+
+     // outputs
+     :
+
+     // inputs
+     :
+     [_cy] "r" (cycles),
+     [_pid] "r" (pid)
+
+     // clobbers
+     :
+     "cc", "memory", "%eax", "%edx", "%ecx"
+     );
+
+  return;
+}
+
+static inline uint64_t get_cycles(){
+    // uint64_t cycles, pid;
+
+    // rdtscp(&cycles, &pid);
+    // return cycles;
+    return 0;
+}
+
+#endif
+
+#endif // CYCLES

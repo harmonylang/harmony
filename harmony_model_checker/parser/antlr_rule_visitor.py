@@ -167,11 +167,11 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         return ConstantAST(endtoken, tkn)
 
     # Visit a parse tree produced by HarmonyParser#address.
-    def visitAddress(self, ctx: HarmonyParser.AddressContext):
-        expr = self.visit(ctx.expr_rule())
-        tkn = self.get_token(ctx.start, ctx.start.text)
-        endtoken = self.get_token(ctx.stop, ctx.stop.text)
-        return AddressAST(endtoken, tkn, expr)
+    # def visitAddress(self, ctx: HarmonyParser.AddressContext):
+    #     expr = self.visit(ctx.expr_rule())
+    #     tkn = self.get_token(ctx.start, ctx.start.text)
+    #     endtoken = self.get_token(ctx.stop, ctx.stop.text)
+    #     return AddressAST(endtoken, tkn, expr)
 
     # Visit a parse tree produced by HarmonyParser#assign_op.
     def visitAssign_op(self, ctx: HarmonyParser.Assign_opContext):
@@ -250,6 +250,13 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         tkn = self.get_token(ctx.start, ctx.start.text)
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
         return PassAST(endtoken, tkn, False)
+
+    # Visit a parse tree produced by HarmonyParser#Finally_stmt.
+    def visitFinally_stmt(self, ctx: HarmonyParser.Finally_stmtContext):
+        cond = self.visit(ctx.expr())
+        tkn = self.get_token(ctx.start, ctx.start.text)
+        endtoken = self.get_token(ctx.stop, ctx.stop.text)
+        return FinallyAST(endtoken, cond, tkn, False)
 
     # Visit a parse tree produced by HarmonyParser#invariant_stmt.
     def visitInvariant_stmt(self, ctx: HarmonyParser.Invariant_stmtContext):
@@ -584,6 +591,13 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
         return ConstantAST(endtoken, (emptytuple, self.file, tkn[2], tkn[3]))
 
+    def visitLambda_expr(self, ctx: HarmonyParser.Lambda_exprContext):
+        tkn = self.get_token(ctx.start, ctx.start.text)
+        endtoken = self.get_token(ctx.stop, ctx.stop.text)
+        args = self.visit(ctx.bound()) if ctx.bound() is not None else []
+        body = self.visit(ctx.nary_expr())
+        return LambdaAST(endtoken, args, body, tkn, False)
+
     # Visit a parse tree produced by HarmonyParser#set_rule.
     def visitSet_rule(self, ctx: HarmonyParser.Set_ruleContext):
         values = [self.visit(e) for e in ctx.nary_expr()]
@@ -692,10 +706,6 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     def visitExpr_rule(self, ctx:HarmonyParser.Expr_ruleContext):
         tkn = self.get_token(ctx.start, ctx.start.text)
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
-        if ctx.LAMBDA():
-            args = self.visit(ctx.bound()) if ctx.bound() is not None else []
-            body = self.visit(ctx.nary_expr())
-            return LambdaAST(endtoken, args, body, tkn, False)
         if ctx.SETINTLEVEL():
             expr = self.visit(ctx.expr_rule())
             return SetIntLevelAST(endtoken, tkn, expr)
@@ -708,6 +718,9 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         if ctx.POINTER_OF():
             expr = self.visit(ctx.expr_rule())
             return PointerAST(endtoken, expr, tkn)
+        if ctx.ADDRESS_OF():
+            expr = self.visit(ctx.expr_rule())
+            return AddressAST(endtoken, expr, tkn)
         if ctx.unary_op():
             op = self.visit(ctx.unary_op())
             expr = self.visit(ctx.expr_rule())

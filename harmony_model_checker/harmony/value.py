@@ -123,7 +123,7 @@ class LabelValue(Value):
         return (100, self.id)
 
     def jdump(self):
-        assert False
+        assert False, self
 
     def substitute(self, map):
         return map[self] if self in map else self
@@ -319,13 +319,16 @@ class AddressValue(Value):
         if self.func == None:
             assert self.args == []
             return "None"
-        assert self.args != []
+        # assert self.args != []
         if isinstance(self.func, PcValue):
             if self.func.pc in { -1, -2 }:      # shared or method variable
                 return "?" + self.args[0] + self.remainder()
             if self.func.pc == -3:              # thread-local variable
                 return "?this." + self.args[0] + self.remainder()
-        return "?" + strValue(self.args[0]) + self.remainder()
+        result = "?" + strValue(self.func)
+        for index in self.args:
+            result += "[" + strValue(index) + "]"
+        return result
 
     def tlaval(self):
         if self.func == None:
