@@ -305,13 +305,17 @@ class NameAST(AST):
     def localVar(self, scope):
         (t, v) = scope.lookup(self.name)
         assert t in {"constant", "local-var", "local-const", "global", "module"}
-        return self.name[0] if t == "local-var" else None
+        return self.name[0] if t in { "local-var", "local-const" } else None
 
     def ph1(self, scope, code, stmt):
         (t, v) = scope.lookup(self.name)
-        if t in {"constant", "local-const"}:
+        if t == "constant":
             (lexeme, file, line, column) = v
             code.append(PushOp((AddressValue(lexeme, []), file, line, column)), self.token, self.endtoken, stmt=stmt)
+        elif t == "local-const":
+            (lexeme, file, line, column) = v
+            code.append(LoadVarOp(v), self.token, self.endtoken, stmt=stmt)
+            code.append(NaryOp(("Closure", file, line, column), 1), self.token, self.endtoken, stmt=stmt)
         elif t == "local-var":
             (lexeme, file, line, column) = v
             # TODO: what if lexeme == "_"?
