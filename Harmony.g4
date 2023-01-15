@@ -189,6 +189,7 @@ aug_assign_op
     | 'mod='
     | '**='
     | '>>='
+    | '<<='
     ;
 
 expr_stmt: tuple_rule;
@@ -339,7 +340,7 @@ BOOL    : 'False' | 'True';
 ETERNAL: 'eternal';
 
 // STRING  : '"' .*? '"' | '\'' .*? '\'';
-INT     : [0-9]+ | 'inf';
+INT     : [0-9]+ | '0x' [0-9a-fA-F]+ | '0b' [01]+ | '0o' [0-7]+;
 NAME    : [a-zA-Z_][a-zA-Z_0-9]*;
 ATOM    : [.] (HEX_INTEGER | NAME);
 

@@ -101,7 +101,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     # Visit a parse tree produced by HarmonyParser#int.
     def visitInt(self, ctx: HarmonyParser.IntContext):
         txt = ctx.getText()
-        tkn = self.get_token(ctx.start, int(txt))
+        tkn = self.get_token(ctx.start, int(txt, 0))
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
         return ConstantAST(endtoken, tkn)
 

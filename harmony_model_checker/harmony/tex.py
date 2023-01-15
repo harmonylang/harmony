@@ -30,6 +30,7 @@ def isnumber(s):
     return all(isnumeral(c) for c in s)
 
 reserved = {
+    "abs",
     "all",
     "and",
     "any",
@@ -67,6 +68,7 @@ reserved = {
     "let",
     "max",
     "min",
+    "mod",
     "None",
     "not",
     "or",
