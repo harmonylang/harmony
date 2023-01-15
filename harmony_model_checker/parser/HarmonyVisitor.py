@@ -109,8 +109,8 @@ class HarmonyVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by HarmonyParser#address.
-    def visitAddress(self, ctx:HarmonyParser.AddressContext):
+    # Visit a parse tree produced by HarmonyParser#lambda_expr.
+    def visitLambda_expr(self, ctx:HarmonyParser.Lambda_exprContext):
         return self.visitChildren(ctx)
 
 

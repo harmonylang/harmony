@@ -404,6 +404,9 @@ class RangeAST(AST):
         (lexeme, file, line, column) = self.token
         code.append(NaryOp(("..", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
 
+    def getLabels(self):
+        return self.lhs.getLabels() | self.rhs.getLabels()
+
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_range(self, *args, **kwargs)
 
@@ -756,6 +759,7 @@ class ApplyAST(AST):
     # value and then a Load instruction will evaluate the applications.
     def compile(self, scope, code, stmt):
         # Special case f(x) where f is a method constant
+        # TODO.  Can same be done with lambda?
         if isinstance(self.method, NameAST):
             (t, v) = scope.lookup(self.method.name)
             if t == "constant" and isinstance(v[0], LabelValue):
@@ -1087,7 +1091,7 @@ class StopAST(AST):
 
 
 class AddressAST(AST):
-    def __init__(self, endtoken, token, lv):
+    def __init__(self, endtoken, lv, token):
         AST.__init__(self, endtoken, token, False)
         self.lv = lv
 
@@ -1147,6 +1151,9 @@ class PassAST(AST):
 
     def compile(self, scope, code, stmt):
         pass
+
+    def getLabels(self):
+        return set()
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_pass(self, *args, **kwargs)
@@ -1308,6 +1315,9 @@ class FinallyAST(AST):
         code.nextLabel(endlabel)
         code.append(FinallyOp(startlabel), self.token, self.endtoken, stmt=stmt)
 
+    def getLabels(self):
+        return self.cond.getLabels()
+
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_lambda(self, *args, **kwargs)
 
@@ -1337,6 +1347,9 @@ class InvariantAST(AST):
         code.append(ReturnOp(result, AddressValue(None, [])), self.token, self.endtoken, stmt=stmt)
         code.nextLabel(endlabel)
         code.append(InvariantOp(startlabel, ns.uses_pre), self.token, self.endtoken, stmt=stmt)
+
+    def getLabels(self):
+        return self.cond.getLabels()
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_lambda(self, *args, **kwargs)
@@ -1719,9 +1732,7 @@ class LambdaAST(AST):
     def address(self, scope, code, stmt):
         self.compile_body(scope, code, stmt)
         (_, file, line, column) = self.token
-        code.append(PushOp((self.label, file, line, column)), self.token, self.endtoken, stmt=stmt)
-        # TODO.  Don't understand why it's not this:
-        # code.append(PushOp((AddressValue(self.label, []), file, line, column)), self.token, self.endtoken, stmt=stmt)
+        code.append(PushOp((AddressValue(self.label, []), file, line, column)), self.token, self.endtoken, stmt=stmt)
 
     def getLabels(self):
         (_, file, line, column) = self.token
@@ -1968,6 +1979,9 @@ class SequentialAST(AST):
             lv.ph1(scope, code, stmt)
             code.append(SequentialOp(), self.token, self.endtoken, stmt=stmt)
 
+    def getLabels(self):
+        return set()
+
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_sequential(self, *args, **kwargs)
 
@@ -2046,6 +2060,8 @@ class ConstAST(AST):
         v = ctx.pop()
         self.set(scope, self.const, v)
 
+    def getLabels(self):
+        return self.expr.getLabels()
+
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_const(self, *args, **kwargs)
-
