@@ -1051,6 +1051,9 @@ class SetIntLevelAST(AST):
         self.arg.compile(scope, code, stmt)
         code.append(SetIntLevelOp(), self.token, self.endtoken, stmt=stmt)
 
+    def getLabels(self):
+        return self.arg.getLabels()
+
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_set_int_level(self, *args, **kwargs)
 
@@ -1067,6 +1070,9 @@ class SaveAST(AST):
         self.expr.compile(scope, code, stmt)
         code.append(SaveOp(), self.token, self.endtoken, stmt=stmt)
         code.append(ContinueOp(), self.token, self.endtoken, stmt=stmt)
+
+    def getLabels(self):
+        return self.expr.getLabels()
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_save(self, *args, **kwargs)
@@ -1085,6 +1091,9 @@ class StopAST(AST):
         self.expr.compile(scope, code, stmt)
         code.append(StopOp(None), self.token, self.endtoken, stmt=stmt)
         code.append(ContinueOp(), self.token, self.endtoken, stmt=stmt)
+
+    def getLabels(self):
+        return self.expr.getLabels()
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_stop(self, *args, **kwargs)
