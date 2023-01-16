@@ -308,6 +308,7 @@ class NameAST(AST):
         return self.name[0] if t in { "local-var", "local-const" } else None
 
     def ph1(self, scope, code, stmt):
+        # TODO: what if lexeme == "_"?
         (t, v) = scope.lookup(self.name)
         if t == "constant":
             (lexeme, file, line, column) = v
@@ -318,7 +319,6 @@ class NameAST(AST):
             code.append(NaryOp(("Closure", file, line, column), 1), self.token, self.endtoken, stmt=stmt)
         elif t == "local-var":
             (lexeme, file, line, column) = v
-            # TODO: what if lexeme == "_"?
             if lexeme != "_":
                 code.append(PushOp((AddressValue(PcValue(-2), [lexeme]), file, line, column)), self.token, self.endtoken, stmt=stmt)
         else:
@@ -330,7 +330,22 @@ class NameAST(AST):
                 code.append(PushOp((AddressValue(PcValue(-1), [scope.prefix + '$' + lexeme]), file, line, column)), self.token, self.endtoken, stmt=stmt)
 
     def address(self, scope, code, stmt):
-        return self.ph1(scope, code, stmt)
+        # TODO: what if lexeme == "_"?
+        (t, v) = scope.lookup(self.name)
+        if t == "constant":
+            (lexeme, file, line, column) = v
+            code.append(PushOp((AddressValue(lexeme, []), file, line, column)), self.token, self.endtoken, stmt=stmt)
+        elif t in { "local-const", "local-var" }:
+            (lexeme, file, line, column) = v
+            code.append(LoadVarOp(v), self.token, self.endtoken, stmt=stmt)
+            code.append(NaryOp(("Closure", file, line, column), 1), self.token, self.endtoken, stmt=stmt)
+        else:
+            assert t == "global"
+            (lexeme, file, line, column) = self.name
+            if scope.prefix == None:
+                code.append(PushOp((AddressValue(PcValue(-1), [lexeme]), file, line, column)), self.token, self.endtoken, stmt=stmt)
+            else:
+                code.append(PushOp((AddressValue(PcValue(-1), [scope.prefix + '$' + lexeme]), file, line, column)), self.token, self.endtoken, stmt=stmt)
 
     def ph2(self, scope, code, skip, start, stop, stmt):
         if skip > 0:
