@@ -185,7 +185,9 @@ def nextLine(s, fd, pmap):
             s = s[i:]
             continue
 
-        if s[0] in ["&", "%", "{", "}"]:
+        if s[0] == "'":
+            print("{\\textquotesingle}", end="")
+        elif s[0] in ["&", "%", "{", "}"]:
             print("\\" + s[0], end="", file=fd)
         elif s[0] == "~":
             print("\\string~", end="", file=fd)
