@@ -1,5 +1,7 @@
 #include "head.h"
 
+#ifdef OBSOLETE
+
 #include <stdint.h>
 #include <assert.h>
 #include <stdio.h>
@@ -408,3 +410,5 @@ void iface_write_spec_graph_to_json_file(struct global *global, const char* file
 
     iface_graph_deinit(iface_graph);
 }
+
+#endif // OBSOLETE
