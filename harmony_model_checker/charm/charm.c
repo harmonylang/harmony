@@ -2390,7 +2390,6 @@ int main(int argc, char **argv){
     mutex_init(&global->todo_wait);
     mutex_acquire(&global->todo_wait);          // Split Binary Semaphore
     global->values = dict_new("values", 0, 0, global->nworkers, true);
-    dict_set_concurrent(global->values);
 
     struct engine engine;
     engine.allocator = NULL;
@@ -2408,7 +2407,6 @@ int main(int argc, char **argv){
         // TODO.  Need to split the workers across the sockets
         global->numa[i].visited = dict_new("visited", sizeof(struct node),
                                             0, global->nworkers, false);
-        dict_set_concurrent(global->numa[i].visited);
     }
     global->numa[0].goal = 1;
 
@@ -2545,6 +2543,11 @@ int main(int argc, char **argv){
         struct scc_worker *w = &scc_workers[i];
         w->global = global;
         w->scc_barrier = &scc_barrier;
+    }
+
+    dict_set_concurrent(global->values);
+    for (unsigned int i = 0; i < global->n_numa; i++) {
+        dict_set_concurrent(global->numa[i].visited);
     }
 
     // Put the initial state in the visited map
