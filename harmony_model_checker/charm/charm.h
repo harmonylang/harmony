@@ -59,19 +59,15 @@ struct global {
     unsigned int nfinals;           // #finally predicates
     unsigned int *finals;           // program counters of finally preds
 
-    unsigned int n_numa;            // splitting state across sockets
-    struct {
-        struct graph graph;             // the Kripke structure
-        struct dict *visited;           // hash map for states
+    struct graph graph;             // the Kripke structure
 #ifdef USE_ATOMIC
-        hAtomic(unsigned int) atodo;
+    hAtomic(unsigned int) atodo;
 #else
-        mutex_t todo_lock;              // to access the todo list
-        unsigned int todo;
+    mutex_t todo_lock;              // to access the todo list
+    unsigned int todo;
 #endif
-        unsigned int goal;
-        bool layer_done;                // all states in a layer completed
-    } *numa;
+    unsigned int goal;
+    bool layer_done;                // all states in a layer completed
 
     mutex_t todo_enter;             // entry semaphore for SCC tasks
     mutex_t todo_wait;              // wait semaphore for SCC tasks
@@ -91,7 +87,7 @@ struct global {
     struct json_value *pretty;      // for output
     bool run_direct;                // non-model-checked mode
     unsigned long allocated;        // allocated table space
-    unsigned int numa_rand;         // for distribution across chips
+    bool numa;                      // for distribution across chips
 
     // Reconstructed error trace stored here
     unsigned int nmacrosteps, alloc_macrosteps;

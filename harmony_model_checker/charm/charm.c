@@ -48,8 +48,7 @@ mutex_t run_waiting;     // for main thread to wait on
 
 // One of these per worker thread
 struct worker {
-    struct global *global;      // global state
-    unsigned int numa_id;       // what socket?
+    struct global *global;     // global state
     double timeout;
     barrier_t *start_barrier, *middle_barrier, *end_barrier;
     double start_wait, middle_wait, end_wait;
@@ -163,15 +162,6 @@ static void wfree(void *ctx, void *last, bool align16){
     else {
         w->alloc_ptr = last;
     }
-}
-
-static inline unsigned long hash(const char *key, int count) {
-     unsigned long hash = 0;
-
-     while (count-- > 0) {
-          hash = (hash * 33) ^ *key++;
-     }
-     return hash;
 }
 
 static void run_thread(struct global *global, struct state *state, struct context *ctx){
@@ -1862,24 +1852,24 @@ static void do_work(struct worker *w){
 
     for (;;) {
 #ifdef USE_ATOMIC
-        unsigned int next = atomic_fetch_add(&global->numa[w->numa_id].atodo, todo_count);
+        unsigned int next = atomic_fetch_add(&global->atodo, todo_count);
 #else // USE_ATOMIC
-        mutex_acquire(&global->numa[w->numa_id].todo_lock);
-        unsigned int next = global->numa[w->numa_id].todo;
-        global->numa[w->numa_id].todo += todo_count;
-        mutex_release(&global->numa[w->numa_id].todo_lock);
+        mutex_acquire(&global->todo_lock);
+        unsigned int next = global->todo;
+        global->todo += todo_count;
+        mutex_release(&global->todo_lock);
 #endif // USE_ATOMIC
 
         for (unsigned int i = 0; i < todo_count; i++, next++) {
-            // printf("W%d %d %d\n", w->index, next, global->numa[w->numa_id].graph.size);
-            if (next >= global->numa[w->numa_id].graph.size) {
+            // printf("W%d %d %d\n", w->index, next, global->graph.size);
+            if (next >= global->graph.size) {
                 return;
             }
             w->dequeued++;
-            do_work1(w, global->numa[w->numa_id].graph.nodes[next], 0);
+            do_work1(w, global->graph.nodes[next], 0);
         }
 
-        if (next >= global->numa[w->numa_id].goal) {
+        if (next >= global->goal) {
             break;
         }
     }
@@ -1908,7 +1898,7 @@ static void worker(void *arg){
     CPU_ZERO(&cpuset);
     if (getNumCores() == 64 && global->nworkers <= 32) {
         // Try to schedule on the same chip
-        if (global->numa_rand == 0) {
+        if (global->numa) {
             CPU_SET(2 * w->index, &cpuset);
         }
         else {
@@ -1979,21 +1969,21 @@ static void worker(void *arg){
         if (w->index == 0 % global->nworkers) {
             // End of a layer in the Kripke structure?
 #ifdef USE_ATOMIC
-            unsigned int todo = atomic_load(&global->numa[w->numa_id].atodo);
+            unsigned int todo = atomic_load(&global->atodo);
 #else
-            unsigned int todo = global->numa[w->numa_id].todo;
+            unsigned int todo = global->todo;
 #endif
-            if (todo > global->numa[w->numa_id].graph.size) {
+            if (todo > global->graph.size) {
 #ifdef USE_ATOMIC
-                atomic_store(&global->numa[w->numa_id].atodo, global->numa[w->numa_id].graph.size);
+                atomic_store(&global->atodo, global->graph.size);
 #else
-                global->numa[w->numa_id].todo = global->numa[w->numa_id].graph.size;
+                global->todo = global->graph.size;
 #endif
-                todo = global->numa[w->numa_id].graph.size;
+                todo = global->graph.size;
             }
-            // printf("SEQ: todo=%u size=%u\n", todo, global->numa[w->numa_id].graph.size);
-            global->numa[w->numa_id].layer_done = todo == global->numa[w->numa_id].graph.size;
-            if (global->numa[w->numa_id].layer_done) {
+            // printf("SEQ: todo=%u size=%u\n", todo, global->graph.size);
+            global->layer_done = todo == global->graph.size;
+            if (global->layer_done) {
                 global->diameter++;
                 // printf("Diameter %d\n", global->diameter);
 
@@ -2001,13 +1991,13 @@ static void worker(void *arg){
                 unsigned int total = 0;
                 for (unsigned int i = 0; i < global->nworkers; i++) {
                     struct worker *w2 = &w->workers[i];
-                    w2->node_id = global->numa[w->numa_id].graph.size + total;
+                    w2->node_id = global->graph.size + total;
                     total += w2->count;
                 }
 
                 // The threads completed producing the next layer of nodes in the graph.
-                graph_add_multiple(&global->numa[w->numa_id].graph, total);
-                assert(global->numa[w->numa_id].graph.size <= global->numa[w->numa_id].graph.alloc_size);
+                graph_add_multiple(&global->graph, total);
+                assert(global->graph.size <= global->graph.alloc_size);
 
                 // Collect the failures of all the workers
                 for (unsigned int i = 0; i < global->nworkers; i++) {
@@ -2017,9 +2007,9 @@ static void worker(void *arg){
                 if (!minheap_empty(global->failures)) {
                     // Pretend we're done
 #ifdef USE_ATOMIC
-                    atomic_store(&global->numa[w->numa_id].atodo, global->numa[w->numa_id].graph.size);
+                    atomic_store(&global->atodo, global->graph.size);
 #else
-                    global->numa[w->numa_id].todo = global->numa[w->numa_id].graph.size;
+                    global->todo = global->graph.size;
 #endif
                 }
 
@@ -2030,15 +2020,15 @@ static void worker(void *arg){
                 }
             }
 
-            if (global->numa[w->numa_id].graph.size - todo > 10000) {
-                global->numa[w->numa_id].goal = todo + 10000;
+            if (global->graph.size - todo > 10000) {
+                global->goal = todo + 10000;
             }
             else {
-                global->numa[w->numa_id].goal = global->numa[w->numa_id].graph.size;
+                global->goal = global->graph.size;
             }
 
             // Compute how much table space is in use
-            global->allocated = global->numa[w->numa_id].graph.size * sizeof(struct node *) +
+            global->allocated = global->graph.size * sizeof(struct node *) +
                 dict_allocated(w->visited) + dict_allocated(global->values);
         }
 
@@ -2057,14 +2047,13 @@ static void worker(void *arg){
         dict_make_stable(global->values, w->index);
         dict_make_stable(w->visited, w->index);
 
-        // TODO.  Does this need to wait until all numas are done??
-        if (global->numa[w->numa_id].layer_done) {
+        if (global->layer_done) {
             // Fill the graph table
             for (unsigned int i = 0; w->count != 0; i++) {
                 struct node *node = w->results;
                 assert(node->id == 0);
                 node->id = w->node_id;
-                global->numa[w->numa_id].graph.nodes[w->node_id++] = node;
+                global->graph.nodes[w->node_id++] = node;
                 w->results = node->next;
                 w->count--;
             }
@@ -2114,7 +2103,7 @@ static void scc_worker(void *arg){
         for (;;) {
             // Do the work
             assert(scc->next == NULL);
-            scc = graph_find_scc_one(&global->numa[0].graph, scc, component, &w->scc_cache);
+            scc = graph_find_scc_one(&global->graph, scc, component, &w->scc_cache);
 
             // Put new work on the list except the last (which we'll do ourselves)
             mutex_acquire(&global->todo_enter);
@@ -2375,8 +2364,7 @@ int main(int argc, char **argv){
     struct global *global = new_alloc(struct global);
     global->nworkers = nworkers == 0 ? getNumCores() : nworkers;
 	printf("nworkers = %d\n", global->nworkers);
-    global->n_numa = 1;     // TODO
-    global->numa_rand = ((unsigned int) (gettime() * 1000) % 2) == 0;
+    global->numa = ((unsigned int) (gettime() * 1000) % 2) == 0;
 
     barrier_t start_barrier, middle_barrier, end_barrier, scc_barrier;
     barrier_init(&start_barrier, global->nworkers);
@@ -2386,6 +2374,12 @@ int main(int argc, char **argv){
 
     // initialize modules
     mutex_init(&global->inv_lock);
+#ifdef USE_ATOMIC
+    atomic_init(&global->atodo, 0);
+#else
+    mutex_init(&global->todo_lock);
+#endif
+    global->goal = 1;
     mutex_init(&global->todo_enter);
     mutex_init(&global->todo_wait);
     mutex_acquire(&global->todo_wait);          // Split Binary Semaphore
@@ -2396,20 +2390,7 @@ int main(int argc, char **argv){
     engine.values = global->values;
     ops_init(global, &engine);
 
-    global->numa = calloc(global->n_numa, sizeof(*global->numa));
-    for (unsigned int i = 0; i < global->n_numa; i++) {
-        graph_init(&global->numa[i].graph, 1 << 20);
-#ifdef USE_ATOMIC
-        atomic_init(&global->numa[i].atodo, 0);
-#else
-        mutex_init(&global->numa[i].todo_lock);
-#endif
-        // TODO.  Need to split the workers across the sockets
-        global->numa[i].visited = dict_new("visited", sizeof(struct node),
-                                            0, global->nworkers, false);
-    }
-    global->numa[0].goal = 1;
-
+    graph_init(&global->graph, 1 << 20);
     global->failures = minheap_create(fail_cmp);
     global->seqs = VALUE_SET;
 
@@ -2500,11 +2481,14 @@ int main(int argc, char **argv){
         exit(0);
     }
 
+    // Create the hash table that maps states to nodes
+    struct dict *visited = dict_new("visited", sizeof(struct node), 0, global->nworkers, false);
+
     // Allocate space for worker info
     struct worker *workers = calloc(global->nworkers, sizeof(*workers));
     for (unsigned int i = 0; i < global->nworkers; i++) {
         struct worker *w = &workers[i];
-        w->visited = global->numa[w->numa_id].visited;
+        w->visited = visited;
         w->global = global;
         w->timeout = timeout;
         w->start_barrier = &start_barrier;
@@ -2545,28 +2529,23 @@ int main(int argc, char **argv){
         w->scc_barrier = &scc_barrier;
     }
 
+    // Put the state and value dictionaries in concurrent mode
     dict_set_concurrent(global->values);
-    for (unsigned int i = 0; i < global->n_numa; i++) {
-        dict_set_concurrent(global->numa[i].visited);
-    }
+    dict_set_concurrent(visited);
 
     // Put the initial state in the visited map
-    unsigned int h = hash((char *) state, state_size(state)) % global->n_numa;
     mutex_t *lock;
-    struct dict_assoc *hn = dict_find_lock(global->numa[h].visited, &workers[0].allocator, state, state_size(state), NULL, &lock);
+    struct dict_assoc *hn = dict_find_lock(visited, &workers[0].allocator, state, state_size(state), NULL, &lock);
     struct node *node = (struct node *) &hn[1];
     memset(node, 0, sizeof(*node));
     node->state = state;
     node->lock = lock;
     mutex_release(lock);
-    graph_add(&global->numa[h].graph, node);
+    graph_add(&global->graph, node);
 
     // Compute how much table space is allocated
-    global->allocated = dict_allocated(global->values);
-    for (unsigned int i = 0; i < global->n_numa; i++) {
-        global->allocated += global->numa[i].graph.alloc_size +
-                                dict_allocated(global->numa[i].visited);
-    }
+    global->allocated = global->graph.size * sizeof(struct node *) +
+        dict_allocated(visited) + dict_allocated(global->values);
 
     // Start all but one of the workers, who'll wait on the start barrier
     for (unsigned int i = 1; i < global->nworkers; i++) {
@@ -2618,26 +2597,20 @@ int main(int argc, char **argv){
         middle_wait / global->nworkers,
         end_wait / global->nworkers);
 
-    unsigned int nstates = 0;
-    for (unsigned int i = 0; i < global->n_numa; i++) {
-        nstates += global->numa[i].graph.size;
-    }
-    printf("#states %d (time %.2lfs, mem=%.2lfGB)\n", nstates, gettime() - before, (double) allocated / (1L << 30));
+    printf("#states %d (time %.2lfs, mem=%.2lfGB)\n", global->graph.size, gettime() - before, (double) allocated / (1L << 30));
 
     if (outfile == NULL) {
         exit(0);
     }
 
     dict_set_sequential(global->values);
-    for (unsigned int i = 0; i < global->n_numa; i++) {
-        dict_set_sequential(global->numa[i].visited);
-    }
+    dict_set_sequential(visited);
 
     printf("Phase 3: analysis\n");
     if (minheap_empty(global->failures)) {
         double now = gettime();
         global->phase2 = true;
-        global->scc_todo = scc_alloc(0, global->numa[0].graph.size, NULL, NULL);
+        global->scc_todo = scc_alloc(0, global->graph.size, NULL, NULL);
 
         // Start all but one of the workers, who'll wait on the start barrier
         for (unsigned int i = 1; i < global->nworkers; i++) {
@@ -2649,12 +2622,12 @@ int main(int argc, char **argv){
 
 #ifdef DUMP_GRAPH
         printf("digraph Harmony {\n");
-        for (unsigned int i = 0; i < global->numa[0].graph.size; i++) {
-            struct node *node = global->numa[0].graph.nodes[i];
+        for (unsigned int i = 0; i < global->graph.size; i++) {
+            struct node *node = global->graph.nodes[i];
             printf(" s%u [label=\"%u/%u\"]\n", i, i, node->component);
         }
-        for (unsigned int i = 0; i < global->numa[0].graph.size; i++) {
-            struct node *node = global->numa[0].graph.nodes[i];
+        for (unsigned int i = 0; i < global->graph.size; i++) {
+            struct node *node = global->graph.nodes[i];
             for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
                 printf(" s%u -> s%u\n", node->id, edge->dst->id);
             }
@@ -2664,8 +2637,8 @@ int main(int argc, char **argv){
 
         // mark the components that are "good" because they have a way out
         struct component *components = calloc(global->ncomponents, sizeof(*components));
-        for (unsigned int i = 0; i < global->numa[0].graph.size; i++) {
-            struct node *node = global->numa[0].graph.nodes[i];
+        for (unsigned int i = 0; i < global->graph.size; i++) {
+            struct node *node = global->graph.nodes[i];
 			assert(node->component < global->ncomponents);
             struct component *comp = &components[node->component];
             if (comp->size == 0) {
@@ -2704,8 +2677,8 @@ int main(int argc, char **argv){
         }
 
         // Look for states in final components
-        for (unsigned int i = 0; i < global->numa[0].graph.size; i++) {
-            struct node *node = global->numa[0].graph.nodes[i];
+        for (unsigned int i = 0; i < global->graph.size; i++) {
+            struct node *node = global->graph.nodes[i];
 			assert(node->component < global->ncomponents);
             struct component *comp = &components[node->component];
             if (comp->final) {
@@ -2724,8 +2697,8 @@ int main(int argc, char **argv){
         if (minheap_empty(global->failures)) {
             // now count the nodes that are in bad components
             int nbad = 0;
-            for (unsigned int i = 0; i < global->numa[0].graph.size; i++) {
-                struct node *node = global->numa[0].graph.nodes[i];
+            for (unsigned int i = 0; i < global->graph.size; i++) {
+                struct node *node = global->graph.nodes[i];
                 if (!components[node->component].good) {
                     nbad++;
                     struct failure *f = new_alloc(struct failure);
@@ -2742,11 +2715,11 @@ int main(int argc, char **argv){
             }
 
             if (nbad == 0 && !cflag) {
-                for (unsigned int i = 0; i < global->numa[0].graph.size; i++) {
-                    global->numa[0].graph.nodes[i]->visited = false;
+                for (unsigned int i = 0; i < global->graph.size; i++) {
+                    global->graph.nodes[i]->visited = false;
                 }
-                for (unsigned int i = 0; i < global->numa[0].graph.size; i++) {
-                    struct node *node = global->numa[0].graph.nodes[i];
+                for (unsigned int i = 0; i < global->graph.size; i++) {
+                    struct node *node = global->graph.nodes[i];
                     if (components[node->component].size > 1) {
                         detect_busywait(global->failures, node);
                     }
@@ -2759,12 +2732,12 @@ int main(int argc, char **argv){
     if (true) {
         FILE *df = fopen("charm.gv", "w");
         fprintf(df, "digraph Harmony {\n");
-        for (unsigned int i = 0; i < global->numa[0].graph.size; i++) {
-            struct node *node = global->numa[0].graph.nodes[i];
+        for (unsigned int i = 0; i < global->graph.size; i++) {
+            struct node *node = global->graph.nodes[i];
             fprintf(df, " s%u [label=\"%u/%u\"]\n", i, i, node->len);
         }
-        for (unsigned int i = 0; i < global->numa[0].graph.size; i++) {
-            struct node *node = global->numa[0].graph.nodes[i];
+        for (unsigned int i = 0; i < global->graph.size; i++) {
+            struct node *node = global->graph.nodes[i];
             for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
                 struct state *state = node->state;
                 unsigned int j;
@@ -2789,8 +2762,8 @@ int main(int argc, char **argv){
     if (Dflag) {
         FILE *df = fopen("charm.dump", "w");
         assert(df != NULL);
-        for (unsigned int i = 0; i < global->numa[0].graph.size; i++) {
-            struct node *node = global->numa[0].graph.nodes[i];
+        for (unsigned int i = 0; i < global->graph.size; i++) {
+            struct node *node = global->graph.nodes[i];
             assert(node->id == i);
             fprintf(df, "\nNode %d:\n", node->id);
             fprintf(df, "    component: %d\n", node->component);
@@ -2858,9 +2831,9 @@ int main(int argc, char **argv){
     if (false) {
         FILE *df = fopen("charm.dump", "w");
         assert(df != NULL);
-        char **table = malloc(global->numa[0].graph.size * sizeof(char*));
-        for (unsigned int i = 0; i < global->numa[0].graph.size; i++) {
-            struct node *node = global->numa[0].graph.nodes[i];
+        char **table = malloc(global->graph.size * sizeof(char*));
+        for (unsigned int i = 0; i < global->graph.size; i++) {
+            struct node *node = global->graph.nodes[i];
             table[i] = state_string(node->state);
             fprintf(df, "%s\n", table[i]);
         }
@@ -2874,8 +2847,8 @@ int main(int argc, char **argv){
     struct minheap *warnings = minheap_create(fail_cmp);
     if (!Rflag && minheap_empty(global->failures)) {
         printf("Check for data races\n");
-        for (unsigned int i = 0; i < global->numa[0].graph.size; i++) {
-            struct node *node = global->numa[0].graph.nodes[i];
+        for (unsigned int i = 0; i < global->graph.size; i++) {
+            struct node *node = global->graph.nodes[i];
             graph_check_for_data_race(node, warnings, &engine);
             if (!minheap_empty(warnings)) {
                 break;
@@ -2908,10 +2881,10 @@ int main(int argc, char **argv){
         json_dump(jv, out, 2);
         fprintf(out, ",\n");
 
-        destutter1(&global->numa[0].graph);
+        destutter1(&global->graph);
 
         // Output the symbols;
-        struct dict *symbols = collect_symbols(&global->numa[0].graph);
+        struct dict *symbols = collect_symbols(&global->graph);
         fprintf(out, "  \"symbols\": {\n");
         struct symbol_env se = { .global = global, .out = out, .first = true };
         dict_iter(symbols, print_symbol, &se);
@@ -2921,8 +2894,8 @@ int main(int argc, char **argv){
         // Only output nodes if there are symbols
         fprintf(out, "  \"nodes\": [\n");
         bool first = true;
-        for (unsigned int i = 0; i < global->numa[0].graph.size; i++) {
-            struct node *node = global->numa[0].graph.nodes[i];
+        for (unsigned int i = 0; i < global->graph.size; i++) {
+            struct node *node = global->graph.nodes[i];
             assert(node->id == i);
             if (node->reachable) {
                 if (first) {
