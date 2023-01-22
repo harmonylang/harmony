@@ -1,4 +1,4 @@
-from antlr4 import * # type: ignore
+from antlr4 import InputStream, FileStream, CommonTokenStream # type: ignore
 
 from harmony_model_checker.exception import HarmonyCompilerError, HarmonyCompilerErrorCollection
 
@@ -12,7 +12,7 @@ from harmony_model_checker.harmony.ops import *
 
 import os
 
-from typing import List
+from typing import List, Optional
 
 def _build_input_stream(**kwargs) -> InputStream:
     try:
@@ -215,7 +215,7 @@ def parse_string(string: str) -> AST:
     return _parse_string(string)
 
 
-def do_compile(fname: str, consts: List[str], mods: List[str], interface: List[str]):
+def do_compile(fname: str, consts: List[str], mods: List[str], interface: Optional[str]):
     for c in consts:
         try:
             i = c.index("=")
@@ -240,9 +240,6 @@ def do_compile(fname: str, consts: List[str], mods: List[str], interface: List[s
     code = Code()
     code.modpush("__main__")
     _load_file(str(fname), scope, code, True)
-    # if interface is not None:
-    #     _load_string("def __iface__(): result = (%s)" %
-    #                 interface, scope, code, "interface")
 
     unused_constant_def = legacy_harmony.constants.keys() - legacy_harmony.used_constants
     unused_module_def = legacy_harmony.modules.keys() - legacy_harmony.imported.keys()

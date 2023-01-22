@@ -2,6 +2,7 @@ import json
 import os
 import queue
 from pathlib import Path
+from typing import Any, Tuple
 from harmony_model_checker.harmony.jsonstring import json_string
 
 class GenHTML:
@@ -68,8 +69,8 @@ class GenHTML:
         else:
             return (1, 0)
 
-    def varhdr(self, d, name, nrows, f):
-        q = queue.Queue()
+    def varhdr(self, d: dict, name, nrows, f):
+        q: 'queue.Queue[Tuple[dict, int]]' = queue.Queue()
         level = 0
         q.put((d, level))
         while not q.empty():

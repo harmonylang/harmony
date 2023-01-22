@@ -161,7 +161,7 @@ class ComprehensionAST(AST):
         self.iter = iter
         self.value = value
     
-    def rec_comprehension(self, scope, code, iter, pc, accu, ctype, stmt):
+    def rec_comprehension(self, scope: Scope, code: Code, iter, pc, accu, ctype, stmt):
         if iter == []:
             if ctype in { "dict", "set", "list" }:
                 code.append(LoadVarOp(accu, reason="load accumulator"), self.token, self.endtoken, stmt=stmt)

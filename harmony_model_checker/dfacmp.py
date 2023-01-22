@@ -1,13 +1,14 @@
 import sys
 import json
-from automata.fa.dfa import DFA
+from typing import Optional
+from automata.fa.dfa import DFA # type: ignore
 
 def parse(file):
     with open(file, encoding='utf-8') as f:
         js = json.load(f)
 
         states = { "__error__": {} }
-        initial_state = None
+        initial_state: Optional[str] = None
         final_states = set()
         input_symbols = set()
         transitions = { "__error__": {} }
@@ -18,8 +19,8 @@ def parse(file):
             input_symbols.add(val)
             transitions[idx] = {}
             if s["type"] == "initial":
-                assert initial_state == None
-                initial_state = idx;
+                assert initial_state is None
+                initial_state = idx
             elif s["type"] == "terminal":
                 final_states.add(idx)
             states[idx] = val

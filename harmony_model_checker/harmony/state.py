@@ -117,7 +117,7 @@ class State:
     def stop(self, indexes, ctx):
         self.vars = self.doStop(self.vars, indexes, ctx)
         cnt = self.stopbag.get(ctx)
-        if cnt == None:
+        if cnt is None:
             self.stopbag[ctx] = 1
         else:
             self.stopbag[ctx] = cnt + 1

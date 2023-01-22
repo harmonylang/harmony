@@ -1,4 +1,6 @@
+from abc import abstractmethod
 import json
+from typing import Tuple
 
 tlavarcnt = 0           # to generate unique TLA+ variables
 
@@ -60,6 +62,10 @@ class Value:
 
     def substitute(self, map):
         assert False, self
+    
+    @abstractmethod
+    def key(self) -> Tuple[int, int]:
+        pass
 
 class PcValue(Value):
     def __init__(self, pc):

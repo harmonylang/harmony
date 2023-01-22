@@ -833,8 +833,8 @@ def htmlloc(code, scope, ctx, traceid, f):
             else:
                 print("%s(%s)"%(code[pc].name[0], strValue(arg)), end="", file=f)
         print("</a>:", file=f)
-        lines = files.get(file)
-        if lines != None and line <= len(lines):
+        lines = files[file]
+        if lines is not None and line <= len(lines):
             print(html.escape(lines[line - 1]), file=f)
         print("</td></tr>", file=f)
         row += 1

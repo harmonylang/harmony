@@ -1,4 +1,5 @@
 import math
+from typing import Optional
 from harmony_model_checker.harmony.value import *
 from harmony_model_checker.harmony.bag_util import *
 
@@ -32,7 +33,7 @@ class Op:
             return x[0]
         else:
             assert isinstance(x, list)
-            result = "";
+            result = ""
             for v in x:
                 if result != "":
                     result += ", "
@@ -55,7 +56,7 @@ class Op:
             return { x[0] }
         else:
             assert isinstance(x, list)
-            result = set();
+            result = set()
             for v in x:
                 result |= self.lvars(v)
             return result
@@ -384,7 +385,7 @@ class LoadVarOp(Op):
         context.pc += 1
 
 class PushOp(Op):
-    def __init__(self, constant, reason=None):
+    def __init__(self, constant: Tuple[str, Optional[str], Optional[int], Optional[int]], reason: Optional[str] =None):
         self.constant = constant
         self.reason = reason
 
@@ -402,7 +403,7 @@ class PushOp(Op):
         return 'OpPush(self, %s)'%v
 
     def explain(self):
-        prefix = "" if self.reason == None else (self.reason + ": ")
+        prefix = "" if self.reason is None else (self.reason + ": ")
         return prefix + "push constant " + strValue(self.constant[0])
 
     def eval(self, state, context):

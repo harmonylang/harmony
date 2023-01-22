@@ -20,7 +20,7 @@ class Scope:
     def checkUnused(self, name):
         (lexeme, file, line, column) = name
         tv = self.names.get(lexeme)
-        if tv != None:
+        if tv is not None:
             (t, v) = tv
             assert t != "variable", ("variable name in use", name, v)
 

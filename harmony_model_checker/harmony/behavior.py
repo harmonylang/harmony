@@ -1,6 +1,7 @@
 import subprocess
 import sys
 import json
+from typing import Any, Dict, List, Optional, Tuple
 
 from harmony_model_checker.harmony.jsonstring import json_string
 
@@ -28,7 +29,7 @@ def find_error_states(transitions, final_states):
     return error_states
 
 def is_dfa_equivalent(dfa: DFA, hfa: DFA) -> bool:
-    stack = []
+    stack: List[Tuple[int, int]] = []
 
     # Create states, where each state is renamed to an index to make each state unique
     dfa_states = [(k, v) for k, v in enumerate(list(dfa.states))]
@@ -47,8 +48,8 @@ def is_dfa_equivalent(dfa: DFA, hfa: DFA) -> bool:
     final_states = {**dfa_final_states, **hfa_final_states}
 
     # Tree-implementation of sets of states
-    parents = [None] * n
-    rank = [None] * n
+    parents: List[Optional[int]] = [None] * n
+    rank: List[Optional[int]] = [None] * n
     def make_set(q: int):
         parents[q] = q
         rank[q] = 0
@@ -58,7 +59,7 @@ def is_dfa_equivalent(dfa: DFA, hfa: DFA) -> bool:
             parents[x] = find_set(parents[x])
         return parents[x]
 
-    def link(x, y):
+    def link(x: int, y: int):
         if rank[x] > rank[y]:
             parents[y] = x
         else:
@@ -101,7 +102,7 @@ def is_dfa_equivalent(dfa: DFA, hfa: DFA) -> bool:
                 stack.append((p1, p2))
 
     # Create sets of sets of states
-    sets = dict()
+    sets: Dict[int, set] = dict()
     for k, p in enumerate(parents):
         if p in sets:
             sets[p].add(k)
@@ -127,7 +128,7 @@ def read_hfa(file, dfa, nfa):
             symbols.add(json_string(js["symbols"][symbol]))
         transitions = { "{}": { s: "{}" for s in symbols } }
         for n in js["nodes"]:
-            idx = n["idx"]
+            idx: str = n["idx"]
             states.add(idx)
             if n["type"] == "final":
                 final.add(idx)
@@ -162,10 +163,10 @@ def read_hfa(file, dfa, nfa):
         behavior_show_diagram(diff, "diff.png")
 
 # Modified from automata-lib
-def behavior_show_diagram(dfa, path=None):
+def behavior_show_diagram(dfa: DFA, path=None):
     graph = pydot.Dot(graph_type='digraph', rankdir='LR')
     nodes = {}
-    rename = {}
+    rename: Dict[str, int] = {}
     next_idx = 0
     error_states = find_error_states(dfa.transitions, dfa.final_states)
     for state in dfa.states:

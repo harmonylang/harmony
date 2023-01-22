@@ -10,7 +10,7 @@ from antlr4 import * # type: ignore
 import harmony_model_checker
 from harmony_model_checker.config import settings
 import harmony_model_checker.util.self_check_is_outdated as check_version
-from harmony_model_checker import charm
+from harmony_model_checker import charm # type: ignore
 from harmony_model_checker.exception import HarmonyCompilerError, HarmonyCompilerErrorCollection
 import harmony_model_checker.harmony.harmony as legacy_harmony
 from harmony_model_checker.harmony.genhtml import GenHTML
@@ -71,11 +71,11 @@ def handle_hny(ns, output_files, parse_code_only, filenames):
 
     try:
         code, scope = do_compile(filenames, consts, mods, interface)
-    except (HarmonyCompilerErrorCollection, HarmonyCompilerError) as e:
-        if isinstance(e, HarmonyCompilerErrorCollection):
-            errors = e.errors
+    except (HarmonyCompilerErrorCollection, HarmonyCompilerError) as err:
+        if isinstance(err, HarmonyCompilerErrorCollection):
+            errors = err.errors
         else:
-            errors = [e.token]
+            errors = [err.token]
 
         if parse_code_only:
             data = dict(errors=[e._asdict() for e in errors], status="error")

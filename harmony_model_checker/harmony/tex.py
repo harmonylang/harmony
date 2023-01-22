@@ -6,7 +6,6 @@ import collections
 import time
 import math
 
-nametypes = {}
 
 def islower(c):
     return c in "abcdefghijklmnopqrstuvwxyz"
@@ -91,6 +90,9 @@ reserved = {
     "where",
     "while"
 }
+
+def isreserved(s: str):
+    return s in reserved
 
 def isname(s):
     return (not isreserved(s)) and (isletter(s[0]) or s[0] == "_") and \

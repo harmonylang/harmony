@@ -1,8 +1,12 @@
 import sys
 import getopt
 import json
-from automata.fa.nfa import NFA
-from automata.fa.dfa import DFA
+from typing import Dict, Optional, Set
+from automata.fa.nfa import NFA # type: ignore
+from automata.fa.dfa import DFA # type: ignore
+
+# Helper type aliases
+Transitions = Dict[str, Dict[str, Set[str]]]
 
 def dfadump(dfa):
     rename = {}
@@ -44,11 +48,11 @@ def dechoose(states, transitions, choose_states):
         del transitions[k]
 
 # Get rid of stutter transitions
-def destutter(states, transitions):
+def destutter(states: Dict[str, str], transitions: Transitions):
     print("destutter", len(states), file=sys.stderr)
 
     # figure out for each state what other states point to it
-    pointsto = { k:set() for k in states }
+    pointsto: Dict[str, Set[str]] = { k:set() for k in states }
     for src in states:
         for (v, s) in transitions[src].items():
             for dst in s:
@@ -96,12 +100,12 @@ def destutter(states, transitions):
     return True
 
 def parse(js, outfmt, minify):
-    states = {}
-    initial_state = None;
-    final_states = set()
-    choose_states = set()
+    states: Dict[str, str] = {}
+    initial_state: Optional[str] = None
+    final_states: Set[str] = set()
+    choose_states: Set[str] = set()
     input_symbols = { "__term__" }
-    transitions = {}
+    transitions: Transitions = {}
 
     for s in js["nodes"]:
         idx = str(s["idx"])
@@ -109,8 +113,8 @@ def parse(js, outfmt, minify):
         input_symbols.add(val)
         transitions[idx] = {}
         if s["type"] == "initial":
-            assert initial_state == None
-            initial_state = idx;
+            assert initial_state is None
+            initial_state = idx
             val = "__init__"
         elif s["type"] == "terminal":
             final_states.add(idx)
