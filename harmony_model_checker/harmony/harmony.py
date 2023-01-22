@@ -1028,150 +1028,6 @@ def htmlcode(code, scope, f):
     print("</div>", file=f)
     print("</div>", file=f)
 
-def htmldump(nodes, code, scope, node, fulldump, verbose):
-    with open("harmony.html", "w", encoding='utf-8') as f:
-        print("""
-<html>
-  <head>
-    <style>
-#table-wrapper {
-  position:relative;
-}
-#table-scroll {
-  height:200px;
-  overflow:auto;  
-}
-#table-wrapper table {
-  width:100%;
-}
-#table-wrapper table * {
-  color:black;
-}
-#table-wrapper table thead th .text {
-  position:absolute;   
-  top:-20px;
-  z-index:2;
-  height:20px;
-  width:35%;
-  border:1px solid red;
-}
-table {
-    border-collapse: collapse;
-    border-style: hidden;
-}
-table td, table th {
-    border: 1px solid black;
-}
-    </style>
-  </head>
-  <body>
-        """, file=f)
-
-        print("<table>", file=f)
-        print("<col style='width:50%'>", file=f)
-        print("<col style='width:50%'>", file=f)
-
-        if node != None:
-            print("<tr><td colspan='2'>", file=f)
-            height = htmlpath(node, "red", f)
-            print("</td></tr>", file=f)
-            print("<tr><td></td></tr>", file=f)
-
-        print("<tr>", file=f)
-
-        print("<td valign='top'>", file=f)
-        htmlcode(code, scope, f)
-        print("</td>", file=f)
-
-        print("<td valign='top'>", file=f)
-        if fulldump:
-            for n in nodes:
-                htmlnode(n, code, scope, f, verbose)
-        else:
-            if node == None:
-                cnt = 0
-                for n in nodes:
-                    htmlnode(n, code, scope, f, verbose)
-                    cnt += 1
-                    if not fulldump and cnt > 100:
-                        break
-            else:
-                n = node
-                while n != None:
-                    htmlnode(n, code, scope, f, verbose)
-                    n = n.parent
-        print("</td>", file=f)
-        print("</tr>", file=f)
-        print("</table>", file=f)
-
-        if node == None:
-            row = 0
-            sid = 1
-        else:
-            row = node.len + height + 1
-            sid = node.uid
-        print(
-            """
-                <div id='divNone' style='display:none';>
-                  <div class='container'>
-                    <p>
-                        State information not available.
-                        Use harmony -d for a complete htmldump.
-                    </p>
-                  </div>
-                </div>
-
-                <script>
-                  var current = 1;
-
-                  function show(id) {
-                      x = document.getElementById('div' + current);
-                      if (x == null) {
-                          x = document.getElementById('divNone')
-                      }
-                      x.style.display = 'none';
-                      x = document.getElementById('div' + id)
-                      if (x == null) {
-                          x = document.getElementById('divNone')
-                      }
-                      x.style.display = 'block';
-                      current = id;
-                  }
-
-                  function rowshow(row, id) {
-                    show(id);
-                    var tbl = document.getElementById("issuestbl");
-                    for (var i = 1; i < tbl.rows.length; i++) {
-                        if (i == row + 1) {
-                            tbl.rows[i].style.backgroundColor = "#A5FF33";
-                        }
-                        else {
-                            tbl.rows[i].style.backgroundColor = "";
-                        }
-                    }
-                  }
-
-                  function setrow(tblid, row) {
-                    var tbl = document.getElementById('loc' + tblid);
-                    for (var i = 0; i < tbl.rows.length; i++) {
-                        var div = document.getElementById('vars' + tblid + '_' + i);
-                        if (i == row) {
-                            tbl.rows[i].style.backgroundColor = "#A5FF33";
-                            div.style.display = 'block';
-                        }
-                        else {
-                            tbl.rows[i].style.backgroundColor = "";
-                            div.style.display = 'none';
-                        }
-                    }
-                  }
-
-                  rowshow(%d, %d)
-                </script>
-            """%(row, sid), file=f)
-        print("</body>", file=f)
-        print("</html>", file=f)
-    print("open file://" + os.getcwd() + "/harmony.html for more information")
 
 def explanation(lop):
     return lop.op.explain()
@@ -1201,7 +1057,7 @@ def dumpModule(name, scope, f, last):
     else:
         print('    },', file=f)
 
-def dumpCode(printCode, code, scope, f=sys.stdout):
+def dumpCode(printCode, code: Code, scope: Scope, f=sys.stdout):
     lastloc = None
     if printCode == "json":
         print("{", file=f)
@@ -1230,17 +1086,12 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
             lop = code.labeled_ops[pc]
             file, line = code.curFile, code.curLine
             if file != None and (file, line) != lastloc:
-                lines = files.get(file)
+                lines = files[file]
                 if lines != None and line <= len(lines):
                     print("%s:%d"%(file, line), lines[line - 1], file=f)
                 else:
                     print(file, ":", line, file=f)
                 lastloc = (file, line)
-            # for label in code.labeled_ops[pc].labels:
-            #     if label.module == None:
-            #         print("%s:"%label.label)
-            #     else:
-            #         print("%s.%s"%(label.module, label.label))
             print("  ", pc, code.labeled_ops[pc].op, file=f)
         elif printCode == "json":
             if pc < len(code.labeled_ops) - 1:

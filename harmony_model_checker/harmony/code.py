@@ -28,7 +28,7 @@ class Code:
     def modpop(self):
         self.curModule = self.modstack.pop()
 
-    def location(self, file, line):
+    def location(self, file, line: int):
         self.curFile = file
         self.curLine = line
 
