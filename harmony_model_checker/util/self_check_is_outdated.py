@@ -17,7 +17,7 @@ _logger = logger.get_logger(__name__)
 def _get_latest_version(package: str):
     try:
         resp = requests.get(
-            f'https://pypi.python.org/pypi/{package}/json', timeout=2)
+            f'https://pypi.python.org/pypi/{package}/json', timeout=1)
         if resp.status_code == 200:
             data = resp.json()
             return data['info']['version']
@@ -92,8 +92,9 @@ def check_outdated(package: str, version: str) -> None:
             ]))
     except Exception:
         messages_to_log.append([
-            logging.ERROR,
+            logging.WARNING,
             'Error occurred while checking if the current version of Harmony is the latest.'
         ])
     finally:
         atexit.register(_log_messages, messages_to_log)
+
