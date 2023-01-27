@@ -2358,9 +2358,6 @@ int main(int argc, char **argv) {
         char *fname = argv[i];
         double timeout = gettime() + maxtime;
 
-    #ifndef _WIN32
-        signal(SIGINT, inthandler);
-    #endif
 
         // Determine how many worker threads to use
         struct global *global = new_alloc(struct global);

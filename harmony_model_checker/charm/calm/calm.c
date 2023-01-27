@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <sys/types.h>
 #include <pthread.h>
 
 #include "calm.h"
@@ -17,7 +18,7 @@ struct Conqueue todo;
 
 struct Engine engine;
 
-struct pthread_barrier_t barrier_computation, barrier_sequential, barrier_concurrent;
+pthread_barrier_t barrier_computation, barrier_sequential, barrier_concurrent;
 
 atomic_bool interrupt_computation;
 
@@ -42,7 +43,7 @@ void work_computation(struct worker *this) {
     #define TODO_GRAB_SIZE 256
 
     while(true) {
-        cq_iter next = conqueue_grab(&todo, TODO_GRAB_SIZE);
+        cq_iter next = conqueue_claim(&todo, TODO_GRAB_SIZE);
         
         for (int i = 0; i < TODO_GRAB_SIZE; ++i, ++next) {
             if (conqueue_invalid(&todo, next)) {
@@ -131,6 +132,8 @@ void foreman(struct calm_para *para, struct Conallocator *al0) {
 int calm(struct calm_para *para, struct global *g) {
 
     fprintf(stderr, "Calm main reporting\n");
+
+    return 0;
 
 //    struct Graph graph;
 //    graph_init(&graph);
