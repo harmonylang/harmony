@@ -33,6 +33,8 @@
 #include "thread.h"
 #include "spawn.h"
 
+#include "calm.h" //pass arguments to calm
+
 #define MAX_STEPS       4096        // limit on partial order reduction
 #define WALLOC_CHUNK    (16 * 1024 * 1024)
 
@@ -89,83 +91,7 @@ struct worker {
     hvalue_t stack[MAX_CONTEXT_STACK];
 };
 
-#ifdef notdef
-static inline uint64_t get_cycles(){
-    uint64_t t;
-    __asm volatile ("rdtsc" : "=A"(t));
-    return t;
-}
-#endif
 
-#ifdef _WIN32
-
-#include <intrin.h>
-static inline uint64_t get_cycles(){
-    return __rdtsc();
-}
-
-//  Linux/GCC
-#else
-
-#ifdef notdef
-static inline uint64_t get_cycles(){
-    unsigned int lo, hi;
-    __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
-    return ((uint64_t) hi << 32) | lo;
-}
-
-static inline uint64_t get_cycles(){
-    uint64_t msr;
-    asm volatile ( "rdtsc\n\t"    // Returns the time in EDX:EAX.
-               "shl $32, %%rdx\n\t"  // Shift the upper bits left.
-               "or %%rdx, %0"        // 'Or' in the lower bits.
-               : "=a" (msr)
-               :
-               : "rdx");
-    return msr;
-}
-#endif
-
-static inline void rdtscp(uint64_t *cycles, uint64_t *pid) {
-  // rdtscp
-  // high cycles : edx
-  // low cycles  : eax
-  // processor id: ecx
-
-  asm volatile
-    (
-     // Assembleur
-     "rdtscp;\n"
-     "shl $32, %%rdx;\n"
-     "or %%rdx, %%rax;\n"
-     "mov %%rax, (%[_cy]);\n"
-     "mov %%ecx, (%[_pid]);\n"
-
-     // outputs
-     :
-
-     // inputs
-     :
-     [_cy] "r" (cycles),
-     [_pid] "r" (pid)
-
-     // clobbers
-     :
-     "cc", "memory", "%eax", "%edx", "%ecx"
-     );
-
-  return;
-}
-
-static inline uint64_t get_cycles(){
-    // uint64_t cycles, pid;
-
-    // rdtscp(&cycles, &pid);
-    // return cycles;
-    return 0;
-}
-
-#endif
 
 #ifdef CACHE_LINE_ALIGNED
 #define ALIGNMASK       0x3F
@@ -677,8 +603,8 @@ static bool onestep(
             break;
         }
 
-        /* Peek at the next instruction.
-         */
+        // Peek at the next instruction.
+         
         struct instr *next_instr = &global->code.instrs[step->ctx->pc];
         if (next_instr->choose) {
             assert(step->ctx->sp > 0);
@@ -1944,6 +1870,8 @@ static void do_work(struct worker *w){
     }
 }
 
+//phase2 should not reuse worker struct...
+
 static void work_phase2(struct worker *w, struct global *global){
     mutex_acquire(&global->todo_lock);
     for (;;) {
@@ -2013,6 +1941,7 @@ void process_results(struct global *global, struct worker *w){
         minheap_insert(global->failures, f);
     }
 }
+
 
 static void worker(void *arg){
     struct worker *w = arg;
@@ -2361,7 +2290,104 @@ static void usage(char *prog){
     exit(1);
 }
 
-int main(int argc, char **argv){
+int main(int argc, char **argv) {
+    #ifdef USE_CALM
+        //TODO: Copied code
+        bool cflag = false, Dflag = false, Rflag = false;
+        int i, maxtime = 300000000 /* about 10 years */;
+        char *outfile = NULL, *dfafile = NULL;
+        unsigned int nworkers = 0;
+        for (i = 1; i < argc; i++) {
+            if (*argv[i] != '-') {
+                break;
+            }
+            switch (argv[i][1]) {
+            case 'c':
+                cflag = true;
+                break;
+            case 'D':
+                Dflag = true;
+                break;
+            case 'R':
+                Rflag = true;
+                break;
+            case 't':
+                maxtime = atoi(&argv[i][2]);
+                if (maxtime <= 0) {
+                    fprintf(stderr, "%s: negative timeout\n", argv[0]);
+                    exit(1);
+                }
+                break;
+            case 'B':
+                dfafile = &argv[i][2];
+                break;
+            case 'o':
+                outfile = &argv[i][2];
+                break;
+            case 'w':
+                nworkers = atoi(&argv[i][2]);
+                break;
+            case 'x':
+                printf("Charm model checker working\n");
+                return 0;
+            default:
+                usage(argv[0]);
+            }
+        }
+        if (argc - i != 1) {
+            usage(argv[0]);
+        }
+        char *fname = argv[i];
+        double timeout = gettime() + maxtime;
+
+    #ifndef _WIN32
+        signal(SIGINT, inthandler);
+    #endif
+
+        // Determine how many worker threads to use
+        struct global *global = new_alloc(struct global);
+        global->nworkers = nworkers == 0 ? getNumCores() : nworkers;
+        printf("nworkers = %d\n", global->nworkers);
+
+        // open the HVM file
+        FILE *fp = fopen(fname, "r");
+        if (fp == NULL) {
+            fprintf(stderr, "%s: can't open %s\n", argv[0], fname);
+            exit(1);
+        }
+
+        // read the file
+        json_buf_t buf;
+        buf.base = malloc(CHUNKSIZE);
+        buf.len = 0;
+        int n;
+        while ((n = fread(&buf.base[buf.len], 1, CHUNKSIZE, fp)) > 0) {
+            buf.len += n;
+            buf.base = realloc(buf.base, buf.len + CHUNKSIZE);
+        }
+        fclose(fp);
+
+        // parse the contents
+        char *buf_orig = buf.base;
+        struct json_value *jv = json_parse_value(&buf);
+        assert(jv->type == JV_MAP);
+        free(buf_orig);
+
+        // travel through the json code contents to create the code array
+        struct json_value *jc = dict_lookup(jv->u.map, "code", 4);
+        assert(jc->type == JV_LIST);
+
+        struct calm_para calmp;
+        calmp.jc = jc;
+        calmp.nworkers = nworkers;
+
+        calm(calmp, global);
+    #else
+        charm_main(argc, agrv);
+    #endif
+}
+
+int charm_main(int argc, char **argv){
     bool cflag = false, Dflag = false, Rflag = false;
     int i, maxtime = 300000000 /* about 10 years */;
     char *outfile = NULL, *dfafile = NULL;
@@ -2418,10 +2444,12 @@ int main(int argc, char **argv){
     global->nworkers = nworkers == 0 ? getNumCores() : nworkers;
 	printf("nworkers = %d\n", global->nworkers);
 
+    
     barrier_t start_barrier, middle_barrier, end_barrier;
     barrier_init(&start_barrier, global->nworkers);
     barrier_init(&middle_barrier, global->nworkers);
     barrier_init(&end_barrier, global->nworkers);
+    
 
     // initialize modules
     mutex_init(&global->inv_lock);
@@ -2432,15 +2460,18 @@ int main(int argc, char **argv){
     mutex_acquire(&global->todo_wait);          // Split Binary Semaphore
     global->values = dict_new("values", 0, 0, global->nworkers, true);
 
+    
     struct engine engine;
     engine.allocator = NULL;
     engine.values = global->values;
     ops_init(global, &engine);
+    
 
     graph_init(&global->graph, 1 << 20);
     global->failures = minheap_create(fail_cmp);
     global->seqs = VALUE_SET;
 
+    
     // First read and parse the DFA if any
     if (dfafile != NULL) {
         global->dfa = dfa_read(&engine, dfafile);
@@ -2448,6 +2479,7 @@ int main(int argc, char **argv){
             exit(1);
         }
     }
+    
 
     // open the HVM file
     FILE *fp = fopen(fname, "r");
@@ -3144,4 +3176,5 @@ int main(int argc, char **argv){
 
     free(global);
     return 0;
+
 }
