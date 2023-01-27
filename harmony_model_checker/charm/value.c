@@ -13,7 +13,6 @@
 
 #include "global.h"
 #include "hashdict.h"
-#include "hashtab.h"
 #include "value.h"
 #include "strbuf.h"
 #include "ops.h"
@@ -262,13 +261,13 @@ int value_cmp(hvalue_t v1, hvalue_t v2){
     }
     switch (t1) {
     case VALUE_BOOL:
-        return value_cmp_bool(v1 & ~VALUE_MASK, v2 & ~VALUE_MASK);
+        return value_cmp_bool(v1 & ~VALUE_LOBITS, v2 & ~VALUE_LOBITS);
     case VALUE_INT:
-        return value_cmp_int(v1 & ~VALUE_MASK, v2 & ~VALUE_MASK);
+        return value_cmp_int(v1 & ~VALUE_LOBITS, v2 & ~VALUE_LOBITS);
     case VALUE_ATOM:
         return value_cmp_atom(v1 & ~VALUE_MASK, v2 & ~VALUE_MASK);
     case VALUE_PC:
-        return value_cmp_pc(v1 & ~VALUE_MASK, v2 & ~VALUE_MASK);
+        return value_cmp_pc(v1 & ~VALUE_LOBITS, v2 & ~VALUE_LOBITS);
     case VALUE_LIST:
         return value_cmp_list(v1 & ~VALUE_MASK, v2 & ~VALUE_MASK);
     case VALUE_DICT:
@@ -307,8 +306,8 @@ static void value_json_bool(struct strbuf *sb, hvalue_t v) {
 }
 
 static void value_string_int(struct strbuf *sb, hvalue_t v) {
-    int64_t w = (int64_t) VALUE_FROM_INT(v);
-    strbuf_printf(sb, "%"PRId64"", (int64_t) w);
+    int64_t w = VALUE_FROM_INT(v);
+    strbuf_printf(sb, "%"PRId64"", w);
 }
 
 static void value_json_int(struct strbuf *sb, hvalue_t v) {
@@ -815,16 +814,16 @@ static void value_json_context(struct strbuf *sb, hvalue_t v, struct global *glo
 void strbuf_value_string(struct strbuf *sb, hvalue_t v){
     switch (VALUE_TYPE(v)) {
     case VALUE_BOOL:
-        value_string_bool(sb, v & ~VALUE_MASK);
+        value_string_bool(sb, v & ~VALUE_LOBITS);
         break;
     case VALUE_INT:
-        value_string_int(sb, v & ~VALUE_MASK);
+        value_string_int(sb, v & ~VALUE_LOBITS);
         break;
     case VALUE_ATOM:
         value_string_atom(sb, v & ~VALUE_MASK);
         break;
     case VALUE_PC:
-        value_string_pc(sb, v & ~VALUE_MASK);
+        value_string_pc(sb, v & ~VALUE_LOBITS);
         break;
     case VALUE_LIST:
         value_string_list(sb, v & ~VALUE_MASK);
@@ -858,16 +857,16 @@ char *value_string(hvalue_t v){
 void strbuf_value_json(struct strbuf *sb, hvalue_t v, struct global *global){
     switch VALUE_TYPE(v) {
     case VALUE_BOOL:
-        value_json_bool(sb, v & ~VALUE_MASK);
+        value_json_bool(sb, v & ~VALUE_LOBITS);
         break;
     case VALUE_INT:
-        value_json_int(sb, v & ~VALUE_MASK);
+        value_json_int(sb, v & ~VALUE_LOBITS);
         break;
     case VALUE_ATOM:
         value_json_atom(sb, v & ~VALUE_MASK);
         break;
     case VALUE_PC:
-        value_json_pc(sb, v & ~VALUE_MASK);
+        value_json_pc(sb, v & ~VALUE_LOBITS);
         break;
     case VALUE_LIST:
         value_json_list(sb, v & ~VALUE_MASK, global);
@@ -935,6 +934,7 @@ hvalue_t value_int(struct dict *map){
         copy[value->u.atom.len] = 0;
         v = atol(copy);
         free(copy);
+
     }
     return VALUE_TO_INT(v);
 }

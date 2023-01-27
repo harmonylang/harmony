@@ -1,12 +1,12 @@
 import alloc, synch
 
-def _helper(method, args, meta):
-    meta->result = method(args)
-    synch.release(?meta->sema)
+def _helper(closure, handle):
+    handle->result = !closure
+    synch.release(?handle->sema)
 
-def fork(method, args) returns handle:
+def fork(closure) returns handle:
     handle = alloc.malloc({ .sema: synch.BinSema(True), .result: None })
-    spawn _helper(method, args, result)
+    spawn _helper(closure, handle)
 
 def join(meta) returns result:
     synch.acquire(?meta->sema)

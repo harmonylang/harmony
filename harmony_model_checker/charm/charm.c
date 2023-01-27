@@ -1,8 +1,11 @@
 #include "head.h"
 
 #define _GNU_SOURCE
-#include <sched.h>   //cpu_set_t, CPU_SET
 #include <stdint.h>
+
+#ifdef USE_ATOMIC
+#include <stdatomic.h>
+#endif
 
 #ifdef _WIN32
 #include <windows.h>
@@ -10,6 +13,7 @@
 #include <sys/param.h>
 #include <unistd.h>
 #include <signal.h>
+#include <sched.h>   //cpu_set_t, CPU_SET
 #endif
 
 #include <stdio.h>
@@ -26,9 +30,8 @@
 #include "strbuf.h"
 #include "ops.h"
 #include "dot.h"
-#include "iface/iface.h"
+// #include "iface/iface.h"
 #include "hashdict.h"
-#include "hashtab.h"
 #include "dfa.h"
 #include "thread.h"
 #include "spawn.h"
@@ -84,14 +87,18 @@ struct worker {
 
     unsigned int *profile;      // one integer for every instruction in the HVM code
 
-    void *scc_cache;            // for SCC alloc/free
-
     // These need to be next to one another
     struct context ctx;
     hvalue_t stack[MAX_CONTEXT_STACK];
 };
 
-
+// One of these per SCC worker thread
+struct scc_worker {
+    struct global *global;     // global state
+    double timeout;
+    barrier_t *scc_barrier;
+    void *scc_cache;            // for SCC alloc/free
+};
 
 #ifdef CACHE_LINE_ALIGNED
 #define ALIGNMASK       0x3F
@@ -314,7 +321,7 @@ unsigned int check_finals(struct worker *w, struct node *node, struct step *step
     return 0;
 }
 
-static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock) {
+static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock, struct node **results) {
     struct node *node = edge->src, *next = edge->dst;
     struct state *state = (struct state *) &next[1];
     unsigned int len = node->len + edge->weight;
@@ -332,8 +339,8 @@ static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock) {
         next->lock = lock;
         edge->bwdnext = NULL;
         if (!edge->failed) {
-            next->next = w->results;
-            w->results = next;
+            next->next = *results;
+            *results = next;
             w->count++;
             w->enqueued++;
         }
@@ -428,7 +435,8 @@ static bool onestep(
     hvalue_t choice,        // if about to make a choice, which choice?
     bool interrupt,         // start with invoking interrupt handler
     bool infloop_detect,    // try to detect infloop from the start
-    int multiplicity        // #contexts that are in the current state
+    int multiplicity,       // #contexts that are in the current state
+    struct node **results   // where to place the resulting new states
 ) {
     assert(!step->ctx->terminated);
     assert(!step->ctx->failed);
@@ -668,7 +676,11 @@ static bool onestep(
                     breakable = false;
                 }
 #else
-                assert(VALUE_TYPE(addr) == VALUE_ADDRESS_SHARED || VALUE_TYPE(addr) == VALUE_ADDRESS_PRIVATE);
+                if (VALUE_TYPE(addr) != VALUE_ADDRESS_SHARED && VALUE_TYPE(addr) != VALUE_ADDRESS_PRIVATE) {
+                    value_ctx_failure(step->ctx, &step->engine, "Load: not an address");
+                    instrcnt++;
+                    break;
+                }
                 if ((VALUE_TYPE(addr)) == VALUE_ADDRESS_PRIVATE) {
                     breakable = false;
                 }
@@ -783,8 +795,8 @@ static bool onestep(
     if (new) {
         edge->dst->state = (struct state *) &edge->dst[1];
         assert(VALUE_TYPE(edge->dst->state->vars) == VALUE_DICT);
-        edge->dst->next = w->results;
-        w->results = edge->dst;
+        edge->dst->next = *results;
+        *results = edge->dst;
         w->count++;
         w->enqueued++;
         if (!edge->choosing) {
@@ -793,7 +805,7 @@ static bool onestep(
         }
     }
 #else
-    process_edge(w, edge, lock);
+    process_edge(w, edge, lock, results);
 #endif
 
     return true;
@@ -804,7 +816,8 @@ static void make_step(
     struct node *node,
     hvalue_t ctx,
     hvalue_t choice,       // if about to make a choice, which choice?
-    int multiplicity       // #contexts that are in the current state
+    int multiplicity,      // #contexts that are in the current state
+    struct node **results  // where to place the resulting new states
 ) {
     struct step step;
     memset(&step, 0, sizeof(step));
@@ -835,13 +848,13 @@ static void make_step(
 
     // See if we need to interrupt
     if (sc->choosing == 0 && cc->extended && ctx_trap_pc(cc) != 0 && !cc->interruptlevel) {
-        bool succ = onestep(w, node, sc, ctx, &step, choice, true, false, multiplicity);
+        bool succ = onestep(w, node, sc, ctx, &step, choice, true, false, multiplicity, results);
         assert(step.engine.allocator == &w->allocator);
         if (!succ) {        // ran into an infinite loop
             memcpy(sc, node->state, statesz);
             memcpy(&w->ctx, cc, size);
             assert(step.engine.allocator == &w->allocator);
-            (void) onestep(w, node, sc, ctx, &step, choice, true, true, multiplicity);
+            (void) onestep(w, node, sc, ctx, &step, choice, true, true, multiplicity, results);
             assert(step.engine.allocator == &w->allocator);
         }
 
@@ -851,13 +864,13 @@ static void make_step(
     }
 
     sc->choosing = 0;
-    bool succ = onestep(w, node, sc, ctx, &step, choice, false, false, multiplicity);
+    bool succ = onestep(w, node, sc, ctx, &step, choice, false, false, multiplicity, results);
     assert(step.engine.allocator == &w->allocator);
     if (!succ) {        // ran into an infinite loop
         memcpy(sc, node->state, statesz);
         memcpy(&w->ctx, cc, size);
         assert(step.engine.allocator == &w->allocator);
-        (void) onestep(w, node, sc, ctx, &step, choice, false, true, multiplicity);
+        (void) onestep(w, node, sc, ctx, &step, choice, false, true, multiplicity, results);
         assert(step.engine.allocator == &w->allocator);
     }
 
@@ -1795,141 +1808,71 @@ static int fail_cmp(void *f1, void *f2){
     return node_cmp(fail1->edge->dst, fail2->edge->dst);
 }
 
+void do_work1(struct worker *w, struct node *node, unsigned int level){
+    struct state *state = node->state;
+    if (state->choosing != 0) {
+        assert(VALUE_TYPE(state->choosing) == VALUE_CONTEXT);
+
+        struct context *cc = value_get(state->choosing, NULL);
+        assert(cc != NULL);
+        assert(cc->sp > 0);
+        hvalue_t s = ctx_stack(cc)[cc->sp - 1];
+        assert(VALUE_TYPE(s) == VALUE_SET);
+        unsigned int size;
+        hvalue_t *vals = value_get(s, &size);
+        size /= sizeof(hvalue_t);
+        assert(size > 0);
+        for (unsigned int i = 0; i < size; i++) {
+            make_step(
+                w,
+                node,
+                state->choosing,
+                vals[i],
+                1,
+                &w->results
+            );
+        }
+    }
+    else {
+        for (unsigned int i = 0; i < state->bagsize; i++) {
+            assert(VALUE_TYPE(state_contexts(state)[i]) == VALUE_CONTEXT);
+            make_step(
+                w,
+                node,
+                state_contexts(state)[i],
+                0,
+                multiplicities(state)[i],
+                &w->results
+            );
+        }
+    }
+}
+
 static void do_work(struct worker *w){
     struct global *global = w->global;
-
-#define TODO_COUNT 10
+    unsigned int todo_count = 5;
 
     for (;;) {
 #ifdef USE_ATOMIC
-        unsigned int next = atomic_fetch_add(&global->atodo, TODO_COUNT);
+        unsigned int next = atomic_fetch_add(&global->atodo, todo_count);
 #else // USE_ATOMIC
         mutex_acquire(&global->todo_lock);
-        unsigned int next = global->atodo;
-        global->atodo += TODO_COUNT;
+        unsigned int next = global->todo;
+        global->todo += todo_count;
         mutex_release(&global->todo_lock);
 #endif // USE_ATOMIC
 
-        for (unsigned int i = 0; i < TODO_COUNT; i++, next++) {
+        for (unsigned int i = 0; i < todo_count; i++, next++) {
             // printf("W%d %d %d\n", w->index, next, global->graph.size);
             if (next >= global->graph.size) {
                 return;
             }
-            struct node *node = global->graph.nodes[next];
-            struct state *state = node->state;
             w->dequeued++;
-
-            if (state->choosing != 0) {
-                assert(VALUE_TYPE(state->choosing) == VALUE_CONTEXT);
-
-                struct context *cc = value_get(state->choosing, NULL);
-                assert(cc != NULL);
-                assert(cc->sp > 0);
-                hvalue_t s = ctx_stack(cc)[cc->sp - 1];
-                assert(VALUE_TYPE(s) == VALUE_SET);
-                unsigned int size;
-                hvalue_t *vals = value_get(s, &size);
-                size /= sizeof(hvalue_t);
-                assert(size > 0);
-                for (unsigned int i = 0; i < size; i++) {
-                    make_step(
-                        w,
-                        node,
-                        state->choosing,
-                        vals[i],
-                        1
-                    );
-                }
-            }
-            else {
-                for (unsigned int i = 0; i < state->bagsize; i++) {
-                    assert(VALUE_TYPE(state_contexts(state)[i]) == VALUE_CONTEXT);
-                    make_step(
-                        w,
-                        node,
-                        state_contexts(state)[i],
-                        0,
-                        multiplicities(state)[i]
-                    );
-                }
-            }
+            do_work1(w, global->graph.nodes[next], 0);
         }
 
-#ifdef USE_ATOMIC
-        if (next >= atomic_load(&global->goal)) {
-            break;
-        }
-#else // USE_ATOMIC
-        mutex_acquire(&global->todo_lock);
         if (next >= global->goal) {
-            mutex_release(&global->todo_lock);
             break;
-        }
-        mutex_release(&global->todo_lock);
-#endif // USE_ATOMIC
-    }
-}
-
-//phase2 should not reuse worker struct...
-
-static void work_phase2(struct worker *w, struct global *global){
-    mutex_acquire(&global->todo_lock);
-    for (;;) {
-        if (global->scc_todo == NULL) {
-            global->scc_nwaiting++;
-            if (global->scc_nwaiting == global->nworkers) {
-                mutex_release(&global->todo_wait);
-                break;
-            }
-            mutex_release(&global->todo_lock);
-            mutex_acquire(&global->todo_wait);
-            if (global->scc_nwaiting == global->nworkers) {
-                mutex_release(&global->todo_wait);
-                break;
-            }
-            global->scc_nwaiting--;
-        }
-
-        // Grab work
-        unsigned int component = global->ncomponents++;
-        struct scc *scc = global->scc_todo;
-        assert(scc != NULL);
-        global->scc_todo = scc->next;
-        scc->next = NULL;
-
-        // Split binary semaphore release
-        if (global->scc_todo != NULL && global->scc_nwaiting > 0) {
-            mutex_release(&global->todo_wait);
-        }
-        else {
-            mutex_release(&global->todo_lock);
-        }
-
-        for (;;) {
-            // Do the work
-            assert(scc->next == NULL);
-            scc = graph_find_scc_one(&global->graph, scc, component, &w->scc_cache);
-
-            // Put new work on the list except the last (which we'll do ourselves)
-            mutex_acquire(&global->todo_lock);
-            while (scc != NULL && scc->next != NULL) {
-                struct scc *next = scc->next;
-                scc->next = global->scc_todo;
-                global->scc_todo = scc;
-                scc = next;
-            }
-            if (scc == NULL) {      // get more work
-                break;
-            }
-            component = global->ncomponents++;
-
-            // Split binary semaphore release
-            if (global->scc_todo != NULL && global->scc_nwaiting > 0) {
-                mutex_release(&global->todo_wait);
-            }
-            else {
-                mutex_release(&global->todo_lock);
-            }
         }
     }
 }
@@ -1958,7 +1901,12 @@ static void worker(void *arg){
     CPU_ZERO(&cpuset);
     if (getNumCores() == 64 && global->nworkers <= 32) {
         // Try to schedule on the same chip
-        CPU_SET(2 * w->index, &cpuset);
+        if (global->numa) {
+            CPU_SET(2 * w->index, &cpuset);
+        }
+        else {
+            CPU_SET(2 * w->index + 1, &cpuset);
+        }
     }
     else {
         CPU_SET(w->index, &cpuset);
@@ -1992,13 +1940,6 @@ static void worker(void *arg){
         after = gettime();
         w->middle_wait += after - before;
         w->middle_count++;
-
-        if (global->phase2) {
-            work_phase2(w, global);
-            barrier_wait(w->end_barrier);
-            break;
-        }
-
         before = after;
 
         // Fix the forward edges
@@ -2030,9 +1971,17 @@ static void worker(void *arg){
         // Only the coordinator (worker 0) does this
         if (w->index == 0 % global->nworkers) {
             // End of a layer in the Kripke structure?
+#ifdef USE_ATOMIC
             unsigned int todo = atomic_load(&global->atodo);
+#else
+            unsigned int todo = global->todo;
+#endif
             if (todo > global->graph.size) {
+#ifdef USE_ATOMIC
                 atomic_store(&global->atodo, global->graph.size);
+#else
+                global->todo = global->graph.size;
+#endif
                 todo = global->graph.size;
             }
             // printf("SEQ: todo=%u size=%u\n", todo, global->graph.size);
@@ -2060,7 +2009,11 @@ static void worker(void *arg){
 
                 if (!minheap_empty(global->failures)) {
                     // Pretend we're done
+#ifdef USE_ATOMIC
                     atomic_store(&global->atodo, global->graph.size);
+#else
+                    global->todo = global->graph.size;
+#endif
                 }
 
                 // Worker 0 is the coordinator and may need to go do
@@ -2070,12 +2023,12 @@ static void worker(void *arg){
                 }
             }
 
-            // if (global->graph.size - todo > 100000) {
-            //     atomic_store(&global->goal, todo + 100000);
-            // }
-            // else {
-                atomic_store(&global->goal, global->graph.size);
-            // }
+            if (global->graph.size - todo > 10000) {
+                global->goal = todo + 10000;
+            }
+            else {
+                global->goal = global->graph.size;
+            }
 
             // Compute how much table space is in use
             global->allocated = global->graph.size * sizeof(struct node *) +
@@ -2113,6 +2066,71 @@ static void worker(void *arg){
         after = gettime();
         w->phase3 += after - before;
     }
+}
+
+static void scc_worker(void *arg){
+    struct scc_worker *w = arg;
+    struct global *global = w->global;
+    mutex_acquire(&global->todo_enter);
+    for (;;) {
+        if (global->scc_todo == NULL) {
+            global->scc_nwaiting++;
+            if (global->scc_nwaiting == global->nworkers) {
+                mutex_release(&global->todo_wait);
+                break;
+            }
+            mutex_release(&global->todo_enter);
+            mutex_acquire(&global->todo_wait);
+            if (global->scc_nwaiting == global->nworkers) {
+                mutex_release(&global->todo_wait);
+                break;
+            }
+            global->scc_nwaiting--;
+        }
+
+        // Grab work
+        unsigned int component = global->ncomponents++;
+        struct scc *scc = global->scc_todo;
+        assert(scc != NULL);
+        global->scc_todo = scc->next;
+        scc->next = NULL;
+
+        // Split binary semaphore release
+        if (global->scc_todo != NULL && global->scc_nwaiting > 0) {
+            mutex_release(&global->todo_wait);
+        }
+        else {
+            mutex_release(&global->todo_enter);
+        }
+
+        for (;;) {
+            // Do the work
+            assert(scc->next == NULL);
+            scc = graph_find_scc_one(&global->graph, scc, component, &w->scc_cache);
+
+            // Put new work on the list except the last (which we'll do ourselves)
+            mutex_acquire(&global->todo_enter);
+            while (scc != NULL && scc->next != NULL) {
+                struct scc *next = scc->next;
+                scc->next = global->scc_todo;
+                global->scc_todo = scc;
+                scc = next;
+            }
+            if (scc == NULL) {      // get more work
+                break;
+            }
+            component = global->ncomponents++;
+
+            // Split binary semaphore release
+            if (global->scc_todo != NULL && global->scc_nwaiting > 0) {
+                mutex_release(&global->todo_wait);
+            }
+            else {
+                mutex_release(&global->todo_enter);
+            }
+        }
+    }
+    barrier_wait(w->scc_barrier);
 }
 
 char *state_string(struct state *state){
@@ -2388,7 +2406,7 @@ int main(int argc, char **argv) {
 }
 
 int charm_main(int argc, char **argv){
-    bool cflag = false, Dflag = false, Rflag = false;
+    bool cflag = false, dflag = false, Dflag = false, Rflag = false;
     int i, maxtime = 300000000 /* about 10 years */;
     char *outfile = NULL, *dfafile = NULL;
     unsigned int nworkers = 0;
@@ -2399,6 +2417,9 @@ int charm_main(int argc, char **argv){
         switch (argv[i][1]) {
         case 'c':
             cflag = true;
+            break;
+        case 'd':               // run direct (no model check)
+            dflag = true;
             break;
         case 'D':
             Dflag = true;
@@ -2443,19 +2464,23 @@ int charm_main(int argc, char **argv){
     struct global *global = new_alloc(struct global);
     global->nworkers = nworkers == 0 ? getNumCores() : nworkers;
 	printf("nworkers = %d\n", global->nworkers);
+    global->numa = ((unsigned int) (gettime() * 1000) % 2) == 0;
 
-    
-    barrier_t start_barrier, middle_barrier, end_barrier;
+    barrier_t start_barrier, middle_barrier, end_barrier, scc_barrier;
     barrier_init(&start_barrier, global->nworkers);
     barrier_init(&middle_barrier, global->nworkers);
     barrier_init(&end_barrier, global->nworkers);
-    
+    barrier_init(&scc_barrier, global->nworkers);
 
     // initialize modules
     mutex_init(&global->inv_lock);
+#ifdef USE_ATOMIC
     atomic_init(&global->atodo, 0);
-    atomic_init(&global->goal, 1);
+#else
     mutex_init(&global->todo_lock);
+#endif
+    global->goal = 1;
+    mutex_init(&global->todo_enter);
     mutex_init(&global->todo_wait);
     mutex_acquire(&global->todo_wait);          // Split Binary Semaphore
     global->values = dict_new("values", 0, 0, global->nworkers, true);
@@ -2539,7 +2564,7 @@ int charm_main(int argc, char **argv){
     global->nprocesses = 1;
 
     // Run direct
-    if (outfile == NULL) {
+    if (dflag) {
         global->run_direct = true;
         mutex_init(&run_mutex);
         mutex_init(&run_waiting);
@@ -2601,6 +2626,13 @@ int charm_main(int argc, char **argv){
         w->allocator.worker = i;
     }
 
+    struct scc_worker *scc_workers = calloc(global->nworkers, sizeof(*scc_workers));
+    for (unsigned int i = 0; i < global->nworkers; i++) {
+        struct scc_worker *w = &scc_workers[i];
+        w->global = global;
+        w->scc_barrier = &scc_barrier;
+    }
+
     // Put the state and value dictionaries in concurrent mode
     dict_set_concurrent(global->values);
     dict_set_concurrent(visited);
@@ -2644,21 +2676,22 @@ int charm_main(int argc, char **argv){
         start_wait += w->start_wait;
         middle_wait += w->middle_wait;
         end_wait += w->end_wait;
-#define REPORT_WORKERS
 #ifdef REPORT_WORKERS
-        printf("W%u: %lf %lf %lf\n", i, w->start_wait/w->start_count,
-            w->middle_wait/w->middle_count, w->end_wait/w->end_count);
+        printf("W%u: %lf %lf %lf %lf %lf %lf %lf\n", i,
+                w->phase1,
+                w->phase2a,
+                w->phase2b,
+                w->phase3,
+                w->start_wait/w->start_count,
+                w->middle_wait/w->middle_count,
+                w->end_wait/w->end_count);
 #endif
     }
-    printf("computing: %lf %lf %lf %lf (%lu %lu %lu %lu %lf %lf %lf %lf %u); waiting: %lf %lf %lf\n",
+    printf("computing: %lf %lf %lf %lf (%lf %lf %lf %lf %u); waiting: %lf %lf %lf\n",
         phase1 / global->nworkers,
         phase2a / global->nworkers,
         phase2b / global->nworkers,
         phase3 / global->nworkers,
-        0L,
-        0L,
-        0L,
-        0L,
         phase1,
         phase2a,
         phase2b,
@@ -2670,7 +2703,9 @@ int charm_main(int argc, char **argv){
 
     printf("#states %d (time %.2lfs, mem=%.2lfGB)\n", global->graph.size, gettime() - before, (double) allocated / (1L << 30));
 
-    if (true) exit(0);
+    if (outfile == NULL) {
+        exit(0);
+    }
 
     dict_set_sequential(global->values);
     dict_set_sequential(visited);
@@ -2680,9 +2715,12 @@ int charm_main(int argc, char **argv){
         double now = gettime();
         global->phase2 = true;
         global->scc_todo = scc_alloc(0, global->graph.size, NULL, NULL);
-        barrier_wait(&middle_barrier);
-        // Workers working on finding SCCs
-        barrier_wait(&end_barrier);
+
+        // Start all but one of the workers, who'll wait on the start barrier
+        for (unsigned int i = 1; i < global->nworkers; i++) {
+            thread_create(scc_worker, &scc_workers[i]);
+        }
+        scc_worker(&scc_workers[0]);
 
         printf("%u components (%.2lf seconds)\n", global->ncomponents, gettime() - now);
 
@@ -3171,8 +3209,8 @@ int charm_main(int argc, char **argv){
     fprintf(out, "}\n");
 	fclose(out);
 
-    iface_write_spec_graph_to_file(global, "iface.gv");
-    iface_write_spec_graph_to_json_file(global, "iface.json");
+    // iface_write_spec_graph_to_file(global, "iface.gv");
+    // iface_write_spec_graph_to_json_file(global, "iface.json");
 
     free(global);
     return 0;

@@ -115,7 +115,7 @@ basic_expr
     | OPEN_BRACES COLON CLOSE_BRACES #empty_dict
     | OPEN_PAREN tuple_rule? CLOSE_PAREN  #paren_tuple
     | OPEN_BRACK tuple_rule? CLOSE_BRACK  #bracket_tuple
-    | ADDRESS_OF expr_rule        #address
+    | LAMBDA bound COLON nary_expr 'end'  #lambda_expr
     ;
 
 set_rule
@@ -152,11 +152,11 @@ nary_expr
 ;
 
 expr_rule
-    : LAMBDA bound COLON nary_expr 'end'
-    | SETINTLEVEL expr_rule
+    : SETINTLEVEL expr_rule
     | SAVE expr_rule
     | STOP expr_rule
     | POINTER_OF expr_rule
+    | ADDRESS_OF expr_rule
     | unary_op expr_rule
     | application
 ;
@@ -189,6 +189,7 @@ aug_assign_op
     | 'mod='
     | '**='
     | '>>='
+    | '<<='
     ;
 
 expr_stmt: tuple_rule;
@@ -339,7 +340,7 @@ BOOL    : 'False' | 'True';
 ETERNAL: 'eternal';
 
 // STRING  : '"' .*? '"' | '\'' .*? '\'';
-INT     : [0-9]+ | 'inf';
+INT     : [0-9]+ | '0x' [0-9a-fA-F]+ | '0b' [01]+ | '0o' [0-7]+;
 NAME    : [a-zA-Z_][a-zA-Z_0-9]*;
 ATOM    : [.] (HEX_INTEGER | NAME);
 

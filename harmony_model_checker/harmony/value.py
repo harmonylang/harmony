@@ -123,7 +123,7 @@ class LabelValue(Value):
         return (100, self.id)
 
     def jdump(self):
-        assert False
+        assert False, self
 
     def substitute(self, map):
         return map[self] if self in map else self

@@ -2673,8 +2673,8 @@ hvalue_t f_abs(struct state *state, struct step *step, hvalue_t *args, int n){
     if (VALUE_TYPE(e) != VALUE_INT) {
         return value_ctx_failure(step->ctx, &step->engine, "abs() can only be applied to integers");
     }
-    e = VALUE_FROM_INT(e);
-    return e >= 0 ? args[0] : VALUE_TO_INT(-e);
+    int64_t r = VALUE_FROM_INT(e);
+    return r >= 0 ? e : VALUE_TO_INT(-r);
 }
 
 hvalue_t f_all(struct state *state, struct step *step, hvalue_t *args, int n){
@@ -3357,13 +3357,12 @@ hvalue_t f_minus(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 1 || n == 2);
     if (n == 1) {
         if (step->keep_callstack) {
-            strbuf_printf(&step->explain, "unary minux; ");
+            strbuf_printf(&step->explain, "unary minus; ");
         }
-        int64_t e = args[0];
-        if (VALUE_TYPE(e) != VALUE_INT) {
+        if (VALUE_TYPE(args[0]) != VALUE_INT) {
             return value_ctx_failure(step->ctx, &step->engine, "unary minus can only be applied to ints");
         }
-        e = VALUE_FROM_INT(e);
+        int64_t e = VALUE_FROM_INT(args[0]);
         if (e == VALUE_MAX) {
             return VALUE_TO_INT(VALUE_MIN);
         }

@@ -11,76 +11,6 @@
 #define GROW_THRESHOLD     1
 #define GROW_FACTOR        8
 
-#ifdef _WIN32
-
-#include <intrin.h>
-static inline uint64_t get_cycles(){
-    return __rdtsc();
-}
-
-//  Linux/GCC
-#else
-
-#ifdef notdef
-static inline uint64_t get_cycles(){
-    unsigned int lo, hi;
-    __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
-    return ((uint64_t) hi << 32) | lo;
-}
-
-static inline uint64_t get_cycles(){
-    uint64_t msr;
-    asm volatile ( "rdtsc\n\t"    // Returns the time in EDX:EAX.
-               "shl $32, %%rdx\n\t"  // Shift the upper bits left.
-               "or %%rdx, %0"        // 'Or' in the lower bits.
-               : "=a" (msr)
-               :
-               : "rdx");
-    return msr;
-}
-#endif
-
-static inline void rdtscp(uint64_t *cycles, uint64_t *pid) {
-  // rdtscp
-  // high cycles : edx
-  // low cycles  : eax
-  // processor id: ecx
-
-  asm volatile
-    (
-     // Assembleur
-     "rdtscp;\n"
-     "shl $32, %%rdx;\n"
-     "or %%rdx, %%rax;\n"
-     "mov %%rax, (%[_cy]);\n"
-     "mov %%ecx, (%[_pid]);\n"
-
-     // outputs
-     :
-
-     // inputs
-     :
-     [_cy] "r" (cycles),
-     [_pid] "r" (pid)
-
-     // clobbers
-     :
-     "cc", "memory", "%eax", "%edx", "%ecx"
-     );
-
-  return;
-}
-
-static inline uint64_t get_cycles(){
-    // uint64_t cycles, pid;
-
-    // rdtscp(&cycles, &pid);
-    // return cycles;
-    return 0;
-}
-
-#endif
-
 // #define hash_func(key, size) komihash(key, size, 0)
 #define hash_func(key, size) meiyan(key, size)
 // #define hash_func(key, size) djb2(key, size)
@@ -141,9 +71,6 @@ struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int log_b
         atomic_init(&ht->unstable[i].list, NULL);
     }
     ht->log_stable = 4;
-    if (0 && strcmp(ht->whoami, "visited") == 0) {
-        ht->log_stable = 26 - ht->log_unstable;
-    }
     ht->stable = calloc(1u << (ht->log_stable + ht->log_unstable), sizeof(*ht->stable));
     ht->nlocks = nworkers * 256;        // TODO: how much?
 #ifdef ALIGNED_ALLOC
@@ -156,7 +83,6 @@ struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int log_b
 	}
     ht->nworkers = nworkers;
     ht->counts = calloc(nworkers, sizeof(*ht->counts));
-    ht->cycles = calloc(nworkers, sizeof(*ht->cycles));
     ht->workers = calloc(nworkers, sizeof(*ht->workers));
 #ifndef USE_ATOMIC
     mutex_init(&ht->mutex);
@@ -200,8 +126,6 @@ void ht_resize(struct hashtab *ht, unsigned int log_buckets){
 
 // TODO.  is_new is not terribly useful.
 struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsigned int hash, const void *key, unsigned int size, bool *is_new){
-    uint64_t before = get_cycles();
-
     // First check the (read-only at this point) stable list
     // The highest log_unstable bits of the hash determine
     // the segment of the bucket.  The next log_stable bits
@@ -212,10 +136,6 @@ struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsi
         if (hn->hash == hash && hn->size == size && memcmp((char *) &hn[1] + ht->value_size, key, size) == 0) {
             if (is_new != NULL) {
                 *is_new = false;
-            }
-            if (al != NULL) {
-                uint64_t after = get_cycles();
-                ht->cycles[al->worker] += after - before;
             }
             return hn;
         }
@@ -238,10 +158,6 @@ struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsi
         if (expected->hash == hash && expected->size == size && memcmp((char *) &expected[1] + ht->value_size, key, size) == 0) {
             if (is_new != NULL) {
                 *is_new = false;
-            }
-            if (al != NULL) {
-                uint64_t after = get_cycles();
-                ht->cycles[al->worker] += after - before;
             }
             return expected;
         }
@@ -272,12 +188,7 @@ struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsi
             if (is_new != NULL) {
                 *is_new = true;
             }
-            if (al != NULL) {
-                assert(ht->concurrent);
-                uint64_t after = get_cycles();
-                ht->cycles[al->worker] += after - before;
-            }
-            else {
+            if (al == NULL) {
                 assert(!ht->concurrent);
                 ht->nobjects++;
             }
@@ -293,10 +204,6 @@ struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsi
             }
             if (is_new != NULL) {
                 *is_new = false;
-            }
-            if (al != NULL) {
-                uint64_t after = get_cycles();
-                ht->cycles[al->worker] += after - before;
             }
             return expected;
         }
@@ -341,10 +248,6 @@ struct ht_node *ht_find_with_hash(struct hashtab *ht, struct allocator *al, unsi
         if (is_new != NULL) {
             *is_new = false;
         }
-    }
-    if (al != NULL) {
-        uint64_t after = get_cycles();
-        ht->cycles[al->worker] += after - before;
     }
     return n;
 

@@ -146,6 +146,7 @@ class AST:
         scope.set(lexeme, ("module", imported[lexeme]))
 
     def getLabels(self):
+        print("getLabels", self)
         return set()
 
     def getImports(self):
@@ -153,7 +154,6 @@ class AST:
 
     def accept_visitor(self, visitor, *args, **kwargs):
         assert False, self
-
 
 class ComprehensionAST(AST):
     def __init__(self, endtoken, token, atomically, iter, value):
@@ -241,6 +241,9 @@ class ComprehensionAST(AST):
         if ctype in { "set", "dict", "list" }:
             code.append(LoadVarOp(accu, reason="load final accumulator result"), self.token, self.endtoken, stmt=stmt)
 
+    def getLabels(self):
+        return self.value.getLabels()
+
 class ConstantAST(AST):
     def __init__(self, endtoken, const):
         AST.__init__(self, endtoken, const, False)
@@ -268,6 +271,9 @@ class ConstantAST(AST):
 
     def isConstant(self, scope):
         return True
+
+    def getLabels(self):
+        return set()
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_constant(self, *args, **kwargs)
@@ -299,16 +305,20 @@ class NameAST(AST):
     def localVar(self, scope):
         (t, v) = scope.lookup(self.name)
         assert t in {"constant", "local-var", "local-const", "global", "module"}
-        return self.name[0] if t == "local-var" else None
+        return self.name[0] if t in { "local-var", "local-const" } else None
 
     def ph1(self, scope, code, stmt):
+        # TODO: what if lexeme == "_"?
         (t, v) = scope.lookup(self.name)
-        if t in {"constant", "local-const"}:
+        if t == "constant":
             (lexeme, file, line, column) = v
             code.append(PushOp((AddressValue(lexeme, []), file, line, column)), self.token, self.endtoken, stmt=stmt)
+        elif t == "local-const":
+            (lexeme, file, line, column) = v
+            code.append(LoadVarOp(v), self.token, self.endtoken, stmt=stmt)
+            code.append(NaryOp(("Closure", file, line, column), 1), self.token, self.endtoken, stmt=stmt)
         elif t == "local-var":
             (lexeme, file, line, column) = v
-            # TODO: what if lexeme == "_"?
             if lexeme != "_":
                 code.append(PushOp((AddressValue(PcValue(-2), [lexeme]), file, line, column)), self.token, self.endtoken, stmt=stmt)
         else:
@@ -320,7 +330,22 @@ class NameAST(AST):
                 code.append(PushOp((AddressValue(PcValue(-1), [scope.prefix + '$' + lexeme]), file, line, column)), self.token, self.endtoken, stmt=stmt)
 
     def address(self, scope, code, stmt):
-        return self.ph1(scope, code, stmt)
+        # TODO: what if lexeme == "_"?
+        (t, v) = scope.lookup(self.name)
+        if t == "constant":
+            (lexeme, file, line, column) = v
+            code.append(PushOp((AddressValue(lexeme, []), file, line, column)), self.token, self.endtoken, stmt=stmt)
+        elif t in { "local-const", "local-var" }:
+            (lexeme, file, line, column) = v
+            code.append(LoadVarOp(v), self.token, self.endtoken, stmt=stmt)
+            code.append(NaryOp(("Closure", file, line, column), 1), self.token, self.endtoken, stmt=stmt)
+        else:
+            assert t == "global"
+            (lexeme, file, line, column) = self.name
+            if scope.prefix == None:
+                code.append(PushOp((AddressValue(PcValue(-1), [lexeme]), file, line, column)), self.token, self.endtoken, stmt=stmt)
+            else:
+                code.append(PushOp((AddressValue(PcValue(-1), [scope.prefix + '$' + lexeme]), file, line, column)), self.token, self.endtoken, stmt=stmt)
 
     def ph2(self, scope, code, skip, start, stop, stmt):
         if skip > 0:
@@ -346,6 +371,9 @@ class NameAST(AST):
         else:
             assert False, (t, v, self.name)
 
+    def getLabels(self):
+        return set()
+
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_name(self, *args, **kwargs)
 
@@ -356,7 +384,7 @@ class SetAST(AST):
         self.collection = collection
 
     def __repr__(self):
-        return str(self.collection)
+        return "Set(" + str(self.collection) + ")"
 
     def isConstant(self, scope):
         return all(x.isConstant(scope) for x in self.collection)
@@ -366,6 +394,12 @@ class SetAST(AST):
         for e in self.collection:
             e.compile(scope, code, stmt)
             code.append(NaryOp(("SetAdd", None, None, None), 2), self.token, self.endtoken, stmt=stmt)
+
+    def getLabels(self):
+        if self.collection == []:
+            return set()
+        labels = [x.getLabels() for x in self.collection]
+        return functools.reduce(lambda x, y: x | y, labels)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_set(self, *args, **kwargs)
@@ -388,6 +422,9 @@ class RangeAST(AST):
         self.rhs.compile(scope, code, stmt)
         (lexeme, file, line, column) = self.token
         code.append(NaryOp(("..", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
+
+    def getLabels(self):
+        return self.lhs.getLabels() | self.rhs.getLabels()
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_range(self, *args, **kwargs)
@@ -439,6 +476,12 @@ class TupleAST(AST):
             n -= 1
             lv.ph2(scope, code, skip + n, start, stop, stmt)
 
+    def getLabels(self):
+        if self.list == []:
+            return set()
+        labels = [x.getLabels() for x in self.list]
+        return functools.reduce(lambda x, y: x | y, labels)
+
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_tuple(self, *args, **kwargs)
 
@@ -475,6 +518,13 @@ class DictAST(AST):
         (lexeme, file, line, column) = self.token
         code.append(NaryOp(("Closure", file, line, column), 1), self.token, self.endtoken, stmt=stmt)
 
+    def getLabels(self):
+        if self.record == []:
+            return set()
+        # TODO.  Also handle keys
+        labels = [v.getLabels() for (k, v) in self.record]
+        return functools.reduce(lambda x, y: x | y, labels)
+
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_dict(self, *args, **kwargs)
 
@@ -485,7 +535,6 @@ class SetComprehensionAST(ComprehensionAST):
 
     def __repr__(self):
         return "SetComprehension(" + str(self.iter) + "," + str(self.value) + ")"
-
     def compile(self, scope, code, stmt):
         self.comprehension(scope, code, "set", stmt)
 
@@ -520,7 +569,6 @@ class ListComprehensionAST(ComprehensionAST):
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_list_comprehension(self, *args, **kwargs)
-
 
 # N-ary operator
 class NaryAST(AST):
@@ -590,6 +638,10 @@ class NaryAST(AST):
                 self.args[i].compile(scope, code, stmt)
             code.append(NaryOp(self.op, n), self.token, self.endtoken, stmt=stmt)
 
+    def getLabels(self):
+        labels = [x.getLabels() for x in self.args]
+        return functools.reduce(lambda x, y: x | y, labels)
+
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_nary(self, *args, **kwargs)
 
@@ -628,6 +680,10 @@ class CmpAST(AST):
         code.nextLabel(endlabel)
         if n > 2:
             code.append(DelVarOp(T), self.token, self.endtoken, stmt=stmt)     # TODO: is this necessary???
+
+    def getLabels(self):
+        labels = [x.getLabels() for x in self.args]
+        return functools.reduce(lambda x, y: x | y, labels)
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_cmp(self, *args, **kwargs)
@@ -722,6 +778,7 @@ class ApplyAST(AST):
     # value and then a Load instruction will evaluate the applications.
     def compile(self, scope, code, stmt):
         # Special case f(x) where f is a method constant
+        # TODO.  Can same be done with lambda?
         if isinstance(self.method, NameAST):
             (t, v) = scope.lookup(self.method.name)
             if t == "constant" and isinstance(v[0], LabelValue):
@@ -797,6 +854,9 @@ class ApplyAST(AST):
         st = StoreOp(None, self.token, None) if lvar == None else StoreVarOp(None, lvar)
         code.append(st, start, stop, stmt=stmt)
 
+    def getLabels(self):
+        return self.method.getLabels() | self.arg.getLabels()
+
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_apply(self, *args, **kwargs)
 
@@ -827,6 +887,9 @@ class PointerAST(AST):
             code.append(MoveOp(skip + 2), self.token, self.endtoken, stmt=stmt)
             code.append(MoveOp(2), self.token, self.endtoken, stmt=stmt)
         code.append(StoreOp(None, self.token, None), start, stop, stmt=stmt)
+
+    def getLabels(self):
+        return self.expr.getLabels()
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_pointer(self, *args, **kwargs)
@@ -897,6 +960,10 @@ class AssignmentAST(AST):
         if self.atomically:
             code.append(AtomicDecOp(), self.token, self.endtoken, stmt=stmt)
 
+    def getLabels(self):
+        # TODO.  lhs may have labels too
+        return self.rv.getLabels()
+
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_assignment(self, *args, **kwargs)
 
@@ -955,6 +1022,10 @@ class AuxAssignmentAST(AST):
         if self.atomically:
             code.append(AtomicDecOp(), self.token, self.endtoken, stmt=stmt)
 
+    def getLabels(self):
+        # TODO.  lhs may have labels too
+        return self.rv.getLabels()
+
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_assignment(self, *args, **kwargs)
 
@@ -980,6 +1051,9 @@ class DelAST(AST):
         if self.atomically:
             code.append(AtomicDecOp(), self.token, self.endtoken, stmt=stmt)
 
+    def getLabels(self):
+        return set()
+
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_del(self, *args, **kwargs)
 
@@ -995,6 +1069,9 @@ class SetIntLevelAST(AST):
     def compile(self, scope, code, stmt):
         self.arg.compile(scope, code, stmt)
         code.append(SetIntLevelOp(), self.token, self.endtoken, stmt=stmt)
+
+    def getLabels(self):
+        return self.arg.getLabels()
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_set_int_level(self, *args, **kwargs)
@@ -1012,6 +1089,9 @@ class SaveAST(AST):
         self.expr.compile(scope, code, stmt)
         code.append(SaveOp(), self.token, self.endtoken, stmt=stmt)
         code.append(ContinueOp(), self.token, self.endtoken, stmt=stmt)
+
+    def getLabels(self):
+        return self.expr.getLabels()
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_save(self, *args, **kwargs)
@@ -1031,12 +1111,15 @@ class StopAST(AST):
         code.append(StopOp(None), self.token, self.endtoken, stmt=stmt)
         code.append(ContinueOp(), self.token, self.endtoken, stmt=stmt)
 
+    def getLabels(self):
+        return self.expr.getLabels()
+
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_stop(self, *args, **kwargs)
 
 
 class AddressAST(AST):
-    def __init__(self, endtoken, token, lv):
+    def __init__(self, endtoken, lv, token):
         AST.__init__(self, endtoken, token, False)
         self.lv = lv
 
@@ -1065,6 +1148,8 @@ class AddressAST(AST):
             pass
         elif isinstance(lv, ConstantAST):
             pass
+        elif isinstance(lv, LambdaAST):
+            pass
         else:
             lexeme, file, line, column = lv.token if isinstance(lv, AST) else (None, None, None, None)
             raise HarmonyCompilerError(
@@ -1077,6 +1162,9 @@ class AddressAST(AST):
     def gencode(self, scope, code, stmt):
         self.check(self.lv, scope)
         self.lv.address(scope, code, stmt)
+
+    def getLabels(self):
+        return self.lv.getLabels()
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_address(self, *args, **kwargs)
@@ -1091,6 +1179,9 @@ class PassAST(AST):
 
     def compile(self, scope, code, stmt):
         pass
+
+    def getLabels(self):
+        return set()
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_pass(self, *args, **kwargs)
@@ -1252,6 +1343,9 @@ class FinallyAST(AST):
         code.nextLabel(endlabel)
         code.append(FinallyOp(startlabel), self.token, self.endtoken, stmt=stmt)
 
+    def getLabels(self):
+        return self.cond.getLabels()
+
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_lambda(self, *args, **kwargs)
 
@@ -1282,6 +1376,9 @@ class InvariantAST(AST):
         code.nextLabel(endlabel)
         code.append(InvariantOp(startlabel, ns.uses_pre), self.token, self.endtoken, stmt=stmt)
 
+    def getLabels(self):
+        return self.cond.getLabels()
+
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_lambda(self, *args, **kwargs)
 
@@ -1311,6 +1408,9 @@ class LetAST(AST):
         if self.atomically:
             code.append(AtomicDecOp(), self.token, self.endtoken, stmt=stmt)
 
+    def getLabels(self):
+        return self.stat.getLabels()
+
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_let(self, *args, **kwargs)
 
@@ -1334,6 +1434,10 @@ class VarAST(AST):
         if self.atomically:
             code.append(AtomicDecOp(), self.token, self.endtoken, stmt=stmt)
 
+    def getLabels(self):
+        labels = [x.getLabels() for (_, x) in self.vars]
+        return functools.reduce(lambda x, y: x | y, labels)
+
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_var(self, *args, **kwargs)
 
@@ -1353,9 +1457,6 @@ class ForAST(ComprehensionAST):
         self.comprehension(ns, code, "for", stmt)
         if self.atomically:
             code.append(AtomicDecOp(), self.token, self.endtoken, stmt=stmt)
-
-    def getLabels(self):
-        return self.value.getLabels()
 
     def getImports(self):
         return self.value.getImports()
@@ -1526,6 +1627,12 @@ class AssertAST(AST):
         code.append(ReadonlyDecOp(), self.token, self.endtoken, stmt=stmt)
         code.append(AtomicDecOp(), self.token, self.endtoken, stmt=stmt)
 
+    def getLabels(self):
+        if self.expr == None:
+            return self.cond.getLabels()
+        else:
+            return self.cond.getLabels() | self.expr.getLabels()
+
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_assert(self, *args, **kwargs)
 
@@ -1546,6 +1653,9 @@ class PrintAST(AST):
         code.append(PrintOp(self.token), self.token, self.endtoken, stmt=stmt)
         if self.atomically:
             code.append(AtomicDecOp(), self.token, self.endtoken, stmt=stmt)
+
+    def getLabels(self):
+        return self.expr.getLabels()
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_print(self, *args, **kwargs)
@@ -1613,6 +1723,7 @@ class LambdaAST(AST):
         AST.__init__(self, endtoken, token, atomically)
         self.args = args
         self.stat = stat
+        self.label = LabelValue(None, "lambda")
 
     def __repr__(self):
         return "Lambda " + str(self.args) + ", " + str(self.stat) + ")"
@@ -1620,15 +1731,14 @@ class LambdaAST(AST):
     def isConstant(self, scope):
         return True
 
-    def compile_body(self, scope, code):
+    def compile_body(self, scope, code, stmt):
         # lambda's should be compiled into root code
         while code.parent != None:
             code = code.parent
-        startlabel = LabelValue(None, "lambda")
-        endlabel = LabelValue(None, "lambda")
+        endlabel = LabelValue(None, "lambda end")
         stmt = self.stmt()
         code.append(JumpOp(endlabel, reason="jump over lambda definition"), self.token, self.token, stmt=stmt)
-        code.nextLabel(startlabel)
+        code.nextLabel(self.label)
         code.append(FrameOp(self.token, self.args), self.token, self.endtoken, stmt=stmt)
 
         (lexeme, file, line, column) = self.token
@@ -1641,12 +1751,20 @@ class LambdaAST(AST):
             code.append(AtomicDecOp(), self.token, self.endtoken, stmt=stmt)
         code.append(ReturnOp(None, None), self.token, self.endtoken, stmt=stmt)
         code.nextLabel(endlabel)
-        return startlabel
 
     def compile(self, scope, code, stmt):
-        startlabel = self.compile_body(scope, code)
+        self.compile_body(scope, code, stmt)
         (lexeme, file, line, column) = self.token
-        code.append(PushOp((startlabel, file, line, column)), self.token, self.endtoken, stmt=stmt)
+        code.append(PushOp((self.label, file, line, column)), self.token, self.endtoken, stmt=stmt)
+
+    def address(self, scope, code, stmt):
+        self.compile_body(scope, code, stmt)
+        (_, file, line, column) = self.token
+        code.append(PushOp((AddressValue(self.label, []), file, line, column)), self.token, self.endtoken, stmt=stmt)
+
+    def getLabels(self):
+        (_, file, line, column) = self.token
+        return {(("lambda", file, line, column), self.label)} | self.stat.getLabels()
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_lambda(self, *args, **kwargs)
@@ -1669,6 +1787,9 @@ class CallAST(AST):
             if self.atomically:
                 code.append(AtomicDecOp(), self.token, self.endtoken, stmt=stmt)
             code.append(PopOp(), self.token, self.endtoken, stmt=stmt)
+
+    def getLabels(self):
+        return self.expr.getLabels()
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_call(self, *args, **kwargs)
@@ -1696,6 +1817,10 @@ class SpawnAST(AST):
             self.this.compile(scope, code, stmt)
         code.append(SpawnOp(self.eternal), self.token, self.endtoken, stmt=stmt)
 
+    # TODO.  Deal with 'this'
+    def getLabels(self):
+        return self.method.getLabels() | self.arg.getLabels()
+
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_spawn(self, *args, **kwargs)
 
@@ -1715,6 +1840,9 @@ class TrapAST(AST):
         self.arg.compile(scope, code, stmt)
         self.method.compile(scope, code, stmt)
         code.append(TrapOp(), self.token, self.endtoken, stmt=stmt)
+
+    def getLabels(self):
+        return self.method.getLabels() | self.arg.getLabels()
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_trap(self, *args, **kwargs)
@@ -1741,6 +1869,9 @@ class GoAST(AST):
             code.append(AtomicDecOp(), self.token, self.endtoken, stmt=stmt)
         code.append(GoOp(), self.token, self.endtoken, stmt=stmt)
 
+    def getLabels(self):
+        return self.ctx.getLabels() | self.result.getLabels()
+
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_go(self, *args, **kwargs)
 
@@ -1759,6 +1890,9 @@ class ImportAST(AST):
 
     def getImports(self):
         return self.modlist
+
+    def getLabels(self):
+        return set()
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_import(self, *args, **kwargs)
@@ -1796,6 +1930,9 @@ class FromAST(AST):
 
     def getImports(self):
         return [self.module]
+
+    def getLabels(self):
+        return set()
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_from(self, *args, **kwargs)
@@ -1870,6 +2007,9 @@ class SequentialAST(AST):
             lv.ph1(scope, code, stmt)
             code.append(SequentialOp(), self.token, self.endtoken, stmt=stmt)
 
+    def getLabels(self):
+        return set()
+
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_sequential(self, *args, **kwargs)
 
@@ -1887,6 +2027,9 @@ class BuiltinAST(AST):
         stmt = self.stmt()
         self.name.compile(scope, code, stmt)
         code.append(BuiltinOp(self.value), self.token, self.endtoken, stmt=stmt)
+
+    def getLabels(self):
+        return set()
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_builtin(self, *args, **kwargs)
@@ -1945,6 +2088,8 @@ class ConstAST(AST):
         v = ctx.pop()
         self.set(scope, self.const, v)
 
+    def getLabels(self):
+        return self.expr.getLabels()
+
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_const(self, *args, **kwargs)
-
