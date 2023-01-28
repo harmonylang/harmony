@@ -993,7 +993,6 @@ class AuxAssignmentAST(AST):
         else:
             lv.ph1(scope, code, stmt)
             code.append(DupOp(), self.token, self.endtoken, stmt=stmt)  # duplicate the addres
-            # ld = LoadOp(None, self.op, None) if lvar is None else LoadVarOp(None, lvar)
             ld = LoadOp(None, self.op, None)
         code.append(ld, self.token, self.endtoken, stmt=stmt)  # load the valu
         self.rv.compile(scope, code, stmt)  # compile the rhs

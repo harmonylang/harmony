@@ -310,30 +310,19 @@ class LoadVarOp(Op):
         self.reason = reason
 
     def __repr__(self):
-        if self.v is None:
-            return "LoadVar [%s]"%self.lvar
-        else:
-            return "LoadVar " + self.convert(self.v)
+        return "LoadVar " + self.convert(self.v)
 
     def define(self):
         return set()
 
     def use(self):
-        if self.v is None:
-            return { self.lvar }
         return self.lvars(self.v)
 
     def jdump(self):
-        if self.v is None:
-            return '{ "op": "LoadVar" }'
-        else:
-            return '{ "op": "LoadVar", "value": "%s" }'%self.convert(self.v)
+        return '{ "op": "LoadVar", "value": "%s" }'%self.convert(self.v)
 
     def tladump(self):
-        if self.v is None:
-            return 'OpLoadVarInd(self)'
-        else:
-            return 'OpLoadVar(self, %s)'%self.tlaconvert(self.v)
+        return 'OpLoadVar(self, %s)'%self.tlaconvert(self.v)
 
     def explain(self):
         if self.reason is None:
@@ -346,12 +335,7 @@ class LoadVarOp(Op):
             return prefix + "push the value of " + self.convert(self.v)
 
     def eval(self, state, context):
-        if self.v is None:
-            av = context.pop()
-            assert isinstance(av, AddressValue)
-            context.push(context.iget(av.indexes))
-        else:
-            context.push(self.load(context, self.v))
+        context.push(self.load(context, self.v))
         context.pc += 1
 
 class PushOp(Op):
