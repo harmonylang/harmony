@@ -301,36 +301,6 @@ class ApplyOp(Op):
         if isinstance(lexeme, Value):
             self.method = (lexeme.substitute(map), file, line, column)
 
-class PushOp(Op):
-    def __init__(self, constant, reason=None):
-        self.constant = constant
-        self.reason = reason
-
-    def __repr__(self):
-        (lexeme, file, line, column) = self.constant
-        return "Push %s"%strValue(lexeme)
-
-    def jdump(self):
-        (lexeme, file, line, column) = self.constant
-        return '{ "op": "Push", "value": %s }'%jsonValue(lexeme)
-
-    def tladump(self):
-        (lexeme, file, line, column) = self.constant
-        return 'OpPush(self, %s)'%tlaValue(lexeme)
-
-    def explain(self):
-        prefix = "" if self.reason == None else (self.reason + ": ")
-        return prefix + "push constant " + strValue(self.constant[0])
-
-    def eval(self, state, context):
-        (lexeme, file, line, column) = self.constant
-        context.push(lexeme)
-        context.pc += 1
-
-    def substitute(self, map):
-        (lexeme, file, line, column) = self.constant
-        if isinstance(lexeme, Value):
-            self.constant = (lexeme.substitute(map), file, line, column)
 
 class LoadVarOp(Op):
     def __init__(self, v, lvar=None, reason=None):
