@@ -1,6 +1,6 @@
 def bag_add(bag, item):
     cnt = bag.get(item)
-    if cnt == None:
+    if cnt is None:
         bag[item] = 1
     else:
         bag[item] = cnt + 1

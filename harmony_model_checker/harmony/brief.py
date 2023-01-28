@@ -90,7 +90,7 @@ class Brief:
         self.failure = ""
 
     def flush(self):
-        if self.tid != None:
+        if self.tid is not None:
             print("T%s: %s ["%(self.tid, self.name), end="")
             if self.steps != "":
                 self.steps += ","

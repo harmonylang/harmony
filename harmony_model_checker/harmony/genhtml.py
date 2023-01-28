@@ -147,7 +147,7 @@ class GenHTML:
             if tid == mas["tid"]:
                 nmicrosteps += len(mas["microsteps"])
             else:
-                if tid != None:
+                if tid is not None:
                     self.html_megastep(nsteps, tid, name, nmicrosteps, width, f)
                 nsteps += 1
                 tid = mas["tid"]
@@ -189,11 +189,11 @@ class GenHTML:
     def html_botright(self, f, outputfiles):
         if self.nthreads == 0:
             png = outputfiles["png"]
-            if png != None:
+            if png is not None:
                 if png[0] == "/":
                     print("      <img src='%s' alt='DFA image'>"%png, file=f)
                 else:
-                    assert outputfiles["htm"] != None
+                    assert outputfiles["htm"] is not None
                     print("      <img src='%s' alt='DFA image'>"%self.pathdiff(png, outputfiles["htm"]), file=f)
             return
         print("<table border='1'", file=f)

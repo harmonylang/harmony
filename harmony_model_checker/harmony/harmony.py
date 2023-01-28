@@ -130,7 +130,7 @@ class Node:
         return self.rec_isblocked(ctx, self.state.vars, set())
 
 def strsteps(steps):
-    if steps == None:
+    if steps is None:
         return "[]"
     result = ""
     i = 0
@@ -138,17 +138,17 @@ def strsteps(steps):
         if result != "":
             result += ","
         (pc, choice) = steps[i]
-        if pc == None:
+        if pc is None:
             result += "Interrupt"
         else:
             result += str(pc)
         j = i + 1
-        if choice != None:
+        if choice is not None:
             result += "(choose %s)"%strValue(choice)
         else:
             while j < len(steps):
                 (pc2, choice2) = steps[j]
-                if pc == None or pc2 != pc + 1 or choice2 != None:
+                if pc is None or pc2 != pc + 1 or choice2 is not None:
                     break
                 (pc, choice) = (pc2, choice2)
                 j += 1
@@ -161,7 +161,7 @@ def find_shortest(bad):
     best_node = None
     best_len = 0
     for node in bad:
-        if best_node == None or node.len < best_len:
+        if best_node is None or node.len < best_len:
             best_node = node
             best_len = node.len
     return best_node
@@ -232,7 +232,7 @@ def print_path(bad_node):
         print("T%d:"%pid, ctx.nametag(), strsteps(steps), ctx.pc, strvars(d, vars))
     if len(path) > 0:
         (fctx, ctx, steps, states, vars) = path[-1]
-        if ctx.failure != None:
+        if ctx.failure is not None:
             print(">>>", ctx.failure)
 
 def optjump(code, pc):
@@ -290,7 +290,7 @@ p_ql  = Pad("#queue")
 
 # Have context ctx make one (macro) step in the given state
 def onestep(node, ctx, choice, interrupt, nodes, visited, todo):
-    assert ctx.failure == None, ctx.failure
+    assert ctx.failure is None, ctx.failure
 
     # Keep track of whether this is the same context as the parent context
     samectx = ctx == node.after
@@ -338,12 +338,12 @@ def onestep(node, ctx, choice, interrupt, nodes, visited, todo):
         # If the current instruction is a "choose" instruction,
         # make the specified choice
         if isinstance(sc.code[cc.pc], ChooseOp):
-            assert choice_copy != None
+            assert choice_copy is not None
             cc.stack[-1] = choice_copy
             cc.pc += 1
             choice_copy = None
         else:
-            assert choice_copy == None
+            assert choice_copy is None
             if type(sc.code[cc.pc]) in { LoadOp, StoreOp, AtomicIncOp }:
                 assert cc.phase != "end"
                 cc.phase = "middle"
@@ -354,7 +354,7 @@ def onestep(node, ctx, choice, interrupt, nodes, visited, todo):
                 sys.exit(1)
                 cc.failure = "Python assertion failed"
 
-        if cc.failure != None or cc.stopped:
+        if cc.failure is not None or cc.stopped:
             break
 
         # See if this process is making a nondeterministic choice.
@@ -409,7 +409,7 @@ def onestep(node, ctx, choice, interrupt, nodes, visited, todo):
 
     length = node.len if samectx else (node.len + 1)
     next = visited.get(sc)
-    if next == None:
+    if next is None:
         next = Node(sc, len(nodes), node, ctx, cc, steps, length)
         nodes.append(next)
         visited[sc] = next
@@ -428,7 +428,7 @@ def onestep(node, ctx, choice, interrupt, nodes, visited, todo):
         todo.insert(0, next)
     node.edges[choice if node.state.choosing else ctx] = (next, cc, steps)
     next.sources.add(node)
-    if cc.failure != None:
+    if cc.failure is not None:
         next.issues.add("Thread Failure")
 
 
@@ -508,7 +508,7 @@ def run(code, labels, blockflag):
         node = todo.popleft()
 
         # check the invariants
-        if len(node.issues) == 0 and node.state.choosing == None:
+        if len(node.issues) == 0 and node.state.choosing is None:
             for inv in node.state.invariants:
                 if not invcheck(node.state, inv):
                     (lexeme, file, line, column) = code[inv].token
@@ -525,7 +525,7 @@ def run(code, labels, blockflag):
         if node.len > maxdiameter:
             maxdiameter = node.len
 
-        if node.state.choosing != None:
+        if node.state.choosing is not None:
             ctx = node.state.choosing
             assert ctx in node.state.ctxbag, ctx
             choices = ctx.stack[-1]
@@ -536,7 +536,7 @@ def run(code, labels, blockflag):
         else:
             for (ctx, _) in node.state.ctxbag.items():
                 onestep(node, ctx, None, False, nodes, visited, todo)
-                if ctx.trap != None and not ctx.interruptLevel:
+                if ctx.trap is not None and not ctx.interruptLevel:
                     onestep(node, ctx, None, True, nodes, visited, todo)
 
     if not silent:
@@ -640,7 +640,7 @@ def run(code, labels, blockflag):
     return (nodes, n)
 
 def htmlstrsteps(steps):
-    if steps == None:
+    if steps is None:
         return "[]"
     result = ""
     i = 0
@@ -649,16 +649,16 @@ def htmlstrsteps(steps):
             result += " "
         (pc, choice) = steps[i]
         j = i + 1
-        if pc == None:
+        if pc is None:
             result += "Interrupt"
         else:
             result += "<a href='#P%d'>%d"%(pc, pc)
-        if choice != None:
+        if choice is not None:
             result += "</a>(choose %s)"%strValue(choice)
         else:
             while j < len(steps):
                 (pc2, choice2) = steps[j]
-                if pc == None or pc2 != pc + 1 or choice2 != None:
+                if pc is None or pc2 != pc + 1 or choice2 is not None:
                     break
                 (pc, choice) = (pc2, choice2)
                 j += 1
@@ -671,8 +671,8 @@ def htmlstrsteps(steps):
 def genpath(n):
     # Extract the path to node n
     path = []
-    while n != None:
-        if n.after == None:
+    while n is not None:
+        if n.after is None:
             break
         path = [n] + path
         n = n.parent
@@ -684,9 +684,9 @@ def genpath(n):
     laststates = []
     lastvars = DictValue({})
     for n in path:
-        if firstctx == None:
+        if firstctx is None:
             firstctx = n.before
-        if lastctx == None or lastctx == n.before:
+        if lastctx is None or lastctx == n.before:
             laststeps += n.steps
             lastctx = n.after
             laststates.append(n.uid)
@@ -735,11 +735,11 @@ def varhdr(d, name, nrows, f):
 def vardump_rec(d, vars, f):
     if isinstance(d, dict):
         for k in sorted(d.keys()):
-            if vars != None and k in vars.d:
+            if vars is not None and k in vars.d:
                 vardump_rec(d[k], vars.d[k], f)
             else:
                 vardump_rec(d[k], None, f)
-    elif vars == None:
+    elif vars is None:
         print("<td></td>", file=f)
     else:
         print("<td align='center'>%s</td>"%strValue(vars), file=f)
@@ -839,7 +839,7 @@ def htmlloc(code, scope, ctx, traceid, f):
         print("</td></tr>", file=f)
         row += 1
 
-    if ctx.failure != None:
+    if ctx.failure is not None:
         print("<tr style='color: red'><td>%s</td></tr>"%ctx.failure, file=f)
     print("</table>", file=f)
 
@@ -937,7 +937,7 @@ def htmlstate(f):
     print("<col style='width:80%'>", file=f)
 
     print("<tr><td>state id</td><td>%d</td></tr>"%n.uid, file=f)
-    # if s.failure != None:
+    # if s.failure is not None:
     #     print("<tr><td>status</td><td>failure</td></tr>", file=f)
     if s.initializing:
         print("<tr><td>status</td><td>initializing</td></tr>", file=f)
@@ -956,7 +956,7 @@ def htmlstate(f):
             print("<td><a href='javascript:show(%d)'>%d</td>"%(src.uid, src.uid), file=f)
         print("</tr></table></td></tr>", file=f)
 
-    if s.choosing != None:
+    if s.choosing is not None:
         print("<tr><td>choosing</td><td>%s</td></tr>"%s.choosing.nametag(), file=f)
 
     print("</table>", file=f)
@@ -972,7 +972,7 @@ def htmlnode(n, code, scope, f, verbose):
         height = htmlpath(n, "black", f)
         print("</td>", file=f)
 
-    # if n.state.failure != None:
+    # if n.state.failure is not None:
     #     print("<table border='1' style='color: red'><tr><td>Failure:</td>", file=f)
     #     print("<td>%s</td>"%n.state.failure, file=f)
     #     print("</tr></table>", file=f)
@@ -1003,11 +1003,11 @@ def htmlcode(code, scope, f):
     lastloc = None
     for pc in range(len(code)):
         print("<tr>", file=f)
-        if scope.locations.get(pc) != None:
+        if scope.locations.get(pc) is not None:
             (file, line) = scope.locations[pc]
             if (file, line) != lastloc:
                 lines = files.get(file)
-                if lines != None and line <= len(lines):
+                if lines is not None and line <= len(lines):
                     print("<th colspan='3' align='left' style='background-color: yellow'>%s:%d"%(html.escape(os.path.basename(file)), line),
                         html.escape(lines[line - 1]), "</th>", file=f)
                 else:
@@ -1068,7 +1068,7 @@ def dumpCode(printCode, code: Code, scope: Scope, f=sys.stdout):
         else:
             for pc, lop in enumerate(code.labeled_ops):
                 for label in lop.labels:
-                    if label.module == None:
+                    if label.module is None:
                         print('    "%s": %d,'%(label.label, pc), file=f)
                     else:
                         print('    "%s$%s": %d,'%(label.module, label.label, pc), file=f)
@@ -1085,9 +1085,9 @@ def dumpCode(printCode, code: Code, scope: Scope, f=sys.stdout):
         if printCode == "verbose":
             lop = code.labeled_ops[pc]
             file, line = code.curFile, code.curLine
-            if file != None and (file, line) != lastloc:
+            if file is not None and (file, line) != lastloc:
                 lines = files[file]
-                if lines != None and line <= len(lines):
+                if lines is not None and line <= len(lines):
                     print("%s:%d"%(file, line), lines[line - 1], file=f)
                 else:
                     print(file, ":", line, file=f)
@@ -1116,7 +1116,7 @@ def dumpCode(printCode, code: Code, scope: Scope, f=sys.stdout):
             (_, file, line, column) = lop.start
             (endlexeme, _, endline, endcolumn) = lop.stop
             endcolumn += len(endlexeme) - 1
-            if lop.stmt == None:
+            if lop.stmt is None:
                 line1 = line
                 column1 = column
                 line2 = endline
@@ -1142,7 +1142,7 @@ def dumpCode(printCode, code: Code, scope: Scope, f=sys.stdout):
                 column = column1
                 endline = line2
                 endcolumn = column2
-            if file != None:
+            if file is not None:
                 if firstTime:
                     firstTime = False
                     print(file=f)
@@ -1150,7 +1150,7 @@ def dumpCode(printCode, code: Code, scope: Scope, f=sys.stdout):
                     print(",", file=f)
                 if endlexeme in { "indent", "dedent" }:     # Hack...
                     endlexeme = endlexeme[0]
-                if lop.module == None:
+                if lop.module is None:
                     module = "__None__"
                 else:
                     module = lop.module
@@ -1165,7 +1165,7 @@ def dumpCode(printCode, code: Code, scope: Scope, f=sys.stdout):
                 (_, file, line, column) = lop.start
                 (endlexeme, _, endline, endcolumn) = lop.stop
                 endcolumn += len(endlexeme) - 1
-                if lop.stmt == None:
+                if lop.stmt is None:
                     line1 = line
                     column1 = column
                     line2 = endline
@@ -1189,7 +1189,7 @@ def dumpCode(printCode, code: Code, scope: Scope, f=sys.stdout):
                     column = column1
                     endline = line2
                     endcolumn = column2
-                if file != None:
+                if file is not None:
                     if firstTime:
                         firstTime = False
                         print(file=f)
@@ -1197,7 +1197,7 @@ def dumpCode(printCode, code: Code, scope: Scope, f=sys.stdout):
                         print(",", file=f)
                     if endlexeme in { "indent", "dedent" }:     # Hack...
                         endlexeme = endlexeme[0]
-                    if lop.module == None:
+                    if lop.module is None:
                         module = "__None__"
                     else:
                         module = lop.module

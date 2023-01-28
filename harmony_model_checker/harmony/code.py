@@ -35,7 +35,7 @@ class Code:
     def append(self, op, start, stop, labels=set(), stmt=None):
         assert len(start) == 4
         assert len(stop) == 4
-        assert self.curModule != None
+        assert self.curModule is not None
         self.labeled_ops.append(Labeled_Op(self.curModule, op, start, stop, stmt, labels | self.endlabels))
         self.endlabels = set()
 

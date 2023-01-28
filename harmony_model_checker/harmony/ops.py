@@ -1,10 +1,10 @@
 import math
-from typing import Optional
+from typing import Any, Optional
 from harmony_model_checker.harmony.value import *
 from harmony_model_checker.harmony.bag_util import *
 
 def _prefix_name(prefix, name):
-    if prefix == None:
+    if prefix is None:
         return name
     else:
         return prefix + '$' + name
@@ -117,25 +117,25 @@ class CutOp(Op):
         self.key = key
 
     def __repr__(self):
-        if self.key == None:
+        if self.key is None:
             return "Cut(" + self.convert(self.value) + ")"
         else:
             return "Cut(" + self.convert(self.key) + ", " + self.convert(self.value) + ")"
 
     def define(self):
-        if self.key == None:
+        if self.key is None:
             return self.lvars(self.value)
         else:
             return self.lvars(self.value) | self.lvars(self.key)
 
     def jdump(self):
-        if self.key == None:
+        if self.key is None:
             return '{ "op": "Cut", "value": "%s" }'%(self.convert(self.value))
         else:
             return '{ "op": "Cut", "key": "%s", "value": "%s" }'%(self.convert(self.key), self.convert(self.value))
 
     def tladump(self):
-        if self.key == None:
+        if self.key is None:
             return 'OpCut(self, %s)'%(self.tlaconvert(self.value))
         else:
             return 'OpCut2(self, %s, %s)'%(
@@ -143,7 +143,7 @@ class CutOp(Op):
 
     def explain(self):
         suffix = "; push False or True depending on success"
-        if self.key == None:
+        if self.key is None:
             return "get next element and assign to %s"%(self.convert(self.value)) + suffix
         else:
             return "get next element and assign to %s:%s"%(self.convert(self.key), self.convert(self.value)) + suffix
@@ -304,13 +304,13 @@ class ApplyOp(Op):
 
 class LoadVarOp(Op):
     def __init__(self, v, lvar=None, reason=None):
-        assert v != None        # TODO.  LoadVarOp(None) is obsolete
+        assert v is not None        # TODO.  LoadVarOp(None) is obsolete
         self.v = v
-        self.lvar = lvar        # name of local var if v == None
+        self.lvar = lvar        # name of local var if v is None
         self.reason = reason
 
     def __repr__(self):
-        if self.v == None:
+        if self.v is None:
             return "LoadVar [%s]"%self.lvar
         else:
             return "LoadVar " + self.convert(self.v)
@@ -319,34 +319,34 @@ class LoadVarOp(Op):
         return set()
 
     def use(self):
-        if self.v == None:
+        if self.v is None:
             return { self.lvar }
         return self.lvars(self.v)
 
     def jdump(self):
-        if self.v == None:
+        if self.v is None:
             return '{ "op": "LoadVar" }'
         else:
             return '{ "op": "LoadVar", "value": "%s" }'%self.convert(self.v)
 
     def tladump(self):
-        if self.v == None:
+        if self.v is None:
             return 'OpLoadVarInd(self)'
         else:
             return 'OpLoadVar(self, %s)'%self.tlaconvert(self.v)
 
     def explain(self):
-        if self.reason == None:
+        if self.reason is None:
             prefix = ""
         else:
             prefix = self.reason + ": "
-        if self.v == None:
+        if self.v is None:
             return prefix + "pop the address of a method variable and push the value of that variable"
         else:
             return prefix + "push the value of " + self.convert(self.v)
 
     def eval(self, state, context):
-        if self.v == None:
+        if self.v is None:
             av = context.pop()
             assert isinstance(av, AddressValue)
             context.push(context.iget(av.indexes))
@@ -355,7 +355,7 @@ class LoadVarOp(Op):
         context.pc += 1
 
 class PushOp(Op):
-    def __init__(self, constant: Tuple[str, Optional[str], Optional[int], Optional[int]], reason: Optional[str] =None):
+    def __init__(self, constant: Tuple[Any, Optional[str], Optional[int], Optional[int]], reason: Optional[str] =None):
         self.constant = constant
         self.reason = reason
 
@@ -393,34 +393,34 @@ class LoadOp(Op):
         self.prefix = prefix
 
     def __repr__(self):
-        if self.name == None:
+        if self.name is None:
             return "Load"
         else:
             (lexeme, file, line, column) = self.name
             return "Load " + _prefix_name(self.prefix, lexeme)
 
     def jdump(self):
-        if self.name == None:
+        if self.name is None:
             return '{ "op": "Load" }'
         else:
             (lexeme, file, line, column) = self.name
             return '{ "op": "Load", "value": [{ "type": "atom", "value": "%s"}] }'%_prefix_name(self.prefix, lexeme)
 
     def tladump(self):
-        if self.name == None:
+        if self.name is None:
             return "OpLoadInd(self)"
         else:
             (lexeme, file, line, column) = self.name
             return 'OpLoad(self, HStr("%s"))'%_prefix_name(self.prefix, lexeme)
 
     def explain(self):
-        if self.name == None:
+        if self.name is None:
             return "pop an address and push the value at the address"
         else:
             return "push value of shared variable " + self.name[0]
 
     def eval(self, state, context):
-        if self.name == None:
+        if self.name is None:
             av = context.pop()
             if not isinstance(av, AddressValue):
                 context.failure = "Error: not an address " + \
@@ -444,28 +444,28 @@ class StoreOp(Op):
         assert not isinstance(prefix, list)
 
     def __repr__(self):
-        if self.name == None:
+        if self.name is None:
             return "Store"
         else:
             (lexeme, file, line, column) = self.name
             return "Store " + _prefix_name(self.prefix, lexeme)
 
     def jdump(self):
-        if self.name == None:
+        if self.name is None:
             return '{ "op": "Store" }'
         else:
             (lexeme, file, line, column) = self.name
             return '{ "op": "Store", "value": [{ "type": "atom", "value": "%s"}] }'%_prefix_name(self.prefix, lexeme)
 
     def tladump(self):
-        if self.name == None:
+        if self.name is None:
             return "OpStoreInd(self)"
         else:
             (lexeme, file, line, column) = self.name
             return 'OpStore(self, <<HStr("%s")>>)'%_prefix_name(self.prefix, lexeme)
 
     def explain(self):
-        if self.name == None:
+        if self.name is None:
             return "pop a value and an address and store the value at the address"
         else:
             return "pop a value and store it in shared variable " + self.name[0]
@@ -475,7 +475,7 @@ class StoreOp(Op):
             context.failure = "Error: no update allowed in assert " + str(self.token)
             return
         v = context.pop()
-        if self.name == None:
+        if self.name is None:
             av = context.pop()
             if not isinstance(av, AddressValue):
                 context.failure = "Error: not an address " + \
@@ -508,34 +508,34 @@ class DelOp(Op):
         self.prefix = prefix
 
     def __repr__(self):
-        if self.name != None:
+        if self.name is not None:
             (lexeme, file, line, column) = self.name
             return "Del " + _prefix_name(self.prefix, lexeme)
         else:
             return "Del"
 
     def jdump(self):
-        if self.name == None:
+        if self.name is None:
             return '{ "op": "Del" }'
         else:
             (lexeme, file, line, column) = self.name
             return '{ "op": "Del", "value": [{ "type": "atom", "value": "%s"}] }'%_prefix_name(self.prefix, lexeme)
 
     def tladump(self):
-        if self.name == None:
+        if self.name is None:
             return "OpDelInd(self)"
         else:
             (lexeme, file, line, column) = self.name
             return 'OpDel(self, <<"%s">>)'%_prefix_name(self.prefix, lexeme)
 
     def explain(self):
-        if self.name == None:
+        if self.name is None:
             return "pop an address and delete the shared variable at the address"
         else:
             return "delete the shared variable " + self.name[0]
 
     def eval(self, state, context):
-        if self.name == None:
+        if self.name is None:
             av = context.pop()
             if not isinstance(av, AddressValue):
                 context.failure = "Error: not an address " + \
@@ -576,34 +576,34 @@ class StopOp(Op):
         self.name = name
 
     def __repr__(self):
-        if self.name != None:
+        if self.name is not None:
             (lexeme, file, line, column) = self.name
             return "Stop " + lexeme
         else:
             return "Stop"
 
     def jdump(self):
-        if self.name != None:
+        if self.name is not None:
             (lexeme, file, line, column) = self.name
             return '{ "op": "Stop", "value": %s }'%lexeme
         else:
             return '{ "op": "Stop" }'
 
     def tladump(self):
-        if self.name == None:
+        if self.name is None:
             return "OpStopInd(self)"
         else:
             (lexeme, file, line, column) = self.name
             return "OpStop(self, %s)"%lexeme
 
     def explain(self):
-        if self.name == None:
+        if self.name is None:
             return "pop an address and store context at that address"
         else:
             return "store context at " + self.name[0]
 
     def eval(self, state, context):
-        if self.name == None:
+        if self.name is None:
             av = context.pop()
             if not isinstance(av, AddressValue):
                 context.failure = "Error: not an address " + \
@@ -686,54 +686,54 @@ class ContinueOp(Op):
 class StoreVarOp(Op):
     def __init__(self, v, lvar=None, reason=None):
         self.v = v
-        self.lvar = lvar        # name of local var if v == None
+        self.lvar = lvar        # name of local var if v is None
         self.reason = reason
 
     def __repr__(self):
-        if self.v == None:
+        if self.v is None:
             return "StoreVar [%s]"%self.lvar
         else:
             return "StoreVar " + self.convert(self.v)
 
     # In case of StoreVar(x[?]), x does not get defined, only used
     def define(self):
-        if self.v == None:
+        if self.v is None:
             return set()
         return self.lvars(self.v)
 
-    # if v == None, only part of self.lvar is updated--the rest is used
+    # if v is None, only part of self.lvar is updated--the rest is used
     def use(self):
-        if self.v == None:
+        if self.v is None:
             return { self.lvar }
         return set()
 
     def jdump(self):
-        if self.v == None:
+        if self.v is None:
             return '{ "op": "StoreVar" }'
         else:
             return '{ "op": "StoreVar", "value": "%s" }'%self.convert(self.v)
 
     def tladump(self):
-        if self.v == None:
+        if self.v is None:
             return 'OpStoreVarInd(self)'
         else:
             return 'OpStoreVar(self, %s)'%self.tlaconvert(self.v)
 
     def explain(self):
-        if self.reason == None:
+        if self.reason is None:
             prefix = ""
         else:
             prefix = self.reason + ": "
-        if self.v == None:
+        if self.v is None:
             return prefix + "pop a value and the address of a method variable and store the value at that address"
         else:
             return prefix + "pop a value and store in " + self.convert(self.v)
 
     # TODO.  Check error message.  Doesn't seem right
     def eval(self, state, context):
-        if self.v == None:
+        if self.v is None:
             value = context.pop()
-            av = context.pop();
+            av = context.pop()
             assert isinstance(av, AddressValue)
             try:
                 context.set(av.indexes, value)
@@ -753,45 +753,45 @@ class DelVarOp(Op):
         self.lvar = lvar
 
     def __repr__(self):
-        if self.v == None:
+        if self.v is None:
             return "DelVar [%s]"%self.lvar
         else:
             (lexeme, file, line, column) = self.v
             return "DelVar " + str(lexeme)
 
-    # if v == None, self.lvar is used but not defined
+    # if v is None, self.lvar is used but not defined
     def define(self):
-        if self.v == None:
+        if self.v is None:
             return set()
         return self.lvars(self.v)
 
-    # if v == None, only part of self.lvar is deleted--the rest is used
+    # if v is None, only part of self.lvar is deleted--the rest is used
     def use(self):
-        if self.v == None:
+        if self.v is None:
             return { self.lvar }
         return set()
 
     def jdump(self):
-        if self.v == None:
+        if self.v is None:
             return '{ "op": "DelVar" }'
         else:
             return '{ "op": "DelVar", "value": "%s" }'%self.convert(self.v)
 
     def tladump(self):
-        if self.v == None:
+        if self.v is None:
             return 'OpDelVarInd(self)'
         else:
             return 'OpDelVar(self, %s)'%self.tlaconvert(self.v)
 
     def explain(self):
-        if self.v == None:
+        if self.v is None:
             return "pop an address of a method variable and delete that variable"
         else:
             return "delete method variable " + self.v[0]
 
     def eval(self, state, context):
-        if self.v == None:
-            av = context.pop();
+        if self.v is None:
+            av = context.pop()
             assert isinstance(av, AddressValue)
             context.delete(av.indexes)
         else:
@@ -961,37 +961,37 @@ class ReturnOp(Op):
         self.default = default      # may be None
 
     def __repr__(self):
-        if self.result == None:
+        if self.result is None:
             return "ReturnOp()"
         (lexeme, file, line, column) = self.result
-        if self.default == None:
+        if self.default is None:
             return "ReturnOp(%s)"%lexeme
         return "ReturnOp(%s. %s)"%(lexeme, strValue(self.default))
 
     def jdump(self):
-        if self.result == None:
+        if self.result is None:
             return '{ "op": "Return" }'
         (lexeme, file, line, column) = self.result
-        if self.default == None:
+        if self.default is None:
             return '{ "op": "Return", "result": "%s" }'%lexeme
         return '{ "op": "Return", "result": "%s", "default": %s }'%(lexeme, jsonValue(self.default))
 
     def tladump(self):
-        if self.result == None:
+        if self.result is None:
             return 'OpReturn(self)'
         (lexeme, file, line, column) = self.result
-        if self.default == None:
+        if self.default is None:
             return 'OpReturnVar(self, "%s")'%lexeme
         return 'OpReturnVarDefault(self, "%s", %s)'%(lexeme, tlaValue(self.default))
 
     def use(self):
-        if self.result == None:
+        if self.result is None:
             return set()
         (lexeme, file, line, column) = self.result
         return { lexeme }
 
     def explain(self):
-        if self.result == None:
+        if self.result is None:
             return "restore caller method state"
         (lexeme, file, line, column) = self.result
         return "restore caller method state and push %s"%lexeme
@@ -1222,7 +1222,7 @@ class JumpOp(Op):
         return 'OpJump(self, %d)'%self.pc
 
     def explain(self):
-        prefix = "" if self.reason == None else (self.reason + ": ")
+        prefix = "" if self.reason is None else (self.reason + ": ")
         return prefix + "set program counter to " + str(self.pc)
 
     def eval(self, state, context):
@@ -1250,7 +1250,7 @@ class JumpCondOp(Op):
         return 'OpJumpCond(self, %d, %s)'%(self.pc, tlaValue(self.cond))
 
     def explain(self):
-        if self.reason == None:
+        if self.reason is None:
             prefix = ""
         else:
             prefix = self.reason + ": "
@@ -1378,7 +1378,7 @@ class NaryOp(Op):
             if ctx.pc == pc:
                 nametag = DictValue({ 0: PcValue(ctx.entry), 1: ctx.arg })
                 c = bag.get(nametag)
-                bag[nametag] = cnt if c == None else (c + cnt)
+                bag[nametag] = cnt if c is None else (c + cnt)
         return DictValue(bag)
 
     def countLabel(self, state, pc):

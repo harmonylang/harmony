@@ -114,7 +114,7 @@ class LabelValue(Value):
         self.label = label
 
     def __repr__(self):
-        if self.module == None:
+        if self.module is None:
             return "LABEL(" + str(self.id) + ", " + self.label + ")"
         else:
             return "LABEL(" + self.module + ":" + self.label + ")"
@@ -322,7 +322,7 @@ class AddressValue(Value):
         return result
 
     def __repr__(self):
-        if self.func == None:
+        if self.func is None:
             assert self.args == []
             return "None"
         # assert self.args != []
@@ -337,13 +337,13 @@ class AddressValue(Value):
         return result
 
     def tlaval(self):
-        if self.func == None:
+        if self.func is None:
             return "None"
         s = "<<" + ",".join(tlaValue(x) for x in self.args) + ">>"
         return 'Address(%s, %s)'%(tlaValue(self.func), s)
 
     def jdump(self):
-        if self.func == None:
+        if self.func is None:
             return '{ "type": "address" }'
         result = ""
         for index in self.args:
@@ -494,7 +494,7 @@ class ContextValue(Value):
         self.vars = self.doDelete(self.vars, indexes)
 
     def push(self, val):
-        assert val != None
+        assert val is not None
         self.stack.append(val)
 
     def pop(self):

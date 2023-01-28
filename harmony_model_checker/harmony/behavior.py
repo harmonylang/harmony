@@ -228,12 +228,12 @@ def eps_closure(states, transitions, current):
     return frozenset(x)
 
 def behavior_parse(js, minify, outputfiles, behavior):
-    if outputfiles["hfa"] == None and outputfiles["png"] == None and outputfiles["gv"] == None and behavior == None:
+    if outputfiles["hfa"] is None and outputfiles["png"] is None and outputfiles["gv"] is None and behavior is None:
         return
-    minify = outputfiles["png"] != None or outputfiles["gv"] != None
+    minify = outputfiles["png"] is not None or outputfiles["gv"] is not None
 
     states = set()
-    initial_state = None;
+    initial_state = None
     final_states = set()
     transitions = {}
     labels = {}
@@ -242,13 +242,13 @@ def behavior_parse(js, minify, outputfiles, behavior):
         idx = str(s["idx"])
         transitions[idx] = {}
         if s["type"] == "initial":
-            assert initial_state == None
-            initial_state = idx;
+            assert initial_state is None
+            initial_state = idx
             val = "__init__"
         elif s["type"] == "terminal":
             final_states.add(idx)
         states.add(idx)
-    assert initial_state != None
+    assert initial_state is not None
     if len(final_states) == 0:
         final_states = { initial_state }
 
@@ -341,7 +341,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
         print("conversion done")
     dfa_error_states = find_error_states(dfa_transitions, dfa_final_states)
 
-    if outputfiles["hfa"] != None:
+    if outputfiles["hfa"] is not None:
         with open(outputfiles["hfa"], "w", encoding='utf-8') as fd:
             names = {}
             for (idx, s) in enumerate(dfa_states):
@@ -405,7 +405,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
 
             print("}", file=fd)
 
-    if outputfiles["gv"] != None:
+    if outputfiles["gv"] is not None:
         with open(outputfiles["gv"], "w", encoding='utf-8') as fd:
             names = {}
             for (idx, s) in enumerate(dfa_states):
@@ -432,18 +432,18 @@ def behavior_parse(js, minify, outputfiles, behavior):
                         print("  s%s -> s%s [label=%s]"%(names[src], names[dst], json.dumps(input, ensure_ascii=False)), file=fd)
             print("}", file=fd)
 
-    if outputfiles["png"] != None:
+    if outputfiles["png"] is not None:
         if got_pydot and got_automata:
             behavior_show_diagram(dfa, path=outputfiles["png"])
         else:
-            assert outputfiles["gv"] != None
+            assert outputfiles["gv"] is not None
             try:
                 subprocess.run(["dot", "-Tpng", "-o", outputfiles["png"],
                                 outputfiles["gv"] ])
             except FileNotFoundError:
                 print("install graphviz (www.graphviz.org) to see output DFAs")
 
-    if behavior != None:
+    if behavior is not None:
         if got_automata:
             read_hfa(behavior, dfa, nfa)
         else:
