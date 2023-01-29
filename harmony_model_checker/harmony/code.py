@@ -1,3 +1,4 @@
+from typing import Set
 from harmony_model_checker.harmony.ops import *
 
 class Labeled_Op:
@@ -8,8 +9,8 @@ class Labeled_Op:
         self.stop = stop        # last token
         self.stmt = stmt
         self.labels = labels
-        self.live_in = set()
-        self.live_out = set()
+        self.live_in: Set[str] = set()
+        self.live_out: Set[str] = set()
 
 class Code:
     def __init__(self, parent=None):
@@ -41,9 +42,6 @@ class Code:
 
     def nextLabel(self, endlabel):
         self.endlabels.add(endlabel)
-
-    def delete(self, var):
-        assert False        # TODO: I think this code is obsolete
 
     # This method inserts DelVar operations as soon as a variable is no
     # longer live

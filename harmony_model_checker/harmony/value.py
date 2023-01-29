@@ -183,7 +183,7 @@ class ListValue(Value):
         return ListValue([ substValue(v, map) for v in self.vals ])
 
 class DictValue(Value):
-    def __init__(self, d):
+    def __init__(self, d: dict):
         self.d = d
 
     def __repr__(self):
@@ -321,6 +321,9 @@ class AddressValue(Value):
             result += "[" + strValue(index) + "]"
         return result
 
+    def indexes(self):
+        return [self.func] + self.args
+
     def __repr__(self):
         if self.func is None:
             assert self.args == []
@@ -451,7 +454,7 @@ class ContextValue(Value):
         c.failure = self.failure
         return c
 
-    def get(self, var):
+    def get(self, var: str):
         return self.this if var == "this" else self.vars.d[var]
 
     def iget(self, indexes):

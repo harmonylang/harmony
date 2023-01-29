@@ -3,7 +3,7 @@ import json
 from typing import Dict, Optional
 from automata.fa.dfa import DFA # type: ignore
 
-from harmony_model_checker.iface import Transitions
+from harmony_model_checker.iface import Transitions_t
 
 def parse(file):
     with open(file, encoding='utf-8') as f:

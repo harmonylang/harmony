@@ -4,7 +4,7 @@ import json
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from harmony_model_checker.harmony.jsonstring import json_string
-from harmony_model_checker.iface import Transitions
+from harmony_model_checker.iface import Transitions_t
 
 try:
     import pydot  # type: ignore
@@ -213,7 +213,7 @@ def behavior_show_diagram(dfa: DFA, path=None):
             print("install graphviz (www.graphviz.org) to see output DFAs")
     return graph
 
-def eps_closure_rec(states: Set[str], transitions: Transitions, current: str, output: Set[str]):
+def eps_closure_rec(states: Set[str], transitions: Transitions_t, current: str, output: Set[str]):
     if current in output:
         return
     output.add(current)
@@ -222,7 +222,7 @@ def eps_closure_rec(states: Set[str], transitions: Transitions, current: str, ou
         for s in t['']:
             eps_closure_rec(states, transitions, s, output)
 
-def eps_closure(states: Set[str], transitions: Transitions, current: str):
+def eps_closure(states: Set[str], transitions: Transitions_t, current: str):
     x: Set[str] = set()
     eps_closure_rec(states, transitions, current, x)
     return frozenset(x)
@@ -235,7 +235,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
     states: Set[str] = set()
     initial_state = None
     final_states = set()
-    transitions: Transitions = {}
+    transitions: Transitions_t = {}
     labels = {}
 
     for s in js["nodes"]:

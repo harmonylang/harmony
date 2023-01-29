@@ -1,5 +1,5 @@
 import math
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Set, Union
 from harmony_model_checker.harmony.state import State
 from harmony_model_checker.harmony.value import *
 from harmony_model_checker.harmony.bag_util import *
@@ -29,10 +29,10 @@ class Op:
     def eval(self, state: State, context: ContextValue):
         ...
 
-    def sametype(x, y):
+    def sametype(x: Any, y: Any) -> bool:
         return type(x) == type(y)
 
-    def convert(self, x):
+    def convert(self, x) -> str:
         if isinstance(x, tuple):
             return x[0]
         else:
@@ -55,7 +55,7 @@ class Op:
 
     # Return the set of local variables in x
     # TODO.  Use reduce()
-    def lvars(self, x):
+    def lvars(self, x) -> Set[str]:
         if isinstance(x, tuple):
             return { x[0] }
         else:
@@ -65,7 +65,7 @@ class Op:
                 result |= self.lvars(v)
             return result
 
-    def store(self, context: ContextValue, var, val):
+    def store(self, context: ContextValue, var: Union[tuple, list], val: DictValue):
         if isinstance(var, tuple):
             (lexeme, file, line, column) = var
             context.set([lexeme], val)
@@ -81,7 +81,7 @@ class Op:
                 for i in range(len(var)):
                     self.store(context, var[i], val.d[i])
 
-    def load(self, context, var):
+    def load(self, context: ContextValue, var: Union[tuple, list]):
         if isinstance(var, tuple):
             (lexeme, file, line, column) = var
             return context.get(lexeme)
@@ -333,10 +333,7 @@ class LoadVarOp(Op):
             prefix = ""
         else:
             prefix = self.reason + ": "
-        if self.v is None:
-            return prefix + "pop the address of a method variable and push the value of that variable"
-        else:
-            return prefix + "push the value of " + self.convert(self.v)
+        return prefix + "push the value of " + self.convert(self.v)
 
     def eval(self, state, context):
         context.push(self.load(context, self.v))
@@ -414,7 +411,7 @@ class LoadOp(Op):
                 context.failure = "Error: not an address " + \
                                     str(self.token) + " -> " + str(av)
                 return
-            context.push(state.iget(av.indexes))
+            context.push(state.iget(av.indexes()))
         else:
             (lexeme, file, line, column) = self.name
             # TODO
@@ -469,7 +466,7 @@ class StoreOp(Op):
                 context.failure = "Error: not an address " + \
                                     str(self.token) + " -> " + str(av)
                 return
-            lv = av.indexes
+            lv = av.indexes()
             if len(lv) == 0:
                 context.failure = "Error: bad address " + str(self.token)
                 return
@@ -529,7 +526,7 @@ class DelOp(Op):
                 context.failure = "Error: not an address " + \
                                     str(self.name) + " -> " + str(av)
                 return
-            lv = av.indexes
+            lv = av.indexes()
             name = lv[0]
         else:
             (lexeme, file, line, column) = self.name
@@ -597,7 +594,7 @@ class StopOp(Op):
                 context.failure = "Error: not an address " + \
                                     str(self.name) + " -> " + str(av)
                 return
-            lv = av.indexes
+            lv = av.indexes()
             name = lv[0]
         else:
             (lexeme, file, line, column) = self.name
@@ -724,10 +721,10 @@ class StoreVarOp(Op):
             av = context.pop()
             assert isinstance(av, AddressValue)
             try:
-                context.set(av.indexes, value)
+                context.set(av.indexes(), value)
                 context.pc += 1
             except AttributeError:
-                context.failure = "Error: " + str(av.indexes) + " not a dictionary"
+                context.failure = "Error: " + str(av.indexes()) + " not a dictionary"
         else:
             try:
                 self.store(context, self.v, context.pop())
@@ -781,7 +778,7 @@ class DelVarOp(Op):
         if self.v is None:
             av = context.pop()
             assert isinstance(av, AddressValue)
-            context.delete(av.indexes)
+            context.delete(av.indexes())
         else:
             (lexeme, file, line, column) = self.v
             context.delete([lexeme])
@@ -939,7 +936,7 @@ class FrameOp(Op):
         context.push(context.vars)
         context.push(context.fp)
         context.fp = len(context.stack) # points to old fp, old vars, and return address
-        context.vars = DictValue({ "result": AddressValue([]) })
+        context.vars = DictValue({ "result": AddressValue(None, []) })
         self.store(context, self.args, arg)
         context.pc += 1
 

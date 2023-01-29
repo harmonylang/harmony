@@ -5,8 +5,7 @@ from typing import Dict, Optional, Set
 from automata.fa.nfa import NFA # type: ignore
 from automata.fa.dfa import DFA # type: ignore
 
-# Helper type aliases
-Transitions = Dict[str, Dict[str, Set[str]]]
+Transitions_t = Dict[str, Dict[str, Set[str]]]
 
 def dfadump(dfa):
     rename = {}
@@ -48,7 +47,7 @@ def dechoose(states, transitions, choose_states):
         del transitions[k]
 
 # Get rid of stutter transitions
-def destutter(states: Dict[str, str], transitions: Transitions):
+def destutter(states: Dict[str, str], transitions: Transitions_t):
     print("destutter", len(states), file=sys.stderr)
 
     # figure out for each state what other states point to it
@@ -105,7 +104,7 @@ def parse(js, outfmt, minify):
     final_states: Set[str] = set()
     choose_states: Set[str] = set()
     input_symbols = { "__term__" }
-    transitions: Transitions = {}
+    transitions: Transitions_t = {}
 
     for s in js["nodes"]:
         idx = str(s["idx"])

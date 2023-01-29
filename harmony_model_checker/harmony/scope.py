@@ -1,13 +1,15 @@
+from typing import Optional
+
 class Scope:
-    def __init__(self, parent):
+    def __init__(self, parent: Optional['Scope']):
         self.parent = parent               # parent scope
         self.names = { "this": ("local-var", ("this", "NOFILE", 0, 0)) }   # name to (type, x) map
-        self.labels = {} if parent is None else parent.labels
-        self.prefix = None if parent is None else parent.prefix
+        self.labels: dict = {} if parent is None else parent.labels
+        self.prefix: Optional[str] = None if parent is None else parent.prefix
         self.inherit = False
-        self.pmap = {}      # hack for pretty-printing
-        self.file = "__nofile__"        # file name
-        self.uses_pre = False           # for invariant optimization
+        self.pmap: dict = {}                  # hack for pretty-printing
+        self.file = "__nofile__"              # file name
+        self.uses_pre = False                 # for invariant optimization
 
     def copy(self):
         c = Scope(self.parent)
@@ -47,7 +49,7 @@ class Scope:
     # This is a hack to create a map of identifiers to types for
     # pretty printing.
     # TODO: come up with a better solution
-    def pset(self, lexeme, tv):
+    def pset(self, lexeme: str, tv):
         self.pmap[lexeme] = tv
         if self.parent is not None:
             self.parent.pset(lexeme, tv)

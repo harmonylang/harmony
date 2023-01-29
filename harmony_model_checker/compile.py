@@ -14,7 +14,7 @@ from harmony_model_checker.parser.HarmonyLexer import HarmonyLexer
 
 import os
 
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 def _build_input_stream(**kwargs) -> InputStream:
     try:
@@ -118,7 +118,7 @@ def _load_file(filename: str, scope: Scope, code: Code, init: bool):
     legacy_harmony.namestack.pop()
 
 
-def _do_import(scope: Scope, code: Code, module):
+def _do_import(scope: Scope, code: Code, module: Tuple[str, Optional[str], Optional[int], Optional[int]]):
     (lexeme, file, line, column) = module
     code.modpush(lexeme)
     # assert lexeme not in scope.names        # TODO

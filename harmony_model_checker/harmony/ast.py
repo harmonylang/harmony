@@ -11,11 +11,13 @@ imported: Dict[str, Scope] = {}           # imported modules
 constants: Dict[str, str] = {}          # constants modified with -c
 used_constants = set()  # constants modified and used
 
+Token_t = Tuple[str, str, int, int]
+
 def getImported():
     return imported
 
 class AST:
-    def __init__(self, endtoken: Tuple[Any, str, int, int], token: Tuple[Any, str, int, int], atomically):
+    def __init__(self, endtoken: Token_t, token: Token_t, atomically):
         # Check that token is of the form (lexeme, file, line, column)
         assert isinstance(token, tuple), token
         assert len(token) == 4, token
@@ -45,7 +47,7 @@ class AST:
         return (line1, column1, line2, column2 + len(lexeme2) - 1)
 
     # a new local constant or tree of constants
-    def define(self, scope, const):
+    def define(self, scope: Scope, const):
         if isinstance(const, tuple):
             scope.checkUnused(const)
             (lexeme, file, line, column) = const
@@ -56,7 +58,7 @@ class AST:
                 self.define(scope, c)
 
     # a new local variable or tree of variables
-    def assign(self, scope, var):
+    def assign(self, scope: Scope, var):
         if isinstance(var, tuple):
             scope.checkUnused(var)
             (lexeme, file, line, column) = var
@@ -66,13 +68,10 @@ class AST:
             for v in var:
                 self.assign(scope, v)
 
-    def delete(self, scope, code, var):
-        assert False  # TODO: I think this is obsolete
-
     def isConstant(self, scope):
         return False
 
-    def eval(self, scope, code):
+    def eval(self, scope: Scope, code: Code):
         state = State(code, scope.labels)
         ctx = ContextValue(("__eval__", None, None, None), 0, emptytuple, emptydict)
         ctx.atomic = 1
@@ -88,7 +87,7 @@ class AST:
             )
         return ctx.pop()
 
-    def compile(self, scope, code, stmt):
+    def compile(self, scope: Scope, code: Code, stmt):
         if self.isConstant(scope):
             code2 = Code(code)
             code2.modpush(code.curModule)
@@ -101,7 +100,7 @@ class AST:
             self.gencode(scope, code, stmt)
 
     # Return local var name if local access
-    def localVar(self, scope):
+    def localVar(self, scope: Scope):
         lexeme, file, line, column = self.token
         raise HarmonyCompilerError(
             lexeme=lexeme,
@@ -112,7 +111,7 @@ class AST:
         )
 
     # This is supposed to push the address of an lvalue
-    def ph1(self, scope, code, stmt):
+    def ph1(self, scope: Scope, code: Code, stmt):
         lexeme, file, line, column = self.token
         # assert False, str(self)
         raise HarmonyCompilerError(
@@ -124,7 +123,7 @@ class AST:
         )
 
     # This is supposed to push the address of an lvalue
-    def address(self, scope, code, stmt):
+    def address(self, scope: Scope, code: Code, stmt):
         lexeme, file, line, column = self.token
         assert False, str(self)
         raise HarmonyCompilerError(
@@ -167,6 +166,7 @@ class ComprehensionAST(AST):
                 code.append(LoadVarOp(accu, reason="load accumulator"), self.token, self.endtoken, stmt=stmt)
             (_, file, line, column) = self.token
             if ctype == "dict":
+                assert isinstance(self, DictComprehensionAST)
                 self.key.compile(scope, code, stmt)
             self.value.compile(scope, code, stmt)
             if ctype == "set":
