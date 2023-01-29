@@ -1,7 +1,7 @@
 from harmony_model_checker.harmony.ops import *
 
 class Labeled_Op:
-    def __init__(self, module, op: Op, start, stop, stmt, labels):
+    def __init__(self, module: Optional[str], op: Op, start, stop, stmt, labels):
         self.module = module    # module
         self.op = op            # operation
         self.start = start      # first token

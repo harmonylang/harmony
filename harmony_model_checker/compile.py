@@ -1,14 +1,16 @@
 from antlr4 import InputStream, FileStream, CommonTokenStream # type: ignore
 
 from harmony_model_checker.exception import HarmonyCompilerError, HarmonyCompilerErrorCollection
+from harmony_model_checker.harmony.ast import AST, BlockAST
 
 import harmony_model_checker.harmony.harmony as legacy_harmony
-from harmony_model_checker.harmony.harmony import Scope, Code, State, BlockAST, AST
+from harmony_model_checker.harmony.harmony import Scope, Code, State
+from harmony_model_checker.harmony.ops import FrameOp, ReturnOp
+from harmony_model_checker.harmony.value import AddressValue, ContextValue
 from harmony_model_checker.parser.antlr_rule_visitor import HarmonyVisitorImpl
 from harmony_model_checker.parser.HarmonyParser import HarmonyParser
 from harmony_model_checker.parser.HarmonyErrorListener import HarmonyLexerErrorListener, HarmonyParserErrorListener
 from harmony_model_checker.parser.HarmonyLexer import HarmonyLexer
-from harmony_model_checker.harmony.ops import *
 
 import os
 

@@ -34,21 +34,16 @@
 
 import sys
 import json
-from typing import Set
+from typing import Any, Dict, List, Set, Tuple
 
-from harmony_model_checker.harmony.tex import *
-from harmony_model_checker.harmony.jsonstring import *
-from harmony_model_checker.harmony.brief import *
-from harmony_model_checker.harmony.genhtml import *
-from harmony_model_checker.harmony.behavior import *
-from harmony_model_checker.harmony.value import *
-from harmony_model_checker.harmony.ast import *
-from harmony_model_checker.harmony.code import *
-from harmony_model_checker.harmony.scope import *
-from harmony_model_checker.harmony.state import *
-from harmony_model_checker.harmony.ops import *
-from harmony_model_checker.harmony.bag_util import *
 from harmony_model_checker import __version__
+from harmony_model_checker.harmony.ast import *
+from harmony_model_checker.harmony.code import Code
+from harmony_model_checker.harmony.ops import JumpCondOp, JumpOp
+from harmony_model_checker.harmony.state import State
+from harmony_model_checker.harmony.scope import Scope
+from harmony_model_checker.harmony.tex import tex_main
+from harmony_model_checker.harmony.value import ContextValue
 
 
 # TODO.  These should not be global ideally
@@ -173,7 +168,7 @@ def dumpCode(printCode, code: Code, scope: Scope, f=sys.stdout):
             print('    "%s": "%d",'%(k, v), file=f)
         print('    "__end__": %d'%len(code.labeled_ops), file=f)
         print('  },', file=f)
-        print('  "modules": {', file=f);
+        print('  "modules": {', file=f)
         imported = getImported()
         for m, s in imported.items():
             dumpModule(m, s, f, False)
@@ -235,7 +230,7 @@ def dumpCode(printCode, code: Code, scope: Scope, f=sys.stdout):
                 endline = line1
                 endcolumn = column1
             assert line <= endline
-            assert (line < endline) or (column <= endcolumn), (module, line, endline, column, endcolumn, lop.start, lop.stop, lop.stmt)
+            assert (line < endline) or (column <= endcolumn), (lop.module, line, endline, column, endcolumn, lop.start, lop.stop, lop.stmt)
             if False:        # TODO: debugging
                 line = line1
                 column = column1

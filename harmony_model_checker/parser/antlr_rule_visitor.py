@@ -3,7 +3,7 @@ from antlr4.Token import CommonToken  # type: ignore
 
 from harmony_model_checker.parser.HarmonyVisitor import HarmonyVisitor
 from harmony_model_checker.parser.HarmonyParser import HarmonyParser
-from harmony_model_checker.harmony.harmony import *
+from harmony_model_checker.harmony.ast import *
 
 class HarmonyVisitorImpl(HarmonyVisitor):
 
