@@ -1,5 +1,6 @@
 import math
-from typing import Any, Optional
+from typing import Any, Dict, Optional
+from harmony_model_checker.harmony.state import State
 from harmony_model_checker.harmony.value import *
 from harmony_model_checker.harmony.bag_util import *
 
@@ -24,6 +25,9 @@ class Op:
 
     def explain(self):
         return "no explanation yet"
+
+    def eval(self, state: State, context: ContextValue):
+        ...
 
     def sametype(x, y):
         return type(x) == type(y)
@@ -61,7 +65,7 @@ class Op:
                 result |= self.lvars(v)
             return result
 
-    def store(self, context, var, val):
+    def store(self, context: ContextValue, var, val):
         if isinstance(var, tuple):
             (lexeme, file, line, column) = var
             context.set([lexeme], val)
@@ -523,7 +527,7 @@ class DelOp(Op):
             av = context.pop()
             if not isinstance(av, AddressValue):
                 context.failure = "Error: not an address " + \
-                                    str(self.token) + " -> " + str(av)
+                                    str(self.name) + " -> " + str(av)
                 return
             lv = av.indexes
             name = lv[0]
@@ -534,7 +538,7 @@ class DelOp(Op):
 
         if not state.initializing and (name not in state.vars.d):
             context.failure = "Error: deleting an uninitialized shared variable " \
-                    + name + ": " + str(self.token)
+                    + name + ": " + str(self.name)
         else:
             state.delete(lv)
             context.pc += 1
@@ -1175,7 +1179,7 @@ class InvariantOp(Op):
         return '{ "op": "Invariant", "pre": "%s", "pc": "%d" }'%(self.uses_pre, self.pc)
 
     def tladump(self):
-        return 'OpInvariant(self, %s, %d)'%(self.pre, self.pc)
+        return 'OpInvariant(self, %s, %d)'%(self.uses_pre, self.pc)
 
     def explain(self):
         return "test invariant"
@@ -1357,7 +1361,7 @@ class NaryOp(Op):
             " and push the result of applying " + self.op[0]
 
     def atLabel(self, state, pc):
-        bag = {}
+        bag: Dict[DictValue, Any] = {}
         for (ctx, cnt) in state.ctxbag.items():
             if ctx.pc == pc:
                 nametag = DictValue({ 0: PcValue(ctx.entry), 1: ctx.arg })

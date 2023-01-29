@@ -1,7 +1,7 @@
 from harmony_model_checker.harmony.ops import *
 
 class Labeled_Op:
-    def __init__(self, module, op, start, stop, stmt, labels):
+    def __init__(self, module, op: Op, start, stop, stmt, labels):
         self.module = module    # module
         self.op = op            # operation
         self.start = start      # first token
@@ -13,7 +13,7 @@ class Labeled_Op:
 
 class Code:
     def __init__(self, parent=None):
-        self.labeled_ops = []
+        self.labeled_ops: List[Labeled_Op] = []
         self.endlabels = set()
         self.modstack = []      # module stack
         self.curModule = None
@@ -32,7 +32,7 @@ class Code:
         self.curFile = file
         self.curLine = line
 
-    def append(self, op, start, stop, labels=set(), stmt=None):
+    def append(self, op: Op, start, stop, labels=set(), stmt=None):
         assert len(start) == 4
         assert len(stop) == 4
         assert self.curModule is not None

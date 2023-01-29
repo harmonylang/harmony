@@ -1,6 +1,6 @@
 from abc import abstractmethod
 import json
-from typing import Tuple
+from typing import Any, List, Optional, Tuple
 
 tlavarcnt = 0           # to generate unique TLA+ variables
 
@@ -370,7 +370,7 @@ class AddressValue(Value):
         return AddressValue(substValue(self.func, map), [ substValue(v, map) for v in self.args ])
 
 class ContextValue(Value):
-    def __init__(self, name, entry, arg, this):
+    def __init__(self, name: Tuple[str, Optional[str], Optional[int], Optional[int]], entry: int, arg, this):
         self.name = name
         self.entry = entry
         self.arg = arg
@@ -379,13 +379,13 @@ class ContextValue(Value):
         self.atomic = 0
         self.readonly = 0
         self.interruptLevel = False
-        self.stack = []     # collections.deque() seems slightly slower
+        self.stack: List[Any] = []     # collections.deque() seems slightly slower
         self.fp = 0         # frame pointer
         self.vars = emptydict
         self.trap = None
         self.phase = "start"        # start, middle, or end
         self.stopped = False
-        self.failure = None
+        self.failure: Optional[str] = None
 
     def __repr__(self):
         return "ContextValue(" + str(self.name) + ", " + str(self.arg) + ", " + str(self.this) + ")"

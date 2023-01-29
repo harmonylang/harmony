@@ -1,17 +1,19 @@
 import sys
 import json
-from typing import Optional
+from typing import Dict, Optional
 from automata.fa.dfa import DFA # type: ignore
+
+from harmony_model_checker.iface import Transitions
 
 def parse(file):
     with open(file, encoding='utf-8') as f:
         js = json.load(f)
 
-        states = { "__error__": {} }
+        states = { "__error__": '' }
         initial_state: Optional[str] = None
         final_states = set()
         input_symbols = set()
-        transitions = { "__error__": {} }
+        transitions: Dict[str, Dict[str, str]] = { "__error__": {} }
 
         for s in js["nodes"]:
             idx = str(s["idx"])

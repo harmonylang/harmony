@@ -173,8 +173,8 @@ def parse(js, outfmt, minify):
     # Give each state a simple integer name
     names = {}
     values = {}
-    for (idx, s) in enumerate(dfa.states):
-        names[s] = idx
+    for (i, s) in enumerate(dfa.states):
+        names[s] = i
         values[s] = "???"
     values[dfa.initial_state] = "initial"
 

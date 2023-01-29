@@ -1,9 +1,10 @@
 import subprocess
 import sys
 import json
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from harmony_model_checker.harmony.jsonstring import json_string
+from harmony_model_checker.iface import Transitions
 
 try:
     import pydot  # type: ignore
@@ -48,11 +49,15 @@ def is_dfa_equivalent(dfa: DFA, hfa: DFA) -> bool:
     final_states = {**dfa_final_states, **hfa_final_states}
 
     # Tree-implementation of sets of states
-    parents: List[Optional[int]] = [None] * n
-    rank: List[Optional[int]] = [None] * n
+    parents: List[int] = [0] * n
+    rank: List[int] = [0] * n
     def make_set(q: int):
         parents[q] = q
         rank[q] = 0
+
+    # Create a set for each state in the 2 DFAs
+    for k, _ in states:
+        make_set(k)
 
     def find_set(x):
         if x != parents[x]:
@@ -69,11 +74,6 @@ def is_dfa_equivalent(dfa: DFA, hfa: DFA) -> bool:
 
     def union(p: int, q: int):
         link(find_set(p), find_set(q))
-
-
-    # Create a set for each state in the 2 DFAs
-    for k, _ in states:
-        make_set(k)
 
     # Union the two initial states
     dfa_init_idx = dfa_state_to_idx[dfa.initial_state]
@@ -213,7 +213,7 @@ def behavior_show_diagram(dfa: DFA, path=None):
             print("install graphviz (www.graphviz.org) to see output DFAs")
     return graph
 
-def eps_closure_rec(states, transitions, current, output):
+def eps_closure_rec(states: Set[str], transitions: Transitions, current: str, output: Set[str]):
     if current in output:
         return
     output.add(current)
@@ -222,8 +222,8 @@ def eps_closure_rec(states, transitions, current, output):
         for s in t['']:
             eps_closure_rec(states, transitions, s, output)
 
-def eps_closure(states, transitions, current):
-    x = set()
+def eps_closure(states: Set[str], transitions: Transitions, current: str):
+    x: Set[str] = set()
     eps_closure_rec(states, transitions, current, x)
     return frozenset(x)
 
@@ -232,10 +232,10 @@ def behavior_parse(js, minify, outputfiles, behavior):
         return
     minify = outputfiles["png"] is not None or outputfiles["gv"] is not None
 
-    states = set()
+    states: Set[str] = set()
     initial_state = None
     final_states = set()
-    transitions = {}
+    transitions: Transitions = {}
     labels = {}
 
     for s in js["nodes"]:
@@ -300,10 +300,10 @@ def behavior_parse(js, minify, outputfiles, behavior):
             initial_state=initial_state,
             final_states=final_states
         )
-        intermediate = DFA.from_nfa(nfa)  # returns an equivalent DFA
+        intermediate_dfa = DFA.from_nfa(nfa)  # returns an equivalent DFA
         if minify and len(final_states) != 0:
-            print("minify #states=%d"%len(intermediate.states))
-            dfa = intermediate.minify(retain_names = True)
+            print("minify #states=%d"%len(intermediate_dfa.states))
+            dfa = intermediate_dfa.minify(retain_names = True)
             print("minify done #states=%d"%len(dfa.states))
         else:
             dfa = intermediate
@@ -344,8 +344,8 @@ def behavior_parse(js, minify, outputfiles, behavior):
     if outputfiles["hfa"] is not None:
         with open(outputfiles["hfa"], "w", encoding='utf-8') as fd:
             names = {}
-            for (idx, s) in enumerate(dfa_states):
-                names[s] = idx
+            for (i, s) in enumerate(dfa_states):
+                names[s] = i
             print("{", file=fd)
             print("  \"initial\": \"%s\","%names[dfa_initial_state], file=fd)
             print("  \"nodes\": [", file=fd)
@@ -408,8 +408,8 @@ def behavior_parse(js, minify, outputfiles, behavior):
     if outputfiles["gv"] is not None:
         with open(outputfiles["gv"], "w", encoding='utf-8') as fd:
             names = {}
-            for (idx, s) in enumerate(dfa_states):
-                names[s] = idx
+            for (i, s) in enumerate(dfa_states):
+                names[s] = i
             print("digraph {", file=fd)
             print("  rankdir = \"LR\"", file=fd)
             for s in dfa_states:

@@ -43,6 +43,7 @@ import functools
 import json
 import time
 import traceback
+from typing import Set
 import webbrowser
 
 from harmony_model_checker.harmony.tex import *
@@ -62,17 +63,16 @@ from harmony_model_checker import __version__
 
 
 # TODO.  These should not be global ideally
-files = {}              # files that have been read already
-modules = {}            # modules modified with -m
-# used_modules = set()  # modules modified and used
-namestack = []          # stack of module names being compiled
-node_uid = 1            # unique node identifier
-silent = False          # not printing periodic status updates
-lasttime = 0            # last time status update was printed
+files: Dict[str, List[str]] = {}   # files that have been read already
+modules: Dict[str, str] = {}       # modules modified with -m
+namestack: List[str] = []          # stack of module names being compiled
+node_uid = 1                       # unique node identifier
+silent = False                     # not printing periodic status updates
+lasttime = 0.0                     # last time status update was printed
 
 
 class Node:
-    def __init__(self, state, uid, parent, before, after, steps, len):
+    def __init__(self, state: State, uid: int, parent, before, after, steps, len):
         self.state = state      # State associated with this node
         self.uid = uid          # index into 'nodes' array
         self.parent = parent    # next hop on way to initial state
@@ -82,13 +82,13 @@ class Node:
         self.steps = steps      # list of microsteps
 
         # if state.choosing, maps choice, else context
-        self.edges = {}         # map to <nextNode, nextContext, steps>
+        self.edges: Dict[ContextValue, Tuple[Node, ContextValue, Any]] = {}         # map to <nextNode, nextContext, steps>
 
-        self.sources = set()    # backward edges
+        self.sources: Set[Node] = set()    # backward edges
         self.expanded = False   # lazy deletion
-        self.issues = set()     # set of problems with this state
+        self.issues: Set[str] = set()     # set of problems with this state
         self.cid = 0            # strongly connected component id
-        self.blocked = {}       # map of context -> boolean
+        self.blocked: Dict[ContextValue, bool] = {}       # map of context -> boolean
 
     def __hash__(self):
         return self.uid
@@ -181,12 +181,12 @@ def varvisit(d, vars, name, r):
         r.append("%s: %s"%(name, strValue(vars)))
 
 def strvars(d, vars):
-    r = []
+    r: list = []
     for k in sorted(d.keys()):
         varvisit(d[k], vars.d[k], k, r)
     return "{ " + ", ".join(r) + " }"
 
-def varmerge(d, vars):
+def varmerge(d: dict, vars: DictValue):
     assert isinstance(d, dict)
     assert isinstance(vars, DictValue)
     for (k, v) in vars.d.items():
@@ -212,7 +212,7 @@ def vartrim(d):
             vartrim(d[k])
 
 def pathvars(path):
-    d = {}
+    d: dict = {}
     for (fctx, ctx, steps, states, vars) in path:
         varmerge(d, vars)
     vartrim(d)
@@ -221,7 +221,7 @@ def pathvars(path):
 def print_path(bad_node):
     path = genpath(bad_node)
     d = pathvars(path)
-    pids = []
+    pids: List[ContextValue] = []
     for (fctx, ctx, steps, states, vars) in path:
         try:
             pid = pids.index(fctx)
@@ -289,7 +289,7 @@ p_dia = Pad("diameter")
 p_ql  = Pad("#queue")
 
 # Have context ctx make one (macro) step in the given state
-def onestep(node, ctx, choice, interrupt, nodes, visited, todo):
+def onestep(node: Node, ctx: ContextValue, choice, interrupt, nodes, visited, todo):
     assert ctx.failure is None, ctx.failure
 
     # Keep track of whether this is the same context as the parent context
@@ -305,7 +305,7 @@ def onestep(node, ctx, choice, interrupt, nodes, visited, todo):
     # Copy the choice as well
     choice_copy = choice
 
-    steps = []
+    steps: List[Tuple[Any, Any]] = []
 
     if interrupt:
         assert not cc.interruptLevel
@@ -318,7 +318,7 @@ def onestep(node, ctx, choice, interrupt, nodes, visited, todo):
         cc.interruptLevel = True
         steps.append((None, None))      # indicates an interrupt
 
-    localStates = set() # used to detect infinite loops
+    localStates: Set[Tuple[Any, Any]] = set() # used to detect infinite loops
     loopcnt = 0         # only check for infinite loops after a while
     while cc.phase != "end":
         # execute one microstep
@@ -432,7 +432,7 @@ def onestep(node, ctx, choice, interrupt, nodes, visited, todo):
         next.issues.add("Thread Failure")
 
 
-def kosaraju1(nodes, stack):
+def kosaraju1(nodes: List[Node], stack: List[Node]):
     seen = set()
     for node in nodes:
         if node.uid in seen:
@@ -473,11 +473,11 @@ class SCC:
         self.good = False
 
 # Find strongly connected components using Kosaraju's algorithm
-def find_scc(nodes):
-    stack = []
+def find_scc(nodes: List[Node]):
+    stack: List[Node] = []
     kosaraju1(nodes, stack)
-    seen = set()
-    components = []
+    seen: Set[int] = set()
+    components: List[SCC] = []
     while stack != []:
         next = stack.pop()
         if next.uid not in seen:
@@ -634,10 +634,9 @@ def run(code, labels, blockflag):
 
     if not issues_found:
         print("no issues found")
-        n = None
+        return nodes, None
     else:
-        n = find_shortest(todump)
-    return (nodes, n)
+        return nodes, find_shortest(todump)
 
 def htmlstrsteps(steps):
     if steps is None:
@@ -668,9 +667,9 @@ def htmlstrsteps(steps):
         i = j
     return result
 
-def genpath(n):
+def genpath(n: Node):
     # Extract the path to node n
-    path = []
+    path: List[Node] = []
     while n is not None:
         if n.after is None:
             break
@@ -715,7 +714,7 @@ def vardim(d):
     return (totalwidth, maxheight)
 
 def varhdr(d, name, nrows, f):
-    q = queue.Queue()
+    q: 'queue.Queue[Tuple[Any, int]]' = queue.Queue()
     level = 0
     q.put((d, level))
     while not q.empty():
@@ -773,7 +772,7 @@ def htmlpath(n, color, f):
     varhdr(d, "", height, f)
     print("</tr><tr><td></td></tr>", file=f)
     row = height + 1
-    pids = []
+    pids: List[Any] = []
     for (fctx, ctx, steps, states, vars) in path:
         row += 1
         if len(states) > 0:

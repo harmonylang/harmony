@@ -7,8 +7,8 @@ from harmony_model_checker.harmony.ops import *
 from harmony_model_checker.exception import *
 
 labelcnt = 0
-imported = {}           # imported modules
-constants = {}          # constants modified with -c
+imported: Dict[str, Scope] = {}           # imported modules
+constants: Dict[str, str] = {}          # constants modified with -c
 used_constants = set()  # constants modified and used
 
 def getImported():
@@ -136,9 +136,9 @@ class AST:
         )
 
     def gencode(self, scope: Scope, code: Code, stmt):
-        assert False, self
+        pass
 
-    def doImport(self, scope, code, module):
+    def doImport(self, scope: Scope, code: Code, module):
         (lexeme, file, line, column) = module
         # assert lexeme not in scope.names        # TODO
         assert lexeme in imported, "Attempted to import " + str(lexeme) + ", but it is not found in imports: " + str(imported)
