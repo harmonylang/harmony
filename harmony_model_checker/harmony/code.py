@@ -49,9 +49,10 @@ class Code:
         # First figure out what the labels point to and initialize
         # the nodes
         map = {}
+        lop_predecessors: Dict[int, Set[int]] = {}
         for pc in range(len(self.labeled_ops)):
             lop = self.labeled_ops[pc]
-            lop.pred = set()
+            lop_predecessors[pc] = set()
             lop.live_in = set()
             lop.live_out = set()
             for label in lop.labels:
@@ -62,16 +63,18 @@ class Code:
             lop = self.labeled_ops[pc]
             if isinstance(lop.op, JumpOp):
                 assert isinstance(lop.op.pc, LabelValue)
-                succ = self.labeled_ops[map[lop.op.pc]]
-                succ.pred |= {pc}
+                op_pc = map[lop.op.pc]
+                succ = self.labeled_ops[op_pc]
+                lop_predecessors[op_pc] |= {pc}
             elif isinstance(lop.op, JumpCondOp):
                 assert pc < len(self.labeled_ops) - 1
                 assert isinstance(lop.op.pc, LabelValue)
-                succ = self.labeled_ops[map[lop.op.pc]]
-                succ.pred |= {pc}
-                self.labeled_ops[pc + 1].pred |= {pc}
+                op_pc = map[lop.op.pc]
+                succ = self.labeled_ops[op_pc]
+                lop_predecessors[op_pc] |= {pc}
+                lop_predecessors[pc + 1] |= {pc}
             elif pc < len(self.labeled_ops) - 1 and not isinstance(lop.op, ReturnOp):
-                self.labeled_ops[pc + 1].pred |= {pc}
+                lop_predecessors[pc + 1] |= {pc}
         # Live variable analysis
         change = True
         while change:
@@ -97,21 +100,20 @@ class Code:
                 lop.live_out = live_out
         # Create new code with DelVars inserted
         newcode = Code()
-        for lop in self.labeled_ops:
+        for lop_pc, lop in enumerate(self.labeled_ops):
             # print(lop.op, lop.live_in, lop.live_out)
-            (_, file, line, _)  = lop.start
 
             # If a variable is live on output of any predecessor but not
             # live on input, delete it first
-            lop.pre_del = set()
-            for pred in lop.pred:
+            pre_del = set()
+            for pred in lop_predecessors[lop_pc]:
                 plop = self.labeled_ops[pred]
                 live_out = plop.live_out | plop.op.define()
-                lop.pre_del |= live_out - lop.live_in
+                pre_del |= live_out - lop.live_in
 
             labels = lop.labels
             newcode.curModule = lop.module
-            for d in sorted(lop.pre_del - { 'this' }):
+            for d in sorted(pre_del - { 'this' }):
                 newcode.append(DelVarOp((d, None, None, None)), lop.start, lop.stop, labels=labels, stmt=lop.stmt)
                 labels = set()
             newcode.append(lop.op, lop.start, lop.stop, labels=labels, stmt=lop.stmt)
@@ -119,9 +121,9 @@ class Code:
             # If a variable is defined or live on input but not live on output,
             # immediately delete afterward
             # TODO.  Can optimize StoreVar by replacing it with Pop
-            # lop.post_del = (lop.op.define() | lop.live_in) - lop.live_out
-            lop.post_del = lop.live_in - lop.live_out
-            for d in sorted(lop.post_del - { 'this' }):
+            # post_del = (lop.op.define() | lop.live_in) - lop.live_out
+            post_del = lop.live_in - lop.live_out
+            for d in sorted(post_del - { 'this' }):
                 newcode.append(DelVarOp((d, None, None, None)), lop.start, lop.stop, stmt=lop.stmt)
 
         return newcode
