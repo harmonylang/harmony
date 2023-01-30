@@ -136,7 +136,7 @@ def explanation(lop):
 
 def dumpModule(name, scope, f, last):
     print('    "%s": {'%name, file=f)
-    print('      "file": "%s",'%scope.file, file=f)
+    print('      "file": %s,'% json.dumps(scope.file), file=f)
     print('      "lines": [', file=f)
     with open(scope.file, encoding='utf-8') as fdx:
         lines = fdx.read().splitlines()

@@ -59,7 +59,11 @@ class SettingsManager:
 
     def _load_settings_file(self):
         with self.settings_file.open('r') as f:
-            return Setting(**json.load(f))
+            try:
+                d: dict = json.load(f)
+                return Setting({'disable_update_check': d.get('disable_update_check')})
+            except TypeError:
+                return _make_new_settings()
 
     def _update_from_env(self):
         val = os.environ.get('HARMONY_DISABLE_WEB', None)
