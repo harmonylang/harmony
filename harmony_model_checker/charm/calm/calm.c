@@ -1,12 +1,13 @@
 #include <stdio.h>
-#include <sys/types.h>
 #include <pthread.h>
+
+#if !defined _POSIX_BARRIERS || _POSIX_BARRIERS < 0 
+#include "mybarrier.h"
+#endif
 
 #include "calm.h"
 //#include "graph.h"
-#include "conallocator.h"
-#include "conhashtab.h"
-#include "conqueue.h"
+#include "allocator.h"
 #include "engine.h"
 
 unsigned int nworkers;
@@ -27,7 +28,8 @@ struct worker {
 
     unsigned int id;
 
-    struct Conallocator al;
+    struct Allocator al;
+    struct ManualStack ms;
 };
 
 struct worker *workers;
@@ -53,9 +55,9 @@ void work_computation(struct worker *this) {
 
             struct State* s = &node->s;
 
-            for (int cid = 0; cid < s->bagsize; ++cid) {
+            for (unsigned cid = 0; cid < s->bagsize; ++cid) {
 
-                struct Node* next = engine_compute(&engine, &this->al, s, cid);
+                struct Node* next = engine_compute(&engine, &this->al, &this->ms, s, cid);
 
                 //TODO: do things when the two nodes are connected
 
@@ -82,8 +84,10 @@ void work_concurrent(struct worker *this) {
 
 void work(struct worker *this) {
     if (this->id != 0) {
-        conallocator_init(&this->al);
+        allocator_init(&this->al);
     }
+    manualstack_init(&this->ms);
+
     pthread_barrier_wait(&barrier_concurrent);
 
     while(true) {
@@ -106,7 +110,7 @@ void work(struct worker *this) {
 
 //foreman
 
-void foreman(struct calm_para *para, struct Conallocator *al0) {
+void foreman(struct calm_para *para, struct Allocator *al0) {
 
     atomic_store(&interrupt_computation, false);
     pthread_barrier_init(&barrier_computation, NULL, nworkers);
@@ -144,8 +148,8 @@ int calm(struct calm_para *para, struct global *g) {
     conhashtab_init(&states, &interrupt_computation);
 
 
-    struct Conallocator al0; //will be used for the allocator of worker 0
-    conallocator_init(&al0);
+    struct Allocator al0; //will be used for the allocator of worker 0
+    allocator_init(&al0);
 
     engine_init(&engine, para->jc, &values, &states, &al0);
 

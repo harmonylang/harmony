@@ -2396,7 +2396,7 @@ int main(int argc, char **argv) {
         calmp.jc = jc;
         calmp.nworkers = nworkers;
 
-        calm(calmp, global);
+        calm(&calmp, global);
     #else
         charm_main(argc, agrv);
     #endif

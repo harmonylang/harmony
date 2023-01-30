@@ -1,11 +1,11 @@
 #ifndef SRC_CALM_ENGINE_H
 #define SRC_CALM_ENGINE_H
 
+#include <stdbool.h>
 #include "json.h"
 //#include "graph.h"
-#include "conallocator.h"
+#include "allocator.h"
 #include "conhashtab.h"
-
 
 typedef uint64_t Fixsize_v;
 
@@ -40,9 +40,10 @@ struct Engine {
 
 };
 
-void engine_init(struct Engine *engine, struct json_value *jc, struct Conhashtab *value, struct Conhashtab *state, struct Conallocator *al);
+void engine_init(struct Engine *engine, struct json_value *jc, struct Conhashtab *value, struct Conhashtab *state, struct Allocator *al);
 
-struct Node* engine_create_initial_node(struct Engine *engine, struct Conallocator *al);
-struct Node* engine_compute(struct Engine *engine, struct Conallocator *al, struct State *s, unsigned cid);
+struct Node* engine_create_initial_node(struct Engine *engine, struct Allocator *al);
+
+struct Node* engine_compute(struct Engine *engine, struct Allocator *al, struct ManualStack *ms, struct State *s, unsigned cid);
 
 #endif //SRC_CALM_ENGINE_H

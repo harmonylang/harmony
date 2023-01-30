@@ -31,4 +31,6 @@ struct calm_global {
 
 };
 
+int calm(struct calm_para *para, struct global *g);
+
 #endif

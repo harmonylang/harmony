@@ -13,10 +13,24 @@ struct Conqueue {
     unsigned int tail;
 };
 
-inline void conqueue_init(struct Conqueue *cq, void *init_e) __attribute__ ((always_inline));
-inline cq_iter conqueue_claim(struct Conqueue *cq, unsigned int sz)  __attribute__ ((always_inline));
-inline bool conqueue_invalid(struct Conqueue *cq, cq_iter pt)  __attribute__ ((always_inline));
-inline void* conqueue_get(struct Conqueue *cq, cq_iter pt)  __attribute__ ((always_inline));
-inline void conqueue_reset(struct Conqueue *cq)  __attribute__ ((always_inline));
+static inline void conqueue_init(struct Conqueue *cq, void *init_e) __attribute__ ((always_inline)) {
+
+}
+
+inline cq_iter conqueue_claim(struct Conqueue *cq, unsigned int sz)  __attribute__ ((always_inline)) {
+
+}
+
+inline bool conqueue_invalid(struct Conqueue *cq, cq_iter pt)  __attribute__ ((always_inline)) {
+
+}
+
+inline void* conqueue_get(struct Conqueue *cq, cq_iter pt)  __attribute__ ((always_inline)) {
+
+}
+
+inline void conqueue_reset(struct Conqueue *cq)  __attribute__ ((always_inline)) {
+    
+}
 
 #endif //SRC_CALM_CONQUEUE_H
