@@ -276,7 +276,7 @@ def main():
 
     file = args[0]
     with open(file, encoding='utf-8') as f:
-        js = json.load(f)
+        js = json.load(f, strict=False)
         parse(js, outfmt, minify);
 
 if __name__ == "__main__":

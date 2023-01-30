@@ -148,7 +148,7 @@ class Brief:
     def run(self, outputfiles, behavior):
         with open(outputfiles["hco"], encoding='utf-8') as f:
             print("Phase 5: loading", outputfiles["hco"])
-            top = json.load(f)
+            top = json.load(f, strict=False)
             assert isinstance(top, dict)
             if top["issue"] == "No issues":
                 behavior_parse(top, False, outputfiles, behavior)

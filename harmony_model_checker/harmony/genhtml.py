@@ -340,7 +340,7 @@ class GenHTML:
         # First figure out how many megasteps there are and how many threads
         lasttid = -1
         with open(outputfiles["hco"], encoding='utf-8') as f:
-            self.top = json.load(f)
+            self.top = json.load(f, strict=False)
             assert isinstance(self.top, dict)
             if "macrosteps" in self.top:
                 macrosteps = self.top["macrosteps"]

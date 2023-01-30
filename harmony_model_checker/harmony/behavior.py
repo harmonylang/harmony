@@ -118,7 +118,7 @@ def is_dfa_equivalent(dfa: DFA, hfa: DFA) -> bool:
 
 def read_hfa(file, dfa, nfa):
     with open(file, encoding='utf-8') as fd:
-        js = json.load(fd)
+        js = json.load(fd, strict=False)
         initial = js["initial"]
         states = { "{}" }
         final = set()

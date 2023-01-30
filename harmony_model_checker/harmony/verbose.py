@@ -261,7 +261,7 @@ class Verbose:
     def run(self, outputfiles, behavior):
         with open(outputfiles["hco"], encoding='utf-8') as input:
           with open(outputfiles["hvb"], "w", encoding='utf-8') as output:
-            top = json.load(input)
+            top = json.load(input, strict=False)
             assert isinstance(top, dict)
             if top["issue"] == "No issues":
                 print("No issues were detected with this program.", file=output)

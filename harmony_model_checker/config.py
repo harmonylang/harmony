@@ -7,12 +7,10 @@ from typing import NamedTuple
 
 class Setting(NamedTuple):
     disable_web: bool
-    disable_update_check: bool
 
 def _make_new_settings():
     return Setting(
         disable_web=False,
-        disable_update_check=False
     )
 _default_settings = _make_new_settings()
 
@@ -68,8 +66,5 @@ class SettingsManager:
         if val is not None:
             self.values.disable_web = val.lower() == 'true'
 
-        val = os.environ.get('HARMONY_DISABLE_UPDATE_CHECK', None)
-        if val is not None:
-            self.values.disable_update_check = val.lower() == 'true'
 
 settings = SettingsManager()
