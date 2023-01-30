@@ -9,7 +9,6 @@ from antlr4 import * # type: ignore
 
 import harmony_model_checker
 from harmony_model_checker.config import settings
-import harmony_model_checker.util.self_check_is_outdated as check_version
 from harmony_model_checker import charm # type: ignore
 from harmony_model_checker.exception import HarmonyCompilerError, HarmonyCompilerErrorCollection
 import harmony_model_checker.harmony.harmony as legacy_harmony
@@ -201,10 +200,6 @@ def main():
 
     if ns.config:
         return handle_config(ns)
-
-    if not settings.values.disable_update_check:
-        check_version.check_outdated(
-            harmony_model_checker.__package__, harmony_model_checker.__version__)
 
     parse_code_only: bool = ns.parse
     legacy_harmony.silent = ns.s
