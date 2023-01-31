@@ -17,8 +17,8 @@ class Op:
     def use(self):      # set of local variables used by this op
         return set()
 
-    def jdump(self):
-        return '{ "op": "XXX %s" }'%str(self)
+    def as_json(self):
+        return {"op": "XXX " + str(self)}
 
     def tladump(self):
         return 'Skip(self, "%s")'%self
@@ -97,8 +97,8 @@ class SetIntLevelOp(Op):
     def __repr__(self):
         return "SetIntLevel"
 
-    def jdump(self):
-        return '{ "op": "SetIntLevel" }'
+    def as_json(self):
+        return {"op": "SetIntLevel"}
 
     def tladump(self):
         return 'OpSetIntLevel(self)'
@@ -132,11 +132,12 @@ class CutOp(Op):
         else:
             return self.lvars(self.value) | self.lvars(self.key)
 
-    def jdump(self):
+    def as_json(self):
         if self.key is None:
-            return '{ "op": "Cut", "value": "%s" }'%(self.convert(self.value))
+            return { "op": "Cut", "value": str(self.convert(self.value)) }
         else:
-            return '{ "op": "Cut", "key": "%s", "value": "%s" }'%(self.convert(self.key), self.convert(self.value))
+            return { "op": "Cut", "key": str(self.convert(self.key)), "value": str(self.convert(self.value)) }
+
 
     def tladump(self):
         if self.key is None:
@@ -187,8 +188,8 @@ class SplitOp(Op):
     def __repr__(self):
         return "Split %d"%self.n
 
-    def jdump(self):
-        return '{ "op": "Split", "count": "%d" }'%self.n
+    def as_json(self):
+        return { "op": "Split", "count": str(self.n) }
 
     def tladump(self):
         return 'OpSplit(self, %d)'%self.n
@@ -212,8 +213,8 @@ class MoveOp(Op):
     def __repr__(self):
         return "Move %d"%self.offset
 
-    def jdump(self):
-        return '{ "op": "Move", "offset": "%d" }'%self.offset
+    def as_json(self):
+        return { "op": "Move", "offset": str(self.offset) }
 
     def tladump(self):
         return 'OpMove(self, %d)'%self.offset
@@ -230,8 +231,8 @@ class DupOp(Op):
     def __repr__(self):
         return "Dup"
 
-    def jdump(self):
-        return '{ "op": "Dup" }'
+    def as_json(self):
+        return { "op": "Dup" }
 
     def tladump(self):
         return 'OpDup(self)'
@@ -249,8 +250,8 @@ class GoOp(Op):
     def __repr__(self):
         return "Go"
 
-    def jdump(self):
-        return '{ "op": "Go" }'
+    def as_json(self):
+        return { "op": "Go" }
 
     def tladump(self):
         return 'OpGo(self)'
@@ -286,9 +287,9 @@ class ApplyOp(Op):
         (lexeme, file, line, column) = self.method
         return "Apply %s"%strValue(lexeme)
 
-    def jdump(self):
+    def as_json(self):
         (lexeme, file, line, column) = self.method
-        return '{ "op": "Apply", "value": %s }'%jsonValue(lexeme)
+        return { "op": "Apply", "value": as_json_value_repr(lexeme) }
 
     def tladump(self):
         (lexeme, file, line, column) = self.method
@@ -322,8 +323,8 @@ class LoadVarOp(Op):
     def use(self):
         return self.lvars(self.v)
 
-    def jdump(self):
-        return '{ "op": "LoadVar", "value": "%s" }'%self.convert(self.v)
+    def as_json(self):
+        return { "op": "LoadVar", "value": str(self.convert(self.v)) }
 
     def tladump(self):
         return 'OpLoadVar(self, %s)'%self.tlaconvert(self.v)
@@ -348,9 +349,9 @@ class PushOp(Op):
         (lexeme, file, line, column) = self.constant
         return "Push %s"%strValue(lexeme)
 
-    def jdump(self):
+    def as_json(self):
         (lexeme, file, line, column) = self.constant
-        return '{ "op": "Push", "value": %s }'%jsonValue(lexeme)
+        return { "op": "Push", "value": as_json_value_repr(lexeme) }
 
     def tladump(self):
         (lexeme, file, line, column) = self.constant
@@ -384,12 +385,12 @@ class LoadOp(Op):
             (lexeme, file, line, column) = self.name
             return "Load " + _prefix_name(self.prefix, lexeme)
 
-    def jdump(self):
+    def as_json(self):
         if self.name is None:
-            return '{ "op": "Load" }'
+            return { "op": "Load" }
         else:
             (lexeme, file, line, column) = self.name
-            return '{ "op": "Load", "value": [{ "type": "atom", "value": "%s"}] }'%_prefix_name(self.prefix, lexeme)
+            return { "op": "Load", "value": [{ "type": "atom", "value": str(_prefix_name(self.prefix, lexeme))}] }
 
     def tladump(self):
         if self.name is None:
@@ -435,12 +436,12 @@ class StoreOp(Op):
             (lexeme, file, line, column) = self.name
             return "Store " + _prefix_name(self.prefix, lexeme)
 
-    def jdump(self):
+    def as_json(self):
         if self.name is None:
-            return '{ "op": "Store" }'
+            return { "op": "Store" }
         else:
             (lexeme, file, line, column) = self.name
-            return '{ "op": "Store", "value": [{ "type": "atom", "value": "%s"}] }'%_prefix_name(self.prefix, lexeme)
+            return { "op": "Store", "value": [{ "type": "atom", "value": str(_prefix_name(self.prefix, lexeme))}] }
 
     def tladump(self):
         if self.name is None:
@@ -499,12 +500,12 @@ class DelOp(Op):
         else:
             return "Del"
 
-    def jdump(self):
+    def as_json(self):
         if self.name is None:
-            return '{ "op": "Del" }'
+            return { "op": "Del" }
         else:
             (lexeme, file, line, column) = self.name
-            return '{ "op": "Del", "value": [{ "type": "atom", "value": "%s"}] }'%_prefix_name(self.prefix, lexeme)
+            return { "op": "Del", "value": [{ "type": "atom", "value": str(_prefix_name(self.prefix, lexeme))}] }
 
     def tladump(self):
         if self.name is None:
@@ -544,8 +545,8 @@ class SaveOp(Op):
     def __repr__(self):
         return "Save"
 
-    def jdump(self):
-        return '{ "op": "Save" }'
+    def as_json(self):
+        return { "op": "Save" }
 
     def tladump(self):
         return "OpSave(self)"
@@ -567,12 +568,12 @@ class StopOp(Op):
         else:
             return "Stop"
 
-    def jdump(self):
+    def as_json(self):
         if self.name is not None:
             (lexeme, file, line, column) = self.name
-            return '{ "op": "Stop", "value": %s }'%lexeme
+            return { "op": "Stop", "value": lexeme }
         else:
-            return '{ "op": "Stop" }'
+            return { "op": "Stop" }
 
     def tladump(self):
         if self.name is None:
@@ -620,8 +621,8 @@ class BuiltinOp(Op):
     def __repr__(self):
         return "Builtin(%s)"%self.value
 
-    def jdump(self):
-        return '{ "op": "Builtin", "value": "%s" }'%self.value
+    def as_json(self):
+        return { "op": "Builtin", "value": str(self.value) }
 
     def tladump(self):
         pass
@@ -639,8 +640,8 @@ class SequentialOp(Op):
     def __repr__(self):
         return "Sequential"
 
-    def jdump(self):
-        return '{ "op": "Sequential" }'
+    def as_json(self):
+        return { "op": "Sequential" }
 
     def tladump(self):
         return 'OpSequential(self)'
@@ -659,8 +660,8 @@ class ContinueOp(Op):
     def explain(self):
         return "a no-op, must follow a Stop operation"
 
-    def jdump(self):
-        return '{ "op": "Continue" }'
+    def as_json(self):
+        return { "op": "Continue" }
 
     def tladump(self):
         return 'OpContinue(self)'
@@ -692,11 +693,11 @@ class StoreVarOp(Op):
             return { self.lvar }
         return set()
 
-    def jdump(self):
+    def as_json(self):
         if self.v is None:
-            return '{ "op": "StoreVar" }'
+            return { "op": "StoreVar" }
         else:
-            return '{ "op": "StoreVar", "value": "%s" }'%self.convert(self.v)
+            return { "op": "StoreVar", "value": str(self.convert(self.v)) }
 
     def tladump(self):
         if self.v is None:
@@ -756,11 +757,11 @@ class DelVarOp(Op):
             return { self.lvar }
         return set()
 
-    def jdump(self):
+    def as_json(self):
         if self.v is None:
-            return '{ "op": "DelVar" }'
+            return { "op": "DelVar" }
         else:
-            return '{ "op": "DelVar", "value": "%s" }'%self.convert(self.v)
+            return { "op": "DelVar", "value": str(self.convert(self.v)) }
 
     def tladump(self):
         if self.v is None:
@@ -788,8 +789,8 @@ class ChooseOp(Op):
     def __repr__(self):
         return "Choose"
 
-    def jdump(self):
-        return '{ "op": "Choose" }'
+    def as_json(self):
+        return { "op": "Choose" }
 
     def tladump(self):
         return 'OpChoose(self)'
@@ -813,11 +814,11 @@ class AssertOp(Op):
     def __repr__(self):
         return "Assert2" if self.exprthere else "Assert"
 
-    def jdump(self):
+    def as_json(self):
         if self.exprthere:
-            return '{ "op": "Assert2" }'
+            return { "op": "Assert2" }
         else:
-            return '{ "op": "Assert" }'
+            return { "op": "Assert" }
 
     def tladump(self):
         (lexeme, file, line, column) = self.token
@@ -856,8 +857,8 @@ class PrintOp(Op):
     def __repr__(self):
         return "Print"
 
-    def jdump(self):
-        return '{ "op": "Print" }'
+    def as_json(self):
+        return { "op": "Print" }
 
     def tladump(self):
         return 'OpPrint(self)'
@@ -878,8 +879,8 @@ class PossiblyOp(Op):
     def __repr__(self):
         return "Possibly %d"%self.index
 
-    def jdump(self):
-        return '{ "op": "Possibly", "index": "%d" }'%self.index
+    def as_json(self):
+        return { "op": "Possibly", "index": str(self.index) }
 
     def explain(self):
         return "pop a condition and check"
@@ -891,8 +892,8 @@ class PopOp(Op):
     def __repr__(self):
         return "Pop"
 
-    def jdump(self):
-        return '{ "op": "Pop" }'
+    def as_json(self):
+        return { "op": "Pop" }
 
     def tladump(self):
         return 'OpPop(self)'
@@ -919,9 +920,9 @@ class FrameOp(Op):
     def define(self):
         return self.lvars(self.args) | { "result" }
 
-    def jdump(self):
+    def as_json(self):
         (lexeme, file, line, column) = self.name
-        return '{ "op": "Frame", "name": "%s", "args": "%s" }'%(lexeme, self.convert(self.args))
+        return { "op": "Frame", "name": str(lexeme), "args": str(self.convert(self.args))}
 
     def tladump(self):
         (lexeme, file, line, column) = self.name
@@ -953,13 +954,13 @@ class ReturnOp(Op):
             return "ReturnOp(%s)"%lexeme
         return "ReturnOp(%s. %s)"%(lexeme, strValue(self.default))
 
-    def jdump(self):
+    def as_json(self):
         if self.result is None:
-            return '{ "op": "Return" }'
+            return { "op": "Return" }
         (lexeme, file, line, column) = self.result
         if self.default is None:
-            return '{ "op": "Return", "result": "%s" }'%lexeme
-        return '{ "op": "Return", "result": "%s", "default": %s }'%(lexeme, jsonValue(self.default))
+            return { "op": "Return", "result": str(lexeme) }
+        return { "op": "Return", "result": str(lexeme), "default": as_json_value_repr(self.default) }
 
     def tladump(self):
         if self.result is None:
@@ -1020,8 +1021,8 @@ class SpawnOp(Op):
     def __repr__(self):
         return "Spawn"
 
-    def jdump(self):
-        return '{ "op": "Spawn", "eternal": "%s" }'%("True" if self.eternal else "False")
+    def as_json(self):
+        return { "op": "Spawn", "eternal": "True" if self.eternal else "False" }
 
     def tladump(self):
         return 'OpSpawn(self)'
@@ -1052,8 +1053,8 @@ class TrapOp(Op):
     def explain(self):
         return "pop a pc and argument and set trap"
 
-    def jdump(self):
-        return '{ "op": "Trap" }'
+    def as_json(self):
+        return { "op": "Trap" }
 
     def tladump(self):
         return 'OpTrap(self)'
@@ -1077,8 +1078,8 @@ class AtomicIncOp(Op):
     def tladump(self):
         return 'OpAtomicInc(self)'
 
-    def jdump(self):
-        return '{ "op": "AtomicInc", "lazy": "%s" }'%str(self.lazy)
+    def as_json(self):
+        return { "op": "AtomicInc", "lazy": str(self.lazy)}
 
     def explain(self):
         return "increment atomic counter of context; thread runs uninterrupted if larger than 0"
@@ -1091,8 +1092,8 @@ class AtomicDecOp(Op):
     def __repr__(self):
         return "AtomicDec"
 
-    def jdump(self):
-        return '{ "op": "AtomicDec" }'
+    def as_json(self):
+        return { "op": "AtomicDec" }
 
     def tladump(self):
         return 'OpAtomicDec(self)'
@@ -1109,8 +1110,8 @@ class ReadonlyIncOp(Op):
     def __repr__(self):
         return "ReadonlyInc"
 
-    def jdump(self):
-        return '{ "op": "ReadonlyInc" }'
+    def as_json(self):
+        return { "op": "ReadonlyInc" }
 
     def explain(self):
         return "increment readonly counter of context; thread cannot mutate shared variables if > 0"
@@ -1126,8 +1127,8 @@ class ReadonlyDecOp(Op):
     def __repr__(self):
         return "ReadonlyDec"
 
-    def jdump(self):
-        return '{ "op": "ReadonlyDec" }'
+    def as_json(self):
+        return { "op": "ReadonlyDec" }
 
     def tladump(self):
         return 'OpReadonlyDec(self)'
@@ -1147,8 +1148,8 @@ class FinallyOp(Op):
     def __repr__(self):
         return "Finally " + str(self.pc)
 
-    def jdump(self):
-        return '{ "op": "Finally", "pc": "%d" }'%self.pc
+    def as_json(self):
+        return { "op": "Finally", "pc": str(self.pc) }
 
     def tladump(self):
         return 'OpFinally(self, %d)'%(self.pc)
@@ -1172,8 +1173,8 @@ class InvariantOp(Op):
     def __repr__(self):
         return "Invariant " + str(self.pc)
 
-    def jdump(self):
-        return '{ "op": "Invariant", "pre": "%s", "pc": "%d" }'%(self.uses_pre, self.pc)
+    def as_json(self):
+        return { "op": "Invariant", "pre": str(self.uses_pre), "pc": str(self.pc) }
 
     def tladump(self):
         return 'OpInvariant(self, %s, %d)'%(self.uses_pre, self.pc)
@@ -1200,8 +1201,8 @@ class JumpOp(Op):
     def __repr__(self):
         return "Jump " + str(self.pc)
 
-    def jdump(self):
-        return '{ "op": "Jump", "pc": "%d" }'%self.pc
+    def as_json(self):
+        return { "op": "Jump", "pc": str(self.pc) }
 
     def tladump(self):
         return 'OpJump(self, %d)'%self.pc
@@ -1228,8 +1229,8 @@ class JumpCondOp(Op):
     def __repr__(self):
         return "JumpCond " + str(self.cond) + " " + str(self.pc)
 
-    def jdump(self):
-        return '{ "op": "JumpCond", "pc": "%d", "cond": %s }'%(self.pc, jsonValue(self.cond))
+    def as_json(self):
+        return { "op": "JumpCond", "pc": str(self.pc), "cond": as_json_value_repr(self.cond) }
 
     def tladump(self):
         return 'OpJumpCond(self, %d, %s)'%(self.pc, tlaValue(self.cond))
@@ -1266,9 +1267,9 @@ class NaryOp(Op):
         (lexeme, file, line, column) = self.op
         return "%d-ary "%self.n + str(lexeme)
 
-    def jdump(self):
+    def as_json(self):
         (lexeme, file, line, column) = self.op
-        return '{ "op": "Nary", "arity": %d, "value": "%s" }'%(self.n, lexeme)
+        return { "op": "Nary", "arity": self.n, "value": str(lexeme) }
 
     def tladump(self):
         (lexeme, file, line, column) = self.op

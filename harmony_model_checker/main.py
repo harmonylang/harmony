@@ -14,6 +14,7 @@ from harmony_model_checker.exception import HarmonyCompilerError, HarmonyCompile
 import harmony_model_checker.harmony.harmony as legacy_harmony
 from harmony_model_checker.harmony.genhtml import GenHTML
 from harmony_model_checker.harmony.brief import Brief
+from harmony_model_checker.harmony.hvm import dump_json_code
 from harmony_model_checker.harmony.verbose import Verbose
 from harmony_model_checker.compile import do_compile
 
@@ -115,7 +116,7 @@ def handle_hvm(ns, output_files, parse_code_only, code, scope):
     # see if there is a configuration file
     if code is not None:
         with open(output_files["hvm"], "w", encoding='utf-8') as fd:
-            legacy_harmony.dumpCode("json", code, scope, f=fd)
+            dump_json_code(code, scope, f=fd)
 
     if parse_code_only:
         exit()

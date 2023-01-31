@@ -161,20 +161,6 @@ def dumpModule(name, scope, f, last):
 
 def dumpCode(printCode, code: Code, scope: Scope, f=sys.stdout):
     lastloc = None
-    if printCode == "json":
-        print("{", file=f)
-        print('  "labels": {', file=f)
-        for (k, v) in scope.labels.items():
-            print('    "%s": "%d",'%(k, v), file=f)
-        print('    "__end__": %d'%len(code.labeled_ops), file=f)
-        print('  },', file=f)
-        print('  "modules": {', file=f)
-        imported = getImported()
-        for m, s in imported.items():
-            dumpModule(m, s, f, False)
-        dumpModule("__main__", scope, f, True)
-        print('  },', file=f)
-        print('  "code": [', file=f)
     for pc in range(len(code.labeled_ops)):
         if printCode == "verbose":
             lop = code.labeled_ops[pc]
@@ -187,71 +173,8 @@ def dumpCode(printCode, code: Code, scope: Scope, f=sys.stdout):
                     print(file, ":", line, file=f)
                 lastloc = (file, line)
             print("  ", pc, code.labeled_ops[pc].op, file=f)
-        elif printCode == "json":
-            if pc < len(code.labeled_ops) - 1:
-                print("    %s,"%code.labeled_ops[pc].op.jdump(), file=f)
-            else:
-                print("    %s"%code.labeled_ops[pc].op.jdump(), file=f)
         else:
             print(code.labeled_ops[pc].op, file=f)
-    if printCode == "json":
-        print("  ],", file=f)
-        print('  "pretty": [', file=f)
-        for pc in range(len(code.labeled_ops)):
-            if pc < len(code.labeled_ops) - 1:
-                print('    [%s,%s],'%(json.dumps(str(code.labeled_ops[pc].op), ensure_ascii=False), json.dumps(explanation(code.labeled_ops[pc]), ensure_ascii=False)), file=f)
-            else:
-                print('    [%s,%s]'%(json.dumps(str(code.labeled_ops[pc].op), ensure_ascii=False), json.dumps(explanation(code.labeled_ops[pc]), ensure_ascii=False)), file=f)
-        print("  ],", file=f)
-        print("  \"locs\": [", file=f, end="")
-        firstTime = True
-        for pc in range(len(code.labeled_ops)):
-            lop = code.labeled_ops[pc]
-            (_, file, line, column) = lop.start
-            (endlexeme, _, endline, endcolumn) = lop.stop
-            endcolumn += len(endlexeme) - 1
-            if lop.stmt is None:
-                line1 = line
-                column1 = column
-                line2 = endline
-                column2 = endcolumn
-            else:
-                (line1, column1, line2, column2) = lop.stmt
-            if (line, column) < (line1, column1):
-                line = line1
-                column = column1
-            if (line, column) > (line2, column2):
-                line = line2
-                column = column2
-            if (endline, endcolumn) > (line2, column2):
-                endline = line2
-                endcolumn = column2
-            if (endline, endcolumn) < (line1, column1):
-                endline = line1
-                endcolumn = column1
-            assert line <= endline
-            assert (line < endline) or (column <= endcolumn), (lop.module, line, endline, column, endcolumn, lop.start, lop.stop, lop.stmt)
-            if False:        # TODO: debugging
-                line = line1
-                column = column1
-                endline = line2
-                endcolumn = column2
-            if file is not None:
-                if firstTime:
-                    firstTime = False
-                    print(file=f)
-                else:
-                    print(",", file=f)
-                if endlexeme in { "indent", "dedent" }:     # Hack...
-                    endlexeme = endlexeme[0]
-                if lop.module is None:
-                    module = "__None__"
-                else:
-                    module = lop.module
-                print("    { \"module\": \"%s\", \"line\": %d, \"column\": %d, \"endline\": %d, \"endcolumn\": %d, \"stmt\": [%d,%d,%d,%d] }"%(module, line, column, endline, endcolumn, line1, column1, line2, column2), file=f, end="")
-        print(file=f)
-        print("  ]", file=f)
-        print("}", file=f)
 
 tladefs = """-------- MODULE Harmony --------
 EXTENDS Integers, FiniteSets, Bags, Sequences, TLC

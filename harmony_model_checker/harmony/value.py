@@ -1,5 +1,4 @@
 from abc import abstractmethod
-import json
 from typing import Any, List, Optional, Tuple
 
 tlavarcnt = 0           # to generate unique TLA+ variables
@@ -20,25 +19,16 @@ def strValue(v):
         return '"%s"'%v
     assert False, v
 
-def jsonValue(v):
+def as_json_value_repr(v):
     if isinstance(v, Value):
-        return v.jdump()
+        return v.as_json()
     if isinstance(v, bool):
-        return '{ "type": "bool", "value": "%s" }'%str(v)
+        return { "type": "bool", "value": str(v) }
     if isinstance(v, int) or isinstance(v, float):
-        return '{ "type": "int", "value": %s }'%str(v)
+        return { "type": "int", "value": v }
     if isinstance(v, str):
-        return '{ "type": "atom", "value": %s }'%json.dumps(v, ensure_ascii=False)
+        return { "type": "atom", "value": v }
     assert False, v
-
-def strVars(v):
-    assert isinstance(v, DictValue)
-    result = ""
-    for (var, val) in v.d.items():
-        if result != "":
-            result += ", "
-        result += strValue(var)[1:] + "=" + strValue(val)
-    return "{" + result + "}"
 
 def keyValue(v):
     if isinstance(v, bool):
@@ -57,12 +47,12 @@ class Value:
     def __str__(self):
         return self.__repr__()
 
-    def jdump(self):
-        assert False
+    def as_json(self) -> dict:
+        ...
 
     def substitute(self, map):
         assert False, self
-    
+
     @abstractmethod
     def key(self) -> Tuple[int, int]:
         pass
@@ -87,8 +77,8 @@ class PcValue(Value):
     def key(self):
         return (3, self.pc)
 
-    def jdump(self):
-        return '{ "type": "pc", "value": "%d" }'%self.pc
+    def as_json(self):
+        return { "type": "pc", "value": str(self.pc) }
 
     def substitute(self, map):
         # return substValue(self.pc, map)
@@ -128,7 +118,7 @@ class LabelValue(Value):
     def key(self):
         return (100, self.id)
 
-    def jdump(self):
+    def as_json(self) -> dict:
         assert False, self
 
     def substitute(self, map):
@@ -154,13 +144,9 @@ class ListValue(Value):
         s = "<<" + ",".join(tlaValue(x) for x in self.vals) + ">>"
         return 'HList(%s)'%s
 
-    def jdump(self):
-        result = ""
-        for v in self.vals:
-            if result != "":
-                result += ", "
-            result += jsonValue(v)
-        return '{ "type": "list", "value": [%s] }'%result
+    def as_json(self):
+        result = [as_json_value_repr(v) for v in self.vals]
+        return { "type": "list", "value": result }
 
     def __hash__(self):
         hash = 0
@@ -229,14 +215,12 @@ class DictValue(Value):
         s += " [] OTHER -> FALSE ]"
         return 'HDict(%s)'%s
 
-    def jdump(self):
-        result = ""
+    def as_json(self):
+        result = []
         keys = sorted(self.d.keys(), key=keyValue)
         for k in keys:
-            if result != "":
-                result += ", "
-            result += '{ "key": %s, "value": %s }'%(jsonValue(k), jsonValue(self.d[k]))
-        return '{ "type": "dict", "value": [%s] }'%result
+            result.append({ "key": as_json_value_repr(k), "value": as_json_value_repr(self.d[k]) })
+        return { "type": "dict", "value": result }
 
     def __hash__(self):
         hash = 0
@@ -284,14 +268,12 @@ class SetValue(Value):
         s = "{" + ",".join(tlaValue(x) for x in self.s) + "}"
         return 'HSet(%s)'%s
 
-    def jdump(self):
-        result = ""
+    def as_json(self):
+        result = []
         vals = sorted(self.s, key=keyValue)
         for v in vals:
-            if result != "":
-                result += ", "
-            result += jsonValue(v)
-        return '{ "type": "set", "value": [%s] }'%result
+            result.append(as_json_value_repr(v))
+        return { "type": "set", "value": result }
 
     def __hash__(self):
         return frozenset(self.s).__hash__()
@@ -345,15 +327,13 @@ class AddressValue(Value):
         s = "<<" + ",".join(tlaValue(x) for x in self.args) + ">>"
         return 'Address(%s, %s)'%(tlaValue(self.func), s)
 
-    def jdump(self):
+    def as_json(self):
         if self.func is None:
-            return '{ "type": "address" }'
-        result = ""
+            return { "type": "address" }
+        result = []
         for index in self.args:
-            if result != "":
-                result += ", "
-            result = result + jsonValue(index)
-        return '{ "type": "address", "func": %s, "args": [%s] }'%(jsonValue(self.func), result)
+            result.append(as_json_value_repr(index))
+        return { "type": "address", "func": as_json_value_repr(self.func), "args": result }
 
     def __hash__(self):
         hash = 0
