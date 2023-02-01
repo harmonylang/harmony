@@ -1,5 +1,7 @@
+import sys
 from typing import Set
 from harmony_model_checker.harmony.ops import *
+import harmony_model_checker.harmony.harmony as legacy_harmony
 
 class Labeled_Op:
     def __init__(self, module: Optional[str], op: Op, start, stop, stmt, labels):
@@ -137,3 +139,35 @@ class Code:
                 map[label] = PcValue(pc)
         for lop in self.labeled_ops:
             lop.op.substitute(map)
+
+    def dump(self, verbose: bool, f=sys.stdout):
+        lastloc = None
+        for pc, lop in enumerate(self.labeled_ops):
+            if verbose:
+                file, line = self.curFile, self.curLine
+                if file is not None and (file, line) != lastloc:
+                    lines = legacy_harmony.files[file]
+                    if lines is not None and line <= len(lines):
+                        print(f"{file, line}:{lines[line-1]}", file=f)
+                    else:
+                        print(f"{file}:{line}", file=f)
+                    lastloc = (file, line)
+                print(f"  {pc} {lop}", file=f)
+            else:
+                print(lop, file=f)
+
+    # Jump chaining
+    def optimize(self):
+        def optjump(pc: int):
+            while pc < len(self.labeled_ops):
+                op = self.labeled_ops[pc].op
+                if not isinstance(op, JumpOp):
+                    break
+                pc = op.pc
+            return pc
+
+        for i, op in enumerate(self.labeled_ops):
+            if isinstance(op, JumpOp):
+                self.labeled_ops[i].op = JumpOp(optjump(op.pc), reason=op.reason)
+            elif isinstance(op, JumpCondOp):
+                self.labeled_ops[i].op = JumpCondOp(op.cond, optjump(op.pc), reason=op.reason)

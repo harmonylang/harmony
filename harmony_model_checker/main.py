@@ -99,7 +99,7 @@ def handle_hny(ns, output_files, parse_code_only, filenames):
     if output_files["tex"] is not None:
         with open(output_files["tex"], "w", encoding='utf-8') as f:
             legacy_harmony.tex_output(f, code, scope)
-    
+
     return code, scope
 
 def handle_hvm(ns, output_files, parse_code_only, code, scope):
@@ -149,7 +149,7 @@ def handle_hco(ns, output_files):
         behavior = ns.B
 
     disable_browser = settings.values.disable_web or ns.noweb
-    
+
     b = Brief()
     b.run(output_files, behavior)
     vb = Verbose()
@@ -162,7 +162,7 @@ def handle_hco(ns, output_files):
         print("open " + url + " for more information", file=sys.stderr)
         if not disable_browser:
             webbrowser.open(url)
-    
+
 def handle_version(_: argparse.Namespace):
     print("Version:", harmony_model_checker.__package__,
           harmony_model_checker.__version__)
@@ -204,7 +204,7 @@ def main():
 
     parse_code_only: bool = ns.parse
     legacy_harmony.silent = ns.s
-    
+
     output_files: Dict[str, Optional[str]] = {
         "hfa": None,
         "htm": None,
@@ -272,13 +272,18 @@ def main():
             handle_hco(ns, output_files)
         else:
             print("Skipping Phases 2-5...")
-            legacy_harmony.dumpCode(print_code, code, scope)
+            if print_code == "verbose":
+                code.dump(verbose=True)
+            elif print_code == "json":
+                dump_json_code(code, scope, f=sys.stdout)
+            else:
+                code.dump(verbose=False)
 
     if input_file_type == ".hvm":
         print("Skipping Phase 1...")
         handle_hvm(ns, output_files, parse_code_only, None, None)
         handle_hco(ns, output_files)
-        
+
     if input_file_type == ".hco":
         print("Skipping Phases 1-4...")
         handle_hco(ns, output_files)

@@ -32,18 +32,13 @@
     POSSIBILITY OF SUCH DAMAGE.
 """
 
-import sys
-import json
-from typing import Any, Dict, List, Set, Tuple
+from typing import Dict, List
 
 from harmony_model_checker import __version__
+# TODO: This * import is not ideal. We are doing it here so that it is
+# accessible as legacy_harmony for convenience
 from harmony_model_checker.harmony.ast import *
-from harmony_model_checker.harmony.code import Code
-from harmony_model_checker.harmony.ops import JumpCondOp, JumpOp
-from harmony_model_checker.harmony.state import State
-from harmony_model_checker.harmony.scope import Scope
 from harmony_model_checker.harmony.tex import tex_main
-from harmony_model_checker.harmony.value import ContextValue
 
 
 # TODO.  These should not be global ideally
@@ -54,99 +49,6 @@ node_uid = 1                       # unique node identifier
 silent = False                     # not printing periodic status updates
 lasttime = 0.0                     # last time status update was printed
 
-
-class Node:
-    def __init__(self, state: State, uid: int, parent, before, after, steps, len):
-        self.state = state      # State associated with this node
-        self.uid = uid          # index into 'nodes' array
-        self.parent = parent    # next hop on way to initial state
-        self.len = len          # length of path to initial state
-        self.before = before    # the context that made the hop from the parent state
-        self.after = after      # the resulting context
-        self.steps = steps      # list of microsteps
-
-        # if state.choosing, maps choice, else context
-        self.edges: Dict[ContextValue, Tuple[Node, ContextValue, Any]] = {}         # map to <nextNode, nextContext, steps>
-
-        self.sources: Set[Node] = set()    # backward edges
-        self.expanded = False   # lazy deletion
-        self.issues: Set[str] = set()     # set of problems with this state
-        self.cid = 0            # strongly connected component id
-        self.blocked: Dict[ContextValue, bool] = {}       # map of context -> boolean
-
-    def __hash__(self):
-        return self.uid
-
-    def __eq__(self, other):
-        return isinstance(other, Node) and other.uid == self.uid
-
-    def rec_isblocked(self, ctx, vars, seen):
-        if self.uid in seen:
-            return True
-        seen.add(self.uid)
-        if ctx in self.blocked:
-            return self.blocked[ctx]
-        s = self.state
-        if s.choosing == ctx:
-            for (choice, next) in self.edges.items():
-                (nn, nc, steps) = next
-                ns = nn.state
-                if ns.vars != vars or not nn.rec_isblocked(nc, vars, seen):
-                    self.blocked[ctx] = False
-                    return False
-        elif ctx in self.edges:
-            next = self.edges[ctx]
-            (nn, nc, steps) = next
-            ns = nn.state
-            if ns.vars != vars or not nn.rec_isblocked(nc, vars, seen):
-                self.blocked[ctx] = False
-                return False
-        else:
-            self.blocked[ctx] = False
-            return False
-        self.blocked[ctx] = True
-        return True
-
-    # See if the given process is "blocked", i.e., it cannot change
-    # the shared state (the state variables), terminate, or stop unless
-    # some other process changes the shared state first
-    def isblocked(self, ctx):
-        return self.rec_isblocked(ctx, self.state.vars, set())
-
-
-def optjump(code, pc):
-    while pc < len(code.labeled_ops):
-        op = code.labeled_ops[pc].op
-        if not isinstance(op, JumpOp):
-            break
-        pc = op.pc
-    return pc
-
-# Jump chaining
-def optimize(code):
-    for i in range(len(code.labeled_ops)):
-        op = code.labeled_ops[i].op
-        if isinstance(op, JumpOp):
-            code.labeled_ops[i].op = JumpOp(optjump(code, op.pc), reason=op.reason)
-        elif isinstance(op, JumpCondOp):
-            code.labeled_ops[i].op = JumpCondOp(op.cond, optjump(code, op.pc), reason=op.reason)
-
-def dumpCode(printCode, code: Code, scope: Scope, f=sys.stdout):
-    lastloc = None
-    for pc in range(len(code.labeled_ops)):
-        if printCode == "verbose":
-            lop = code.labeled_ops[pc]
-            file, line = code.curFile, code.curLine
-            if file is not None and (file, line) != lastloc:
-                lines = files[file]
-                if lines is not None and line <= len(lines):
-                    print("%s:%d"%(file, line), lines[line - 1], file=f)
-                else:
-                    print(file, ":", line, file=f)
-                lastloc = (file, line)
-            print("  ", pc, code.labeled_ops[pc].op, file=f)
-        else:
-            print(code.labeled_ops[pc].op, file=f)
 
 tladefs = """-------- MODULE Harmony --------
 EXTENDS Integers, FiniteSets, Bags, Sequences, TLC

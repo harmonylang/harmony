@@ -266,5 +266,5 @@ def do_compile(fname: str, consts: List[str], mods: List[str], interface: Option
     newcode = code.liveness()
 
     newcode.link()
-    legacy_harmony.optimize(newcode)
+    newcode.optimize()
     return newcode, scope

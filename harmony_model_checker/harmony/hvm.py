@@ -1,6 +1,5 @@
-
-from io import TextIOWrapper
 import json
+from typing import TextIO
 from harmony_model_checker.harmony.ast import getImported
 from harmony_model_checker.harmony.code import Code
 from harmony_model_checker.harmony.scope import Scope
@@ -92,5 +91,5 @@ def _dump_hvm(code: Code, scope: Scope):
     yield 'locs', _dump_locs(code)
 
 
-def dump_json_code(code: Code, scope: Scope, f: TextIOWrapper):
+def dump_json_code(code: Code, scope: Scope, f: TextIO):
     json.dump(_dump_hvm(code, scope), f, indent=2)
