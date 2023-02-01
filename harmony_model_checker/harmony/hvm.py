@@ -9,38 +9,38 @@ from json_stream.writer import streamable_dict, streamable_list # type: ignore
 
 
 @streamable_dict
-def dump_identifiers(scope: Scope):
+def _dump_identifiers(scope: Scope):
     for k, (t, _) in scope.pmap.items():
         yield k, t
     yield "___", "___"
 
 
 @streamable_dict
-def dump_module(scope: Scope):
+def _dump_module(scope: Scope):
     yield 'file', scope.file
     with open(scope.file, encoding='utf-8') as fdx:
         lines = fdx.read().splitlines()
     yield 'lines', streamable_list(lines)
-    yield 'identifiers', dump_identifiers(scope)
+    yield 'identifiers', _dump_identifiers(scope)
 
 
 @streamable_dict
-def dump_labels(code: Code, scope: Scope):
+def _dump_labels(code: Code, scope: Scope):
     for k, v in scope.labels.items():
         yield str(k), str(v)
     yield "__end__", len(code.labeled_ops)
 
 
 @streamable_dict
-def dump_modules(scope: Scope):
+def _dump_modules(scope: Scope):
     imported = getImported()
     for module_name, mod_scope in imported.items():
-        yield module_name, dump_module(mod_scope)
-    yield "__main__", dump_module(scope)
+        yield module_name, _dump_module(mod_scope)
+    yield "__main__", _dump_module(scope)
 
 
 @streamable_list
-def dump_locs(code: Code):
+def _dump_locs(code: Code):
     for lop in code.labeled_ops:
         (_, file, line, column) = lop.start
         (endlexeme, _, endline, endcolumn) = lop.stop
@@ -84,13 +84,13 @@ def dump_locs(code: Code):
 
 
 @streamable_dict
-def dump_hvm(code: Code, scope: Scope):
-    yield 'labels', dump_labels(code, scope)
-    yield 'modules', dump_modules(scope)
+def _dump_hvm(code: Code, scope: Scope):
+    yield 'labels', _dump_labels(code, scope)
+    yield 'modules', _dump_modules(scope)
     yield 'code', streamable_list(l_op.op.as_json() for l_op in code.labeled_ops)
     yield 'pretty', streamable_list([str(l_op.op), l_op.op.explain()] for l_op in code.labeled_ops)
-    yield 'locs', dump_locs(code)
+    yield 'locs', _dump_locs(code)
 
 
 def dump_json_code(code: Code, scope: Scope, f: TextIOWrapper):
-    json.dump(dump_hvm(code, scope), f, indent=2)
+    json.dump(_dump_hvm(code, scope), f, indent=2)
