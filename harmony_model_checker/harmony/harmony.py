@@ -131,34 +131,6 @@ def optimize(code):
         elif isinstance(op, JumpCondOp):
             code.labeled_ops[i].op = JumpCondOp(op.cond, optjump(code, op.pc), reason=op.reason)
 
-def explanation(lop):
-    return lop.op.explain()
-
-def dumpModule(name, scope, f, last):
-    print('    "%s": {'%name, file=f)
-    print('      "file": %s,'% json.dumps(scope.file), file=f)
-    print('      "lines": [', file=f)
-    with open(scope.file, encoding='utf-8') as fdx:
-        lines = fdx.read().splitlines()
-        first = True
-        for line in lines:
-            if first:
-                first = False
-            else:
-                print(",", file=f)
-            print('        %s'%json.dumps(line), end="", file=f)
-    print(file=f)
-    print('      ],', file=f)
-    print('      "identifiers": {', file=f)
-    for k,(t,_) in scope.pmap.items():
-        print('        "%s": "%s",'%(k,t), file=f)
-    print('        "___": "___"', file=f)
-    print('      }', file=f)
-    if last:
-        print('    }', file=f)
-    else:
-        print('    },', file=f)
-
 def dumpCode(printCode, code: Code, scope: Scope, f=sys.stdout):
     lastloc = None
     for pc in range(len(code.labeled_ops)):
