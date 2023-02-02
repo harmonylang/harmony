@@ -1,5 +1,6 @@
-from abc import abstractmethod
-from typing import Any, List, Optional, Tuple
+from abc import ABC, abstractmethod
+import json
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 tlavarcnt = 0           # to generate unique TLA+ variables
 
@@ -12,50 +13,20 @@ def tlaValue(lexeme):
         return 'HStr("%s")'%lexeme
     return lexeme.tlaval()
 
-def strValue(v):
-    if isinstance(v, Value) or isinstance(v, bool) or isinstance(v, int) or isinstance(v, float):
-        return str(v)
-    if isinstance(v, str):
-        return '"%s"'%v
-    assert False, v
 
-def as_json_value_repr(v):
-    if isinstance(v, Value):
-        return v.as_json()
-    if isinstance(v, bool):
-        return { "type": "bool", "value": str(v) }
-    if isinstance(v, int) or isinstance(v, float):
-        return { "type": "int", "value": v }
-    if isinstance(v, str):
-        return { "type": "atom", "value": v }
-    assert False, v
-
-def keyValue(v):
-    if isinstance(v, bool):
-        return (0, v)
-    if isinstance(v, int):
-        return (1, v)
-    if isinstance(v, str):
-        return (2, v)
-    assert isinstance(v, Value), v
-    return v.key()
-
-def substValue(v, map):
-    return v.substitute(map) if isinstance(v, Value) else v
-
-class Value:
+class Value(ABC):
     def __str__(self):
         return self.__repr__()
 
     def as_json(self) -> dict:
-        ...
+        return {}
 
-    def substitute(self, map):
+    def substitute(self, map: Dict['LabelValue', 'PcValue']) -> 'Value':
         assert False, self
 
     @abstractmethod
-    def key(self) -> Tuple[int, int]:
-        pass
+    def key(self) -> Tuple[int, Any]:
+        ...
 
 class PcValue(Value):
     def __init__(self, pc):
@@ -126,7 +97,7 @@ class LabelValue(Value):
 
 class ListValue(Value):
     def __init__(self, vals):
-        self.vals = vals
+        self.vals: List[Value] = vals
 
     def __repr__(self):
         if self.vals == []:
@@ -485,3 +456,37 @@ class ContextValue(Value):
 
     def key(self):
         return (8, (self.pc, self.__hash__()))
+
+
+def keyValue(v: Union[bool, int, str, Value]):
+    if isinstance(v, bool):
+        return (0, v)
+    if isinstance(v, int):
+        return (1, v)
+    if isinstance(v, str):
+        return (2, v)
+    assert isinstance(v, Value), v
+    return v.key()
+
+
+def substValue(v, map: Dict[LabelValue, PcValue]) -> Value:
+    return v.substitute(map) if isinstance(v, Value) else v
+
+
+def strValue(v: Union[Value, bool, int, float, str]):
+    if isinstance(v, Value) or isinstance(v, bool) or isinstance(v, int) or isinstance(v, float):
+        return str(v)
+    if isinstance(v, str):
+        return json.dumps(v)
+    assert False, v
+
+def as_json_value_repr(v: Union[Value, bool, int, float, str]):
+    if isinstance(v, Value):
+        return v.as_json()
+    if isinstance(v, bool):
+        return { "type": "bool", "value": str(v) }
+    if isinstance(v, int) or isinstance(v, float):
+        return { "type": "int", "value": v }
+    if isinstance(v, str):
+        return { "type": "atom", "value": v }
+    assert False, v

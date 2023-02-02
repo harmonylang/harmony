@@ -32,12 +32,10 @@
     POSSIBILITY OF SUCH DAMAGE.
 """
 
-from typing import Dict, List
+from typing import Dict, List, Set
 
 from harmony_model_checker import __version__
-# TODO: This * import is not ideal. We are doing it here so that it is
-# accessible as legacy_harmony for convenience
-from harmony_model_checker.harmony.ast import *
+from harmony_model_checker.harmony.scope import Scope
 from harmony_model_checker.harmony.tex import tex_main
 
 
@@ -49,6 +47,10 @@ node_uid = 1                       # unique node identifier
 silent = False                     # not printing periodic status updates
 lasttime = 0.0                     # last time status update was printed
 
+labelcnt = 0
+imported: Dict[str, Scope] = {}         # imported modules
+constants: Dict[str, str] = {}          # constants modified with -c
+used_constants: Set[str] = set()                  # constants modified and used
 
 tladefs = """-------- MODULE Harmony --------
 EXTENDS Integers, FiniteSets, Bags, Sequences, TLC

@@ -1,10 +1,10 @@
 import sys
-from typing import Set
+from typing import Set, TextIO
 from harmony_model_checker.harmony.ops import *
-import harmony_model_checker.harmony.harmony as legacy_harmony
+from harmony_model_checker.harmony.type_tools import Token_t, Stmt_t
 
 class Labeled_Op:
-    def __init__(self, module: Optional[str], op: Op, start, stop, stmt, labels):
+    def __init__(self, module: str, op: Op, start: Token_t, stop: Token_t, stmt: Optional[Stmt_t], labels: Set[LabelValue]):
         self.module = module    # module
         self.op = op            # operation
         self.start = start      # first token
@@ -15,34 +15,34 @@ class Labeled_Op:
         self.live_out: Set[str] = set()
 
 class Code:
-    def __init__(self, parent=None):
+    def __init__(self, parent: Optional['Code'] = None):
         self.labeled_ops: List[Labeled_Op] = []
-        self.endlabels = set()
-        self.modstack = []      # module stack
-        self.curModule = None
-        self.curFile = None
+        self.endlabels: Set[LabelValue] = set()
+        self.modstack: List[Optional[str]] = []      # module stack
+        self.curModule: Optional[str] = None
+        self.curFile: Optional[str] = None
         self.curLine = 0
         self.parent = parent
 
-    def modpush(self, module):
+    def modpush(self, module: Optional[str]):
         self.modstack.append(self.curModule)
         self.curModule = module
 
     def modpop(self):
         self.curModule = self.modstack.pop()
 
-    def location(self, file, line: int):
+    def location(self, file: str, line: int):
         self.curFile = file
         self.curLine = line
 
-    def append(self, op: Op, start, stop, labels=set(), stmt=None):
+    def append(self, op: Op, start: Token_t, stop: Token_t, labels: Set[LabelValue]=set(), stmt: Optional[Stmt_t]=None):
         assert len(start) == 4
         assert len(stop) == 4
         assert self.curModule is not None
         self.labeled_ops.append(Labeled_Op(self.curModule, op, start, stop, stmt, labels | self.endlabels))
         self.endlabels = set()
 
-    def nextLabel(self, endlabel):
+    def nextLabel(self, endlabel: LabelValue):
         self.endlabels.add(endlabel)
 
     # This method inserts DelVar operations as soon as a variable is no
@@ -50,7 +50,7 @@ class Code:
     def liveness(self):
         # First figure out what the labels point to and initialize
         # the nodes
-        map = {}
+        map: Dict[LabelValue, int] = {}
         lop_predecessors: Dict[int, Set[int]] = {}
         for pc in range(len(self.labeled_ops)):
             lop = self.labeled_ops[pc]
@@ -61,8 +61,7 @@ class Code:
                 assert label not in map, label
                 map[label] = pc
         # Compute the predecessors of each node
-        for pc in range(len(self.labeled_ops)):
-            lop = self.labeled_ops[pc]
+        for pc, lop in enumerate(self.labeled_ops):
             if isinstance(lop.op, JumpOp):
                 assert isinstance(lop.op.pc, LabelValue)
                 op_pc = map[lop.op.pc]
@@ -84,7 +83,7 @@ class Code:
             for pc in range(len(self.labeled_ops)):
                 lop = self.labeled_ops[pc]
                 if pc == len(self.labeled_ops) - 1:
-                    live_out = set()
+                    live_out: Set[str] = set()
                 elif isinstance(lop.op, JumpOp):
                     assert isinstance(lop.op.pc, LabelValue)
                     succ = self.labeled_ops[map[lop.op.pc]]
@@ -107,7 +106,7 @@ class Code:
 
             # If a variable is live on output of any predecessor but not
             # live on input, delete it first
-            pre_del = set()
+            pre_del: Set[str] = set()
             for pred in lop_predecessors[lop_pc]:
                 plop = self.labeled_ops[pred]
                 live_out = plop.live_out | plop.op.define()
@@ -131,7 +130,7 @@ class Code:
         return newcode
 
     def link(self):
-        map = {}
+        map: Dict[LabelValue, PcValue] = {}
         for pc in range(len(self.labeled_ops)):
             lop = self.labeled_ops[pc]
             for label in lop.labels:
@@ -140,8 +139,9 @@ class Code:
         for lop in self.labeled_ops:
             lop.op.substitute(map)
 
-    def dump(self, verbose: bool, f=sys.stdout):
-        lastloc = None
+    def dump(self, verbose: bool, f: TextIO=sys.stdout):
+        import harmony_model_checker.harmony.harmony as legacy_harmony
+        lastloc: Optional[Tuple[str, int]] = None
         for pc, lop in enumerate(self.labeled_ops):
             if verbose:
                 file, line = self.curFile, self.curLine

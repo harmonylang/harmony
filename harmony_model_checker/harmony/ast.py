@@ -1,20 +1,15 @@
 import functools
 
+import harmony_model_checker.harmony.harmony as legacy_harmony
 from harmony_model_checker.harmony.code import Code
 from harmony_model_checker.harmony.scope import Scope
 from harmony_model_checker.harmony.state import State
 from harmony_model_checker.harmony.ops import *
 from harmony_model_checker.exception import *
-
-labelcnt = 0
-imported: Dict[str, Scope] = {}           # imported modules
-constants: Dict[str, str] = {}          # constants modified with -c
-used_constants = set()  # constants modified and used
-
-Token_t = Tuple[str, str, int, int]
+from harmony_model_checker.harmony.type_tools import Token_t
 
 def getImported():
-    return imported
+    return legacy_harmony.imported
 
 class AST:
     def __init__(self, endtoken: Token_t, token: Token_t, atomically):
@@ -140,9 +135,9 @@ class AST:
     def doImport(self, scope: Scope, code: Code, module):
         (lexeme, file, line, column) = module
         # assert lexeme not in scope.names        # TODO
-        assert lexeme in imported, "Attempted to import " + str(lexeme) + ", but it is not found in imports: " + str(imported)
+        assert lexeme in legacy_harmony.imported, "Attempted to import " + str(lexeme) + ", but it is not found in imports: " + str(legacy_harmony.imported)
 
-        scope.set(lexeme, ("module", imported[lexeme]))
+        scope.set(lexeme, ("module", legacy_harmony.imported[lexeme]))
 
     def getLabels(self):
         print("getLabels", self)
@@ -200,10 +195,9 @@ class ComprehensionAST(AST):
             # Push the first index, which is 0
             code.append(PushOp((0, file, line, column)), self.token, self.token, stmt=stmt)
 
-            global labelcnt
-            startlabel = LabelValue(None, "$%d_start" % labelcnt)
-            endlabel = LabelValue(None, "$%d_end" % labelcnt)
-            labelcnt += 1
+            startlabel = LabelValue(None, "$%d_start" % legacy_harmony.labelcnt)
+            endlabel = LabelValue(None, "$%d_end" % legacy_harmony.labelcnt)
+            legacy_harmony.labelcnt += 1
             code.nextLabel(startlabel)
             code.append(CutOp(var, var2), self.token, self.token, stmt=stmt)
             code.append(JumpCondOp(False, endlabel, reason="check if loop is done"), self.token, self.token, stmt=stmt)
@@ -573,14 +567,13 @@ class NaryAST(AST):
         return all(x.isConstant(scope) for x in self.args)
 
     def gencode(self, scope, code, stmt):
-        global labelcnt
         (op, file, line, column) = self.op
         n = len(self.args)
         if op == "and" or op == "or":
             self.args[0].compile(scope, code, stmt)
-            lastlabel = LabelValue(None, "$%d_last" % labelcnt)
-            endlabel = LabelValue(None, "$%d_end" % labelcnt)
-            labelcnt += 1
+            lastlabel = LabelValue(None, "$%d_last" % legacy_harmony.labelcnt)
+            endlabel = LabelValue(None, "$%d_end" % legacy_harmony.labelcnt)
+            legacy_harmony.labelcnt += 1
             for i in range(1, n):
                 code.append(JumpCondOp(op == "or", lastlabel), self.token, self.endtoken, stmt=stmt)
                 self.args[i].compile(scope, code, stmt)
@@ -591,9 +584,9 @@ class NaryAST(AST):
         elif op == "=>":
             assert n == 2, n
             self.args[0].compile(scope, code, stmt)
-            truelabel = LabelValue(None, "$%d_true" % labelcnt)
-            endlabel = LabelValue(None, "$%d_end" % labelcnt)
-            labelcnt += 1
+            truelabel = LabelValue(None, "$%d_true" % legacy_harmony.labelcnt)
+            endlabel = LabelValue(None, "$%d_end" % legacy_harmony.labelcnt)
+            legacy_harmony.labelcnt += 1
             code.append(JumpCondOp(False, truelabel), self.token, self.endtoken, stmt=stmt)
             self.args[1].compile(scope, code, stmt)
             code.append(JumpOp(endlabel), self.op, self.op, stmt=stmt)
@@ -605,9 +598,9 @@ class NaryAST(AST):
             negate = isinstance(self.args[1], NaryAST) and self.args[1].op[0] == "not"
             cond = self.args[1].args[0] if negate else self.args[1]
             cond.compile(scope, code, stmt)
-            elselabel = LabelValue(None, "$%d_else" % labelcnt)
-            endlabel = LabelValue(None, "$%d_end" % labelcnt)
-            labelcnt += 1
+            elselabel = LabelValue(None, "$%d_else" % legacy_harmony.labelcnt)
+            endlabel = LabelValue(None, "$%d_end" % legacy_harmony.labelcnt)
+            legacy_harmony.labelcnt += 1
             code.append(JumpCondOp(negate, elselabel), self.token, self.endtoken, stmt=stmt)
             self.args[0].compile(scope, code, stmt)  # "if" expr
             code.append(JumpOp(endlabel), self.op, self.op, stmt=stmt)
@@ -1220,9 +1213,8 @@ class IfAST(AST):
 
     def compile(self, scope, code, stmt):
         stmt = self.stmt()
-        global labelcnt
-        label = labelcnt
-        labelcnt += 1
+        label = legacy_harmony.labelcnt
+        legacy_harmony.labelcnt += 1
         sublabel = 0
         endlabel = LabelValue(None, "$%d_end" % label)
         if self.atomically:
@@ -1280,10 +1272,9 @@ class WhileAST(AST):
             code.append(AtomicIncOp(False), self.token, self.endtoken, stmt=stmt)
         negate = isinstance(self.cond, NaryAST) and self.cond.op[0] == "not"
         cond = self.cond.args[0] if negate else self.cond
-        global labelcnt
-        startlabel = LabelValue(None, "$%d_start" % labelcnt)
-        endlabel = LabelValue(None, "$%d_end" % labelcnt)
-        labelcnt += 1
+        startlabel = LabelValue(None, "$%d_start" % legacy_harmony.labelcnt)
+        endlabel = LabelValue(None, "$%d_end" % legacy_harmony.labelcnt)
+        legacy_harmony.labelcnt += 1
         code.nextLabel(startlabel)
         cond.compile(scope, code, stmt)
         code.append(JumpCondOp(negate, endlabel), self.token, self.token, stmt=stmt)
@@ -1487,13 +1478,12 @@ class LetWhenAST(AST):
         stmt = self.stmt()
 
         # declare labels
-        global labelcnt
-        label_start = LabelValue(None, "LetWhenAST_start$%d" % labelcnt)
-        labelcnt += 1
-        label_condfailed = LabelValue(None, "LetWhenAST_condfailed$%d" % labelcnt)
-        labelcnt += 1
-        label_body = LabelValue(None, "LetWhenAST_body$%d" % labelcnt)
-        labelcnt += 1
+        label_start = LabelValue(None, "LetWhenAST_start$%d" % legacy_harmony.labelcnt)
+        legacy_harmony.labelcnt += 1
+        label_condfailed = LabelValue(None, "LetWhenAST_condfailed$%d" % legacy_harmony.labelcnt)
+        legacy_harmony.labelcnt += 1
+        label_body = LabelValue(None, "LetWhenAST_body$%d" % legacy_harmony.labelcnt)
+        legacy_harmony.labelcnt += 1
 
         # start:
         code.nextLabel(label_start)
@@ -1523,8 +1513,8 @@ class LetWhenAST(AST):
                 code.append(DupOp(), token, endtkn, stmt=stmt)
                 code.append(PushOp((SetValue(set()), file, line, column)), token, endtkn, stmt=stmt)
                 code.append(NaryOp(("==", file, line, column), 2), token, endtkn, stmt=stmt)
-                label_select = LabelValue(None, "LetWhenAST_select$%d" % labelcnt)
-                labelcnt += 1
+                label_select = LabelValue(None, "LetWhenAST_select$%d" % legacy_harmony.labelcnt)
+                legacy_harmony.labelcnt += 1
                 code.append(JumpCondOp(False, label_select), token, endtkn, stmt=stmt)
 
                 # set is empty.  Try again
@@ -1661,9 +1651,8 @@ class MethodAST(AST):
 
     def compile(self, scope, code, stmt):
         stmt = self.range(self.token, self.colon)
-        global labelcnt
-        endlabel = LabelValue(None, "$%d" % labelcnt)
-        labelcnt += 1
+        endlabel = LabelValue(None, "$%d" % legacy_harmony.labelcnt)
+        legacy_harmony.labelcnt += 1
         (lexeme, file, line, column) = self.name
         code.append(JumpOp(endlabel, reason="jump over method definition"), self.token, self.token, stmt=stmt)
         code.nextLabel(self.label)
@@ -1894,7 +1883,7 @@ class FromAST(AST):
     def compile(self, scope, code, stmt):
         self.doImport(scope, code, self.module)
         (lexeme, file, line, column) = self.module
-        names = imported[lexeme].names
+        names = legacy_harmony.imported[lexeme].names
         # TODO.  Check for overlap, existence, etc.
         if self.items == []:  # from module import *
             for (item, (t, v)) in names.items():
@@ -2038,9 +2027,9 @@ class ConstAST(AST):
                     column=column,
                     message="%s: Parse error: already defined" % lexeme
                 )
-            if lexeme in constants:
-                value = constants[lexeme]
-                used_constants.add(lexeme)
+            if lexeme in legacy_harmony.constants:
+                value = legacy_harmony.constants[lexeme]
+                legacy_harmony.used_constants.add(lexeme)
             else:
                 value = v
             scope.set(lexeme, ("constant", (value, file, line, column)))

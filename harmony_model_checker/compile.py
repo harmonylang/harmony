@@ -4,7 +4,9 @@ from harmony_model_checker.exception import HarmonyCompilerError, HarmonyCompile
 from harmony_model_checker.harmony.ast import AST, BlockAST
 
 import harmony_model_checker.harmony.harmony as legacy_harmony
-from harmony_model_checker.harmony.harmony import Scope, Code, State
+import harmony_model_checker.harmony.value as harmony_values
+from harmony_model_checker.harmony.code import Code, State
+from harmony_model_checker.harmony.scope import Scope
 from harmony_model_checker.harmony.ops import FrameOp, ReturnOp
 from harmony_model_checker.harmony.value import AddressValue, ContextValue
 from harmony_model_checker.parser.antlr_rule_visitor import HarmonyVisitorImpl
@@ -170,7 +172,7 @@ def _parse_constant(name: str, value: str):
     ast.compile(scope, code, None)
     state = State(code, scope.labels)
     ctx = ContextValue(("__arg__", None, None, None), 0,
-                       legacy_harmony.emptytuple, legacy_harmony.emptytuple)
+                       harmony_values.emptytuple, harmony_values.emptytuple)
     ctx.atomic = 1
     while ctx.pc != len(code.labeled_ops):
         code.labeled_ops[ctx.pc].op.eval(state, ctx)
