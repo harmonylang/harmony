@@ -6,7 +6,7 @@ from harmony_model_checker.harmony.scope import Scope
 from harmony_model_checker.harmony.state import State
 from harmony_model_checker.harmony.ops import *
 from harmony_model_checker.exception import *
-from harmony_model_checker.harmony.type_tools import Token_t
+from harmony_model_checker.harmony.type_tools import Stmt_t, Token_t
 
 def getImported():
     return legacy_harmony.imported
@@ -31,18 +31,18 @@ class AST:
         self.token = token
         self.atomically = atomically
 
-    def stmt(self):
+    def stmt(self) -> Stmt_t:
         _, _, line1, column1 = self.token
         lexeme2, _, line2, column2 = self.endtoken
         return (line1, column1, line2, column2 + len(lexeme2) - 1)
 
-    def range(self, token1, token2):
+    def range(self, token1: Token_t, token2: Token_t) -> Stmt_t:
         _, _, line1, column1 = token1
         lexeme2, _, line2, column2 = token2
         return (line1, column1, line2, column2 + len(lexeme2) - 1)
 
     # a new local constant or tree of constants
-    def define(self, scope: Scope, const):
+    def define(self, scope: Scope, const: Union[list, Token_t]):
         if isinstance(const, tuple):
             scope.checkUnused(const)
             (lexeme, file, line, column) = const
@@ -53,7 +53,7 @@ class AST:
                 self.define(scope, c)
 
     # a new local variable or tree of variables
-    def assign(self, scope: Scope, var):
+    def assign(self, scope: Scope, var: Union[list, Token_t]):
         if isinstance(var, tuple):
             scope.checkUnused(var)
             (lexeme, file, line, column) = var
@@ -82,7 +82,7 @@ class AST:
             )
         return ctx.pop()
 
-    def compile(self, scope: Scope, code: Code, stmt):
+    def compile(self, scope: Scope, code: Code, stmt: Stmt_t):
         if self.isConstant(scope):
             code2 = Code(code)
             code2.modpush(code.curModule)
@@ -106,7 +106,7 @@ class AST:
         )
 
     # This is supposed to push the address of an lvalue
-    def ph1(self, scope: Scope, code: Code, stmt):
+    def ph1(self, scope: Scope, code: Code, stmt: Stmt_t):
         lexeme, file, line, column = self.token
         # assert False, str(self)
         raise HarmonyCompilerError(
@@ -118,7 +118,7 @@ class AST:
         )
 
     # This is supposed to push the address of an lvalue
-    def address(self, scope: Scope, code: Code, stmt):
+    def address(self, scope: Scope, code: Code, stmt: Stmt_t):
         lexeme, file, line, column = self.token
         assert False, str(self)
         raise HarmonyCompilerError(
@@ -129,17 +129,17 @@ class AST:
             message='Cannot take address of %s' % str(self)
         )
 
-    def gencode(self, scope: Scope, code: Code, stmt):
+    def gencode(self, scope: Scope, code: Code, stmt: Stmt_t):
         pass
 
-    def doImport(self, scope: Scope, code: Code, module):
+    def doImport(self, scope: Scope, code: Code, module: Token_t):
         (lexeme, file, line, column) = module
         # assert lexeme not in scope.names        # TODO
         assert lexeme in legacy_harmony.imported, "Attempted to import " + str(lexeme) + ", but it is not found in imports: " + str(legacy_harmony.imported)
 
         scope.set(lexeme, ("module", legacy_harmony.imported[lexeme]))
 
-    def getLabels(self):
+    def getLabels(self) -> Set[Tuple[Token_t, str]]:
         print("getLabels", self)
         return set()
 
@@ -1165,7 +1165,7 @@ class PassAST(AST):
 
 
 class BlockAST(AST):
-    def __init__(self, endtoken, token, atomically, b, colon):
+    def __init__(self, endtoken: Token_t, token: Token_t, atomically: bool, b: List[AST], colon: Token_t):
         AST.__init__(self, endtoken, token, atomically)
         assert len(b) > 0
         self.b = b
