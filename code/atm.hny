@@ -10,17 +10,17 @@ accounts = [ { .lock: Lock(), .balance: choose({0..MAX_BALANCE})}
 
 invariant min(accounts[acct].balance for acct in {0..N_ACCOUNTS-1}) >= 0
 
-def atm_check_balance(acct):    # return the balance on acct
+def atm_check_balance(acct) returns balance:  # return the balance on acct
     acquire(?accounts[acct].lock)
-    result = accounts[acct].balance
+    balance = accounts[acct].balance
     release(?accounts[acct].lock)
 
-def atm_withdraw(acct, amount): # withdraw amount from acct
+def atm_withdraw(acct, amount) returns success: # withdraw amount from acct
     assert amount >= 0
     acquire(?accounts[acct].lock)
     accounts[acct].balance -= amount
-    result = True              # return success
     release(?accounts[acct].lock)
+    success = True
 
 def customer(atm, acct, amount):
     assert amount >= 0

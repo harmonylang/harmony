@@ -1,6 +1,6 @@
 import list
 
-def Lock():
+def Lock() returns result:
     result = { .acquired: False, .suspended: [] }
 
 def acquire(lk):

@@ -1,13 +1,13 @@
 from alloc import malloc, free
 
-def Stack():
-    result = None
+def Stack() returns stack:
+    stack = None
 
 def push(st, v):
     !st = malloc({ .value: v, .rest: !st })
 
-def pop(st):
+def pop(st) returns next:
     let node = !st:
-        result = node->value
+        next = node->value
         !st = node->rest
         free(node)

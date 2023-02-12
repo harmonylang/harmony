@@ -1,8 +1,8 @@
 from synch import Lock, acquire, release
 from alloc import malloc, free
 
-def Queue():
-    result = { .head: None, .tail: None, .lock: Lock() }
+def Queue() returns empty:
+    empty = { .head: None, .tail: None, .lock: Lock() }
 
 def put(q, v):
     let node = malloc({ .value: v, .next: None }):
@@ -14,13 +14,13 @@ def put(q, v):
             q->tail = node
         release(?q->lock)
     
-def get(q):
+def get(q) returns next:
     acquire(?q->lock)
     let node = q->head:
         if node == None:
-            result = None
+            next = None
         else:
-            result = node->value
+            next = node->value
             q->head = node->next
             if q->head == None:
                 q->tail = None

@@ -10,9 +10,9 @@ network = bag.empty()
 def broadcast(msg):
     atomically network = bag.add(network, msg)
 
-def receive(round, k):
+def receive(round, k) returns quorum:
     let msgs = { e:c for (r,e):c in network where r == round }:
-        result = bag.combinations(msgs, k)
+        quorum = bag.combinations(msgs, k)
 
 def processor(proposal):
     var estimate, decided = proposal, False

@@ -1,7 +1,7 @@
 network = {}
 
-def send(m):
-    atomically network |= { m }
+def send(msg):
+    atomically network |= { msg }
 
 def bank(self, _balance):
     var balance = _balance

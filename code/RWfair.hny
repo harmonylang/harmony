@@ -1,7 +1,7 @@
 from synch import BinSema, acquire, release
 
-def RWlock():
-    result = {
+def RWlock() returns lock:
+    lock = {
             .nreaders: 0, .nwriters: 0, .mutex: BinSema(False),
             .r_gate: { .sema: BinSema(True), .count: 0 },
             .w_gate: { .sema: BinSema(True), .count: 0 }

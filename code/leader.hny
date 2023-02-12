@@ -3,11 +3,11 @@ const NIDS = 5      # number of identifiers
 network = {}        # the network is a set of messages
 leader = 0          # used for checking correctness
 
-def send(m):
-    atomically network |= { m }
+def send(msg):
+    atomically network |= { msg }
 
-def receive(self):
-    result = { (id, found) for (dst, id, found) in network where dst == self }
+def receive(self) returns msg:
+    msg = { (id, found) for (dst, id, found) in network where dst == self }
 
 def processor(self, succ):
     send(succ, self, False)

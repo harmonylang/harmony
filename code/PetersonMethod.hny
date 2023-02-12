@@ -6,7 +6,7 @@ def P_enter(pm, pid):
 def P_exit(pm, pid):
     pm->flags[pid] = False
 
-def P_mutex():
+def P_mutex() returns result:
     result = { .turn: choose({0, 1}), .flags: [ False, False ] }
 
 #### The code above can go into its own Harmony module ####

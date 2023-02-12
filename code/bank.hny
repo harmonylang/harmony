@@ -7,16 +7,16 @@ const N_THREADS = 2
 accounts = [ { .lock: Lock(), .balance: choose({0..MAX_BALANCE})}
                             for i in {1..N_ACCOUNTS} ]
 
-def transfer(a1, a2, amount):
+def transfer(a1, a2, amount) returns success:
     acquire(?accounts[a1].lock)
     if amount <= accounts[a1].balance:
         accounts[a1].balance -= amount 
         acquire(?accounts[a2].lock)
         accounts[a2].balance += amount 
         release(?accounts[a2].lock)
-        result = True
+        success = True
     else:
-        result = False
+        success = False
     release(?accounts[a1].lock)
 
 def thread():

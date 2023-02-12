@@ -1,7 +1,7 @@
 import synch
 
-def RWlock():
-    result = synch.Lock()
+def RWlock() returns lock:
+    lock = synch.Lock()
 
 def read_acquire(rw):
     synch.acquire(rw);

@@ -9,13 +9,13 @@ network = bag.empty()
 
 proposals = [ choose({0, 1}) for i in {0..NLEADERS-1} ]
 
-def send(m):
-    atomically network = bag.add(network, m)
+def send(msg):
+    atomically network = bag.add(network, msg)
 
-def receive(ballot, phase):
+def receive(ballot, phase) returns quorum:
     let msgs = { e:c for (b,p,t,e):c in network
                         where (b,p,t) == (ballot, phase, "B") }:
-        result = bag.combinations(msgs, NACCEPTORS - F)
+        quorum = bag.combinations(msgs, NACCEPTORS - F)
 
 def leader(self, proposal):
     var ballot, estimate = self, proposal

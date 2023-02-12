@@ -1,11 +1,11 @@
 const MAX_THREADS = 8
 
-def fetch_and_increment(p):
+def fetch_and_increment(p) returns result:
     atomically:
         result = !p
         !p = (!p + 1) % MAX_THREADS
 
-def atomic_load(p):
+def atomic_load(p) returns result:
     atomically result = !p
 
 def Lock():

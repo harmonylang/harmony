@@ -11,9 +11,9 @@ network = bag.empty()
 def broadcast(msg):
     atomically network = bag.add(network, msg)
 
-def receive(round):
+def receive(round) returns quorum:
     let msgs = { e:c for (r,e):c in network where r == round }:
-        result = {} if bag.size(msgs) < N else { msgs }
+        quorum = {} if bag.size(msgs) < N else { msgs }
 
 def processor(proposal):
     var estimate, decided = proposal, False

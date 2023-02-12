@@ -1,10 +1,10 @@
-register = None
+reg = None
 
 def init():
     pass
 
-def read(uid):
-    atomically result = register
+def read(uid) returns contents:
+    atomically contents = reg
 
 def write(uid, v):
-    atomically register = v
+    atomically reg = v

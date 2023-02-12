@@ -1,15 +1,15 @@
-def Queue():
-    result = { .data: [], .head: 0, .tail: 0 }
+def Queue() returns empty:
+    empty = { .data: [], .head: 0, .tail: 0 }
 
 def put(q, v):
     let i = q->tail:
         q->data[i] = v
         q->tail = i + 1
 
-def get(q):
+def get(q) returns next:
     let i = q->head:
         if i == q->tail:
-            result = None
+            next = None
         else:
-            result = q->data[i]
+            next = q->data[i]
             q->head = i + 1

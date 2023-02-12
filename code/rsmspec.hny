@@ -3,8 +3,8 @@ const NOPS = 3          # number of operations
 
 network = []            # the network is a queue of messages
 
-def send(m):
-    atomically network += [m,]
+def send(msg):
+    atomically network += [msg,]
 
 def replica(immortal):
     var hist = []

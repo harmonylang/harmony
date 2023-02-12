@@ -4,25 +4,25 @@ sequential back, items
 back = 0
 items = [None,] * MAX_ITEMS
 
-def inc(pcnt):
+def inc(pcnt) returns prior:
     atomically:
-        result = !pcnt
+        prior = !pcnt
         !pcnt += 1
 
-def exch(pv):
+def exch(pv) returns prior:
     atomically:
-        result = !pv
+        prior = !pv
         !pv = None
 
 def produce(item):
     items[inc(?back)] = item
 
-def consume():
-    result = None
-    while result == None:
+def consume() returns next:
+    next = None
+    while next == None:
         var i = 0
-        while (i < back) and (result == None):
-            result = exch(?items[i])
+        while (i < back) and (next == None):
+            next = exch(?items[i])
             i += 1
 
 for i in {1..MAX_ITEMS}:

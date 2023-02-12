@@ -1,7 +1,7 @@
 import synch
 
-def Monitor():
-    result = synch.Lock()
+def Monitor() returns monitor:
+    monitor = synch.Lock()
 
 def enter(mon):
     synch.acquire(mon)
@@ -9,8 +9,8 @@ def enter(mon):
 def exit(mon):
     synch.release(mon)
 
-def Condition():
-    result = { .sema: synch.BinSema(True), .count: 0 }
+def Condition() returns condition:
+    condition = { .sema: synch.BinSema(True), .count: 0 }
 
 def wait(cond, mon):
     cond->count += 1

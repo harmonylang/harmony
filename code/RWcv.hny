@@ -1,7 +1,7 @@
 from synch import *
 
-def RWlock():
-    result = {
+def RWlock() returns lock:
+    lock = {
             .nreaders: 0, .nwriters: 0, .mutex: Lock(),
             .r_cond: Condition(), .w_cond: Condition()
         }
