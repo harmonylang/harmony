@@ -295,7 +295,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         is_eternal = ctx.ETERNAL() is not None
         target = self.visit(ctx.expr())
         if not isinstance(target, ApplyAST):
-            tkn = self.get_token(target.ast_token, target.ast_token[0])
+            tkn = self.get_token(target.token, target.token[0])
             raise HarmonyCompilerError(
                 message="Expected a method call but found something else.",
                 filename=self.file,
