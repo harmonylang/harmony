@@ -715,16 +715,17 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         if ctx.STOP():
             expr = self.visit(ctx.expr_rule())
             return StopAST(endtoken, tkn, expr)
-        if ctx.POINTER_OF():
-            expr = self.visit(ctx.expr_rule())
-            return PointerAST(endtoken, expr, tkn)
-        if ctx.ADDRESS_OF():
-            expr = self.visit(ctx.expr_rule())
-            return AddressAST(endtoken, expr, tkn)
         if ctx.unary_op():
             op = self.visit(ctx.unary_op())
-            expr = self.visit(ctx.expr_rule())
-            return NaryAST(endtoken, tkn, op, [expr])
+            if op[0] == '!':
+                expr = self.visit(ctx.expr_rule())
+                return PointerAST(endtoken, expr, tkn)
+            elif op[0] == '?':
+                expr = self.visit(ctx.expr_rule())
+                return AddressAST(endtoken, expr, tkn)
+            else:
+                expr = self.visit(ctx.expr_rule())
+                return NaryAST(endtoken, tkn, op, [expr])
         if ctx.application():
             return self.visit(ctx.application())
         raise HarmonyCompilerError(
