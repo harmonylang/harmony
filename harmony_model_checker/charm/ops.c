@@ -1397,22 +1397,7 @@ void do_Load(struct state *state, struct step *step, struct global *global,
     unsigned int k = ind_tryload(&step->engine, root, indices, size, &v);
 
     if (k != size) {
-        if (VALUE_TYPE(v) == VALUE_INT) {
-            // All the remaining values must be integers as well
-            int total = VALUE_FROM_INT(v);
-            for (unsigned int i = k; i < size; i++) {
-                if (VALUE_TYPE(indices[k]) != VALUE_INT) {
-                    char *p = value_string(av);
-                    value_ctx_failure(step->ctx, &step->engine, "Load %s: must be all integers", p);
-                    free(p);
-                    return;
-                }
-                total += VALUE_FROM_INT(indices[i]);
-            }
-            ctx_push(step->ctx, VALUE_TO_INT(total));
-            step->ctx->pc++;
-            return;
-        }
+        // Implement concatenation of strings and lists
         if (VALUE_TYPE(v) == VALUE_ATOM) {
             // All the remaining values must be strings as well
 #ifdef HEAP_ALLOC
@@ -3709,7 +3694,11 @@ hvalue_t f_power(struct state *state, struct step *step, hvalue_t *args, int n){
         return value_ctx_failure(step->ctx, &step->engine, "**: negative exponent");
     }
 
-    int64_t result = 1, orig = base;
+    bool neg = base < 0;
+    if (neg) {
+        base = -base;
+    }
+    uint64_t result = 1, orig = base;
     for (;;) {
         if (exp & 1) {
             result *= base;
@@ -3725,7 +3714,7 @@ hvalue_t f_power(struct state *state, struct step *step, hvalue_t *args, int n){
         return value_ctx_failure(step->ctx, &step->engine, "**: overflow (model too large)");
     }
 
-    return VALUE_TO_INT(result);
+    return neg ? VALUE_TO_INT(-result) : VALUE_TO_INT(result);
 }
 
 hvalue_t f_range(struct state *state, struct step *step, hvalue_t *args, int n){
