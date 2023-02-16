@@ -3697,6 +3697,9 @@ hvalue_t f_power(struct state *state, struct step *step, hvalue_t *args, int n){
     bool neg = base < 0;
     if (neg) {
         base = -base;
+        if ((exp % 2) == 0) {
+            neg = false;
+        }
     }
     uint64_t result = 1, orig = base;
     for (;;) {
