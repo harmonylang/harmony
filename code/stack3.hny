@@ -1,10 +1,10 @@
-def Stack():
-    result = ()
+def Stack() returns stack:
+    stack = ()
 
 def push(st, v):
     (!st) = (v, !st)
 
-def pop(st):
+def pop(st) returns next:
     let (top, rest) = !st:
-        result = top
+        next = top
         !st = rest

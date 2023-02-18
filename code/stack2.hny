@@ -1,12 +1,12 @@
 import list
 
-def Stack():
-    result = []
+def Stack() returns stack:
+    stack = []
 
 def push(st, v):
     !st += [v,]
 
-def pop(st):
+def pop(st) returns next:
     let n = len(!st) - 1:
-        result = (!st)[n]
+        next = (!st)[n]
         !st = list.subseq(!st, 0, n)

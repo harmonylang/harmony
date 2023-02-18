@@ -1396,8 +1396,96 @@ void do_Load(struct state *state, struct step *step, struct global *global,
     hvalue_t v;
     unsigned int k = ind_tryload(&step->engine, root, indices, size, &v);
 
-    // If we could not load all, the remainder should be a method call.
     if (k != size) {
+        // Implement concatenation of strings and lists
+        if (VALUE_TYPE(v) == VALUE_ATOM) {
+            // All the remaining values must be strings as well
+#ifdef HEAP_ALLOC
+            struct val_info *vi = malloc((size - k + 1) * sizeof(struct val_info));
+#else
+            struct val_info vi[size - k + 1];
+#endif
+            struct val_info *vip = vi;
+            vip->vals = value_get(v, &vip->size);
+            unsigned total = vip->size;
+            vip++;
+            for (unsigned int i = k; i < size; i++, vip++) {
+                if (VALUE_TYPE(indices[k]) != VALUE_ATOM) {
+                    char *p = value_string(av);
+                    value_ctx_failure(step->ctx, &step->engine, "Load %s: must be all strings", p);
+                    free(p);
+#ifdef HEAP_ALLOC
+                    free(vi);
+#endif
+                    return;
+                }
+                vip->vals = value_get(indices[i], &vip->size);
+                total += vip->size;
+            }
+#ifdef HEAP_ALLOC
+            char *chars = malloc(total);
+#else
+            char chars[total];
+#endif
+            char *p = chars;
+            for (struct val_info *vip2 = vi; vip2 < vip; vip2++) {
+                memcpy(p, vip2->vals, vip2->size);
+                p += vip2->size;
+            }
+            hvalue_t result = value_put_atom(&step->engine, chars, total);
+#ifdef HEAP_ALLOC
+            free(vi);
+            free(chars);
+#endif
+            ctx_push(step->ctx, result);
+            step->ctx->pc++;
+            return;
+        }
+        if (VALUE_TYPE(v) == VALUE_LIST) {
+            // All the remaining values must be lists as well
+#ifdef HEAP_ALLOC
+            struct val_info *vi = malloc((size - k + 1) * sizeof(struct val_info));
+#else
+            struct val_info vi[size - k + 1];
+#endif
+            struct val_info *vip = vi;
+            vip->vals = value_get(v, &vip->size);
+            unsigned total = vip->size;
+            vip++;
+            for (unsigned int i = k; i < size; i++, vip++) {
+                if (VALUE_TYPE(indices[k]) != VALUE_LIST) {
+                    char *p = value_string(av);
+                    value_ctx_failure(step->ctx, &step->engine, "Load %s: must be all lists", p);
+                    free(p);
+#ifdef HEAP_ALLOC
+                    free(vi);
+#endif
+                    return;
+                }
+                vip->vals = value_get(indices[i], &vip->size);
+                total += vip->size;
+            }
+#ifdef HEAP_ALLOC
+            char *items = malloc(total);
+#else
+            char items[total];
+#endif
+            char *p = items;
+            for (struct val_info *vip2 = vi; vip2 < vip; vip2++) {
+                memcpy(p, vip2->vals, vip2->size);
+                p += vip2->size;
+            }
+            hvalue_t result = value_put_list(&step->engine, items, total);
+#ifdef HEAP_ALLOC
+            free(vi);
+            free(items);
+#endif
+            ctx_push(step->ctx, result);
+            step->ctx->pc++;
+            return;
+        }
+
+        // If we could not load all, the remainder should be a method call.
         if (VALUE_TYPE(v) != VALUE_PC) {
             char *p = value_string(av);
             value_ctx_failure(step->ctx, &step->engine, "Load %s: can't load", p);
@@ -2807,6 +2895,23 @@ hvalue_t f_countLabel(struct state *state, struct step *step, hvalue_t *args, in
     return VALUE_TO_INT(result);
 }
 
+static int64_t int_div(int64_t x, int64_t y) {
+    int64_t q = x / y;
+    int64_t r = x % y;
+    if (r != 0 && (r < 0) != (y < 0)) {
+        q--;
+    }
+    return q;
+}
+
+static int64_t int_mod(int64_t x, int64_t y) {
+    int64_t r = x % y;
+    if (r != 0 && (r < 0) != (y < 0)) {
+        r += y;
+    }
+    return r;
+}
+
 hvalue_t f_div(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 2);
     int64_t e1 = args[0], e2 = args[1];
@@ -2823,7 +2928,7 @@ hvalue_t f_div(struct state *state, struct step *step, hvalue_t *args, int n){
     if (e1 == 0) {
         return value_ctx_failure(step->ctx, &step->engine, "divide by zero");
     }
-    int64_t result = VALUE_FROM_INT(e2) / e1;
+    int64_t result = int_div(VALUE_FROM_INT(e2), e1);
     return VALUE_TO_INT(result);
 }
 
@@ -3460,10 +3565,7 @@ hvalue_t f_mod(struct state *state, struct step *step, hvalue_t *args, int n){
         return value_ctx_failure(step->ctx, &step->engine, "left argument to mod not an integer");
     }
     int64_t mod = VALUE_FROM_INT(e1);
-    int64_t result = VALUE_FROM_INT(e2) % mod;
-    if (result < 0) {
-        result += mod;
-    }
+    int64_t result = int_mod(VALUE_FROM_INT(e2), mod);
     return VALUE_TO_INT(result);
 }
 
@@ -3606,7 +3708,14 @@ hvalue_t f_power(struct state *state, struct step *step, hvalue_t *args, int n){
         return value_ctx_failure(step->ctx, &step->engine, "**: negative exponent");
     }
 
-    int64_t result = 1, orig = base;
+    bool neg = base < 0;
+    if (neg) {
+        base = -base;
+        if ((exp % 2) == 0) {
+            neg = false;
+        }
+    }
+    uint64_t result = 1, orig = base;
     for (;;) {
         if (exp & 1) {
             result *= base;
@@ -3622,7 +3731,7 @@ hvalue_t f_power(struct state *state, struct step *step, hvalue_t *args, int n){
         return value_ctx_failure(step->ctx, &step->engine, "**: overflow (model too large)");
     }
 
-    return VALUE_TO_INT(result);
+    return neg ? VALUE_TO_INT(-result) : VALUE_TO_INT(result);
 }
 
 hvalue_t f_range(struct state *state, struct step *step, hvalue_t *args, int n){

@@ -2,8 +2,8 @@ network = {}
 
 dest = choose({ None, "Bob", "Corey" })
 
-def send(m):
-    atomically network |= { m }
+def send(msg):
+    atomically network |= { msg }
 
 def alice():
     if dest != None:

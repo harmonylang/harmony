@@ -295,7 +295,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         is_eternal = ctx.ETERNAL() is not None
         target = self.visit(ctx.expr())
         if not isinstance(target, ApplyAST):
-            tkn = self.get_token(target.ast_token, target.ast_token[0])
+            tkn = self.get_token(target.token, target.token[0])
             raise HarmonyCompilerError(
                 message="Expected a method call but found something else.",
                 filename=self.file,
@@ -715,16 +715,17 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         if ctx.STOP():
             expr = self.visit(ctx.expr_rule())
             return StopAST(endtoken, tkn, expr)
-        if ctx.POINTER_OF():
-            expr = self.visit(ctx.expr_rule())
-            return PointerAST(endtoken, expr, tkn)
-        if ctx.ADDRESS_OF():
-            expr = self.visit(ctx.expr_rule())
-            return AddressAST(endtoken, expr, tkn)
         if ctx.unary_op():
             op = self.visit(ctx.unary_op())
-            expr = self.visit(ctx.expr_rule())
-            return NaryAST(endtoken, tkn, op, [expr])
+            if op[0] == '!':
+                expr = self.visit(ctx.expr_rule())
+                return PointerAST(endtoken, expr, tkn)
+            elif op[0] == '?':
+                expr = self.visit(ctx.expr_rule())
+                return AddressAST(endtoken, expr, tkn)
+            else:
+                expr = self.visit(ctx.expr_rule())
+                return NaryAST(endtoken, tkn, op, [expr])
         if ctx.application():
             return self.visit(ctx.application())
         raise HarmonyCompilerError(

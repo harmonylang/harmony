@@ -1,7 +1,7 @@
 import hoare
 
-def BoundedBuffer(size):
-    result = {
+def BoundedBuffer(size) returns buffer:
+    buffer = {
             .mon: hoare.Monitor(),
             .prod: hoare.Condition(), .cons: hoare.Condition(),
             .buf: { x:() for x in {1..size} },
@@ -19,11 +19,11 @@ def put(bb, item):
     hoare.signal(?bb->cons, ?bb->mon)
     hoare.exit(?bb->mon)
 
-def get(bb):
+def get(bb) returns next:
     hoare.enter(?bb->mon)
     if bb->count == 0:
         hoare.wait(?bb->cons, ?bb->mon)
-    result = bb->buf[bb->head]
+    next = bb->buf[bb->head]
     bb->head = (bb->head % bb->size) + 1
     bb->count -= 1
     hoare.signal(?bb->prod, ?bb->mon)

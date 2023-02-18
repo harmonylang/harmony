@@ -1,6 +1,6 @@
 const N = 10
 
-def triangle(n):   # computes the n'th triangle number
+def triangle(n) returns result:   # computes the n'th triangle number
     result = 0
     for i in {1..n}:     # for each integer from 1 to n inclusive
         result += i      # add i to result

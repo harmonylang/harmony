@@ -1,9 +1,9 @@
-def test_and_set(s):
+def test_and_set(s) returns result:
     atomically:
         result = !s
         !s = True
 
-def Lock():
+def Lock() returns result:
     result = False
 
 def acquire(lk):

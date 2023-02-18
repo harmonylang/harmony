@@ -1,5 +1,5 @@
-def RWlock():
-    result = { .nreaders: 0, .nwriters: 0 }
+def RWlock() returns lock:
+    lock = { .nreaders: 0, .nwriters: 0 }
 
 def read_acquire(rw):
     atomically when rw->nwriters == 0:

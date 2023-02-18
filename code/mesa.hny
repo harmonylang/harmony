@@ -1,5 +1,5 @@
-def Condition():
-    result = bag.empty()
+def Condition() returns condition:
+    condition = bag.empty()
 
 def wait(c, lk):
     var cnt = 0

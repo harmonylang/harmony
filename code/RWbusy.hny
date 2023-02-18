@@ -1,7 +1,7 @@
 from synch import Lock, acquire, release
 
-def RWlock():
-    result = { .lock: Lock(), .nreaders: 0, .nwriters: 0 }
+def RWlock() returns lock:
+    lock = { .lock: Lock(), .nreaders: 0, .nwriters: 0 }
 
 def read_acquire(rw):
     acquire(?rw->lock)

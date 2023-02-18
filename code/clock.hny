@@ -1,6 +1,6 @@
 const FIFO = False
 
-def CLOCK(n):
+def CLOCK(n) returns result:
     result = { .entries: [None,] * n, .recent: {}, .hand: 0, .misses: 0 }
 
 def ref(clock, x):

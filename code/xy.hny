@@ -4,8 +4,8 @@ def setX(a):
     x = a
     y = 100 - a
 
-def getXY():
-    result = [x, y]
+def getXY() returns xy:
+    xy = [x, y]
 
 def checker():
     let xy = getXY():

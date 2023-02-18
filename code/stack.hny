@@ -1,14 +1,10 @@
-def Stack():
-    result = []
+def Stack() returns stack:
+    stack = []
 
 def push(st, v):
-    atomically (!st)[len(!st)] = v
+    (!st)[len(!st)] = v
 
-def pop(st) returns value:
-    atomically:
-        if !st == []:
-            value = None
-        else:
-            let n = len(!st) - 1:
-                value = (!st)[n]
-                del (!st)[n]
+def pop(st) returns next:
+    let n = len(!st) - 1:
+        next = (!st)[n]
+        del (!st)[n]

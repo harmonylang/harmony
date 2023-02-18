@@ -86,6 +86,8 @@ comp_op
 unary_op
     : '-'
     | '~'
+    | '?'
+    | '!'
     | 'not'
     | 'abs'
     | 'atLabel'
@@ -155,8 +157,6 @@ expr_rule
     : SETINTLEVEL expr_rule
     | SAVE expr_rule
     | STOP expr_rule
-    | POINTER_OF expr_rule
-    | ADDRESS_OF expr_rule
     | unary_op expr_rule
     | application
 ;
@@ -287,7 +287,6 @@ COMMENT_START: '#';
 OPEN_MULTI_COMMENT: '(*';
 CLOSE_MULTI_COMMENT: '*)';
 
-POINTER_OF: '!';
 STAR     : '*';
 AS       : 'as';
 DOT      : '.';
@@ -300,7 +299,6 @@ ARROW    : '->';
 SAVE     : 'save';
 STOP     : 'stop';
 LAMBDA   : 'lambda';
-ADDRESS_OF : '?';
 NOT      : 'not';
 COMMA    : ',';
 CONST    : 'const';

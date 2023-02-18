@@ -1,4 +1,4 @@
-def Lock():
+def Lock() returns result:
     result = False
 
 def acquire(lk):

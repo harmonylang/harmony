@@ -20,17 +20,17 @@ def server():
 def init():
     for i in { 1 .. N }: spawn eternal server()
 
-def receive(uid, phase):
+def receive(uid, phase) returns quorums:
     let msgs = { m:c for m:c in network
                 where (m.type == .response) and (m.dst == (uid, phase)) }:
-        result = bag.combinations(msgs, N - F)
+        quorums = bag.combinations(msgs, N - F)
 
-def read(uid):
+def read(uid) returns contents:
     send({ .type: "read", .src: (uid, 1) })
     atomically when exists msgs in receive(uid, 1):
         let (t, v) = max(m.value for m in keys msgs):
             send({ .type: "write", .src: (uid, 2), .value: (t, v) })
-            result = v
+            contents = v
     atomically when exists msgs in receive(uid, 2):
         pass
 
