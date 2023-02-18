@@ -2895,6 +2895,23 @@ hvalue_t f_countLabel(struct state *state, struct step *step, hvalue_t *args, in
     return VALUE_TO_INT(result);
 }
 
+static int64_t int_div(int64_t x, int64_t y) {
+    int64_t q = x / y;
+    int64_t r = x % y;
+    if (r != 0 && (r < 0) != (y < 0)) {
+        q--;
+    }
+    return q;
+}
+
+static int64_t int_mod(int64_t x, int64_t y) {
+    int64_t r = x % y;
+    if (r != 0 && (r < 0) != (y < 0)) {
+        r += y;
+    }
+    return r;
+}
+
 hvalue_t f_div(struct state *state, struct step *step, hvalue_t *args, int n){
     assert(n == 2);
     int64_t e1 = args[0], e2 = args[1];
@@ -2911,7 +2928,7 @@ hvalue_t f_div(struct state *state, struct step *step, hvalue_t *args, int n){
     if (e1 == 0) {
         return value_ctx_failure(step->ctx, &step->engine, "divide by zero");
     }
-    int64_t result = VALUE_FROM_INT(e2) / e1;
+    int64_t result = int_div(VALUE_FROM_INT(e2), e1);
     return VALUE_TO_INT(result);
 }
 
@@ -3548,10 +3565,7 @@ hvalue_t f_mod(struct state *state, struct step *step, hvalue_t *args, int n){
         return value_ctx_failure(step->ctx, &step->engine, "left argument to mod not an integer");
     }
     int64_t mod = VALUE_FROM_INT(e1);
-    int64_t result = VALUE_FROM_INT(e2) % mod;
-    if (result < 0) {
-        result += mod;
-    }
+    int64_t result = int_mod(VALUE_FROM_INT(e2), mod);
     return VALUE_TO_INT(result);
 }
 

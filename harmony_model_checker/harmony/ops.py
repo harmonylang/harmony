@@ -1651,6 +1651,8 @@ class NaryOp(Op):
             elif op == "any":
                 if isinstance(e, SetValue):
                     context.push(any(e.s))
+                elif isinstance(e, ListValue):
+                    context.push(any(e.vals))
                 else:
                     if not self.checktype(state, context, sa, isinstance(e, DictValue)):
                         return
@@ -1658,6 +1660,8 @@ class NaryOp(Op):
             elif op == "all":
                 if isinstance(e, SetValue):
                     context.push(all(e.s))
+                elif isinstance(e, ListValue):
+                    context.push(all(e.vals))
                 else:
                     if not self.checktype(state, context, sa, isinstance(e, DictValue)):
                         return
