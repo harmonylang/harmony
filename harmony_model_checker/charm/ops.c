@@ -3981,6 +3981,9 @@ hvalue_t f_times(struct state *state, struct step *step, hvalue_t *args, int n){
         // empty list or empty string
         return VALUE_TYPE(args[list]);
     }
+    if (result < 0) {
+        return value_ctx_failure(step->ctx, &step->engine, "*: negative multiplier");
+    }
     if (VALUE_TYPE(args[list]) == VALUE_LIST) {
         unsigned int size;
         hvalue_t *vals = value_get(args[list], &size);
