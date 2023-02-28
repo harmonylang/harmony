@@ -8,6 +8,7 @@ def thread(self):
         # Enter critical section
         flags[self] = True
         turn = 1 - self
+
         await (not flags[1 - self]) or (turn == self)
 
         # Critical section is here

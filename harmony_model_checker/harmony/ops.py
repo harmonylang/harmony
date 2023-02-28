@@ -1714,7 +1714,6 @@ class NaryOp(Op):
                     context.push(e1 in e2.d)
             elif op == "SetAdd":
                 assert isinstance(e1, SetValue)
-                print("SA", e1.s, e2);
                 context.push(SetValue(e1.s | {e2}))
             elif op == "ListAdd":
                 assert isinstance(e1, ListValue)

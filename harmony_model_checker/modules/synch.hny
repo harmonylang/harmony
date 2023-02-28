@@ -7,9 +7,9 @@ def atomic_load(p):
 def atomic_store(p, v):
     atomically !p = v
 
-def tas(lk):
+def tas(lk) returns oldvalue:
     atomically:
-        result = !lk
+        oldvalue = !lk
         !lk = True
 
 def cas(p, old, new):
@@ -18,7 +18,8 @@ def cas(p, old, new):
         if result:
             !p = new
 
-def BinSema(acquired):
+def BinSema(acquired) returns result:
+    assert acquired in { False, True }
     result = acquired
 
 def Lock():
