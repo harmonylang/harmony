@@ -18,6 +18,8 @@
 #include "hashdict.h"
 #include "spawn.h"
 
+#include <inttypes.h>
+
 #define MAX_ARITY   16
 
 struct val_info {
@@ -3958,6 +3960,7 @@ hvalue_t f_times(struct state *state, struct step *step, hvalue_t *args, int n){
             e = VALUE_FROM_INT(e);
             if (e == 0) {
                 result = 0;
+                break;
             }
             else {
                 int64_t product = result * e;
