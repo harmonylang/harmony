@@ -1,8 +1,8 @@
 import list
 import bag
 
-def atomic_load(p):
-    atomically result = !p
+def atomic_load(p) returns current:
+    atomically current = !p
 
 def atomic_store(p, v):
     atomically !p = v
@@ -12,20 +12,23 @@ def tas(lk) returns oldvalue:
         oldvalue = !lk
         !lk = True
 
-def cas(p, old, new):
+def cas(p, old, new) returns success:
     atomically:
-        result = !p == old
-        if result:
+        success = !p == old
+        if success:
             !p = new
 
-def BinSema(acquired) returns result:
+def BinSema(acquired) returns sema:
     assert acquired in { False, True }
-    result = acquired
+    sema = acquired
 
-def Lock():
+def Lock() returns result:
     result = BinSema(False)
 
-def acquired(binsema):
+def acquired(binsema) returns result:
+    result = !binsema
+    
+def held(binsema) returns result:
     result = !binsema
 
 def acquire(binsema):
@@ -36,11 +39,8 @@ def release(binsema):
     atomically:
         assert !binsema
         !binsema = False
-    
-def held(binsema):
-    result = !binsema
 
-def Condition():
+def Condition() returns result:
     result = bag.empty()
 
 def wait(c, lk):
@@ -60,7 +60,7 @@ def notify(c):
 def notifyAll(c):
     atomically !c = bag.empty()
 
-def Semaphore(cnt):
+def Semaphore(cnt) returns result:
     result = cnt
 
 def P(sema):
@@ -70,10 +70,10 @@ def P(sema):
 def V(sema):
     atomically !sema += 1
     
-def Queue():
+def Queue() returns result:
     result = []
 
-def get(q):
+def get(q) returns result:
     atomically when !q != []:
         result = list.head(!q)
         !q = list.tail(!q)

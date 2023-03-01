@@ -1,45 +1,45 @@
 import list
 
-def issubset(s, t):
+def issubset(s, t) returns result:
     result = (s & t) == s
 
-def issubseteq(s, t):
+def issubseteq(s, t) returns result:
     result = (s & t) == s
 
-def issubsetstrict(s, t):
+def issubsetstrict(s, t) returns result:
     result = (s != t) and ((s & t) == s)
 
-def issuperset(s, t):
+def issuperset(s, t) returns result:
     result = (s & t) == t
 
-def issuperseteq(s, t):
+def issuperseteq(s, t) returns result:
     result = (s & t) == t
 
-def issupersetstrict(s, t):
+def issupersetstrict(s, t) returns result:
     result = (s != t) and ((s & t) == t)
 
-def add(s, elt):
+def add(s, elt) returns result:
     result =  s | {elt}
 
-def remove(s, elt):
+def remove(s, elt) returns result:
     result = s - {elt}
 
 # Return the set of all subsets of S
-def subsets(s):
+def subsets(s) returns result:
     result = {s} | union { subsets(s - {e}) for e in s }
 
 # s is a set of sets.  Return the union of the sets
-def union(s):
+def union(s) returns result:
     result = {}
     for e in s:
         result |= e
 
 # d is a list of sets.  Return the Cartesian product.
-def cartesian(d):
+def cartesian(d) returns result:
     result = { [] } if d == [] else { [e,] + t for t in cartesian(list.tail(d)) for e in d[0] }
 
 # return set of all subsets of s of size k
-def combinations(s, k):
+def combinations(s, k) returns result:
     if k == 0:
         result = { {} }
     else:
@@ -54,7 +54,7 @@ def combinations(s, k):
                                 | combinations(tl, k)
 
 # Python functools reduce operator
-def reduce(f, d, z):
+def reduce(f, d, z) returns result:
     result = z
     for e in d:
         result = f(result, e)
