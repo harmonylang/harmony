@@ -233,7 +233,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     def visitTrap_stmt(self, ctx: HarmonyParser.Trap_stmtContext):
         func = self.visit(ctx.expr())
         if not isinstance(func, ApplyAST):
-            tkn = self.get_token(func.ast_token, func.ast_token[0])
+            tkn = self.get_token(func.token, func.token[0])
             raise HarmonyCompilerError(
                 message="Expected a method call but found something else.",
                 filename=self.file,

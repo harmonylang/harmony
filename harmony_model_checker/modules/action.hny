@@ -1,4 +1,4 @@
-def _union(s):
+def _union(s) returns result:
     result = {}
     for opt in s:
         result |= opt()

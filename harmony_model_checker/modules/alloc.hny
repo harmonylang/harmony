@@ -2,10 +2,10 @@ pool = {:}
 next = 0
 
 builtin malloc "alloc$malloc"
-def malloc(v):
+def malloc(v) returns copy:
     atomically:
         pool[next] = v
-        result = ?pool[next]
+        copy = ?pool[next]
         next += 1
 
 # Commented out code tests for bad frees, but can lead to data races

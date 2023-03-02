@@ -1,45 +1,45 @@
-def empty():
-    result = {:}
+def empty() returns bg:
+    bg = {:}
 
-def fromSet(s):
-    result = { elt:1 for elt in s }
+def fromSet(s) returns bg:
+    bg = { elt:1 for elt in s }
 
-def fromList(a):
-    result = {:}
+def fromList(a) returns bg:
+    bg = {:}
     for v in a:
-        if v in result:
-            result[v] += 1
+        if v in bg:
+            bg[v] += 1
         else:
-            result[v] = 1
+            bg[v] = 1
 
 builtin multiplicity "bag$multiplicity"
-def multiplicity(bg, elt):
+def multiplicity(bg, elt) returns count:
     if elt in bg:
-        result = bg[elt]
+        count = bg[elt]
     else:
-        result = 0
+        count = 0
 
 builtin size "bag$size"
-def size(bg):
-    result = 0
+def size(bg) returns count:
+    count = 0
     for _:c in bg:
-        result += c
+        count += c
 
 builtin bmin "bag$bmin"
-def bmin(bg):
+def bmin(bg) returns count:
     assert bg != {:}
-    result = min(keys(bg))
+    count = min(keys(bg))
 
 builtin bmax "bag$bmax"
-def bmax(bg):
+def bmax(bg) returns count:
     assert bg != {:}
-    result = max(keys(bg))
+    count = max(keys(bg))
 
-def bchoose(bg):
-    result = choose(keys(bg))
+def bchoose(bg) returns elt:
+    elt = choose(keys(bg))
 
 builtin add "bag$add"
-def add(bg, elt):
+def add(bg, elt) returns result:
     result = bg
     if elt in result:
         result[elt] += 1
@@ -47,7 +47,7 @@ def add(bg, elt):
         result[elt] = 1
 
 builtin remove "bag$remove"
-def remove(bg, elt):
+def remove(bg, elt) returns result:
     result = bg
     if elt in result:
         result[elt] -= 1
@@ -55,7 +55,7 @@ def remove(bg, elt):
         del result[elt]
 
 # Return set of all subbags of bg of size k
-def combinations(bg, k):
+def combinations(bg, k) returns result:
     if k == 0:
         result = { {:} }
     else:

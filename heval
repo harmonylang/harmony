@@ -1,0 +1,5 @@
+file=/tmp/harmony$$
+echo "print($*)" > $file.hny
+harmony --noweb $file.hny > /dev/null 2>&1
+python3 heval.py $file.hco
+rm -f $file.*

@@ -1,15 +1,15 @@
 # return s[b:e]
-def subseq(s, b, e):
+def subseq(s, b, e) returns result:
     result = [ s[x] for x in {b..e-1} ]
 
-def append(s, e):
+def append(s, e) returns result:
     result = s + [e,]
 
-def head(s):
+def head(s) returns result:
     result = s[0]
 
 builtin tail "list$tail"
-def tail(s):
+def tail(s) returns result:
     result = subseq(s, 1, len(s))
 
 # sum of a list or set
@@ -19,61 +19,60 @@ def sum(a) returns accu:
         accu += v
 
 # convert list (or values of a dict) to a set
-def set(a):
+def set(a) returns result:
     result = { v for v in a }
 
 # convert set into a (sorted) list
-def list(a):
+def list(a) returns result:
     result = [ v for v in a ]
 
 # convert values of a dictionary into a list
-def values(d):
+def values(d) returns result:
     result = [ v for _:v in d ]
 
 # like Python .items()
-def items(d):
+def items(d) returns result:
     result = [ (k, v) for k:v in d ]
 
 # quicksort of a list
-def qsort(a):
+def qsort(a) returns sorted:
     if a == []:
-        result = []
+        sorted = []
     else:
         let (pivot, rest) = head(a), tail(a)
         let lower = [ v for v in rest where v < pivot ]
         let higher = [ v for v in rest where v >= pivot ]:
-            result = qsort(lower) + [pivot,] + qsort(higher)
+            sorted = qsort(lower) + [pivot,] + qsort(higher)
 
 # like Python sorted()
-def sorted(d):
+def sorted(d) returns result:
     result = qsort(list(d))
 
 # like Python reversed()
-def reversed(d):
+def reversed(d) returns result:
     let n = len(d):
         result = [ d[n-i] for i in { 1..n } ]
 
 # like Python index()
-def index(d, e):
-    var i = 0
+def index(d, e) returns i:
+    i = 0
     while d[i] != e:
         i += 1
-    result = i
 
 # like Python startswith (only defined for strings)
-def startswith(d, prefix):
+def startswith(d, prefix) returns result:
     result = (len(prefix) <= len(d)) and all(d[i] == prefix[i] for i in { 0 .. len(prefix) - 1 })
 
 # left fold.  Compute f(f(f(z, d[0]), d[1]), d[2] ...)
-def foldl(d, f, z):
+def foldl(d, f, z) returns result:
     result = z
     for e in d:
         result = f(result, e)
 
 # right fold.  Compute f(d[0], f(d[1], ..., f(d[n-1], z)))
-def foldr(d, f, z):
+def foldr(d, f, z) returns result:
     result = z if len d == 0 else f(d[0], foldr(tail(d), f, z))
 
 # Python functools reduce operator
-def reduce(f, d, z):
+def reduce(f, d, z) returns result:
     result = foldl(d, f, z)

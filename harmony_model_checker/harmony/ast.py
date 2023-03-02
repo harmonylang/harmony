@@ -88,7 +88,8 @@ class AST:
         return ctx.pop()
 
     def compile(self, scope: Scope, code: Code, stmt):
-        if self.isConstant(scope):
+        # constant folding:  TODO
+        if False and self.isConstant(scope):
             code2 = Code(code)
             code2.modpush(code.curModule)
             self.gencode(scope, code2, stmt)
@@ -1779,6 +1780,7 @@ class CallAST(AST):
 
     def compile(self, scope, code, stmt):
         stmt = self.stmt()
+        # TODO.  What does the following if statement do again?
         if not self.expr.isConstant(scope):
             if self.atomically:
                 code.append(AtomicIncOp(False), self.token, self.endtoken, stmt=stmt)
@@ -2068,6 +2070,7 @@ class ConstAST(AST):
 
     def compile(self, scope, code, stmt):
         stmt = self.stmt()
+        # TODO.  What does the following if statement do again?
         if not self.expr.isConstant(scope):
             lexeme, file, line, column = self.expr.token if isinstance(self.expr, AST) else self.token
             raise HarmonyCompilerError(
