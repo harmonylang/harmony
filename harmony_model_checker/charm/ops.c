@@ -3958,9 +3958,8 @@ hvalue_t f_times(struct state *state, struct step *step, hvalue_t *args, int n){
             e = VALUE_FROM_INT(e);
             if (e == 0) {
                 result = 0;
-                break;
             }
-            else {
+            else if (result != 0 && e != 1) {
                 int64_t product = result * e;
                 if (product / result != e) {
                     return value_ctx_failure(step->ctx, &step->engine, "*: overflow (model too large)");
