@@ -53,6 +53,7 @@ reserved = {
     "exists",
     "from",
     "False",
+    "finally",
     "for",
     "go",
     "hash",
@@ -272,8 +273,9 @@ def doProcess(filename, fd, pmap):
     print("\\providecommand{\\hnyModule}[1]{\\texttt{#1}}", file=fd)
     print("\\providecommand{\\hnyConstant}[1]{\\texttt{#1}}", file=fd)
     print("\\providecommand{\\hnyGlobal}[1]{\\textit{#1}}", file=fd)
-    print("\\providecommand{\\hnyLocalConst}[1]{\\textit{#1}}", file=fd)
     print("\\providecommand{\\hnyLocalVar}[1]{\\textit{#1}}", file=fd)
+    print("\\providecommand{\\hnyLocalConst}[1]{\\textit{#1}}", file=fd)
+    print("\\providecommand{\\hnyVar}[1]{\\textit{#1}}", file=fd)
     print("\\providecommand{\\hnyNumber}[1]{#1}", file=fd)
     print("\\begin{tabbing}", file=fd)
     print("X\\=XX\\=XXX\\kill", file=fd)
