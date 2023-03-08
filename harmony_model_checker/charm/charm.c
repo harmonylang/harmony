@@ -463,7 +463,7 @@ static bool onestep(
     hvalue_t as_context = 0;
     unsigned int as_instrcnt = 0;
     bool rollback = false, stopped = false;
-    bool terminated = false;
+    bool terminated = false, infinite_loop = false;
     for (;;) {
         int pc = step->ctx->pc;
 
@@ -589,6 +589,7 @@ static bool onestep(
                     //     instrcnt = *loc;
                     // }
                     value_ctx_failure(step->ctx, &step->engine, "infinite loop");
+                    infinite_loop = true;
                     break;
                 }
                 else {
@@ -775,7 +776,7 @@ static bool onestep(
 
     if (step->ctx->failed) {
         struct failure *f = new_alloc(struct failure);
-        f->type = FAIL_SAFETY;
+        f->type = infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
         f->edge = edge;
         f->next = w->failures;
         w->failures = f;
