@@ -585,10 +585,10 @@ static bool onestep(
             }
             else {
                 if (infloop_detect) {
-                    // printf("INFLOOP %u - %u\n", *loc, instrcnt);
-                    if (*loc != 0) {
-                        instrcnt = *loc;
-                    }
+                    // if (*loc != 0) {
+                    //     instrcnt = *loc;
+                    // }
+                    value_ctx_failure(step->ctx, &step->engine, "infinite loop");
                     break;
                 }
                 else {
