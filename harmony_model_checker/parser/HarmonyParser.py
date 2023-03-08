@@ -182,7 +182,7 @@ def serializedATN():
         buf.write("\u0154\3\2\2\2\u0152\u0150\3\2\2\2\u0152\u0153\3\2\2\2")
         buf.write("\u0153\'\3\2\2\2\u0154\u0152\3\2\2\2\u0155\u0156\5\"\22")
         buf.write("\2\u0156)\3\2\2\2\u0157\u0158\7f\2\2\u0158+\3\2\2\2\u0159")
-        buf.write("\u015a\t\5\2\2\u015a-\3\2\2\2\u015b\u015c\5 \21\2\u015c")
+        buf.write("\u015a\t\5\2\2\u015a-\3\2\2\2\u015b\u015c\5$\23\2\u015c")
         buf.write("/\3\2\2\2\u015d\u015e\5 \21\2\u015e\u015f\5*\26\2\u015f")
         buf.write("\u0161\3\2\2\2\u0160\u015d\3\2\2\2\u0161\u0162\3\2\2\2")
         buf.write("\u0162\u0160\3\2\2\2\u0162\u0163\3\2\2\2\u0163\u0164\3")
@@ -2394,8 +2394,8 @@ class HarmonyParser ( Parser ):
             super().__init__(parent, invokingState)
             self.parser = parser
 
-        def tuple_rule(self):
-            return self.getTypedRuleContext(HarmonyParser.Tuple_ruleContext,0)
+        def expr_rule(self):
+            return self.getTypedRuleContext(HarmonyParser.Expr_ruleContext,0)
 
 
         def getRuleIndex(self):
@@ -2417,7 +2417,7 @@ class HarmonyParser ( Parser ):
         try:
             self.enterOuterAlt(localctx, 1)
             self.state = 345
-            self.tuple_rule()
+            self.expr_rule()
         except RecognitionException as re:
             localctx.exception = re
             self._errHandler.reportError(self, re)

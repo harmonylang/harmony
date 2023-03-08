@@ -192,7 +192,7 @@ aug_assign_op
     | '<<='
     ;
 
-expr_stmt: tuple_rule;
+expr_stmt: expr_rule;
 assign_stmt: (tuple_rule assign_op)+ tuple_rule;
 aug_assign_stmt: tuple_rule aug_assign_op tuple_rule;
 const_assign_stmt: CONST bound EQ expr;

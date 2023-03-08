@@ -183,7 +183,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
 
     # Visit a parse tree produced by HarmonyParser#expr_stmt.
     def visitExpr_stmt(self, ctx: HarmonyParser.Expr_stmtContext):
-        e = self.visit(ctx.tuple_rule())
+        e = self.visit(ctx.expr_rule())
         tkn = self.get_token(ctx.start, ctx.start.text)
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
         return CallAST(endtoken, tkn, False, e)
