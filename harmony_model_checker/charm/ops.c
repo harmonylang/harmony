@@ -1920,8 +1920,29 @@ void op_Spawn(
     }
 
     hvalue_t thisval = ctx_pop(step->ctx);
-    hvalue_t arg = ctx_pop(step->ctx);
-    hvalue_t pc = ctx_pop(step->ctx);
+    hvalue_t closure = ctx_pop(step->ctx);
+    if (VALUE_TYPE(closure) != VALUE_ADDRESS_PRIVATE) {
+        char *p = value_string(closure);
+        value_ctx_failure(step->ctx, &step->engine, "Spawn %s: not an address", p);
+        free(p);
+        return;
+    }
+
+    unsigned int size;
+    hvalue_t *indices = value_get(closure, &size);
+    if (size != 2 * sizeof(hvalue_t)) {
+        char *p = value_string(closure);
+        value_ctx_failure(step->ctx, &step->engine, "Spawn %s: expected method and arg", p);
+        free(p);
+        return;
+    }
+    if (VALUE_TYPE(indices[0]) != VALUE_PC) {
+        char *p = value_string(closure);
+        value_ctx_failure(step->ctx, &step->engine, "Spawn %s: not a method", p);
+        free(p);
+        return;
+    }
+    hvalue_t pc = indices[0], arg = indices[1];
 
     if (step->keep_callstack && VALUE_TYPE(pc) == VALUE_PC) {
         unsigned int ip = VALUE_FROM_PC(pc);
@@ -1937,10 +1958,6 @@ void op_Spawn(
         }
     }
 
-    if (VALUE_TYPE(pc) != VALUE_PC) {
-        value_ctx_failure(step->ctx, &step->engine, "spawn: not a method");
-        return;
-    }
     pc = VALUE_FROM_PC(pc);
 
     assert(pc < (hvalue_t) global->code.len);

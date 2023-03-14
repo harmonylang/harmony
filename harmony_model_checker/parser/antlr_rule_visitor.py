@@ -294,19 +294,20 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     def visitSpawn_stmt(self, ctx: HarmonyParser.Spawn_stmtContext):
         is_eternal = ctx.ETERNAL() is not None
         target = self.visit(ctx.expr())
-        if not isinstance(target, ApplyAST):
-            tkn = self.get_token(target.token, target.token[0])
-            raise HarmonyCompilerError(
-                message="Expected a method call but found something else.",
-                filename=self.file,
-                line=tkn[2],
-                column=tkn[3],
-                lexeme=tkn[0]
-            )
-        method, arg = target.method, target.arg
+        # if not isinstance(target, ApplyAST):
+        #     tkn = self.get_token(target.token, target.token[0])
+        #     raise HarmonyCompilerError(
+        #         message="Expected a method call but found something else.",
+        #         filename=self.file,
+        #         line=tkn[2],
+        #         column=tkn[3],
+        #         lexeme=tkn[0]
+        #     )
+        # method, arg = target.method, target.arg
         tkn = self.get_token(ctx.start, ctx.start.text)
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
-        return SpawnAST(endtoken, tkn, False, method, arg, None, is_eternal)
+        # return SpawnAST(endtoken, tkn, False, method, arg, None, is_eternal)
+        return SpawnAST(endtoken, tkn, False, target, None, is_eternal)
 
     # Visit a parse tree produced by HarmonyParser#go_stmt.
     def visitGo_stmt(self, ctx: HarmonyParser.Go_stmtContext):

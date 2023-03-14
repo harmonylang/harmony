@@ -1797,21 +1797,26 @@ class CallAST(AST):
 
 
 class SpawnAST(AST):
-    def __init__(self, endtoken, token, atomically, method, arg, this, eternal):
+    def __init__(self, endtoken, token, atomically, expr, this, eternal):
         AST.__init__(self, endtoken, token, atomically)
-        self.method = method
-        self.arg = arg
+        self.expr = expr
         self.this = this
         self.eternal = eternal
 
     def __repr__(self):
-        return "Spawn(" + str(self.method) + ", " + str(self.arg) + ", " + str(self.this) + ", " + str(
+        return "Spawn(" + str(self.expr) + ", " + str(self.this) + ", " + str(
             self.eternal) + ")"
 
     def compile(self, scope, code, stmt):
         stmt = self.stmt()
-        self.method.compile(scope, code, stmt)
-        self.arg.compile(scope, code, stmt)
+        if isinstance(self.expr, ApplyAST):      # backward compatibility
+            self.expr.method.ph1(scope, code, stmt)
+            self.expr.arg.compile(scope, code, stmt)
+            (_, file, line, column) = self.token
+            code.append(NaryOp(("AddArg", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
+            # TODO.  Turn into address
+        else:
+            self.expr.compile(scope, code, stmt)
         if self.this is None:
             code.append(PushOp((emptydict, None, None, None)), self.token, self.endtoken, stmt=stmt)
         else:
@@ -1820,7 +1825,7 @@ class SpawnAST(AST):
 
     # TODO.  Deal with 'this'
     def getLabels(self):
-        return self.method.getLabels() | self.arg.getLabels()
+        return self.expr.getLabels()
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_spawn(self, *args, **kwargs)
