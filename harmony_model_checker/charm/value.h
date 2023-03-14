@@ -43,6 +43,7 @@ typedef struct context {   // context value
     // hvalue_t thestack[VAR_SIZE];     // growing stack
 
 // Context can be extended with the following additional values
+// TODO.  ctx_trap_pc/ctx_trap_arg can be combined as ctx_closure
 #define ctx_this(c)     (context_stack(c)[0])
 #define ctx_failure(c)  (context_stack(c)[1])
 #define ctx_trap_pc(c)  (context_stack(c)[2])
