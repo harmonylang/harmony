@@ -1814,7 +1814,6 @@ class SpawnAST(AST):
             self.expr.arg.compile(scope, code, stmt)
             (_, file, line, column) = self.token
             code.append(NaryOp(("AddArg", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
-            # TODO.  Turn into address
         else:
             self.expr.compile(scope, code, stmt)
         if self.this is None:
@@ -1832,23 +1831,26 @@ class SpawnAST(AST):
 
 
 class TrapAST(AST):
-    def __init__(self, endtoken, token, atomically, method, arg):
+    def __init__(self, endtoken, token, atomically, expr):
         AST.__init__(self, endtoken, token, atomically)
-        self.method = method
-        self.arg = arg
+        self.expr = expr
 
     def __repr__(self):
-        return "Trap(" + str(self.method) + ", " + str(self.arg) + ")"
+        return "Trap(" + str(self.expr) + ")"
 
     def compile(self, scope, code, stmt):
         stmt = self.stmt()
-        # TODO.  These should be swapped
-        self.arg.compile(scope, code, stmt)
-        self.method.compile(scope, code, stmt)
+        if isinstance(self.expr, ApplyAST):      # backward compatibility
+            self.expr.method.ph1(scope, code, stmt)
+            self.expr.arg.compile(scope, code, stmt)
+            (_, file, line, column) = self.token
+            code.append(NaryOp(("AddArg", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
+        else:
+            self.expr.compile(scope, code, stmt)
         code.append(TrapOp(), self.token, self.endtoken, stmt=stmt)
 
     def getLabels(self):
-        return self.method.getLabels() | self.arg.getLabels()
+        return self.expr.getLabels()
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_trap(self, *args, **kwargs)

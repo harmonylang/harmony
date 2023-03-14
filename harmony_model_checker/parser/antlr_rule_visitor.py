@@ -232,18 +232,18 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     # Visit a parse tree produced by HarmonyParser#trap_stmt.
     def visitTrap_stmt(self, ctx: HarmonyParser.Trap_stmtContext):
         func = self.visit(ctx.expr())
-        if not isinstance(func, ApplyAST):
-            tkn = self.get_token(func.token, func.token[0])
-            raise HarmonyCompilerError(
-                message="Expected a method call but found something else.",
-                filename=self.file,
-                line=tkn[2],
-                column=tkn[3],
-                lexeme=tkn[0]
-            )
+        # if not isinstance(func, ApplyAST):
+        #     tkn = self.get_token(func.token, func.token[0])
+        #     raise HarmonyCompilerError(
+        #         message="Expected a method call but found something else.",
+        #         filename=self.file,
+        #         line=tkn[2],
+        #         column=tkn[3],
+        #         lexeme=tkn[0]
+        #     )
         tkn = self.get_token(ctx.start, ctx.start.text)
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
-        return TrapAST(endtoken, tkn, False, func.method, func.arg)
+        return TrapAST(endtoken, tkn, False, func)
 
     # Visit a parse tree produced by HarmonyParser#pass_stmt.
     def visitPass_stmt(self, ctx: HarmonyParser.Pass_stmtContext):
