@@ -1809,13 +1809,7 @@ class SpawnAST(AST):
 
     def compile(self, scope, code, stmt):
         stmt = self.stmt()
-        if isinstance(self.expr, ApplyAST):      # backward compatibility
-            self.expr.method.ph1(scope, code, stmt)
-            self.expr.arg.compile(scope, code, stmt)
-            (_, file, line, column) = self.token
-            code.append(NaryOp(("AddArg", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
-        else:
-            self.expr.compile(scope, code, stmt)
+        self.expr.ph1(scope, code, stmt)
         if self.this is None:
             code.append(PushOp((emptydict, None, None, None)), self.token, self.endtoken, stmt=stmt)
         else:
