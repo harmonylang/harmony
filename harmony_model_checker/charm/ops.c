@@ -27,7 +27,7 @@ struct val_info {
 
 struct f_info {
     char *name;
-    hvalue_t (*f)(struct state *state, struct step *step, hvalue_t *args, int n);
+    hvalue_t (*f)(struct state *state, struct step *step, hvalue_t *args, unsigned int n);
 };
 
 struct var_tree {
@@ -1877,11 +1877,11 @@ static int q_value_cmp(const void *v1, const void *v2){
 }
 
 // Sort the resulting set and remove duplicates
-static int sort(hvalue_t *vals, int n){
+static int sort(hvalue_t *vals, unsigned int n){
     qsort(vals, n, sizeof(hvalue_t), q_value_cmp);
 
     hvalue_t *p = vals, *q = vals + 1;
-    for (int i = 1; i < n; i++, q++) {
+    for (unsigned int i = 1; i < n; i++, q++) {
         if (*q != *p) {
             *++p = *q;
         }
@@ -2790,7 +2790,7 @@ void *init_StoreVar(struct dict *map, struct engine *engine){
     }
 }
 
-hvalue_t f_abs(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_abs(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 1);
     if (step->keep_callstack) {
         strbuf_printf(&step->explain, "compute the absolute value; ");
@@ -2803,7 +2803,7 @@ hvalue_t f_abs(struct state *state, struct step *step, hvalue_t *args, int n){
     return r >= 0 ? e : VALUE_TO_INT(-r);
 }
 
-hvalue_t f_all(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_all(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 1);
     if (step->keep_callstack) {
         strbuf_printf(&step->explain, "check if all values are True; ");
@@ -2829,7 +2829,7 @@ hvalue_t f_all(struct state *state, struct step *step, hvalue_t *args, int n){
     return value_ctx_failure(step->ctx, &step->engine, "all() can only be applied to sets or lists");
 }
 
-hvalue_t f_any(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_any(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 1);
     if (step->keep_callstack) {
         strbuf_printf(&step->explain, "check if any value is True; ");
@@ -2855,7 +2855,7 @@ hvalue_t f_any(struct state *state, struct step *step, hvalue_t *args, int n){
     return value_ctx_failure(step->ctx, &step->engine, "any() can only be applied to sets or dictionaries");
 }
 
-hvalue_t f_add_arg(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_add_arg(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 2);
 
     if (VALUE_TYPE(args[1]) != VALUE_ADDRESS_SHARED && VALUE_TYPE(args[1]) != VALUE_ADDRESS_PRIVATE) {
@@ -2897,7 +2897,7 @@ hvalue_t f_add_arg(struct state *state, struct step *step, hvalue_t *args, int n
 #endif
 }
 
-hvalue_t f_closure(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_closure(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     if (n == 1) {
         return value_put_address(&step->engine, &args[0], sizeof(hvalue_t));
     }
@@ -2908,7 +2908,7 @@ hvalue_t f_closure(struct state *state, struct step *step, hvalue_t *args, int n
     return value_put_address(&step->engine, list, sizeof(list));
 }
 
-hvalue_t f_countLabel(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_countLabel(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 1);
     if (step->keep_callstack) {
         strbuf_printf(&step->explain, "count how many threads are at this program counter; ");
@@ -2950,7 +2950,7 @@ static int64_t int_mod(int64_t x, int64_t y) {
     return r;
 }
 
-hvalue_t f_div(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_div(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 2);
     int64_t e1 = args[0], e2 = args[1];
     if (step->keep_callstack) {
@@ -2970,7 +2970,7 @@ hvalue_t f_div(struct state *state, struct step *step, hvalue_t *args, int n){
     return VALUE_TO_INT(result);
 }
 
-hvalue_t f_eq(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_eq(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 2);
     if (step->keep_callstack) {
         strbuf_printf(&step->explain, "check if both values are the same; ");
@@ -2978,7 +2978,7 @@ hvalue_t f_eq(struct state *state, struct step *step, hvalue_t *args, int n){
     return VALUE_TO_BOOL(args[0] == args[1]);
 }
 
-hvalue_t f_ge(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_ge(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 2);
     if (step->keep_callstack) {
         strbuf_printf(&step->explain, "check if second value is greater than or equal to the first; ");
@@ -2987,7 +2987,7 @@ hvalue_t f_ge(struct state *state, struct step *step, hvalue_t *args, int n){
     return VALUE_TO_BOOL(cmp >= 0);
 }
 
-hvalue_t f_gt(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_gt(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 2);
     if (step->keep_callstack) {
         strbuf_printf(&step->explain, "check if second value is greater than the first; ");
@@ -2996,7 +2996,7 @@ hvalue_t f_gt(struct state *state, struct step *step, hvalue_t *args, int n){
     return VALUE_TO_BOOL(cmp > 0);
 }
 
-hvalue_t f_ne(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_ne(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 2);
     if (step->keep_callstack) {
         strbuf_printf(&step->explain, "check if the values are unequal; ");
@@ -3004,7 +3004,7 @@ hvalue_t f_ne(struct state *state, struct step *step, hvalue_t *args, int n){
     return VALUE_TO_BOOL(args[0] != args[1]);
 }
 
-hvalue_t f_in(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_in(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 2);
     hvalue_t s = args[0], e = args[1];
 	if (!step->keep_callstack &&
@@ -3071,15 +3071,16 @@ hvalue_t f_intersection(
     struct state *state,
     struct step *step,
     hvalue_t *args,
-    int n
+    unsigned int n
 ) {
+    assert(n > 1);
     hvalue_t e1 = args[0];
 
     if (VALUE_TYPE(e1) == VALUE_INT) {
         if (step->keep_callstack) {
             strbuf_printf(&step->explain, "bitwise and; ");
         }
-        for (int i = 1; i < n; i++) {
+        for (unsigned int i = 1; i < n; i++) {
             hvalue_t e2 = args[i];
             if (VALUE_TYPE(e2) != VALUE_INT) {
                 return value_ctx_failure(step->ctx, &step->engine, "'&' applied to mix of ints and other types");
@@ -3088,15 +3089,14 @@ hvalue_t f_intersection(
         }
         return e1;
     }
-	if (!step->keep_callstack && e1 == VALUE_SET) {
-		return VALUE_SET;
-	}
+	// if (!step->keep_callstack && e1 == VALUE_SET) {
+    // 		return VALUE_SET;
+	// }
     if (VALUE_TYPE(e1) == VALUE_SET) {
         if (step->keep_callstack) {
             strbuf_printf(&step->explain, "intersect the sets; ");
         }
         // get all the sets
-		assert(n > 0);
 #ifdef HEAP_ALLOC
         struct val_info *vi = malloc(n * sizeof(struct val_info));
 #else
@@ -3105,8 +3105,7 @@ hvalue_t f_intersection(
 		vi[0].vals = value_get(args[0], &vi[0].size); 
 		vi[0].index = 0;
         unsigned int min_size = vi[0].size;     // minimum set size
-        hvalue_t max_val = vi[0].vals[0];       // maximum value over the minima of all sets
-        for (int i = 1; i < n; i++) {
+        for (unsigned int i = 1; i < n; i++) {
             if (VALUE_TYPE(args[i]) != VALUE_SET) {
                 return value_ctx_failure(step->ctx, &step->engine, "'&' applied to mix of sets and other types");
             }
@@ -3119,13 +3118,10 @@ hvalue_t f_intersection(
 				if (vi[i].size < min_size) {
 					min_size = vi[i].size;
 				}
-				if (value_cmp(vi[i].vals[0], max_val) > 0) {
-					max_val = vi[i].vals[0];
-				}
             }
         }
 
-        // If any are empty lists, we're done.
+        // If any is an empty list, we're done.
         if (min_size == 0) {
 #ifdef HEAP_ALLOC
             free(vi);
@@ -3141,47 +3137,51 @@ hvalue_t f_intersection(
 #endif
         hvalue_t *v = vals;
 
-        bool done = false;
-        for (unsigned int i = 0; i < min_size; i++) {
-            hvalue_t old_max = max_val;
-            for (int j = 0; j < n; j++) {
-                unsigned int k, size = vi[j].size / sizeof(hvalue_t);
-                while ((k = vi[j].index) < size) {
-                    hvalue_t v = vi[j].vals[k];
-                    int cmp = value_cmp(v, max_val);
-                    if (cmp > 0) {
-                        max_val = v;
-                    }
-                    if (cmp >= 0) {
-                        break;
-                    }
-                    vi[j].index++;
-                }
-                if (vi[j].index == size) {
-                    done = true;
+        hvalue_t cur = vi[0].vals[0];
+        unsigned int ring = 1;
+        for (unsigned int i = 1;; i = (i + 1) % n) {
+            ring++;
+
+            if (vi[i].index == vi[i].size / sizeof(hvalue_t)) {
+                break;
+            }
+
+            // Find a match with the current value
+            int cmp = value_cmp(vi[i].vals[vi[i].index], cur);
+            while (cmp < 0) {
+                if (++vi[i].index == vi[i].size / sizeof(hvalue_t)) {
                     break;
                 }
+                cmp = value_cmp(vi[i].vals[vi[i].index], cur);
             }
-            if (done) {
+            if (vi[i].index == vi[i].size / sizeof(hvalue_t)) {
                 break;
             }
-            if (old_max == max_val) {
-                *v++ = max_val;
-                for (int j = 0; j < n; j++) {
-                    assert(vi[j].index < vi[j].size / sizeof(hvalue_t));
-                    vi[j].index++;
-                    int k, size = vi[j].size / sizeof(hvalue_t);
-                    if ((k = vi[j].index) == size) {
-                        done = true;
+
+            // If the value is bigger, start a new ring
+            if (cmp > 0) {
+                cur = vi[i].vals[vi[i].index++];
+                ring = 1;
+            }
+
+            // Same value
+            else {
+                vi[i].index++;
+
+                // If we have gone all the way around, it's a match
+                if (ring == n) {
+                    *v++ = cur;
+                    if (vi[i].index == vi[i].size / sizeof(hvalue_t)) {
                         break;
                     }
-                    if (value_cmp(vi[j].vals[k], max_val) > 0) {
-                        max_val = vi[j].vals[k];
-                    }
+                    cur = vi[i].vals[vi[i].index++];
+                    ring = 1;
                 }
-            }
-            if (done) {
-                break;
+
+                // Keep going to see if we have a match
+                else {
+                    ring++;
+                }
             }
         }
 
@@ -3193,14 +3193,14 @@ hvalue_t f_intersection(
         return result;
     }
 
-	if (!step->keep_callstack && e1 == VALUE_DICT) {
-		return VALUE_DICT;
-	}
-    if (step->keep_callstack) {
-        strbuf_printf(&step->explain, "dictionary intersection; ");
-    }
+	// if (!step->keep_callstack && e1 == VALUE_DICT) {
+	// 	return VALUE_DICT;
+	// }
     if (VALUE_TYPE(e1) != VALUE_DICT) {
         return value_ctx_failure(step->ctx, &step->engine, "'&' can only be applied to ints and dicts");
+    }
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "dictionary intersection; ");
     }
     // get all the dictionaries
 #ifdef HEAP_ALLOC
@@ -3208,8 +3208,8 @@ hvalue_t f_intersection(
 #else
     struct val_info vi[n];
 #endif
-    int total = 0;
-    for (int i = 0; i < n; i++) {
+    unsigned int total = 0;
+    for (unsigned int i = 0; i < n; i++) {
         if (VALUE_TYPE(args[i]) != VALUE_DICT) {
 #ifdef HEAP_ALLOC
             free(vi);
@@ -3226,6 +3226,12 @@ hvalue_t f_intersection(
         }
     }
 
+    // TODO.  This should intersect the dictionaries, not concatenate them ??????
+    // TODO.  This should intersect the dictionaries, not concatenate them ??????
+    // TODO.  This should intersect the dictionaries, not concatenate them ??????
+    // TODO.  This should intersect the dictionaries, not concatenate them ??????
+    // TODO.  This should intersect the dictionaries, not concatenate them ??????
+
     // If all are empty dictionaries, we're done.
     if (total == 0) {
 #ifdef HEAP_ALLOC
@@ -3241,23 +3247,23 @@ hvalue_t f_intersection(
     hvalue_t vals[total / sizeof(hvalue_t)];
 #endif
     total = 0;
-    for (int i = 0; i < n; i++) {
+    for (unsigned int i = 0; i < n; i++) {
         memcpy((char *) vals + total, vi[i].vals, vi[i].size);
         total += vi[i].size;
     }
 
     // sort lexicographically, leaving duplicate keys
-    int cnt = total / (2 * sizeof(hvalue_t));
+    unsigned int cnt = total / (2 * sizeof(hvalue_t));
     qsort(vals, cnt, 2 * sizeof(hvalue_t), q_kv_cmp);
 
     // now only leave the min value for duplicate keys
-    int in = 0, out = 0;
+    unsigned int in = 0, out = 0;
     for (;;) {
         // if there are fewer than n copies of the key, then it's out
         if (in + n > cnt) {
             break;
         }
-        int i;
+        unsigned int i;
         for (i = in + 1; i < in + n; i++) {
             if (vals[2*i] != vals[2*in]) {
                 break;
@@ -3280,7 +3286,7 @@ hvalue_t f_intersection(
     return result;
 }
 
-hvalue_t f_invert(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_invert(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 1);
     if (step->keep_callstack) {
         strbuf_printf(&step->explain, "one's complement (flip the bits); ");
@@ -3293,7 +3299,7 @@ hvalue_t f_invert(struct state *state, struct step *step, hvalue_t *args, int n)
     return VALUE_TO_INT(~e);
 }
 
-hvalue_t f_keys(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_keys(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 1);
     if (step->keep_callstack) {
         strbuf_printf(&step->explain, "extract the keys; ");
@@ -3324,7 +3330,7 @@ hvalue_t f_keys(struct state *state, struct step *step, hvalue_t *args, int n){
     return result;
 }
 
-hvalue_t f_str(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_str(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 1);
     if (step->keep_callstack) {
         strbuf_printf(&step->explain, "convert into a string; ");
@@ -3336,7 +3342,7 @@ hvalue_t f_str(struct state *state, struct step *step, hvalue_t *args, int n){
     return v;
 }
 
-hvalue_t f_len(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_len(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 1);
     hvalue_t e = args[0];
 	if (step->keep_callstack &&
@@ -3381,7 +3387,7 @@ hvalue_t f_len(struct state *state, struct step *step, hvalue_t *args, int n){
     return value_ctx_failure(step->ctx, &step->engine, "len() can only be applied to sets, dictionaries, lists, or strings");
 }
 
-hvalue_t f_type(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_type(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 1);
     if (step->keep_callstack) {
         strbuf_printf(&step->explain, "determine the type; ");
@@ -3413,7 +3419,7 @@ hvalue_t f_type(struct state *state, struct step *step, hvalue_t *args, int n){
     return value_ctx_failure(step->ctx, &step->engine, "unknown type???");
 }
 
-hvalue_t f_le(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_le(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 2);
     if (step->keep_callstack) {
         strbuf_printf(&step->explain, "check if second value is less than or equal to the first; ");
@@ -3422,7 +3428,7 @@ hvalue_t f_le(struct state *state, struct step *step, hvalue_t *args, int n){
     return VALUE_TO_BOOL(cmp <= 0);
 }
 
-hvalue_t f_lt(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_lt(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 2);
     if (step->keep_callstack) {
         strbuf_printf(&step->explain, "check if second value is less than the first; ");
@@ -3431,7 +3437,7 @@ hvalue_t f_lt(struct state *state, struct step *step, hvalue_t *args, int n){
     return VALUE_TO_BOOL(cmp < 0);
 }
 
-hvalue_t f_max(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_max(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 1);
     if (step->keep_callstack) {
         strbuf_printf(&step->explain, "compute the maximum of the values; ");
@@ -3464,7 +3470,7 @@ hvalue_t f_max(struct state *state, struct step *step, hvalue_t *args, int n){
     return value_ctx_failure(step->ctx, &step->engine, "max() can only be applied to sets or lists");
 }
 
-hvalue_t f_min(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_min(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 1);
     if (step->keep_callstack) {
         strbuf_printf(&step->explain, "compute the minimum of the values; ");
@@ -3496,7 +3502,7 @@ hvalue_t f_min(struct state *state, struct step *step, hvalue_t *args, int n){
     return value_ctx_failure(step->ctx, &step->engine, "min() can only be applied to sets or lists");
 }
 
-hvalue_t f_minus(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_minus(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 1 || n == 2);
     if (n == 1) {
         if (step->keep_callstack) {
@@ -3591,7 +3597,7 @@ hvalue_t f_minus(struct state *state, struct step *step, hvalue_t *args, int n){
     }
 }
 
-hvalue_t f_mod(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_mod(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     int64_t e1 = args[0], e2 = args[1];
     if (step->keep_callstack) {
         strbuf_printf(&step->explain, "second value modulo the first; ");
@@ -3607,7 +3613,7 @@ hvalue_t f_mod(struct state *state, struct step *step, hvalue_t *args, int n){
     return VALUE_TO_INT(result);
 }
 
-hvalue_t f_not(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_not(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 1);
     if (step->keep_callstack) {
         strbuf_printf(&step->explain, "logical not; ");
@@ -3619,14 +3625,14 @@ hvalue_t f_not(struct state *state, struct step *step, hvalue_t *args, int n){
     return e ^ (1 << VALUE_BITS);
 }
 
-hvalue_t f_plus(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_plus(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     int64_t e1 = args[0];
     if (VALUE_TYPE(e1) == VALUE_INT) {
         if (step->keep_callstack) {
             strbuf_printf(&step->explain, "add the integers; ");
         }
         e1 = VALUE_FROM_INT(e1);
-        for (int i = 1; i < n; i++) {
+        for (unsigned int i = 1; i < n; i++) {
             int64_t e2 = args[i];
             if (VALUE_TYPE(e2) != VALUE_INT) {
                 return value_ctx_failure(step->ctx, &step->engine,
@@ -3674,7 +3680,7 @@ hvalue_t f_plus(struct state *state, struct step *step, hvalue_t *args, int n){
         struct val_info vi[n];
 #endif
         int total = 0;
-        for (int i = 0; i < n; i++) {
+        for (unsigned int i = 0; i < n; i++) {
             if (VALUE_TYPE(args[i]) != VALUE_LIST) {
 #ifdef HEAP_ALLOC
                 free(vi);
@@ -3724,7 +3730,7 @@ hvalue_t f_plus(struct state *state, struct step *step, hvalue_t *args, int n){
     return 0;
 }
 
-hvalue_t f_power(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_power(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 2);
     if (step->keep_callstack) {
         strbuf_printf(&step->explain, "exponentiation; ");
@@ -3772,7 +3778,7 @@ hvalue_t f_power(struct state *state, struct step *step, hvalue_t *args, int n){
     return neg ? VALUE_TO_INT(-result) : VALUE_TO_INT(result);
 }
 
-hvalue_t f_range(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_range(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 2);
     if (step->keep_callstack) {
         strbuf_printf(&step->explain, "range of integers; ");
@@ -3807,7 +3813,7 @@ hvalue_t f_range(struct state *state, struct step *step, hvalue_t *args, int n){
     return result;
 }
 
-hvalue_t f_list_add(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_list_add(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 2);
     if (step->keep_callstack) {
         strbuf_printf(&step->explain, "insert first value into the second; ");
@@ -3830,7 +3836,7 @@ hvalue_t f_list_add(struct state *state, struct step *step, hvalue_t *args, int 
     return result;
 }
 
-hvalue_t f_dict_add(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_dict_add(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 3);
     if (step->keep_callstack) {
         strbuf_printf(&step->explain, "add key/value pair to dictionary; ");
@@ -3888,7 +3894,7 @@ hvalue_t f_dict_add(struct state *state, struct step *step, hvalue_t *args, int 
     }
 }
 
-hvalue_t f_set_add(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_set_add(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 2);
     if (step->keep_callstack) {
         strbuf_printf(&step->explain, "insert first value into the second; ");
@@ -3925,7 +3931,7 @@ hvalue_t f_set_add(struct state *state, struct step *step, hvalue_t *args, int n
     return result;
 }
 
-hvalue_t f_shiftleft(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_shiftleft(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 2);
     if (step->keep_callstack) {
         strbuf_printf(&step->explain, "shift second value left by the number of bits given by the first value; ");
@@ -3953,7 +3959,7 @@ hvalue_t f_shiftleft(struct state *state, struct step *step, hvalue_t *args, int
     return VALUE_TO_INT(result);
 }
 
-hvalue_t f_shiftright(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_shiftright(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 2);
     if (step->keep_callstack) {
         strbuf_printf(&step->explain, "shift second value right by the number of bits given by the first value; ");
@@ -3974,10 +3980,10 @@ hvalue_t f_shiftright(struct state *state, struct step *step, hvalue_t *args, in
     return VALUE_TO_INT(e2 >> e1);
 }
 
-hvalue_t f_times(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_times(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     int64_t result = 1;
     int list = -1;
-    for (int i = 0; i < n; i++) {
+    for (unsigned int i = 0; i < n; i++) {
         int64_t e = args[i];
         if (VALUE_TYPE(e) == VALUE_ATOM || VALUE_TYPE(e) == VALUE_LIST) {
             if (step->keep_callstack) {
@@ -4060,14 +4066,14 @@ hvalue_t f_times(struct state *state, struct step *step, hvalue_t *args, int n){
 	return v;
 }
 
-hvalue_t f_union(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_union(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     hvalue_t e1 = args[0];
 
     if (VALUE_TYPE(e1) == VALUE_INT) {
         if (step->keep_callstack) {
             strbuf_printf(&step->explain, "bitwise or; ");
         }
-        for (int i = 1; i < n; i++) {
+        for (unsigned int i = 1; i < n; i++) {
             hvalue_t e2 = args[i];
             if (VALUE_TYPE(e2) != VALUE_INT) {
                 return value_ctx_failure(step->ctx, &step->engine, "'|' applied to mix of ints and other types");
@@ -4088,7 +4094,7 @@ hvalue_t f_union(struct state *state, struct step *step, hvalue_t *args, int n){
         struct val_info vi[n];
 #endif
         int total = 0;
-        for (int i = 0; i < n; i++) {
+        for (unsigned int i = 0; i < n; i++) {
             if (VALUE_TYPE(args[i]) != VALUE_SET) {
 #ifdef HEAP_ALLOC
                 free(vi);
@@ -4120,7 +4126,7 @@ hvalue_t f_union(struct state *state, struct step *step, hvalue_t *args, int n){
         hvalue_t vals[total / sizeof(hvalue_t)];
 #endif
         total = 0;
-        for (int i = 0; i < n; i++) {
+        for (unsigned int i = 0; i < n; i++) {
             memcpy((char *) vals + total, vi[i].vals, vi[i].size);
             total += vi[i].size;
         }
@@ -4147,7 +4153,7 @@ hvalue_t f_union(struct state *state, struct step *step, hvalue_t *args, int n){
     struct val_info vi[n];
 #endif
     int total = 0;
-    for (int i = 0; i < n; i++) {
+    for (unsigned int i = 0; i < n; i++) {
         if (VALUE_TYPE(args[i]) != VALUE_DICT) {
 #ifdef HEAP_ALLOC
             free(vi);
@@ -4179,7 +4185,7 @@ hvalue_t f_union(struct state *state, struct step *step, hvalue_t *args, int n){
     hvalue_t vals[total / sizeof(hvalue_t)];
 #endif
     total = 0;
-    for (int i = 0; i < n; i++) {
+    for (unsigned int i = 0; i < n; i++) {
         memcpy((char *) vals + total, vi[i].vals, vi[i].size);
         total += vi[i].size;
     }
@@ -4207,14 +4213,14 @@ hvalue_t f_union(struct state *state, struct step *step, hvalue_t *args, int n){
     return result;
 }
 
-hvalue_t f_xor(struct state *state, struct step *step, hvalue_t *args, int n){
+hvalue_t f_xor(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     hvalue_t e1 = args[0];
 
     if (VALUE_TYPE(e1) == VALUE_INT) {
         if (step->keep_callstack) {
             strbuf_printf(&step->explain, "bitwise exclusive or; ");
         }
-        for (int i = 1; i < n; i++) {
+        for (unsigned int i = 1; i < n; i++) {
             hvalue_t e2 = args[i];
             if (VALUE_TYPE(e2) != VALUE_INT) {
                 return value_ctx_failure(step->ctx, &step->engine, "'^' applied to mix of ints and other types");
@@ -4234,7 +4240,7 @@ hvalue_t f_xor(struct state *state, struct step *step, hvalue_t *args, int n){
     struct val_info vi[n];
 #endif
     int total = 0;
-    for (int i = 0; i < n; i++) {
+    for (unsigned int i = 0; i < n; i++) {
         if (VALUE_TYPE(args[i]) != VALUE_SET) {
 #ifdef HEAP_ALLOC
             free(vi);
@@ -4266,7 +4272,7 @@ hvalue_t f_xor(struct state *state, struct step *step, hvalue_t *args, int n){
     hvalue_t vals[total / sizeof(hvalue_t)];
 #endif
     total = 0;
-    for (int i = 0; i < n; i++) {
+    for (unsigned int i = 0; i < n; i++) {
         memcpy((char *) vals + total, vi[i].vals, vi[i].size);
         total += vi[i].size;
     }
