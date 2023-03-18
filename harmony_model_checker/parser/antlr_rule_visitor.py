@@ -701,6 +701,13 @@ class HarmonyVisitorImpl(HarmonyVisitor):
                 not_token = self.get_token(ctx.NOT().symbol, str(ctx.NOT()))
                 return NaryAST(endtoken, tkn, not_token, [ast])
             return ast
+        if ctx.IMPLIES():
+            implies_token = self.get_token(ctx.IMPLIES().symbol, str(ctx.IMPLIES()))
+            ast = NaryAST(endtoken, tkn, implies_token, expressions)
+            if ctx.NOT():
+                not_token = self.get_token(ctx.NOT().symbol, str(ctx.NOT()))
+                return NaryAST(endtoken, tkn, not_token, [ast])
+            return ast
         return expressions[0]
 
     # Visit a parse tree produced by HarmonyParser#expr_rule.
