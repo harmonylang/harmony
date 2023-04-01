@@ -163,7 +163,7 @@ expr_rule
 
 application
     : basic_expr
-    | application ARROW NAME
+    | application ARROWID
     | application basic_expr
 ;
 
@@ -295,7 +295,6 @@ PRINT    : 'print';
 FROM     : 'from';
 RANGE    : '..';
 SETINTLEVEL : 'setintlevel';
-ARROW    : '->';
 SAVE     : 'save';
 STOP     : 'stop';
 LAMBDA   : 'lambda';
@@ -342,6 +341,7 @@ ETERNAL: 'eternal';
 INT     : [0-9]+ | '0x' [0-9a-fA-F]+ | '0b' [01]+ | '0o' [0-7]+;
 NAME    : [a-zA-Z_][a-zA-Z_0-9]*;
 ATOM    : [.] (HEX_INTEGER | NAME);
+ARROWID : '->' ' '* NAME;
 
 HEX_INTEGER: '0X' HEX_DIGIT+;
 /// hexdigit       ::=  digit | "a"..."f" | "A"..."F"

@@ -748,10 +748,16 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     def visitApplication(self, ctx:HarmonyParser.ApplicationContext):
         tkn = self.get_token(ctx.start, ctx.start.text)
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
-        if ctx.ARROW():
+        if ctx.ARROWID():
             p = self.visit(ctx.application())
-            name = self.get_token(ctx.NAME().symbol, str(ctx.NAME()))
-            return ApplyAST(endtoken, PointerAST(endtoken, p, tkn), ConstantAST(endtoken, name), tkn)
+            name = self.get_token(ctx.ARROWID().symbol, str(ctx.ARROWID()))
+            (lexeme, file, line, col) = name
+            lexeme = lexeme[2:]
+            col += 2
+            while lexeme[0] == ' ':
+                lexeme = lexeme[1:]
+                col += 1
+            return ApplyAST(endtoken, PointerAST(endtoken, p, tkn), ConstantAST(endtoken, (lexeme, file, line, col)), tkn)
         elif ctx.application():
             f = self.visit(ctx.application())
             return ApplyAST(endtoken, f, self.visit(ctx.basic_expr()), tkn)
