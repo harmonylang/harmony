@@ -1,4 +1,5 @@
 from typing import Optional
+from harmony_model_checker.exception import *
 
 class Scope:
     def __init__(self, parent: Optional['Scope']):
@@ -46,6 +47,26 @@ class Scope:
         self.names[lexeme] = ("global", name)
         return ("global", name)
 
+    # like lookup but returns error if not found
+    def find(self, name):
+        (lexeme, file, line, column) = name
+        if lexeme == "_":
+            return ("local-var", name)
+        tv = self.names.get(lexeme)
+        if tv is not None:
+            return tv
+        ancestor = self.parent
+        while ancestor is not None:
+            tv = ancestor.names.get(lexeme)
+            if tv is not None:
+                # (t, v) = tv
+                # if t == "local-var":
+                #    return None
+                return tv
+            ancestor = ancestor.parent
+
+        return False
+
     # This is a hack to create a map of identifiers to types for
     # pretty printing.
     # TODO: come up with a better solution
@@ -55,5 +76,18 @@ class Scope:
             self.parent.pset(lexeme, tv)
 
     def set(self, lexeme, tv):
+        self.names[lexeme] = tv
+        self.pset(lexeme, tv)
+
+    def tryset(self, token, tv):
+        (lexeme, file, line, column) = token
+        if lexeme in self.names:
+            raise HarmonyCompilerError(
+                filename=file,
+                lexeme=lexeme,
+                line=line,
+                column=column,
+                message="%s: error: duplicate defined in this module" % lexeme
+            )
         self.names[lexeme] = tv
         self.pset(lexeme, tv)

@@ -249,6 +249,11 @@ class HarmonyVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by HarmonyParser#global_stmt.
+    def visitGlobal_stmt(self, ctx:HarmonyParser.Global_stmtContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by HarmonyParser#builtin_stmt.
     def visitBuiltin_stmt(self, ctx:HarmonyParser.Builtin_stmtContext):
         return self.visitChildren(ctx)

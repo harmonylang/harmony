@@ -324,6 +324,13 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
         return SequentialAST(endtoken, tkn, False, expr)
 
+    # Visit a parse tree produced by HarmonyParser#global_stmt.
+    def visitGlobal_stmt(self, ctx: HarmonyParser.Global_stmtContext):
+        expr = [self.visit(e) for e in ctx.expr()]
+        tkn = self.get_token(ctx.start, ctx.start.text)
+        endtoken = self.get_token(ctx.stop, ctx.stop.text)
+        return GlobalAST(endtoken, tkn, False, expr)
+
     # Visit a parse tree produced by HarmonyParser#builtin_stmt.
     def visitBuiltin_stmt(self, ctx: HarmonyParser.Builtin_stmtContext):
         name = str(ctx.NAME())

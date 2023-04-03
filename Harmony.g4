@@ -208,6 +208,7 @@ spawn_stmt: SPAWN ETERNAL? expr;
 go_stmt: GO expr expr;
 print_stmt: PRINT expr;
 sequential_stmt: SEQUENTIAL expr (COMMA expr)*;
+global_stmt: GLOBAL expr (COMMA expr)*;
 builtin_stmt: BUILTIN NAME STRING;
 
 // Block-able statements
@@ -255,6 +256,7 @@ simple_stmt
     | print_stmt
     | pass_stmt
     | sequential_stmt
+    | global_stmt
     | builtin_stmt
     | assert_stmt
     | aug_assign_stmt
@@ -320,6 +322,7 @@ ELIF    : 'elif';
 ELSE    : 'else';
 AT      : '@';
 WHILE   : 'while';
+GLOBAL  : 'global';
 DEF     : 'def';
 RETURNS : 'returns';
 EXISTS  : 'exists';

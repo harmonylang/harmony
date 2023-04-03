@@ -7,7 +7,7 @@ from harmony_model_checker.harmony.ops import *
 from harmony_model_checker.exception import *
 
 labelcnt = 0
-imported: Dict[str, Scope] = {}           # imported modules
+imported: Dict[str, Scope] = {}         # imported modules
 constants: Dict[str, str] = {}          # constants modified with -c
 used_constants = set()  # constants modified and used
 
@@ -1191,7 +1191,7 @@ class BlockAST(AST):
     def __init__(self, endtoken, token, atomically, b, colon):
         AST.__init__(self, endtoken, token, atomically)
         assert len(b) > 0
-        self.b = b
+        self.b = b      # list of statements
         self.colon = colon
 
     def __repr__(self):
@@ -1200,9 +1200,21 @@ class BlockAST(AST):
     def compile(self, scope, code, stmt):
         stmt = self.range(self.token, self.colon)
         ns = Scope(scope)
+
+        # Labels are global
         for s in self.b:
-            for ((lexeme, file, line, column), lb) in s.getLabels():
+            for (token, lb) in s.getLabels():
+                (lexeme, file, line, column) = token
+                if False and ns.find(token):
+                    raise HarmonyCompilerError(
+                        filename=file,
+                        lexeme=lexeme,
+                        line=line,
+                        column=column,
+                        message="%s: Parse error: duplicate definition" % lexeme
+                    )
                 ns.names[lexeme] = ("constant", (lb, file, line, column))
+
         if self.atomically:
             code.append(AtomicIncOp(False), self.token, self.endtoken, stmt=stmt)
         for s in self.b:
@@ -1917,9 +1929,10 @@ class FromAST(AST):
         if self.items == []:  # from module import *
             for (item, (t, v)) in names.items():
                 if t == "constant":
-                    scope.set(item, (t, v))
+                    scope.tryset((item, file, line, column), ("constant", v))
         else:
-            for (lexeme, file, line, column) in self.items:
+            for token in self.items:
+                (lexeme, file, line, column) = token
                 if lexeme not in names:
                     raise HarmonyCompilerError(
                         filename=file,
@@ -1927,8 +1940,8 @@ class FromAST(AST):
                         message="%s line %s: can't import %s from %s" % (file, line, lexeme, self.module[0]),
                         column=column)
                 (t, v) = names[lexeme]
-                assert t == "constant", (lexeme, t, v)
-                scope.set(lexeme, (t, v))
+                assert t == "constant", (lexeme, v)
+                scope.tryset(token, ("constant", v))
 
     def getImports(self):
         return [self.module]
@@ -1995,6 +2008,24 @@ class LabelStatAST(AST):
         return visitor.visit_label_stat(self, *args, **kwargs)
 
 
+class GlobalAST(AST):
+    def __init__(self, endtoken, token, atomically, vars):
+        AST.__init__(self, endtoken, token, atomically)
+        self.vars = vars
+
+    def __repr__(self):
+        return "Global(" + str(self.vars) + ")"
+
+    def compile(self, scope, code, stmt):
+        assert False
+
+    def getLabels(self):
+        return set()
+
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_sequential(self, *args, **kwargs)
+
+
 class SequentialAST(AST):
     def __init__(self, endtoken, token, atomically, vars):
         AST.__init__(self, endtoken, token, atomically)
@@ -2049,10 +2080,12 @@ class ConstAST(AST):
     def set(self, scope, const, v):
         if isinstance(const, tuple):
             (lexeme, file, line, column) = const
-            if lexeme in scope.names:
+            tv = scope.find(const)
+            if tv:
                 raise HarmonyCompilerError(
                     filename=file,
                     lexeme=lexeme,
+                    line=line,
                     column=column,
                     message="%s: Parse error: already defined" % lexeme
                 )
