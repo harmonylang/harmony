@@ -708,14 +708,26 @@ class ApplyAST(AST):
             # See if it's of the form "module.constant":
             if t == "module":
                 if isinstance(self.arg, ConstantAST) and isinstance(self.arg.const[0], str):
-                    (t2, v2) = v.lookup(self.arg.const)
-                    assert t2 == "constant"
+                    tv = v.find(self.arg.const)
+                    if not tv:
+                        (lexeme, file, line, column) = self.arg.const
+                        raise HarmonyCompilerError(
+                            message="can't find %s in module %s" % (lexeme, self.method.name[0]),
+                            lexeme=lexeme,
+                            filename=file,
+                            line=line,
+                            column=column
+                        )
+
+                    (t2, v2) = tv
+                    assert t2 == "constant", (t2, v2)
                     code.append(PushOp(v2), self.token, self.endtoken, stmt=stmt)
                     return True
                 raise HarmonyCompilerError(
                     message="can only look up a constant in a module %s, not %s" % (self.method.name, self.arg),
                     lexeme=lexeme,
                     filename=file,
+                    line=line,
                     column=column
                 )
 
@@ -731,6 +743,7 @@ class ApplyAST(AST):
                         message="can't apply to _",
                         lexeme=lexeme,
                         filename=file,
+                        line=line,
                         column=column
                     )
                 self.method.compile(scope, code, stmt)  # LoadVar
