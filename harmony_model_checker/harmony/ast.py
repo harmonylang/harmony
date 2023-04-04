@@ -83,6 +83,7 @@ class AST:
                 message='constant evaluation failed: %s %s' % (self, ctx.failure),
                 lexeme=lexeme,
                 filename=file,
+                line=line,
                 column=column
             )
         return ctx.pop()
@@ -107,6 +108,7 @@ class AST:
             lexeme=lexeme,
             filename=file,
             # stmt=stmt,
+            line=line,
             column=column,
             message='Not a variable: %s' % str(self)
         )
@@ -119,6 +121,7 @@ class AST:
             lexeme=lexeme,
             filename=file,
             # stmt=stmt,
+            line=line,
             column=column,
             message='Cannot use in left-hand side expression: %s' % str(self)
         )
@@ -131,6 +134,7 @@ class AST:
             lexeme=lexeme,
             filename=file,
             # stmt=stmt,
+            line=line,
             column=column,
             message='Cannot take address of %s' % str(self)
         )
@@ -455,6 +459,7 @@ class TupleAST(AST):
             message="Cannot index into tuple in assignment",
             lexeme=lexeme,
             filename=file,
+            line=line,
             column=column
         )
 
@@ -821,6 +826,7 @@ class ApplyAST(AST):
                     message="Cannot assign to constant %s %s" % (self.method.name, self.arg.const),
                     lexeme=lexeme,
                     filename=file,
+                    line=line,
                     column=column
                 )
 
@@ -847,6 +853,7 @@ class ApplyAST(AST):
                     message="Cannot assign to constant %s %s" % (self.method.name, self.arg.const),
                     lexeme=lexeme,
                     filename=file,
+                    line=line,
                     column=column
                 )
 
@@ -948,6 +955,7 @@ class AssignmentAST(AST):
                     raise HarmonyCompilerError(
                         lexeme=lexeme,
                         filename=file,
+                        line=line,
                         column=column,
                         message='Cannot assign to module %s' % str(lvs.name),
                     )
@@ -955,6 +963,7 @@ class AssignmentAST(AST):
                     raise HarmonyCompilerError(
                         lexeme=lexeme,
                         filename=file,
+                        line=line,
                         column=column,
                         message='Cannot assign to constant %s' % str(lvs.name),
                     )
@@ -1007,6 +1016,7 @@ class AuxAssignmentAST(AST):
                 raise HarmonyCompilerError(
                     filename=file,
                     lexeme=lexeme,
+                    line=line,
                     column=column,
                     message='Cannot operate on module %s' % str(lv.name),
                 )
@@ -1014,6 +1024,7 @@ class AuxAssignmentAST(AST):
                 raise HarmonyCompilerError(
                     filename=file,
                     lexeme=lexeme,
+                    line=line,
                     column=column,
                     message='Cannot operate on constant %s' % str(lv.name),
                 )
@@ -1150,6 +1161,7 @@ class AddressAST(AST):
                 raise HarmonyCompilerError(
                     filename=file,
                     lexeme=lexeme,
+                    line=line,
                     column=column,
                     message="Can't take address of imported %s" % str(lv),
                 )
@@ -1168,6 +1180,7 @@ class AddressAST(AST):
             raise HarmonyCompilerError(
                 filename=file,
                 lexeme=lexeme,
+                line=line,
                 column=column,
                 message="Can't take address of %s" % str(lv),
             )
@@ -1951,6 +1964,7 @@ class FromAST(AST):
                         filename=file,
                         lexeme=lexeme,
                         message="%s line %s: can't import %s from %s" % (file, line, lexeme, self.module[0]),
+                        line=line,
                         column=column)
                 (t, v) = names[lexeme]
                 assert t == "constant", (lexeme, v)
@@ -2123,6 +2137,7 @@ class ConstAST(AST):
             raise HarmonyCompilerError(
                 filename=file,
                 lexeme=lexeme,
+                line=line,
                 column=column,
                 message="%s: Parse error: expression not a constant %s" % (self.const, self.expr),
             )

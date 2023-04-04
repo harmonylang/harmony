@@ -486,7 +486,7 @@ void op_Assert(const void *env, struct state *state, struct step *step, struct g
     hvalue_t v = ctx_pop(step->ctx);
 
     if (VALUE_TYPE(v) != VALUE_BOOL) {
-        value_ctx_failure(step->ctx, &step->engine, "assert can only be applied to bool engine");
+        value_ctx_failure(step->ctx, &step->engine, "assert can only be applied to booleans");
     }
     if (v == VALUE_FALSE) {
         if (step->keep_callstack) {
@@ -506,7 +506,7 @@ void op_Assert2(const void *env, struct state *state, struct step *step, struct 
     hvalue_t e = ctx_pop(step->ctx);
     hvalue_t v = ctx_pop(step->ctx);
     if (VALUE_TYPE(v) != VALUE_BOOL) {
-        value_ctx_failure(step->ctx, &step->engine, "assert2 can only be applied to bool engine");
+        value_ctx_failure(step->ctx, &step->engine, "assert2 can only be applied to booleans");
     }
     if (v == VALUE_FALSE) {
         char *p = value_string(e);
