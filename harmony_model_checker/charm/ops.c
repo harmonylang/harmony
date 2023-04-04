@@ -1412,7 +1412,7 @@ void do_Load(struct state *state, struct step *step, struct global *global,
             for (unsigned int i = k; i < size; i++, vip++) {
                 if (VALUE_TYPE(indices[k]) != VALUE_ATOM) {
                     char *p = value_string(av);
-                    value_ctx_failure(step->ctx, &step->engine, "Load %s: must be all strings", p);
+                    value_ctx_failure(step->ctx, &step->engine, "Load %s: bad string index", p);
                     free(p);
 #ifdef HEAP_ALLOC
                     free(vi);
@@ -1455,7 +1455,7 @@ void do_Load(struct state *state, struct step *step, struct global *global,
             for (unsigned int i = k; i < size; i++, vip++) {
                 if (VALUE_TYPE(indices[k]) != VALUE_LIST) {
                     char *p = value_string(av);
-                    value_ctx_failure(step->ctx, &step->engine, "Load %s: must be all lists", p);
+                    value_ctx_failure(step->ctx, &step->engine, "Load %s: bad list index", p);
                     free(p);
 #ifdef HEAP_ALLOC
                     free(vi);
