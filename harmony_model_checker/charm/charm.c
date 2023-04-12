@@ -1912,7 +1912,7 @@ static void worker(void *arg){
     sched_setaffinity(0, sizeof(cpuset), &cpuset);
 #endif
 
-    for (int epoch = 0;; epoch++) {
+    for (/* int epoch = 0;; epoch++ */;;) {
         double before = gettime();
         barrier_wait(w->start_barrier);
         double after = gettime();
@@ -2050,7 +2050,7 @@ static void worker(void *arg){
 
         if (global->layer_done) {
             // Fill the graph table
-            for (unsigned int i = 0; w->count != 0; i++) {
+            while (w->count != 0) {
                 struct node *node = w->results;
                 assert(node->id == 0);
                 node->id = w->node_id;
