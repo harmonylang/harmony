@@ -490,17 +490,17 @@ static bool onestep(
                     }
                     double gigs = (double) allocated / (1 << 30);
 #ifdef INCLUDE_RATE
-                    fprintf(stderr, "pc=%d states=%u diam=%u q=%d rate=%d mem=%.2lfGB\n",
+                    fprintf(stderr, "pc=%d states=%u diam=%u q=%d rate=%d mem=%.3lfGB\n",
                             step->ctx->pc, enqueued, global->diameter, enqueued - dequeued,
                             (unsigned int) ((enqueued - global->last_nstates) / (now - global->lasttime)),
                             gigs);
 #else
 #ifdef FULL_REPORT
-                    fprintf(stderr, "pc=%d states=%u diam=%u q=%d mem=%.2lfGB %lu %lu %lu\n",
+                    fprintf(stderr, "pc=%d states=%u diam=%u q=%d mem=%.3lfGB %lu %lu %lu\n",
                             step->ctx->pc, enqueued, global->diameter,
                             enqueued - dequeued, gigs, align_waste, frag_waste, global->allocated);
 #else
-                    fprintf(stderr, "pc=%d states=%u diam=%u q=%d mem=%.2lfGB ph=%u\n",
+                    fprintf(stderr, "pc=%d states=%u diam=%u q=%d mem=%.3lfGB ph=%u\n",
                             step->ctx->pc, enqueued, global->diameter,
                             enqueued - dequeued, gigs, w->middle_count);
 #endif
@@ -2598,7 +2598,7 @@ int main(int argc, char **argv){
         middle_wait / global->nworkers,
         end_wait / global->nworkers);
 
-    printf("#states %d (time %.2lfs, mem=%.2lfGB)\n", global->graph.size, gettime() - before, (double) allocated / (1L << 30));
+    printf("#states %d (time %.2lfs, mem=%.3lfGB)\n", global->graph.size, gettime() - before, (double) allocated / (1L << 30));
 
     if (outfile == NULL) {
         exit(0);
