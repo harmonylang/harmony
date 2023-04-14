@@ -22,9 +22,9 @@ ax2.set(ylabel="time (secs)")
 ax2.set_yticks([0.01, 0.1, 1, 10, 100], labels=["0.01", "0.1", "1", "10", "100"])
 
 ax1.plot(ts_dim, tlaplus_states, "go-", label="#states (TLA+)")
-ax1.plot(hs_dim, harmony_states, "ro-", label="#states (Harmony)")
+ax1.plot(hs_dim, harmony_states, "ro-", label="#states (Symphony)")
 ax2.plot(tt_dim, tlaplus_times, "gv-", label="time (TLA+)")
-ax2.plot(ht_dim, harmony_times, "rv-", label="time (Harmony)")
+ax2.plot(ht_dim, harmony_times, "rv-", label="time (Symphony)")
 
 ax1.legend(loc="upper left", bbox_to_anchor=(0, 1))
 ax2.legend(loc="upper left", bbox_to_anchor=(0, 0.8))

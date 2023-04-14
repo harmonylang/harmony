@@ -1,7 +1,74 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-times = [
+bisim = [
+    88.93,
+    57.06,
+    39.58,
+    30.11,
+    24.52,
+    20.88,
+    18.04,
+    15.94,
+    14.29,
+    12.98,
+    12.00,
+    11.16,
+    10.46,
+    9.80,
+    9.20,
+    8.71,
+    8.54,
+    8.43,
+    8.26,
+    8.06,
+    7.86,
+    7.72,
+    7.58,
+    7.44,
+    7.30,
+    7.13,
+    7.05,
+    6.89,
+    6.79,
+    6.68,
+    6.54,
+    6.48,
+    6.24,
+    6.17,
+    6.13,
+    6.06,
+    5.99,
+    5.99,
+    5.91,
+    5.87,
+    5.80,
+    5.74,
+    5.74,
+    5.68,
+    5.73,
+    5.57,
+    5.54,
+    5.65,
+    5.56,
+    5.56,
+    5.50,
+    5.48,
+    5.47,
+    5.42,
+    5.36,
+    5.34,
+    5.27,
+    5.33,
+    5.34,
+    5.23,
+    5.07,
+    5.06,
+    5.00,
+    5.03
+]
+
+diners = [
     40.45,
     24.28,
     16.76,
@@ -68,14 +135,25 @@ times = [
     2.07
 ]
 
-plt.figure(figsize=(5,4))
-plt.xscale("log")
-plt.xticks([1, 2, 4, 8, 16, 32, 64], ["1", "2", "4", "8", "16", "32", "64"])
+def normalize(lst):
+    maxim = max(lst)
+    return [ maxim / x for x in lst ]
+
+norm_bisim = normalize(bisim)
+norm_diners = normalize(diners)
+
+plt.figure(figsize=(5,3))
+# plt.xscale("log")
+# plt.xticks([1, 2, 4, 8, 16, 32, 64], ["1", "2", "4", "8", "16", "32", "64"])
 plt.xlabel("#threads")
-plt.ylabel("time (secs)")
+plt.ylabel("speed-up")
 dim = np.arange(1, 65)
 
-plt.plot(dim, times)
+plt.plot(dim, norm_diners, label="diners")
+plt.plot(dim, norm_bisim, label="bisim")
+plt.tight_layout()
+
+plt.legend(loc="upper left")
 
 plt.show()
 # plt.close()

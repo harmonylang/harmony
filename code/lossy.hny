@@ -1,0 +1,24 @@
+to_server = to_client = {}
+
+def send(chan, msg):
+    if choose { False, True }:
+        atomically !chan |= { msg }
+
+def receive(chan) returns msgs:
+    atomically msgs = !chan
+
+def server():
+    while True:
+        let msgs = receive(?to_server):
+            if "ping" in msgs:
+                send(?to_client, "pong")
+
+def client():
+    var done = False
+    while not done:
+        send(?to_server, "ping")
+        let msgs = receive(?to_client):
+            done = "pong" in msgs
+
+spawn client()
+spawn eternal server()
