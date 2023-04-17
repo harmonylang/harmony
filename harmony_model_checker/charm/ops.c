@@ -402,12 +402,11 @@ bool ind_remove(hvalue_t root, hvalue_t *indices, int n, struct engine *engine,
     }
     else {
         assert(VALUE_TYPE(root) == VALUE_LIST);
-        assert(VALUE_TYPE(root) == VALUE_LIST);
         if (VALUE_TYPE(indices[0]) != VALUE_INT) {
             return false;
         }
         int index = VALUE_FROM_INT(indices[0]);
-        if (index < 0 || index >= n) {
+        if (index < 0 || index >= size) {
             return false;
         }
         hvalue_t d = vals[index];

@@ -1,7 +1,7 @@
-sequential done
-
 count = 0
 done = False
+
+finally count == 1
 
 def handler():
     count += 1
@@ -10,6 +10,5 @@ def handler():
 def main():
     trap handler()
     await done
-    assert count == 1
 
 spawn main()

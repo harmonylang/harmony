@@ -307,11 +307,11 @@ unsigned int check_finals(struct worker *w, struct node *node, struct step *step
         assert(strcmp(global->code.instrs[step->ctx->pc].oi->name, "Frame") == 0);
         bool b = predicate_check(global, state, step);
         if (step->ctx->failed) {
-            printf("Finally evaluation failed: %s\n", value_string(ctx_failure(step->ctx)));
+            // printf("Finally evaluation failed: %s\n", value_string(ctx_failure(step->ctx)));
             b = false;
         }
         if (!b) {
-            printf("FIN %u %u failed\n", i, global->finals[i]);
+            // printf("FIN %u %u failed\n", i, global->finals[i]);
             return global->finals[i];
         }
     }
@@ -2584,6 +2584,7 @@ int main(int argc, char **argv){
                 w->end_wait/w->end_count);
 #endif
     }
+#ifdef notdef
     printf("computing: %lf %lf %lf %lf (%lf %lf %lf %lf %u); waiting: %lf %lf %lf\n",
         phase1 / global->nworkers,
         phase2a / global->nworkers,
@@ -2597,6 +2598,7 @@ int main(int argc, char **argv){
         start_wait / global->nworkers,
         middle_wait / global->nworkers,
         end_wait / global->nworkers);
+#endif
 
     printf("#states %d (time %.2lfs, mem=%.3lfGB)\n", global->graph.size, gettime() - before, (double) allocated / (1L << 30));
 
