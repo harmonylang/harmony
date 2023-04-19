@@ -42,7 +42,7 @@ def customer(id):
             customers_ready -= { id }
         release(?mutex)
 
-for i in {1..NBARBERS}:
+for _ in {1..NBARBERS}:
     spawn eternal barber()
 for i in {1..NCUSTOMERS}:
     spawn customer(i)

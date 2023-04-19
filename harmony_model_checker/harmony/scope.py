@@ -23,7 +23,7 @@ class Scope:
     def checkUnused(self, name):
         # tv = self.names.get(lexeme)
         (lexeme, file, line, column) = name
-        if lexeme != '_' and self.find(name):
+        if False and lexeme != '_' and self.find(name):
             raise HarmonyCompilerError(
                 lexeme=lexeme,
                 filename=file,
