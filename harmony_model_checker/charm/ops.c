@@ -3775,7 +3775,9 @@ hvalue_t f_list_add(struct state *state, struct step *step, hvalue_t *args, int 
         strbuf_printf(&step->explain, "insert first value into the second; ");
     }
     hvalue_t list = args[1];
-    assert(VALUE_TYPE(list) == VALUE_LIST);
+    if (VALUE_TYPE(list) != VALUE_LIST) {
+        return value_ctx_failure(step->ctx, &step->engine, "can only add to list");
+    }
     unsigned int size;
     hvalue_t *vals = value_get(list, &size);
 #ifdef HEAP_ALLOC
