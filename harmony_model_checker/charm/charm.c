@@ -307,11 +307,11 @@ unsigned int check_finals(struct worker *w, struct node *node, struct step *step
         assert(strcmp(global->code.instrs[step->ctx->pc].oi->name, "Frame") == 0);
         bool b = predicate_check(global, state, step);
         if (step->ctx->failed) {
-            printf("Finally evaluation failed: %s\n", value_string(ctx_failure(step->ctx)));
+            // printf("Finally evaluation failed: %s\n", value_string(ctx_failure(step->ctx)));
             b = false;
         }
         if (!b) {
-            printf("FIN %u %u failed\n", i, global->finals[i]);
+            // printf("FIN %u %u failed\n", i, global->finals[i]);
             return global->finals[i];
         }
     }
@@ -490,17 +490,17 @@ static bool onestep(
                     }
                     double gigs = (double) allocated / (1 << 30);
 #ifdef INCLUDE_RATE
-                    fprintf(stderr, "pc=%d states=%u diam=%u q=%d rate=%d mem=%.2lfGB\n",
+                    fprintf(stderr, "pc=%d states=%u diam=%u q=%d rate=%d mem=%.3lfGB\n",
                             step->ctx->pc, enqueued, global->diameter, enqueued - dequeued,
                             (unsigned int) ((enqueued - global->last_nstates) / (now - global->lasttime)),
                             gigs);
 #else
 #ifdef FULL_REPORT
-                    fprintf(stderr, "pc=%d states=%u diam=%u q=%d mem=%.2lfGB %lu %lu %lu\n",
+                    fprintf(stderr, "pc=%d states=%u diam=%u q=%d mem=%.3lfGB %lu %lu %lu\n",
                             step->ctx->pc, enqueued, global->diameter,
                             enqueued - dequeued, gigs, align_waste, frag_waste, global->allocated);
 #else
-                    fprintf(stderr, "pc=%d states=%u diam=%u q=%d mem=%.2lfGB ph=%u\n",
+                    fprintf(stderr, "pc=%d states=%u diam=%u q=%d mem=%.3lfGB ph=%u\n",
                             step->ctx->pc, enqueued, global->diameter,
                             enqueued - dequeued, gigs, w->middle_count);
 #endif
@@ -1912,7 +1912,7 @@ static void worker(void *arg){
     sched_setaffinity(0, sizeof(cpuset), &cpuset);
 #endif
 
-    for (int epoch = 0;; epoch++) {
+    for (/* int epoch = 0;; epoch++ */;;) {
         double before = gettime();
         barrier_wait(w->start_barrier);
         double after = gettime();
@@ -2050,7 +2050,7 @@ static void worker(void *arg){
 
         if (global->layer_done) {
             // Fill the graph table
-            for (unsigned int i = 0; w->count != 0; i++) {
+            while (w->count != 0) {
                 struct node *node = w->results;
                 assert(node->id == 0);
                 node->id = w->node_id;
@@ -2584,6 +2584,7 @@ int main(int argc, char **argv){
                 w->end_wait/w->end_count);
 #endif
     }
+#ifdef notdef
     printf("computing: %lf %lf %lf %lf (%lf %lf %lf %lf %u); waiting: %lf %lf %lf\n",
         phase1 / global->nworkers,
         phase2a / global->nworkers,
@@ -2597,8 +2598,9 @@ int main(int argc, char **argv){
         start_wait / global->nworkers,
         middle_wait / global->nworkers,
         end_wait / global->nworkers);
+#endif
 
-    printf("#states %d (time %.2lfs, mem=%.2lfGB)\n", global->graph.size, gettime() - before, (double) allocated / (1L << 30));
+    printf("#states %d (time %.2lfs, mem=%.3lfGB)\n", global->graph.size, gettime() - before, (double) allocated / (1L << 30));
 
     if (outfile == NULL) {
         exit(0);

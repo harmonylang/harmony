@@ -1,10 +1,10 @@
 from synch import Lock, acquire, release
 
-sequential done
-
 countlock = Lock()
 count = 0
 done = False
+
+finally count == 2
 
 def handler():
     acquire(?countlock)
@@ -18,6 +18,5 @@ def main():
     count += 1
     release(?countlock)
     await done
-    assert count == 2
 
 spawn main()

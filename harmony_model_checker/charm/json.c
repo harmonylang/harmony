@@ -141,8 +141,7 @@ static struct json_value *json_parse_list(json_buf_t *buf){
 
 	struct json_value *jv = new_alloc(struct json_value);
 	jv->type = JV_LIST;
-	unsigned int index;
-	for (index = 0;; index++) {
+	for (;;) {
 		json_skip_blanks(buf);
 		assert(buf->len > 0);
 		if (*buf->base == ']') {

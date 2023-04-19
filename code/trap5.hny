@@ -1,7 +1,7 @@
-sequential done
-
 count = 0
 done = False
+
+finally count == 2
 
 def increment():
     let prior = setintlevel(True):
@@ -16,6 +16,5 @@ def main():
     trap handler()
     increment()
     await done
-    assert count == 2
 
 spawn main()

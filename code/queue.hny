@@ -1,15 +1,13 @@
-import list
-
 def Queue() returns empty:
     empty = []
 
 def put(q, v):
-    atomically !q = list.append(!q, v)
+    atomically !q += [v,]
 
 def get(q) returns next:
     atomically:
         if !q == []:
             next = None
         else:
-            next = list.head(!q)
-            !q = list.tail(!q)
+            next = (!q)[0]
+            del (!q)[0]

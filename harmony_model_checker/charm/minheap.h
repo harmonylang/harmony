@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 
-struct minheap *minheap_create();
+struct minheap *minheap_create(int (*cmp)(void *, void *));
 void *minheap_getmin(struct minheap *);
 void minheap_insert(struct minheap *, void *);
 void minheap_decrease(struct minheap *, void *);

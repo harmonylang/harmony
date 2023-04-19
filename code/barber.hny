@@ -1,0 +1,48 @@
+from synch import *
+
+const NSEATS = 2
+const NCUSTOMERS = 3
+const NBARBERS = 2
+
+mutex = Lock()
+customer_cond = Condition()
+barber_cond = Condition()
+customers_waiting = {}
+customers_ready = {}
+
+def barber(self):
+    while True:
+        # Wait for a customer
+        acquire(?mutex)
+        while customers_waiting == {}:
+            wait(?barber_cond, ?mutex)
+        var c = choose customers_waiting
+        customers_waiting -= { c }
+        release(?mutex)
+
+        cut: pass # Cut the hair of customer c.
+
+        # Cut is done.  Tell customer to go.
+        acquire(?mutex)
+        customers_ready |= { c }
+        notifyAll(?customer_cond)
+        release(?mutex)
+
+def customer(id):
+    while choose { False, True }:  # while alive
+        acquire(?mutex)
+        if len customers_waiting < NSEATS:
+            # Take seat and wake up a barber
+            customers_waiting |= { id }
+            notify(?barber_cond)
+
+            # Wait for some barber to cut my hair
+            while id not in customers_ready:
+                wait(?customer_cond, ?mutex)
+            customers_ready -= { id }
+        release(?mutex)
+
+for i in {1..NBARBERS}:
+    spawn eternal barber()
+for i in {1..NCUSTOMERS}:
+    spawn customer(i)

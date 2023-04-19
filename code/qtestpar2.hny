@@ -1,0 +1,19 @@
+import queue
+
+const NOPS = 4
+q = queue.Queue()
+
+def put_test(self):
+    print("call put", self)
+    queue.put(?q, self)
+    print("done put", self)
+
+def get_test(self):
+    print("call get", self)
+    let v = queue.get(?q):
+        print("done get", self, v)
+
+for i in {1..NOPS}:
+    spawn put_test(i)
+for i in {1..NOPS}:
+    spawn get_test(i)

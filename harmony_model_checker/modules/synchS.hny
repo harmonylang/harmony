@@ -17,8 +17,8 @@ def cas(p, old, new):
         if result:
             !p = new
 
-def BinSema(acquired):
-    result = { .acquired: acquired, .suspended: [] }
+def BinSema(initial):
+    result = { .acquired: initial, .suspended: [] }
 
 def Lock():
     result = BinSema(False)

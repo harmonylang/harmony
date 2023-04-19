@@ -58,7 +58,6 @@ bound: (tuple_bound COMMA)* tuple_bound;
 arith_op
     : 'and'
     | 'or'
-    | '=>'
     | '&'
     | '|'
     | '^'
@@ -147,6 +146,7 @@ tuple_rule
 nary_expr
     : expr_rule (
           NOT? IN expr_rule
+        | NOT? IMPLIES expr_rule
         | (comp_op expr_rule)*
         | IF nary_expr ELSE expr_rule
         | (arith_op expr_rule)*
@@ -163,7 +163,7 @@ expr_rule
 
 application
     : basic_expr
-    | application ARROW NAME
+    | application ARROWID
     | application basic_expr
 ;
 
@@ -208,6 +208,7 @@ spawn_stmt: SPAWN ETERNAL? expr;
 go_stmt: GO expr expr;
 print_stmt: PRINT expr;
 sequential_stmt: SEQUENTIAL expr (COMMA expr)*;
+global_stmt: GLOBAL expr (COMMA expr)*;
 builtin_stmt: BUILTIN NAME STRING;
 
 // Block-able statements
@@ -255,6 +256,7 @@ simple_stmt
     | print_stmt
     | pass_stmt
     | sequential_stmt
+    | global_stmt
     | builtin_stmt
     | assert_stmt
     | aug_assign_stmt
@@ -295,7 +297,6 @@ PRINT    : 'print';
 FROM     : 'from';
 RANGE    : '..';
 SETINTLEVEL : 'setintlevel';
-ARROW    : '->';
 SAVE     : 'save';
 STOP     : 'stop';
 LAMBDA   : 'lambda';
@@ -321,12 +322,14 @@ ELIF    : 'elif';
 ELSE    : 'else';
 AT      : '@';
 WHILE   : 'while';
+GLOBAL  : 'global';
 DEF     : 'def';
 RETURNS : 'returns';
 EXISTS  : 'exists';
 WHERE   : 'where';
 EQ      : '=';
 FOR     : 'for' {self.opened_for += 1};
+IMPLIES : '=>';
 IN      : 'in' {
 if self.opened_for > 0:
     self.opened_for -= 1
@@ -341,6 +344,7 @@ ETERNAL: 'eternal';
 INT     : [0-9]+ | '0x' [0-9a-fA-F]+ | '0b' [01]+ | '0o' [0-7]+;
 NAME    : [a-zA-Z_][a-zA-Z_0-9]*;
 ATOM    : [.] (HEX_INTEGER | NAME);
+ARROWID : '->' ' '* NAME;
 
 HEX_INTEGER: '0X' HEX_DIGIT+;
 /// hexdigit       ::=  digit | "a"..."f" | "A"..."F"

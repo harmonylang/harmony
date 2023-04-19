@@ -1,14 +1,14 @@
-import synch
+from synch import Lock, acquire, release
 
-const NTHREADS = 2
+const NTHREADS = 3
 
-lock = synch.Lock()
+the_lock = Lock()
 
 def thread():
     while choose({ False, True }):
-        synch.acquire(?lock)
+        acquire(?the_lock)
         cs: assert countLabel(cs) == 1
-        synch.release(?lock)
+        release(?the_lock)
 
 for i in {1..NTHREADS}:
     spawn thread()

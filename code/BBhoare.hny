@@ -8,6 +8,9 @@ def BoundedBuffer(size) returns buffer:
             .head: 1, .tail: 1,
             .count: 0, .size: size
         }
+
+def Queue() returns empty:
+    empty = BoundedBuffer(4)
     
 def put(bb, item):
     hoare.enter(?bb->mon)

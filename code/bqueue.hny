@@ -1,12 +1,10 @@
-import list
-
 def Queue():
     result = []
 
 def put(q, v):
-    atomically !q = list.append(!q, v)
+    atomically !q += [v,]
 
 def get(q):
     atomically when !q != []:
-        result = list.head(!q)
-        !q = list.tail(!q)
+        result = (!q)[0]
+        del (!q)[0]

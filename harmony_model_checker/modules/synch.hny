@@ -18,9 +18,9 @@ def cas(p, old, new) returns success:
         if success:
             !p = new
 
-def BinSema(acquired) returns sema:
-    assert acquired in { False, True }
-    sema = acquired
+def BinSema(initial) returns sema:
+    assert initial in { False, True }
+    sema = initial
 
 def Lock() returns result:
     result = BinSema(False)

@@ -232,18 +232,18 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     # Visit a parse tree produced by HarmonyParser#trap_stmt.
     def visitTrap_stmt(self, ctx: HarmonyParser.Trap_stmtContext):
         func = self.visit(ctx.expr())
-        if not isinstance(func, ApplyAST):
-            tkn = self.get_token(func.token, func.token[0])
-            raise HarmonyCompilerError(
-                message="Expected a method call but found something else.",
-                filename=self.file,
-                line=tkn[2],
-                column=tkn[3],
-                lexeme=tkn[0]
-            )
+        # if not isinstance(func, ApplyAST):
+        #     tkn = self.get_token(func.token, func.token[0])
+        #     raise HarmonyCompilerError(
+        #         message="Expected a method call but found something else.",
+        #         filename=self.file,
+        #         line=tkn[2],
+        #         column=tkn[3],
+        #         lexeme=tkn[0]
+        #     )
         tkn = self.get_token(ctx.start, ctx.start.text)
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
-        return TrapAST(endtoken, tkn, False, func.method, func.arg)
+        return TrapAST(endtoken, tkn, False, func)
 
     # Visit a parse tree produced by HarmonyParser#pass_stmt.
     def visitPass_stmt(self, ctx: HarmonyParser.Pass_stmtContext):
@@ -294,19 +294,20 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     def visitSpawn_stmt(self, ctx: HarmonyParser.Spawn_stmtContext):
         is_eternal = ctx.ETERNAL() is not None
         target = self.visit(ctx.expr())
-        if not isinstance(target, ApplyAST):
-            tkn = self.get_token(target.token, target.token[0])
-            raise HarmonyCompilerError(
-                message="Expected a method call but found something else.",
-                filename=self.file,
-                line=tkn[2],
-                column=tkn[3],
-                lexeme=tkn[0]
-            )
-        method, arg = target.method, target.arg
+        # if not isinstance(target, ApplyAST):
+        #     tkn = self.get_token(target.token, target.token[0])
+        #     raise HarmonyCompilerError(
+        #         message="Expected a method call but found something else.",
+        #         filename=self.file,
+        #         line=tkn[2],
+        #         column=tkn[3],
+        #         lexeme=tkn[0]
+        #     )
+        # method, arg = target.method, target.arg
         tkn = self.get_token(ctx.start, ctx.start.text)
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
-        return SpawnAST(endtoken, tkn, False, method, arg, None, is_eternal)
+        # return SpawnAST(endtoken, tkn, False, method, arg, None, is_eternal)
+        return SpawnAST(endtoken, tkn, False, target, None, is_eternal)
 
     # Visit a parse tree produced by HarmonyParser#go_stmt.
     def visitGo_stmt(self, ctx: HarmonyParser.Go_stmtContext):
@@ -322,6 +323,13 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         tkn = self.get_token(ctx.start, ctx.start.text)
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
         return SequentialAST(endtoken, tkn, False, expr)
+
+    # Visit a parse tree produced by HarmonyParser#global_stmt.
+    def visitGlobal_stmt(self, ctx: HarmonyParser.Global_stmtContext):
+        expr = [self.visit(e) for e in ctx.expr()]
+        tkn = self.get_token(ctx.start, ctx.start.text)
+        endtoken = self.get_token(ctx.stop, ctx.stop.text)
+        return GlobalAST(endtoken, tkn, False, expr)
 
     # Visit a parse tree produced by HarmonyParser#builtin_stmt.
     def visitBuiltin_stmt(self, ctx: HarmonyParser.Builtin_stmtContext):
@@ -700,6 +708,13 @@ class HarmonyVisitorImpl(HarmonyVisitor):
                 not_token = self.get_token(ctx.NOT().symbol, str(ctx.NOT()))
                 return NaryAST(endtoken, tkn, not_token, [ast])
             return ast
+        if ctx.IMPLIES():
+            implies_token = self.get_token(ctx.IMPLIES().symbol, str(ctx.IMPLIES()))
+            ast = NaryAST(endtoken, tkn, implies_token, expressions)
+            if ctx.NOT():
+                not_token = self.get_token(ctx.NOT().symbol, str(ctx.NOT()))
+                return NaryAST(endtoken, tkn, not_token, [ast])
+            return ast
         return expressions[0]
 
     # Visit a parse tree produced by HarmonyParser#expr_rule.
@@ -740,10 +755,16 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     def visitApplication(self, ctx:HarmonyParser.ApplicationContext):
         tkn = self.get_token(ctx.start, ctx.start.text)
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
-        if ctx.ARROW():
+        if ctx.ARROWID():
             p = self.visit(ctx.application())
-            name = self.get_token(ctx.NAME().symbol, str(ctx.NAME()))
-            return ApplyAST(endtoken, PointerAST(endtoken, p, tkn), ConstantAST(endtoken, name), tkn)
+            name = self.get_token(ctx.ARROWID().symbol, str(ctx.ARROWID()))
+            (lexeme, file, line, col) = name
+            lexeme = lexeme[2:]
+            col += 2
+            while lexeme[0] == ' ':
+                lexeme = lexeme[1:]
+                col += 1
+            return ApplyAST(endtoken, PointerAST(endtoken, p, tkn), ConstantAST(endtoken, (lexeme, file, line, col)), tkn)
         elif ctx.application():
             f = self.visit(ctx.application())
             return ApplyAST(endtoken, f, self.visit(ctx.basic_expr()), tkn)

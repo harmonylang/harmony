@@ -7,7 +7,7 @@ from harmony_model_checker.harmony.ops import *
 from harmony_model_checker.exception import *
 
 labelcnt = 0
-imported: Dict[str, Scope] = {}           # imported modules
+imported: Dict[str, Scope] = {}         # imported modules
 constants: Dict[str, str] = {}          # constants modified with -c
 used_constants = set()  # constants modified and used
 
@@ -83,6 +83,7 @@ class AST:
                 message='constant evaluation failed: %s %s' % (self, ctx.failure),
                 lexeme=lexeme,
                 filename=file,
+                line=line,
                 column=column
             )
         return ctx.pop()
@@ -107,6 +108,7 @@ class AST:
             lexeme=lexeme,
             filename=file,
             # stmt=stmt,
+            line=line,
             column=column,
             message='Not a variable: %s' % str(self)
         )
@@ -119,6 +121,7 @@ class AST:
             lexeme=lexeme,
             filename=file,
             # stmt=stmt,
+            line=line,
             column=column,
             message='Cannot use in left-hand side expression: %s' % str(self)
         )
@@ -131,6 +134,7 @@ class AST:
             lexeme=lexeme,
             filename=file,
             # stmt=stmt,
+            line=line,
             column=column,
             message='Cannot take address of %s' % str(self)
         )
@@ -455,6 +459,7 @@ class TupleAST(AST):
             message="Cannot index into tuple in assignment",
             lexeme=lexeme,
             filename=file,
+            line=line,
             column=column
         )
 
@@ -708,14 +713,26 @@ class ApplyAST(AST):
             # See if it's of the form "module.constant":
             if t == "module":
                 if isinstance(self.arg, ConstantAST) and isinstance(self.arg.const[0], str):
-                    (t2, v2) = v.lookup(self.arg.const)
-                    assert t2 == "constant"
+                    tv = v.find(self.arg.const)
+                    if not tv:
+                        (lexeme, file, line, column) = self.arg.const
+                        raise HarmonyCompilerError(
+                            message="can't find %s in module %s" % (lexeme, self.method.name[0]),
+                            lexeme=lexeme,
+                            filename=file,
+                            line=line,
+                            column=column
+                        )
+
+                    (t2, v2) = tv
+                    assert t2 == "constant", (t2, v2)
                     code.append(PushOp(v2), self.token, self.endtoken, stmt=stmt)
                     return True
                 raise HarmonyCompilerError(
                     message="can only look up a constant in a module %s, not %s" % (self.method.name, self.arg),
                     lexeme=lexeme,
                     filename=file,
+                    line=line,
                     column=column
                 )
 
@@ -731,6 +748,7 @@ class ApplyAST(AST):
                         message="can't apply to _",
                         lexeme=lexeme,
                         filename=file,
+                        line=line,
                         column=column
                     )
                 self.method.compile(scope, code, stmt)  # LoadVar
@@ -808,6 +826,7 @@ class ApplyAST(AST):
                     message="Cannot assign to constant %s %s" % (self.method.name, self.arg.const),
                     lexeme=lexeme,
                     filename=file,
+                    line=line,
                     column=column
                 )
 
@@ -834,6 +853,7 @@ class ApplyAST(AST):
                     message="Cannot assign to constant %s %s" % (self.method.name, self.arg.const),
                     lexeme=lexeme,
                     filename=file,
+                    line=line,
                     column=column
                 )
 
@@ -935,6 +955,7 @@ class AssignmentAST(AST):
                     raise HarmonyCompilerError(
                         lexeme=lexeme,
                         filename=file,
+                        line=line,
                         column=column,
                         message='Cannot assign to module %s' % str(lvs.name),
                     )
@@ -942,6 +963,7 @@ class AssignmentAST(AST):
                     raise HarmonyCompilerError(
                         lexeme=lexeme,
                         filename=file,
+                        line=line,
                         column=column,
                         message='Cannot assign to constant %s' % str(lvs.name),
                     )
@@ -994,6 +1016,7 @@ class AuxAssignmentAST(AST):
                 raise HarmonyCompilerError(
                     filename=file,
                     lexeme=lexeme,
+                    line=line,
                     column=column,
                     message='Cannot operate on module %s' % str(lv.name),
                 )
@@ -1001,6 +1024,7 @@ class AuxAssignmentAST(AST):
                 raise HarmonyCompilerError(
                     filename=file,
                     lexeme=lexeme,
+                    line=line,
                     column=column,
                     message='Cannot operate on constant %s' % str(lv.name),
                 )
@@ -1137,6 +1161,7 @@ class AddressAST(AST):
                 raise HarmonyCompilerError(
                     filename=file,
                     lexeme=lexeme,
+                    line=line,
                     column=column,
                     message="Can't take address of imported %s" % str(lv),
                 )
@@ -1155,6 +1180,7 @@ class AddressAST(AST):
             raise HarmonyCompilerError(
                 filename=file,
                 lexeme=lexeme,
+                line=line,
                 column=column,
                 message="Can't take address of %s" % str(lv),
             )
@@ -1191,7 +1217,7 @@ class BlockAST(AST):
     def __init__(self, endtoken, token, atomically, b, colon):
         AST.__init__(self, endtoken, token, atomically)
         assert len(b) > 0
-        self.b = b
+        self.b = b      # list of statements
         self.colon = colon
 
     def __repr__(self):
@@ -1200,9 +1226,21 @@ class BlockAST(AST):
     def compile(self, scope, code, stmt):
         stmt = self.range(self.token, self.colon)
         ns = Scope(scope)
+
+        # Labels are global
         for s in self.b:
-            for ((lexeme, file, line, column), lb) in s.getLabels():
+            for (token, lb) in s.getLabels():
+                (lexeme, file, line, column) = token
+                if False and ns.find(token):
+                    raise HarmonyCompilerError(
+                        filename=file,
+                        lexeme=lexeme,
+                        line=line,
+                        column=column,
+                        message="%s: Parse error: duplicate definition" % lexeme
+                    )
                 ns.names[lexeme] = ("constant", (lb, file, line, column))
+
         if self.atomically:
             code.append(AtomicIncOp(False), self.token, self.endtoken, stmt=stmt)
         for s in self.b:
@@ -1797,21 +1835,19 @@ class CallAST(AST):
 
 
 class SpawnAST(AST):
-    def __init__(self, endtoken, token, atomically, method, arg, this, eternal):
+    def __init__(self, endtoken, token, atomically, expr, this, eternal):
         AST.__init__(self, endtoken, token, atomically)
-        self.method = method
-        self.arg = arg
+        self.expr = expr
         self.this = this
         self.eternal = eternal
 
     def __repr__(self):
-        return "Spawn(" + str(self.method) + ", " + str(self.arg) + ", " + str(self.this) + ", " + str(
+        return "Spawn(" + str(self.expr) + ", " + str(self.this) + ", " + str(
             self.eternal) + ")"
 
     def compile(self, scope, code, stmt):
         stmt = self.stmt()
-        self.method.compile(scope, code, stmt)
-        self.arg.compile(scope, code, stmt)
+        self.expr.ph1(scope, code, stmt)
         if self.this is None:
             code.append(PushOp((emptydict, None, None, None)), self.token, self.endtoken, stmt=stmt)
         else:
@@ -1820,30 +1856,33 @@ class SpawnAST(AST):
 
     # TODO.  Deal with 'this'
     def getLabels(self):
-        return self.method.getLabels() | self.arg.getLabels()
+        return self.expr.getLabels()
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_spawn(self, *args, **kwargs)
 
 
 class TrapAST(AST):
-    def __init__(self, endtoken, token, atomically, method, arg):
+    def __init__(self, endtoken, token, atomically, expr):
         AST.__init__(self, endtoken, token, atomically)
-        self.method = method
-        self.arg = arg
+        self.expr = expr
 
     def __repr__(self):
-        return "Trap(" + str(self.method) + ", " + str(self.arg) + ")"
+        return "Trap(" + str(self.expr) + ")"
 
     def compile(self, scope, code, stmt):
         stmt = self.stmt()
-        # TODO.  These should be swapped
-        self.arg.compile(scope, code, stmt)
-        self.method.compile(scope, code, stmt)
+        if isinstance(self.expr, ApplyAST):      # backward compatibility
+            self.expr.method.ph1(scope, code, stmt)
+            self.expr.arg.compile(scope, code, stmt)
+            (_, file, line, column) = self.token
+            code.append(NaryOp(("AddArg", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
+        else:
+            self.expr.compile(scope, code, stmt)
         code.append(TrapOp(), self.token, self.endtoken, stmt=stmt)
 
     def getLabels(self):
-        return self.method.getLabels() | self.arg.getLabels()
+        return self.expr.getLabels()
 
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_trap(self, *args, **kwargs)
@@ -1916,18 +1955,20 @@ class FromAST(AST):
         if self.items == []:  # from module import *
             for (item, (t, v)) in names.items():
                 if t == "constant":
-                    scope.set(item, (t, v))
+                    scope.tryset((item, file, line, column), ("constant", v))
         else:
-            for (lexeme, file, line, column) in self.items:
+            for token in self.items:
+                (lexeme, file, line, column) = token
                 if lexeme not in names:
                     raise HarmonyCompilerError(
                         filename=file,
                         lexeme=lexeme,
                         message="%s line %s: can't import %s from %s" % (file, line, lexeme, self.module[0]),
+                        line=line,
                         column=column)
                 (t, v) = names[lexeme]
-                assert t == "constant", (lexeme, t, v)
-                scope.set(lexeme, (t, v))
+                assert t == "constant", (lexeme, v)
+                scope.tryset(token, ("constant", v))
 
     def getImports(self):
         return [self.module]
@@ -1994,6 +2035,24 @@ class LabelStatAST(AST):
         return visitor.visit_label_stat(self, *args, **kwargs)
 
 
+class GlobalAST(AST):
+    def __init__(self, endtoken, token, atomically, vars):
+        AST.__init__(self, endtoken, token, atomically)
+        self.vars = vars
+
+    def __repr__(self):
+        return "Global(" + str(self.vars) + ")"
+
+    def compile(self, scope, code, stmt):
+        assert False
+
+    def getLabels(self):
+        return set()
+
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_sequential(self, *args, **kwargs)
+
+
 class SequentialAST(AST):
     def __init__(self, endtoken, token, atomically, vars):
         AST.__init__(self, endtoken, token, atomically)
@@ -2048,10 +2107,12 @@ class ConstAST(AST):
     def set(self, scope, const, v):
         if isinstance(const, tuple):
             (lexeme, file, line, column) = const
-            if lexeme in scope.names:
+            tv = scope.find(const)
+            if tv:
                 raise HarmonyCompilerError(
                     filename=file,
                     lexeme=lexeme,
+                    line=line,
                     column=column,
                     message="%s: Parse error: already defined" % lexeme
                 )
@@ -2076,6 +2137,7 @@ class ConstAST(AST):
             raise HarmonyCompilerError(
                 filename=file,
                 lexeme=lexeme,
+                line=line,
                 column=column,
                 message="%s: Parse error: expression not a constant %s" % (self.const, self.expr),
             )
