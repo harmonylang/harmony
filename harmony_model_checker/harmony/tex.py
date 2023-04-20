@@ -278,7 +278,7 @@ def doProcess(filename, fd, pmap):
     print("\\providecommand{\\hnyLocalConst}[1]{\\textit{#1}}", file=fd)
     print("\\providecommand{\\hnyVar}[1]{\\textit{#1}}", file=fd)
     print("\\providecommand{\\hnyNumber}[1]{#1}", file=fd)
-    print("\\providecommand{\\hnySp}{\\rule{.3en}{0en}}", file=fd)
+    print("\\providecommand{\\hnySp}{\\rule{.3em}{0em}}", file=fd)
     print("\\begin{tabbing}", file=fd)
     print("X\\=XX\\=XXX\\kill", file=fd)
     lexer(all, filename, fd, pmap)
