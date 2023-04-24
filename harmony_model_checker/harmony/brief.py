@@ -1,7 +1,7 @@
 import json
 
 from harmony_model_checker.harmony.behavior import behavior_parse
-
+from harmony_model_checker.harmony.summary import summaryMain
 
 def brief_kv(js):
     return (brief_string(js["key"]), brief_string(js["value"]))
@@ -160,4 +160,6 @@ class Brief:
                 self.print_macrostep(mes)
             self.flush()
             print(self.failure)
+            print("Phase 6: print failure summary")
+            print(summaryMain(outputfiles))
             return False
