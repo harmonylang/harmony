@@ -185,14 +185,19 @@ def summaryMain(filenames):
         elif issueText == "Safety violation":
             output += "Unfortunately, there exists some state in your program that violates a safety property. \n"
             output += "Here is a shortest execution trace summary that exhibits the issue:\n"
-        elif issueText == "Invariant Violation":
-            pass
-        elif issueText == "Finally Predicate Violation":
-            pass
+        elif issueText == "Invariant violation":
+            output += "Unfortunately, an invariant in your program can violate. \n"
+            output += "Here is a shortest execution trace summary that exhibits the issue:\n"
+        elif issueText == "Finally predicate violation":
+            output += "Unfortunately, the finally assertion in your program can fail. \n"
+            output += "Here is a shortest execution trace summary that exhibits the issue:\n"
         elif issueText == "Behavior Violation: terminal state not final":
             pass
         elif issueText == "Non-terminating state":
             output += "Unfortunately, there exists some case where your program can't terminate. \n"
+            output += "Here is a shortest execution trace summary that exhibits the issue:\n"
+        elif issueText == "Active busy waiting":
+            output += "Unfortunately, there is active busy waiting in your program. That is, a thread is waiting for a condition while changing the state. \n"
             output += "Here is a shortest execution trace summary that exhibits the issue:\n"
         elif "Data race" in issueText:
             output += f"Unfortunately, there is a data race in your program on {getDataRaceTarget(issueText)}. \n"
