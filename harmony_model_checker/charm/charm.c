@@ -566,6 +566,11 @@ static bool onestep(
             break;
         }
 
+        // TODO: Not sure what to do about this
+        if (instrcnt >= 1000000 && instrcnt % 1000000 == 0) {
+            printf("warning: thread seems to be in infinite loop (%u)\n", instrcnt);
+        }
+
         if (infloop_detect || instrcnt > 1000) {
             if (infloop == NULL) {
                 infloop = dict_new("infloop1", sizeof(unsigned int),
