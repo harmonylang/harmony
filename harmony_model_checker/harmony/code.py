@@ -113,10 +113,18 @@ class Code:
 
             labels = lop.labels
             newcode.curModule = lop.module
+
+            # If an atomic inc operation, put the delvar inside the atomic section
+            if isinstance(lop.op, AtomicIncOp):
+                newcode.append(lop.op, lop.start, lop.stop, labels=labels, stmt=lop.stmt)
+                labels = set()
+
             for d in sorted(pre_del - { 'this' }):
                 newcode.append(DelVarOp((d, None, None, None)), lop.start, lop.stop, labels=labels, stmt=lop.stmt)
                 labels = set()
-            newcode.append(lop.op, lop.start, lop.stop, labels=labels, stmt=lop.stmt)
+
+            if not isinstance(lop.op, AtomicIncOp):
+                newcode.append(lop.op, lop.start, lop.stop, labels=labels, stmt=lop.stmt)
 
             # If a variable is defined or live on input but not live on output,
             # immediately delete afterward

@@ -1067,9 +1067,11 @@ class DelAST(AST):
             code.append(AtomicIncOp(False), self.token, self.endtoken, stmt=stmt)
         lvar = self.lv.localVar(scope)
         if isinstance(self.lv, NameAST):
+            # TODO.  Is DelVarOp necessary??
             op = DelOp(self.lv.name, scope.prefix) if lvar is None else DelVarOp(self.lv.name)
         else:
             self.lv.ph1(scope, code, stmt)
+            # TODO.  Is DelVarOp necessary??
             op = DelOp(None, None) if lvar is None else DelVarOp(None, lvar)
         code.append(op, self.token, self.endtoken, stmt=stmt)
         if self.atomically:
