@@ -1651,9 +1651,10 @@ OpJumpCond(self, pc, cond) ==
 \* thread goes into the active set as well.
 OpSpawn(self) ==
     LET local == self.stack[1]
-        arg   == self.stack[2]
-        entry == self.stack[3]
-        next  == [self EXCEPT !.pc = @ + 1, !.stack = Tail(Tail(Tail(@)))]
+        addr  == self.stack[2]
+        entry == addr.cval.func
+        arg   == addr.cval.args[1]
+        next  == [self EXCEPT !.pc = @ + 1, !.stack = Tail(Tail(@))]
         newc  == InitContext(entry.cval, 0, arg)
     IN
         /\\ entry.ctype = "pc"
