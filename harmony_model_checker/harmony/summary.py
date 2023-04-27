@@ -183,8 +183,8 @@ def summaryMain(filenames):
             output += "Congratulations, your program has no issues!\n"
             return
         elif issueText == "Safety violation":
-            output += "Unfortunately, there exists some state in your program that violates safety property. \n"
-            output += "Here is a shortest trace of execution that casued the issue:\n"
+            output += "Unfortunately, there exists some state in your program that violates a safety property. \n"
+            output += "Here is a shortest execution trace summary that exhibits the issue:\n"
         elif issueText == "Invariant Violation":
             pass
         elif issueText == "Finally Predicate Violation":
@@ -193,10 +193,10 @@ def summaryMain(filenames):
             pass
         elif issueText == "Non-terminating state":
             output += "Unfortunately, there exists some case where your program can't terminate. \n"
-            output += "Here is a shortest trace of execution that casued the issue:\n"
+            output += "Here is a shortest execution trace summary that exhibits the issue:\n"
         elif "Data race" in issueText:
             output += f"Unfortunately, there is a data race in your program on {getDataRaceTarget(issueText)}. \n"
-            output += "Here is a shortest trace of execution that casued the issue:\n"
+            output += "Here is a shortest execution trace summary that exhibits the issue:\n"
         else:
             print(issueText)
             raise Exception("issue match failure")
