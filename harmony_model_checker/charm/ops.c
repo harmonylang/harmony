@@ -406,7 +406,7 @@ bool ind_remove(hvalue_t root, hvalue_t *indices, int n, struct engine *engine,
             return false;
         }
         int index = VALUE_FROM_INT(indices[0]);
-        if (index < 0 || index >= size) {
+        if (index < 0 || index >= (int) size) {
             return false;
         }
         hvalue_t d = vals[index];

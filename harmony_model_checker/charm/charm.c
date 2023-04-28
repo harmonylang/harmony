@@ -567,6 +567,10 @@ static bool onestep(
         }
 
         // TODO: Not sure what to do about this
+        if (instrcnt >= 100000000) {
+            printf("fatal: giving up on thread\n");
+            exit(1);
+        }
         if (instrcnt >= 1000000 && instrcnt % 1000000 == 0) {
             printf("warning: thread seems to be in infinite loop (%u)\n", instrcnt);
         }
@@ -2565,6 +2569,7 @@ int main(int argc, char **argv){
 
     // Compute how much memory was used, approximately
     unsigned long allocated = global->allocated;
+#ifdef REPORT_WORKERS
     double phase1 = 0, phase2a = 0, phase2b = 0, phase3 = 0, start_wait = 0, middle_wait = 0, end_wait = 0;
     unsigned int fix_edge = 0;
     for (unsigned int i = 0; i < global->nworkers; i++) {
@@ -2578,7 +2583,6 @@ int main(int argc, char **argv){
         start_wait += w->start_wait;
         middle_wait += w->middle_wait;
         end_wait += w->end_wait;
-#ifdef REPORT_WORKERS
         printf("W%u: %lf %lf %lf %lf %lf %lf %lf\n", i,
                 w->phase1,
                 w->phase2a,
@@ -2587,8 +2591,8 @@ int main(int argc, char **argv){
                 w->start_wait/w->start_count,
                 w->middle_wait/w->middle_count,
                 w->end_wait/w->end_count);
-#endif
     }
+#endif // REPORT_WORKERS
 #ifdef notdef
     printf("computing: %lf %lf %lf %lf (%lf %lf %lf %lf %u); waiting: %lf %lf %lf\n",
         phase1 / global->nworkers,
