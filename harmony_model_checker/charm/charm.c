@@ -519,7 +519,7 @@ static bool onestep(
         w->profile[pc]++;       // for profiling
         struct instr *instrs = global->code.instrs;
         struct op_info *oi = instrs[pc].oi;
-        // printf("--> %u %s %u\n", pc, oi->name, step->ctx->sp);
+        // printf("--> %u %s %u %u\n", pc, oi->name, step->ctx->sp, instrcnt);
         if (instrs[pc].choose) {
             assert(step->ctx->sp > 0);
             assert(choice != 0);
@@ -559,6 +559,7 @@ static bool onestep(
             break;
         }
         if (step->ctx->failed) {
+            // printf("FAILED AFTER %d steps\n", (int) instrcnt);
             break;
         }
         if (step->ctx->stopped) {
@@ -729,6 +730,7 @@ static bool onestep(
 
     hvalue_t after;
     if (rollback) {
+        // printf("ROLLBACK\n");
         struct state *state = (struct state *) as_state;
         memcpy(sc, state, state_size(state));
         after = as_context;
@@ -859,6 +861,7 @@ static void make_step(
         bool succ = onestep(w, node, sc, ctx, &step, choice, true, false, multiplicity, results);
         assert(step.engine.allocator == &w->allocator);
         if (!succ) {        // ran into an infinite loop
+            step.nlog = 0;
             memcpy(sc, node->state, statesz);
             memcpy(&w->ctx, cc, size);
             assert(step.engine.allocator == &w->allocator);
@@ -875,6 +878,7 @@ static void make_step(
     bool succ = onestep(w, node, sc, ctx, &step, choice, false, false, multiplicity, results);
     assert(step.engine.allocator == &w->allocator);
     if (!succ) {        // ran into an infinite loop
+        step.nlog = 0;
         memcpy(sc, node->state, statesz);
         memcpy(&w->ctx, cc, size);
         assert(step.engine.allocator == &w->allocator);
@@ -1104,6 +1108,7 @@ void twostep(
     unsigned int pid,
     struct macrostep *macro
 ){
+    // printf("TWOSTEP %d\n", (int) nsteps);
     // Make a copy of the state
     struct state *sc = calloc(1, sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1));
     memcpy(sc, node->state, state_size(node->state));

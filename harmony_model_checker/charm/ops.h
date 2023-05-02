@@ -16,7 +16,7 @@ struct step {
     struct engine engine;
     struct context *ctx;
     struct access_info *ai;
-    struct dfa_trie *dfa_trie;
+    // struct dfa_trie *dfa_trie;
     bool keep_callstack;
     struct strbuf explain;
     struct callstack *callstack;
