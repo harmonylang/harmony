@@ -541,6 +541,7 @@ void op_Print(const void *env, struct state *state, struct step *step, struct gl
         free(s);
     }
     if (step->nlog == MAX_PRINT) {
+        printf("HIT MAX PRINT\n");
         value_ctx_failure(step->ctx, &step->engine, "Print: too many prints");
         return;
     }

@@ -267,9 +267,9 @@ def summaryMain(filenames):
                                 traceStr = ""
                                 for e in lst:
                                     traceStr += f"[{e if isinstance(e, int) else verbose_string(e)}]"
-                                trace += (f"    At line {getEndLine(i_line_prev)}, T{prev_tid} updates {variableName + traceStr} to {entryChangeTo(lst, variable)}. Shared varible <{variableName}> becomes {verbose_string(variable)}. \n")
+                                trace += (f"    At line {getEndLine(i_line_prev)}, T{prev_tid} updates {variableName + traceStr} to {entryChangeTo(lst, variable)}. Shared variable <{variableName}> becomes {verbose_string(variable)}. \n")
                             else: # len(lst) == 0
-                                trace += (f"    At line {getEndLine(i_line_prev)}, T{prev_tid} updates shared varible <{variableName}> to {verbose_string(variable)}. \n")
+                                trace += (f"    At line {getEndLine(i_line_prev)}, T{prev_tid} updates shared variable <{variableName}> to {verbose_string(variable)}. \n")
                         
 
         # a failure in the end
