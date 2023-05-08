@@ -17,7 +17,7 @@ def app_send(payload):
         while blocked:
             net_send(?s_chan, m)
             let response = net_recv(?r_chan):
-                blocked = (response != ()) and (response.ack != s_seq)
+                blocked = (response == ()) or (response.ack != s_seq)
             
 def app_recv() returns payload:
     r_seq = 1 - r_seq

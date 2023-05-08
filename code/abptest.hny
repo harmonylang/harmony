@@ -1,6 +1,6 @@
 import abp
 
-const NMSGS = 1
+const NMSGS = 10
 
 def sender():
     for i in {1..NMSGS}:
