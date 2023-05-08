@@ -1,30 +1,31 @@
-sequential s_chan, r_chan
-
 s_chan = r_chan = ()
 s_seq = r_seq = 0
 
-def net_send(pchan, msg, reliable):
-    !pchan = msg if (reliable or choose({ False, True })) else ()
+def net_send(pchan, msg):
+    atomically:
+        !pchan = msg if choose({ False, True }) else ()
 
 def net_recv(pchan) returns msg:
-    msg = !pchan
+    atomically:
+        msg = !pchan
+        !pchan = ()
 
 def app_send(payload):
     s_seq = 1 - s_seq
     let m = { .seq: s_seq, .payload: payload }:
         var blocked = True
         while blocked:
-            net_send(?s_chan, m, False)
+            net_send(?s_chan, m)
             let response = net_recv(?r_chan):
-                blocked = (response == ()) or (response.ack != s_seq)
+                blocked = (response != ()) and (response.ack != s_seq)
             
-def app_recv(reliable) returns payload:
+def app_recv() returns payload:
     r_seq = 1 - r_seq
     var blocked = True
     while blocked:
         let m = net_recv(?s_chan):
             if m != ():
-                net_send(?r_chan, { .ack: m.seq }, reliable)
+                net_send(?r_chan, { .ack: m.seq })
                 if m.seq == r_seq:
                     payload = m.payload
                     blocked = False

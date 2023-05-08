@@ -1,15 +1,17 @@
 import abp
 
-const NMSGS = 5
+const NMSGS = 1
 
 def sender():
     for i in {1..NMSGS}:
         abp.app_send(i)
     
 def receiver():
-    for i in {1..NMSGS}:
-        let payload = abp.app_recv(i == NMSGS):
+    var i = 1
+    while True:
+        let payload = abp.app_recv():
             assert payload == i
+        i += 1
 
 spawn sender()
-spawn receiver()
+spawn eternal receiver()
