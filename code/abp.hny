@@ -1,6 +1,3 @@
-s_chan = r_chan = ()
-s_seq = r_seq = 0
-
 def net_send(pchan, msg):
     atomically:
         !pchan = msg if choose({ False, True }) else ()
@@ -10,22 +7,22 @@ def net_recv(pchan) returns msg:
         msg = !pchan
         !pchan = ()
 
-def app_send(payload):
-    s_seq = 1 - s_seq
-    let m = { .seq: s_seq, .payload: payload }:
+def app_send(net, seq, payload):
+    !seq = 1 - !seq
+    let m = { .seq: !seq, .payload: payload }:
         var blocked = True
         while blocked:
-            net_send(?s_chan, m)
-            let response = net_recv(?r_chan):
-                blocked = (response == ()) or (response.ack != s_seq)
+            net_send(?net->s_chan, m)
+            let response = net_recv(?net->r_chan):
+                blocked = (response == ()) or (response.ack != !seq)
             
-def app_recv() returns payload:
-    r_seq = 1 - r_seq
+def app_recv(net, seq) returns payload:
+    !seq = 1 - !seq
     var blocked = True
     while blocked:
-        let m = net_recv(?s_chan):
+        let m = net_recv(?net->s_chan):
             if m != ():
-                net_send(?r_chan, { .ack: m.seq })
-                if m.seq == r_seq:
+                net_send(?net->r_chan, { .ack: m.seq })
+                if m.seq == !seq:
                     payload = m.payload
                     blocked = False

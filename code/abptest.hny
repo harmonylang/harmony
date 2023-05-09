@@ -2,14 +2,20 @@ import abp
 
 const NMSGS = 10
 
+invariant s_seq in { 0, 1 }
+invariant r_seq in { 0, 1 }
+
+network = { .s_chan: (), .r_chan: () }
+s_seq = r_seq = 0
+
 def sender():
     for i in {1..NMSGS}:
-        abp.app_send(i)
+        abp.app_send(?network, ?s_seq, i)
     
 def receiver():
     var i = 1
     while True:
-        let payload = abp.app_recv():
+        let payload = abp.app_recv(?network, ?r_seq):
             assert payload == i
         i += 1
 
