@@ -248,6 +248,8 @@ def main():
         output_files["htm"] = stem + ".htm"
     if output_files["hvb"] is None:
         output_files["hvb"] = stem + ".hvb"
+    if output_files["png"] is None:
+        output_files["png"] = stem + ".png"
     if output_files["png"] is not None and output_files["gv"] is None:
         output_files["gv"] = stem + ".gv"
 
