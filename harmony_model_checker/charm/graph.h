@@ -35,7 +35,6 @@ struct edge {
     struct access_info *ai;  // to detect data races
     uint16_t nsteps;         // # microsteps
     uint16_t multiplicity;   // multiplicity of context
-    uint8_t weight : 1;      // context switch or not
     bool interrupt : 1;      // set if state change is an interrupt
     bool choosing : 1;       // destination state is choosing
     bool failed : 1;         // context failed
@@ -65,7 +64,7 @@ struct node {
     struct edge *fwd;       // forward edges
     ht_lock_t *lock;         // lock for forward edges
 
-    struct edge *to_parent; // pointer towards initial state
+    struct edge *to_parent; // shortest path to initial state
     uint32_t id;            // nodes are numbered starting from 0
     uint32_t component;     // strongly connected component id
     uint16_t len;           // length of path to initial state

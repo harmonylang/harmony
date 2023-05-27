@@ -322,17 +322,12 @@ unsigned int check_finals(struct worker *w, struct node *node, struct step *step
 static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock, struct node **results) {
     struct node *node = edge->src, *next = edge->dst;
     struct state *state = (struct state *) &next[1];
-    unsigned int len = node->len + edge->weight;
-    unsigned int steps = node->steps + edge->nsteps;
 
     // mutex_acquire(lock);
 
     bool initialized = next->initialized;
     if (!initialized) {
         next->initialized = true;
-        next->len = len;
-        next->steps = steps;
-        next->to_parent = edge;
         next->state = state;        // TODO.  Don't technically need this
         next->lock = lock;
         edge->bwdnext = NULL;
@@ -344,13 +339,6 @@ static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock, str
         }
     }
     else {
-        // TODO: not sure how to minimize.  For some cases, this works better than
-        //   if (len < next->len || (len == next->len && steps < next->steps))
-        if (len < next->len || (len == next->len && steps <= next->steps)) {
-            next->len = len;
-            next->steps = steps;
-            next->to_parent = edge;
-        }
         edge->bwdnext = next->bwd;
     }
 
@@ -766,16 +754,12 @@ static bool onestep(
         context_add(sc, after);
     }
 
-    // Weight of this step
-    unsigned int weight = (node->to_parent == NULL || ctx == node->to_parent->after) ? 0 : 1;
-
     // Allocate edge now
     struct edge *edge = walloc(w, sizeof(struct edge) + step->nlog * sizeof(hvalue_t), false, false);
     edge->src = node;
     edge->ctx = ctx;
     edge->choice = choice_copy;
     edge->interrupt = interrupt;
-    edge->weight = weight;
     edge->multiplicity = multiplicity;
     edge->after = after;
     edge->ai = step->ai;     step->ai = NULL;
@@ -2624,7 +2608,40 @@ int main(int argc, char **argv){
     dict_set_sequential(visited);
 
     printf("Phase 3: analysis\n");
+
+    // Shortest path to initial state (Dijkstra + minheap)
+    printf("Phase 3a: shortest path to initial state\n");
+    struct minheap *shp = minheap_create(node_cmp);
+    struct node *current = global->graph.nodes[0];
+    for (;;) {
+        for (struct edge *e = current->fwd; e != NULL; e = e->fwdnext) {
+            struct node *d = e->dst;
+            assert(e->src == current);
+            unsigned int weight =
+                (current->to_parent == NULL || e->ctx == current->to_parent->after) ? 0 : 1;
+            unsigned int len = current->len + weight;
+            unsigned int steps = current->steps + e->nsteps;
+            if (d->to_parent == NULL) {
+                d->to_parent = e;
+                d->len = len;
+                d->steps = steps;
+                minheap_insert(shp, d);
+            }
+            else if (len < d->len || (d->len == len && steps < e->nsteps)) {
+                d->to_parent = e;
+                d->len = len;
+                d->steps = steps;
+                minheap_decrease(shp, d);
+            }
+        }
+        if (minheap_empty(shp)) {
+            break;
+        }
+        current = minheap_getmin(shp);
+    }
+
     if (minheap_empty(global->failures)) {
+        printf("Phase 3b: strongly connected components\n");
         double now = gettime();
         global->phase2 = true;
         global->scc_todo = scc_alloc(0, global->graph.size, NULL, NULL);
@@ -2764,11 +2781,10 @@ int main(int argc, char **argv){
                     }
                 }
                 assert(j < state->bagsize);
-                fprintf(df, " s%u -> s%u [style=%s label=\"%u/%u\"]\n",
+                fprintf(df, " s%u -> s%u [style=%s label=\"%u\"]\n",
                         node->id, edge->dst->id,
                         edge->dst->to_parent == edge ? "solid" : "dashed",
-                        multiplicities(state)[j],
-                        edge->weight);
+                        multiplicities(state)[j]);
             }
         }
         fprintf(df, "}\n");
@@ -3051,7 +3067,6 @@ int main(int argc, char **argv){
             edge->ctx = inv_context;
             edge->choice = 0;
             edge->interrupt = false;
-            edge->weight = 0;
             edge->after = inv_context;
             edge->ai = NULL;
             edge->nlog = 0;
@@ -3087,7 +3102,6 @@ int main(int argc, char **argv){
             edge->ctx = inv_context;
             edge->choice = 0;
             edge->interrupt = false;
-            edge->weight = 0;
             edge->after = inv_context;
             edge->ai = NULL;
             edge->nlog = 0;
@@ -3107,6 +3121,8 @@ int main(int argc, char **argv){
         else {
             edge = bad->edge;
         }
+
+        // printf("LEN=%u, STEPS=%u\n", bad->edge->dst->len, bad->edge->dst->steps);
 
         fprintf(out, "  \"macrosteps\": [");
         path_recompute(global, edge);
