@@ -290,7 +290,8 @@ def behavior_parse(js, minify, outputfiles, behavior):
     # print("symbols", input_symbols)
     # print("transitions", transitions)
 
-    print("Phase 6: convert NFA (%d states) to DFA"%len(states))
+    if len(states) > 1:
+        print("Phase 6: convert NFA (%d states) to DFA"%len(states))
 
     if got_automata:
         nfa = NFA(
