@@ -62,7 +62,7 @@ struct node {
     struct state *state;    // state corresponding to this node
     struct edge *bwd;       // backward edges
     struct edge *fwd;       // forward edges
-    ht_lock_t *lock;         // lock for forward edges
+    ht_lock_t *lock;        // lock for forward edges
 
     struct edge *to_parent; // shortest path to initial state
     uint32_t id;            // nodes are numbered starting from 0

@@ -1302,6 +1302,8 @@ class NaryOp(Op):
             return "OpUna(self, FunCountLabel)"
         if lexeme == "get_context" and self.n == 1:
             return "OpGetContext(self)"
+        if lexeme == "get_ident" and self.n == 1:
+            return "OpGetIdent(self)"
         if lexeme == ">>" and self.n == 2:
             return "OpBin(self, FunShiftRight)"
         if lexeme == "<<" and self.n == 2:
@@ -1533,6 +1535,10 @@ class NaryOp(Op):
                 # if not self.checktype(state, context, sa, isinstance(e, int)):
                 #   return
                 context.push(context.copy())
+            elif op == "get_ident":
+                # if not self.checktype(state, context, sa, isinstance(e, int)):
+                #   return
+                assert False    # TODO
             elif op == "contexts":
                 if not context.atomic:
                     context.failure = "not in atomic block: " + str(self.op)

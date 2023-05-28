@@ -2986,6 +2986,19 @@ hvalue_t f_ge(struct state *state, struct step *step, hvalue_t *args, unsigned i
     return VALUE_TO_BOOL(cmp >= 0);
 }
 
+hvalue_t f_get_ident(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
+    assert(n == 1);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "get thread identifier; ");
+    }
+    hvalue_t e = args[0];
+    if (VALUE_TYPE(e) != VALUE_LIST) {
+        return value_ctx_failure(step->ctx, &step->engine, "get_ident() can only be applied to ()");
+    }
+    state->tid_gen++;
+    return VALUE_TO_INT(state->tid_gen);
+}
+
 hvalue_t f_gt(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 2);
     if (step->keep_callstack) {
@@ -4382,6 +4395,7 @@ struct f_info f_table[] = {
     { "Closure", f_closure },
     { "countLabel", f_countLabel },
     { "DictAdd", f_dict_add },
+    { "get_ident", f_get_ident },
     { "in", f_in },
     { "ListAdd", f_list_add },
     { "keys", f_keys },

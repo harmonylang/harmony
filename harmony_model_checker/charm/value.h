@@ -14,12 +14,13 @@ typedef struct state {
     hvalue_t pre;         // "pre" state (same as vars in non-choosing states)
     hvalue_t choosing;    // context that is choosing if non-zero
     hvalue_t stopbag;     // bag of stopped contexts (to detect deadlock)
-    uint32_t dfa_state;
+    uint32_t dfa_state;   // state of input dfa
+    uint16_t tid_gen;     // thread id generator
 
     // The state includes a variable-size bag of contexts.  This is represented
     // by an array of contexts of type hvalue_t, which is followed by an array
     // of multiplicities (of type uint8_t) with the same number of elements.
-    uint32_t bagsize;
+    uint16_t bagsize;
     // hvalue_t contexts[VAR_SIZE];   // context/multiplicity pairs
 } state;
 #define state_contexts(s)   ((hvalue_t *) ((s) + 1))

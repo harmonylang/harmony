@@ -92,6 +92,7 @@ unary_op
     | 'atLabel'
     | 'countLabel'
     | 'get_context'
+    | 'get_ident'
     | 'contexts'
     | 'min'
     | 'max'

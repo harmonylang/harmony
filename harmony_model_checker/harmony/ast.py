@@ -589,7 +589,7 @@ class NaryAST(AST):
 
     def isConstant(self, scope):
         (op, file, line, column) = self.op
-        if op in {"atLabel", "choose", "contexts", "countLabel", "get_context"}:
+        if op in {"atLabel", "choose", "contexts", "countLabel", "get_context", "get_ident"}:
             return False
         return all(x.isConstant(scope) for x in self.args)
 
