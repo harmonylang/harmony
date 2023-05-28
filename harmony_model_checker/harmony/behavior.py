@@ -302,9 +302,11 @@ def behavior_parse(js, minify, outputfiles, behavior):
         )
         intermediate_dfa = DFA.from_nfa(nfa)  # returns an equivalent DFA
         if minify and len(final_states) != 0:
-            print("minify #states=%d"%len(intermediate_dfa.states))
+            if len(intermediate_dfa.states) > 1: 
+                print("minify #states=%d"%len(intermediate_dfa.states))
             dfa = intermediate_dfa.minify(retain_names = True)
-            print("minify done #states=%d"%len(dfa.states))
+            if len(dfa.states) > 1: 
+                print("minify done #states=%d"%len(dfa.states))
         else:
             dfa = intermediate_dfa
         dfa_states = dfa.states

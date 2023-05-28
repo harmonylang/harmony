@@ -535,6 +535,7 @@ void op_Print(const void *env, struct state *state, struct step *step, struct gl
         printf("%s\n", s);
         free(s);
     }
+    global->printed_something = true;
     if (step->keep_callstack) {
         char *s = value_string(symbol);
         strbuf_printf(&step->explain, "pop value (%s) and add to print log", s);

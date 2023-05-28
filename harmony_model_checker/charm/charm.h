@@ -68,6 +68,7 @@ struct global {
 #endif
     unsigned int goal;
     bool layer_done;                // all states in a layer completed
+    bool printed_something;         // see if anything was printed
 
     mutex_t todo_enter;             // entry semaphore for SCC tasks
     mutex_t todo_wait;              // wait semaphore for SCC tasks

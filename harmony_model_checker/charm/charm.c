@@ -2147,7 +2147,14 @@ char *state_string(struct state *state){
 // This routine removes all nodes that have a single incoming edge and it's
 // an "epsilon" edge (empty print log).  These are essentially useless nodes.
 // Typically about half of the nodes can be removed this way.
-static void destutter1(struct graph *graph){
+static void destutter1(struct global *global){
+    struct graph *graph = &global->graph;
+    if (!global->printed_something) {
+        global->graph.size = 1;
+        struct node *n = global->graph.nodes[0];
+        n->final = 1;
+        n->fwd = n->bwd = NULL;
+    }
     for (unsigned int i = 0; i < graph->size; i++) {
         struct node *n = graph->nodes[i];
 
@@ -2611,6 +2618,7 @@ int main(int argc, char **argv){
 
     // Shortest path to initial state (Dijkstra + minheap)
     printf("Phase 3a: shortest path to initial state\n");
+    fflush(stdout);
     struct minheap *shp = minheap_create(node_cmp);
     struct node *current = global->graph.nodes[0];
     for (;;) {
@@ -2642,6 +2650,7 @@ int main(int argc, char **argv){
 
     if (minheap_empty(global->failures)) {
         printf("Phase 3b: strongly connected components\n");
+        fflush(stdout);
         double now = gettime();
         global->phase2 = true;
         global->scc_todo = scc_alloc(0, global->graph.size, NULL, NULL);
@@ -2914,7 +2923,7 @@ int main(int argc, char **argv){
         json_dump(jv, out, 2);
         fprintf(out, ",\n");
 
-        destutter1(&global->graph);
+        destutter1(global);
 
         // Output the symbols;
         struct dict *symbols = collect_symbols(&global->graph);
