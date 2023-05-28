@@ -211,6 +211,9 @@ function updateStatus(mes) {
       }
       else if (c.hasOwnProperty("next")) {
         switch (c.next.type) {
+        case "Continue":
+          mes.nextstep.innerHTML = "stopped";
+          break;
         case "Store":
           mes.nextstep.innerHTML = "about to store " + json_string(c.next.value) + " in variable " + c.next.var;
           break;
