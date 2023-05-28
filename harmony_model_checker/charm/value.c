@@ -583,6 +583,10 @@ static void value_string_context(struct strbuf *sb, hvalue_t v) {
     strbuf_printf(sb, ", %d)", ctx->pc);
     free(name);
 #else
+    strbuf_printf(sb, ",pc=%d", ctx->pc);
+    if (ctx->initial || ctx->id != 0) {
+        strbuf_printf(sb, ",id=%u", ctx->id);
+    }
     strbuf_printf(sb, ",vars=");
     strbuf_value_string(sb, ctx->vars);
     if (ctx->extended) {
@@ -600,7 +604,6 @@ static void value_string_context(struct strbuf *sb, hvalue_t v) {
         }
     }
 
-    strbuf_printf(sb, ",pc=%d", ctx->pc);
 #ifdef OBSOLETE
     strbuf_printf(sb, ",fp=%d", ctx->fp);
 #endif
@@ -738,6 +741,9 @@ static void value_json_context(struct strbuf *sb, hvalue_t v, struct global *glo
     struct context *ctx = value_get(v, NULL);
     
     strbuf_printf(sb, "{ \"type\": \"context\", \"value\": {");
+    if (ctx->initial || ctx->id != 0) {
+        strbuf_printf(sb, "\"id\": { \"type\": \"int\", \"value\": \"%u\" },", ctx->id);
+    }
     strbuf_printf(sb, "\"pc\": { \"type\": \"pc\", \"value\": \"%u\" },", ctx->pc);
 #ifdef TODO
     struct callstack *cs = dict_lookup(global->tracemap, &v, sizeof(v));

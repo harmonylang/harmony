@@ -910,6 +910,9 @@ void print_context(
     struct context *c = value_get(ctx, &size);
 
     fprintf(file, "%s\"fp\": \"%d\",\n", prefix, cs->sp + 1);
+    if (c->initial || c->id != 0) {
+        fprintf(file, "%s\"id\": \"%u\",\n", prefix, c->id);
+    }
 
     struct callstack *ecs = cs;
     while (ecs->parent != NULL) {

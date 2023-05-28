@@ -14,6 +14,10 @@ var container = document.getElementById('table-scroll');
 var currOffset = 0;
 var currCloc = null;
 
+// printing contexts
+var contexts = {};
+var ctxGen = 0;
+
 function json_string_list(obj) {
   var result = "";
   for (var i = 0; i < obj.length; i++) {
@@ -99,10 +103,36 @@ function json_string_address(func, args) {
   }
   return result;
 }
-
+// "pc": { "type": "pc", "value": "544" }
+// "atomic": { "type": "int", "value": "1" }
+// "atomicFlag": { "type": "bool", "value": "True" }
+// "stopped": { "type": "bool", "value": "True" }
+// "sp": { "type": "int", "value": "4" }
 function json_string_context(obj) {
-  var pc = json_string(obj.pc);
-  return "CTX(" + pc + ")";
+  // TODO.  Is JSON.stringify deterministic (same context --> same string)?
+  var key = JSON.stringify(obj);
+  if (!(key in contexts)) {
+    contexts[key] = ++ctxGen;
+  }
+  var output = '<span title="CONTEXT\n';
+  if ("id" in obj) {
+    output += "id: " + json_string(obj["id"]) + "\n";
+  }
+  output += "pc: " + json_string(obj["pc"]) + "\n";
+  output += "vars: " + stringify_vars(obj["vars"]) + "\n";
+  var atomic = "atomic" in obj && obj["atomic"]["value"] == "True";
+  var stopped = "stopped" in obj && obj["stopped"]["value"] == "True";
+  if (atomic || stopped) {
+    output += "mode:"
+    if (atomic) output += " atomic";
+    if (stopped) output += " stopped";
+    output += "\n";
+  }
+  output += "sp: " + json_string(obj["sp"]);
+  return output + '" style="color:blue">C' + contexts[key] + '</span>';
+
+  // var pc = json_string(obj.pc);
+  // return "CTX(" + pc + ")";
 }
 
 function json_string(obj) {
