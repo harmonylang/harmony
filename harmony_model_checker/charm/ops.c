@@ -2995,8 +2995,13 @@ hvalue_t f_get_ident(struct state *state, struct step *step, hvalue_t *args, uns
     if (VALUE_TYPE(e) != VALUE_LIST) {
         return value_ctx_failure(step->ctx, &step->engine, "get_ident() can only be applied to ()");
     }
-    state->tid_gen++;
-    return VALUE_TO_INT(state->tid_gen);
+    if (step->ctx->initial) {
+        return VALUE_TO_INT(0);
+    }
+    if (step->ctx->id == 0) {
+        step->ctx->id = ++state->tid_gen;
+    }
+    return VALUE_TO_INT(step->ctx->id);
 }
 
 hvalue_t f_gt(struct state *state, struct step *step, hvalue_t *args, unsigned int n){

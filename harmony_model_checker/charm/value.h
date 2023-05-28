@@ -30,6 +30,7 @@ typedef struct state {
 typedef struct context {   // context value
     hvalue_t vars;            // method-local variables
     uint16_t pc;              // program counter
+    uint16_t id;              // thread identifier
     bool initial : 1;         // __init__ context
     bool atomicFlag : 1;      // to implement lazy atomicity
     bool interruptlevel : 1;  // interrupt level
