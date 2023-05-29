@@ -583,7 +583,7 @@ static void value_string_context(struct strbuf *sb, hvalue_t v) {
     strbuf_printf(sb, ", %d)", ctx->pc);
     free(name);
 #else
-    strbuf_printf(sb, ",pc=%d", ctx->pc);
+    strbuf_printf(sb, "pc=%d", ctx->pc);
     if (ctx->initial || ctx->id != 0) {
         strbuf_printf(sb, ",id=%u", ctx->id);
     }
