@@ -103,11 +103,7 @@ function json_string_address(func, args) {
   }
   return result;
 }
-// "pc": { "type": "pc", "value": "544" }
-// "atomic": { "type": "int", "value": "1" }
-// "atomicFlag": { "type": "bool", "value": "True" }
-// "stopped": { "type": "bool", "value": "True" }
-// "sp": { "type": "int", "value": "4" }
+
 function json_string_context(obj) {
   // TODO.  Is JSON.stringify deterministic (same context --> same string)?
   var key = JSON.stringify(obj);
@@ -252,7 +248,7 @@ function currentMegaStep() {
 function stringify_vars(obj) {
   var result = "";
   for (var k in obj) {
-    if (k == "result" && obj[k].type == "address" && !("func" in obj)) {
+    if (false && k == "result" && obj[k].type == "address" && !("func" in obj)) {
       continue;
     }
     if (result != "") {
@@ -315,7 +311,9 @@ function stackTrace(tid, trace, failure) {
     }
 
     var vcell = row.insertCell();
-    var vtext = document.createTextNode(stringify_vars(trace[i].vars));
+    // var vtext = document.createTextNode(stringify_vars(trace[i].vars));
+    var vtext = document.createElement("div");
+    vtext.innerHTML = stringify_vars(trace[i].vars);
     vcell.appendChild(vtext);
   }
   if (false && failure != null) {
