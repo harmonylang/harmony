@@ -8,6 +8,7 @@
 #include "global.h"
 
 #define MAX_PRINT       64
+#define MAX_ARGS         8
 
 void ops_init(struct global *global, struct engine *engine);
 struct op_info *ops_get(char *opname, int size);
@@ -16,9 +17,10 @@ struct step {
     struct engine engine;
     struct context *ctx;
     struct access_info *ai;
-    // struct dfa_trie *dfa_trie;
     bool keep_callstack;
     struct strbuf explain;
+    hvalue_t explain_args[MAX_ARGS];
+    unsigned int explain_nargs;
     struct callstack *callstack;
     unsigned int nlog;
     hvalue_t log[MAX_PRINT];

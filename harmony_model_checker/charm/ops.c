@@ -455,11 +455,9 @@ static void update_callstack(struct global *global, struct step *step, hvalue_t 
     step->callstack = cs;
 
     const struct env_Frame *ef = global->code.instrs[pc].env;
-    char *m = value_string(ef->name);
-    char *key = value_string(arg);
-    strbuf_printf(&step->explain, "pop an argument (%s) and call method (%u: %s)", key, pc, m);
-    free(m);
-    free(key);
+    strbuf_printf(&step->explain, "pop an argument (#+) and call method (%u: #+)", pc);
+    step->explain_args[step->explain_nargs++] = arg;
+    step->explain_args[step->explain_nargs++] = ef->name;
 }
 
 void op_Apply(const void *env, struct state *state, struct step *step, struct global *global){
@@ -537,9 +535,8 @@ void op_Print(const void *env, struct state *state, struct step *step, struct gl
     }
     global->printed_something = true;
     if (step->keep_callstack) {
-        char *s = value_string(symbol);
-        strbuf_printf(&step->explain, "pop value (%s) and add to print log", s);
-        free(s);
+        strbuf_printf(&step->explain, "pop value (#+) and add to print log");
+        step->explain_args[step->explain_nargs++] = symbol;
     }
     if (step->nlog == MAX_PRINT) {
         value_ctx_failure(step->ctx, &step->engine, "Print: too many prints");
@@ -915,11 +912,9 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
     hvalue_t v = ctx_stack(ctx)[ctx->sp - 1];        // the collection
 
     if (step->keep_callstack) {
-        char *x = value_string(v);
-        char *y = value_string(index);
-        strbuf_printf(&step->explain, "pop index (%s) and value (%s); ", y, x);
-        free(x);
-        free(y);
+        strbuf_printf(&step->explain, "pop index (#+) and value (#+); ");
+        step->explain_args[step->explain_nargs++] = index;
+        step->explain_args[step->explain_nargs++] = v;
     }
 
     if (VALUE_TYPE(v) == VALUE_SET || VALUE_TYPE(v) == VALUE_LIST) {
@@ -935,10 +930,9 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
         }
         else {
             if (step->keep_callstack) {
-                char *val = value_string(vals[idx]);
                 char *var = vt_string(ec->value);
-                strbuf_printf(&step->explain, "assign value (%s) to %s; ", val, var);
-                free(val);
+                strbuf_printf(&step->explain, "assign value (#+) to %s; ", var);
+                step->explain_args[step->explain_nargs++] = vals[idx];
                 free(var);
             }
             var_match(step->ctx, ec->value, &step->engine, vals[idx]);
@@ -972,28 +966,25 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
         else {
             if (ec->key == NULL) {
                 if (step->keep_callstack) {
-                    char *val = value_string(vals[2*idx]);
                     char *var = vt_string(ec->value);
-                    strbuf_printf(&step->explain, "assign value (%s) to %s; ", val, var);
-                    free(val);
+                    strbuf_printf(&step->explain, "assign value (#+) to %s; ", var);
+                    step->explain_args[step->explain_nargs++] = vals[2*idx];
                     free(var);
                 }
                 var_match(step->ctx, ec->value, &step->engine, vals[2*idx]);
             }
             else {
                 if (step->keep_callstack) {
-                    char *val = value_string(vals[2*idx]);
                     char *var = vt_string(ec->key);
-                    strbuf_printf(&step->explain, "assign key (%s) to %s; ", val, var);
-                    free(val);
+                    strbuf_printf(&step->explain, "assign key (#+) to %s; ", var);
+                    step->explain_args[step->explain_nargs++] = vals[2*idx];
                     free(var);
                 }
                 var_match(step->ctx, ec->key, &step->engine, vals[2*idx]);
                 if (step->keep_callstack) {
-                    char *val = value_string(vals[2*idx + 1]);
                     char *var = vt_string(ec->value);
-                    strbuf_printf(&step->explain, "assign value (%s) to %s; ", val, var);
-                    free(val);
+                    strbuf_printf(&step->explain, "assign value (#+) to %s; ", var);
+                    step->explain_args[step->explain_nargs++] = vals[2*idx + 1];
                     free(var);
                 }
                 var_match(step->ctx, ec->value, &step->engine, vals[2*idx + 1]);
@@ -1019,10 +1010,9 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
         else {
             hvalue_t e = value_put_atom(&step->engine, &chars[idx], 1);
             if (step->keep_callstack) {
-                char *val = value_string(e);
                 char *var = vt_string(ec->value);
-                strbuf_printf(&step->explain, "assign character (%s) to %s; ", val, var);
-                free(val);
+                strbuf_printf(&step->explain, "assign character (#+) to %s; ", var);
+                step->explain_args[step->explain_nargs++] = e;
                 free(var);
             }
             var_match(step->ctx, ec->value, &step->engine, e);
@@ -1202,17 +1192,16 @@ void op_Frame(const void *env, struct state *state, struct step *step, struct gl
 
     hvalue_t arg = ctx_pop(step->ctx);
     if (step->keep_callstack) {
-        char *name = value_string(ef->name);
         char *args = vt_string(ef->args);
         if (strcmp(args, "()") == 0 && arg == VALUE_LIST) {
-            strbuf_printf(&step->explain, "pop argument () and run method %s", name);
+            strbuf_printf(&step->explain, "pop argument () and run method #+");
+            step->explain_args[step->explain_nargs++] = ef->name;
         }
         else {
-            char *val = value_string(arg);
-            strbuf_printf(&step->explain, "pop argument (%s), assign to %s, and run method %s", val, args, name);
-            free(val);
+            strbuf_printf(&step->explain, "pop argument (#+), assign to %s, and run method #+", args);
+            step->explain_args[step->explain_nargs++] = arg;
+            step->explain_args[step->explain_nargs++] = ef->name;
         }
-        free(name);
         free(args);
     }
 
@@ -1312,11 +1301,9 @@ void op_JumpCond(const void *env, struct state *state, struct step *step, struct
 
     hvalue_t v = ctx_pop(step->ctx);
     if (step->keep_callstack) {
-        char *x = value_string(v);
-        char *y = value_string(ej->cond);
-        strbuf_printf(&step->explain, "pop value (%s), compare to %s, and jump to %u if the same", x, y, ej->pc);
-        free(x);
-        free(y);
+        strbuf_printf(&step->explain, "pop value (#+), compare to #+, and jump to %u if the same", ej->pc);
+        step->explain_args[step->explain_nargs++] = v;
+        step->explain_args[step->explain_nargs++] = ej->cond;
     }
     if ((ej->cond == VALUE_FALSE || ej->cond == VALUE_TRUE) &&
                             !(v == VALUE_FALSE || v == VALUE_TRUE)) {
@@ -1497,11 +1484,9 @@ void do_Load(struct state *state, struct step *step, struct global *global,
     }
 
     if (step->keep_callstack) {
-        char *x = value_string(av);
-        char *val = value_string(v);
-        strbuf_printf(&step->explain, "pop address (%s) and push value (%s)", x, val);
-        free(x);
-        free(val);
+        strbuf_printf(&step->explain, "pop address (#+) and push value (#+)");
+        step->explain_args[step->explain_nargs++] = av;
+        step->explain_args[step->explain_nargs++] = v;
     }
 
     // We were able to process the entire address
@@ -1578,10 +1563,9 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
 
         if (step->keep_callstack) {
             char *x = indices_string(el->indices, el->n);
-            char *val = value_string(v);
-            strbuf_printf(&step->explain, "push value (%s) of variable %s", val, x + 1);
+            strbuf_printf(&step->explain, "push value (#+) of variable %s", x + 1);
+            step->explain_args[step->explain_nargs++] = v;
             free(x);
-            free(val);
         }
 
         ctx_push(step->ctx, v);
@@ -1607,11 +1591,9 @@ void op_LoadVar(const void *env, struct state *state, struct step *step, struct 
     }
     else if (value_tryload(&step->engine, step->ctx->vars, el->name, &v)) {
         if (step->keep_callstack) {
-            char *x = value_string(el->name);
-            char *val = value_string(v);
-            strbuf_printf(&step->explain, "push value (%s) of variable %s", val, x);
-            free(x);
-            free(val);
+            strbuf_printf(&step->explain, "push value (#+) of variable #+");
+            step->explain_args[step->explain_nargs++] = v;
+            step->explain_args[step->explain_nargs++] = el->name;
         }
         ctx_push(step->ctx, v);
     }
@@ -1657,9 +1639,9 @@ void op_Nary(const void *env, struct state *state, struct step *step, struct glo
             if (i > 0) {
                 strbuf_printf(&step->explain, ", ");
             }
-            char *x = value_string(args[i]);
-            strbuf_printf(&step->explain, "%s", x);
-            free(x);
+            strbuf_printf(&step->explain, "#+");
+            assert(step->explain_nargs <= MAX_ARGS);        // TODO
+            step->explain_args[step->explain_nargs++] = args[i];
         }
     }
     if (step->keep_callstack) {
@@ -1670,9 +1652,9 @@ void op_Nary(const void *env, struct state *state, struct step *step, struct glo
     hvalue_t result = (*en->fi->f)(state, step, args, en->arity);
     if (!step->ctx->failed) {
         if (step->keep_callstack) {
-            char *x = value_string(result);
-            strbuf_printf(&step->explain, "push result (%s)", x);
-            free(x);
+            strbuf_printf(&step->explain, "push result (#+)");
+            assert(step->explain_nargs <= MAX_ARGS);        // TODO
+            step->explain_args[step->explain_nargs++] = result;
         }
         ctx_push(step->ctx, result);
         step->ctx->pc++;
@@ -1685,9 +1667,8 @@ void op_Nary(const void *env, struct state *state, struct step *step, struct glo
 void op_Pop(const void *env, struct state *state, struct step *step, struct global *global){
     assert(step->ctx->sp > 0);
     if (step->keep_callstack) {
-        char *s = value_string(ctx_peep(step->ctx));
-        strbuf_printf(&step->explain, "pop and discard value (%s)", s);
-        free(s);
+        strbuf_printf(&step->explain, "pop and discard value (%+)");
+        step->explain_args[step->explain_nargs++] = ctx_peep(step->ctx);
     }
     step->ctx->sp--;
     step->ctx->pc++;
@@ -1700,9 +1681,8 @@ void op_Push(const void *env, struct state *state, struct step *step, struct glo
         unsigned int pc = VALUE_FROM_PC(ep->value);
         if (strcmp(global->code.instrs[pc].oi->name, "Frame") == 0) {
             const struct env_Frame *ef = global->code.instrs[pc].env;
-            char *m = value_string(ef->name);
-            strbuf_printf(&step->explain, "push program counter constant %u (%s)", pc, m);
-            free(m);
+            strbuf_printf(&step->explain, "push program counter constant %u (%+)", pc);
+            step->explain_args[step->explain_nargs++] = ef->name;
         }
     }
     if (!check_stack(step->ctx, 1)) {
@@ -1774,9 +1754,8 @@ void op_Return(const void *env, struct state *state, struct step *step, struct g
     }
 
     if (step->keep_callstack) {
-        char *s = value_string(result);
-        strbuf_printf(&step->explain, "pop caller's method variables and pc and push result (%s), or terminate if no caller", s);
-        free(s);
+        strbuf_printf(&step->explain, "pop caller's method variables and pc and push result (%+), or terminate if no caller");
+        step->explain_args[step->explain_nargs++] = result;
     }
 
     // Restore old variables
@@ -1810,9 +1789,8 @@ void op_Builtin(const void *env, struct state *state, struct step *step, struct 
     char *p = value_get(eb->method, &len);
 
     if (step->keep_callstack) {
-        char *x = value_string(pc);
-        strbuf_printf(&step->explain, "pop pc (%s) and bind to built-in method %.*s", x, len, p);
-        free(x);
+        strbuf_printf(&step->explain, "pop pc (%+) and bind to built-in method %.*s", len, p);
+        step->explain_args[step->explain_nargs++] = pc;
     }
 
     oi = dict_lookup(ops_map, p, len);
@@ -1948,13 +1926,10 @@ void op_Spawn(
         unsigned int ip = VALUE_FROM_PC(pc);
         if (strcmp(global->code.instrs[ip].oi->name, "Frame") == 0) {
             const struct env_Frame *ef = global->code.instrs[ip].env;
-            char *m = value_string(ef->name);
-            char *x = value_string(thisval);
-            char *y = value_string(arg);
-            strbuf_printf(&step->explain, "pop local state (%s), arg (%s), and pc (%d: %s), and spawn thread", x, y, ip, m);
-            free(x);
-            free(y);
-            free(m);
+            strbuf_printf(&step->explain, "pop local state (#+), arg (#+), and pc (%d: #+), and spawn thread", ip);
+            step->explain_args[step->explain_nargs++] = thisval;
+            step->explain_args[step->explain_nargs++] = arg;
+            step->explain_args[step->explain_nargs++] = ef->name;
         }
     }
 
@@ -2209,10 +2184,9 @@ static bool store_match(struct state *state, struct step *step,
     if (indices[0] == VALUE_PC_LOCAL) {
         if (step->keep_callstack) {
             char *x = indices_string(indices, size);
-            char *val = value_string(v);
-            strbuf_printf(&step->explain, "pop value (%s) and address (%s) and store locally", val, x);
+            strbuf_printf(&step->explain, "pop value (#+) and address (%s) and store locally", x);
+            step->explain_args[step->explain_nargs++] = v;
             free(x);
-            free(val);
         }
 
         bool result;
@@ -2252,10 +2226,9 @@ static bool store_match(struct state *state, struct step *step,
     ai_add(step, indices, size, is_sequential(global->seqs, indices, size));
     if (step->keep_callstack) {
         char *x = indices_string(indices, size);
-        char *val = value_string(v);
-        strbuf_printf(&step->explain, "pop value (%s) and address (%s) and store", val, x);
+        strbuf_printf(&step->explain, "pop value (#+) and address (%s) and store", x);
+        step->explain_args[step->explain_nargs++] = v;
         free(x);
-        free(val);
     }
 
     if (size == 2 && !step->ctx->initial) {
@@ -2297,10 +2270,9 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
         }
         if (step->keep_callstack) {
             char *x = indices_string(es->indices, es->n);
-            char *val = value_string(v);
-            strbuf_printf(&step->explain, "pop value (%s) and store into variable %s", val, x + 1);
+            strbuf_printf(&step->explain, "pop value (#+) and store into variable %s", x + 1);
+            step->explain_args[step->explain_nargs++] = v;
             free(x);
-            free(val);
         }
         ai_add(step, es->indices, es->n,
                     is_sequential(global->seqs, es->indices, es->n));
@@ -2346,10 +2318,9 @@ void op_StoreVar(const void *env, struct state *state, struct step *step, struct
 
         if (step->keep_callstack) {
             char *x = indices_string(indices, size);
-            char *val = value_string(v);
-            strbuf_printf(&step->explain, "pop value (%s) and address (%s) and store locally", val, x);
+            strbuf_printf(&step->explain, "pop value (#+) and address (%s) and store locally", x);
+            step->explain_args[step->explain_nargs++] = v;
             free(x);
-            free(val);
         }
 
         bool result;
@@ -2379,10 +2350,9 @@ void op_StoreVar(const void *env, struct state *state, struct step *step, struct
     else {
         if (step->keep_callstack) {
             char *x = vt_string(es->args);
-            char *val = value_string(v);
-            strbuf_printf(&step->explain, "pop value (%s) and store locally in variable \"%s\"", val, x);
+            strbuf_printf(&step->explain, "pop value (#+) and store locally in variable \"%s\"", x);
+            step->explain_args[step->explain_nargs++] = v;
             free(x);
-            free(val);
         }
         if (es->args->type == VT_NAME && es->args->u.name == this_atom) {
             if (!step->ctx->extended) {

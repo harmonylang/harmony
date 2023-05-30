@@ -311,6 +311,10 @@ class GenHTML:
     def var_convert(self, v):
         if v["type"] != "dict":
             return json_string(v)
+        for kv in v["value"]:
+            k = kv["key"]
+            if k["type"] != "atom" and k["type"] != "int" and k["type"] != "bool":
+                return json_string(v)
         d = {}
         for kv in v["value"]:
             k = json_string(kv["key"])

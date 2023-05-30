@@ -657,7 +657,7 @@ class ContinueOp(Op):
         return "Continue"
 
     def explain(self):
-        return "a no-op, must follow a Stop operation"
+        return "a no-op, must follow a Stop or Save operation"
 
     def jdump(self):
         return '{ "op": "Continue" }'

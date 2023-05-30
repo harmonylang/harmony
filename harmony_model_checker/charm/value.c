@@ -660,46 +660,6 @@ void print_vars(struct global *global, FILE *file, hvalue_t v){
     strbuf_deinit(&sb);
 }
 
-void value_trace(struct global *global, FILE *file, struct callstack *cs, unsigned int pc, hvalue_t vars, char *prefix){
-    if (cs->parent != NULL) {
-        value_trace(global, file, cs->parent, cs->return_address >> CALLTYPE_BITS, cs->vars, prefix);
-        fprintf(file, ",\n");
-    }
-    const struct env_Frame *ef = global->code.instrs[cs->pc].env;
-    char *method = value_string(ef->name);
-    char *arg = json_escape_value(cs->arg);
-    fprintf(file, "%s  {\n", prefix);
-    fprintf(file, "%s  \"pc\": \"%u\",\n", prefix, pc);
-    fprintf(file, "%s  \"xpc\": \"%u\",\n", prefix, cs->pc);
-    if (*arg == '(') {
-        fprintf(file, "%s  \"method\": \"%.*s%s\",\n", prefix, (int) strlen(method) - 2, method + 1, arg);
-    }
-    else {
-        fprintf(file, "%s  \"method\": \"%.*s(%s)\",\n", prefix, (int) strlen(method) - 2, method + 1, arg);
-    }
-    switch (cs->return_address & CALLTYPE_MASK) {
-    case CALLTYPE_PROCESS:
-        fprintf(file, "%s  \"calltype\": \"process\",\n", prefix);
-        break;
-    case CALLTYPE_NORMAL:
-        fprintf(file, "%s  \"calltype\": \"normal\",\n", prefix);
-        break;
-    case CALLTYPE_INTERRUPT:
-        fprintf(file, "%s  \"calltype\": \"interrupt\",\n", prefix);
-        break;
-    default:
-        printf(">>> %x\n", cs->return_address);
-        panic("value_trace: bad call type");
-    }
-    fprintf(file, "%s  \"vars\": ", prefix);
-    print_vars(global, file, vars);
-    fprintf(file, ",\n");
-    fprintf(file, "%s  \"sp\": %u\n", prefix, cs->sp);
-    fprintf(file, "%s  }", prefix);
-    free(arg);
-    free(method);
-}
-
 void value_json_trace(struct global *global, struct strbuf *sb, struct callstack *cs, unsigned int pc, hvalue_t vars){
     if (cs->parent != NULL) {
         value_json_trace(global, sb, cs->parent, cs->return_address >> CALLTYPE_BITS, cs->vars);
@@ -710,6 +670,12 @@ void value_json_trace(struct global *global, struct strbuf *sb, struct callstack
     char *arg = json_escape_value(cs->arg);
     strbuf_printf(sb, "{\"pc\": \"%u\",", pc);
     strbuf_printf(sb, "\"xpc\": \"%u\",", cs->pc);
+    strbuf_printf(sb, "\"method_name\": ");
+    strbuf_value_json(sb, ef->name, global);
+    strbuf_printf(sb, ",\n");
+    strbuf_printf(sb, "\"method_arg\": ");
+    strbuf_value_json(sb, cs->arg, global);
+    strbuf_printf(sb, ",\n");
     if (*arg == '(') {
         strbuf_printf(sb, "\"method\": \"%.*s%s\",", (int) strlen(method) - 2, method + 1, arg);
     }
@@ -735,6 +701,14 @@ void value_json_trace(struct global *global, struct strbuf *sb, struct callstack
     strbuf_printf(sb, ",\"sp\": %u}", cs->sp);
     free(arg);
     free(method);
+}
+
+void value_trace(struct global *global, FILE *file, struct callstack *cs, unsigned int pc, hvalue_t vars, char *prefix){
+    struct strbuf sb;
+    strbuf_init(&sb);
+    value_json_trace(global, &sb, cs, pc, vars);
+    fwrite(sb.buf, 1, sb.len, file);
+    strbuf_deinit(&sb);
 }
 
 static void value_json_context(struct strbuf *sb, hvalue_t v, struct global *global) {

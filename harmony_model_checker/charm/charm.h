@@ -27,6 +27,8 @@ struct microstep {
     hvalue_t choice, print;
     struct callstack *cs;
     char *explain;
+    hvalue_t *args;         // arguments to explanation
+    unsigned int nargs;
 };
 
 // Info about a macrostep (edge in Kripke structure)

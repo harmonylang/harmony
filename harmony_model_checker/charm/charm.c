@@ -1069,7 +1069,12 @@ static void make_microstep(
     micro->print = print;
     micro->cs = newcs;
     micro->explain = json_escape(step->explain.buf, step->explain.len);
+    unsigned int sz = step->explain_nargs * sizeof(hvalue_t);
+    micro->args = malloc(sz);
+    memcpy(micro->args, step->explain_args, sz);
+    micro->nargs = step->explain_nargs;
     step->explain.len = 0;
+    step->explain_nargs = 0;
 
     if (macro->nmicrosteps == macro->alloc_microsteps) {
         macro->alloc_microsteps *= 2;
@@ -1134,11 +1139,9 @@ void twostep(
         struct op_info *oi = instrs[pc].oi;
         if (instrs[pc].choose) {
             assert(choice != 0);
-            char *set = value_string(ctx_stack(step.ctx)[step.ctx->sp - 1]);
-            char *sel = value_string(choice);
-            strbuf_printf(&step.explain, "replace top of stack (%s) with choice (%s)", set, sel);
-            free(set);
-            free(sel);
+            strbuf_printf(&step.explain, "replace top of stack (#+) with choice (#+)");
+            step.explain_args[step.explain_nargs++] = ctx_stack(step.ctx)[step.ctx->sp - 1];
+            step.explain_args[step.explain_nargs++] = choice;
             ctx_stack(step.ctx)[step.ctx->sp - 1] = choice;
             step.ctx->pc++;
         }
@@ -1348,10 +1351,46 @@ static void path_output_microstep(struct global *global, FILE *file,
         assert(codestr->type == JV_ATOM);
 		char *v = json_escape(codestr->u.atom.base, codestr->u.atom.len);
         fprintf(file, "          \"explain\": \"%s\",\n", v);
+        fprintf(file, "          \"explain2\": { \"text\": \"%s\", \"args\": [] },\n", v);
         free(v);
     }
     else {
-        fprintf(file, "          \"explain\": \"%s\",\n", micro->explain);
+        // backwards compatibility with explain
+        struct strbuf sb;
+        strbuf_init(&sb);
+        int argc = 0;
+        for (char *p = micro->explain; *p != 0; p++) {
+            if (*p == '#') {
+                p++;
+                if (*p == 0) {
+                    break;
+                }
+                if (*p == '+') {
+                    strbuf_value_string(&sb, micro->args[argc++]);
+                }
+                else {
+                    strbuf_append(&sb, p, 1);
+                }
+            }
+            else {
+                strbuf_append(&sb, p, 1);
+            }
+        }
+		char *v = json_escape(strbuf_getstr(&sb), strbuf_getlen(&sb));
+        strbuf_deinit(&sb);
+        fprintf(file, "          \"explain\": \"%s\",\n", v);
+        free(v);
+
+        fprintf(file, "          \"explain2\": { \"text\": \"%s\", \"args\": [", micro->explain);
+        for (unsigned int i = 0; i < micro->nargs; i++) {
+            if (i != 0) {
+                fprintf(file, ",");
+            }
+            char *s = value_json(micro->args[i], global);
+            fprintf(file, " %s", s);
+            free(s);
+        }
+        fprintf(file, " ] },\n");
     }
 
     if (micro->state->vars != oldstate->vars) {

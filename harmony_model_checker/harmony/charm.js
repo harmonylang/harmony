@@ -29,6 +29,17 @@ function json_string_list(obj) {
   return "[ " + result + " ]";
 }
 
+function json_string_tuple(obj) {
+  var result = "";
+  for (var i = 0; i < obj.length; i++) {
+    if (result != "") {
+      result += ", ";
+    }
+    result += json_string(obj[i]);
+  }
+  return "(" + result + ")";
+}
+
 function json_string_set(obj) {
   var result = "";
   for (var i = 0; i < obj.length; i++) {
@@ -283,6 +294,23 @@ function convert_vars(obj) {
   return result;
 }
 
+function method_call(m, arg) {
+  var result = "";
+  if (m.type == "atom") {
+    result += m.value;
+  }
+  else {
+    result += json_string(m);
+  }
+  if (arg.type == "list") {
+    result += json_string_tuple(arg.value);
+  }
+  else {
+    result += "(" + json_string(arg) + ")";
+  }
+  return result;
+}
+
 function stackTrace(tid, trace, failure) {
   var table = threads[tid].tracetable;
   table.innerHTML = "";
@@ -295,7 +323,8 @@ function stackTrace(tid, trace, failure) {
     var row = table.insertRow();
 
     var mcell = row.insertCell();
-    mcell.innerHTML = trace[i].method;
+    // mcell.innerHTML = trace[i].method;
+    mcell.innerHTML = method_call(trace[i].method_name, trace[i].method_arg);
     switch (trace[i].calltype) {
     case "process":
         mcell.style.color = "blue";
@@ -414,7 +443,7 @@ function init_microstep(masidx, misidx) {
     // invfails: misidx == mas.microsteps.length - 1 ? mas.invfails : [],
     contexts: mas.contexts,
     hvm: mis.code,
-    explain: mis.explain
+    explain2: mis.explain2
   };
   if (misidx != 0) {
     previous = microsteps[t-1];
@@ -633,6 +662,33 @@ function escapeHTML(s) {
      .replace(/'/g, "&#039;");
 }
 
+function explain_expand(e) {
+    var s = e.text;
+    var result = "";
+    var arg = 0;
+    for (var i = 0; i < s.length; i++) {
+      if (s[i] == '#') {
+        i++;
+        if (i == s.length) {
+          break;
+        }
+        if (s[i] == '#') {
+          result += '#';
+        }
+        else if (s[i] == '+') {
+          result += json_string(e.args[arg++]);
+        }
+        else {
+          result += json_string(e.args[parseInt(s[i])]);
+        }
+      }
+      else {
+        result += s[i];
+      }
+    }
+    return result;
+}
+
 function run_microstep(t) {
   var mis = microsteps[t];
   var mes = megasteps[mis.mesidx];
@@ -701,13 +757,13 @@ function run_microstep(t) {
   else if (t+1 < microsteps.length) {
     var nmis = microsteps[t+1];
     if (nmis.tid == mis.tid) {
-        mes.nextstep.innerHTML = "next: " + nmis.explain;
+        mes.nextstep.innerHTML = "next: " + explain_expand(nmis.explain2);
     }
     else {
         updateStatus(mes);
     }
 
-    // hvmrow.innerHTML = "T" + nmis.tid + "/" + nmis.pc + ": " + nmis.hvm + " (" + nmis.explain + ")"
+    // hvmrow.innerHTML = "T" + nmis.tid + "/" + nmis.pc + ": " + nmis.hvm + " (" + explain_expand(nmis.explain2) + ")"
     currCloc = document.getElementById('C' + nmis.pc);
     currOffset = document.getElementById('P' + nmis.pc);
   }
@@ -749,7 +805,7 @@ function run_microsteps() {
             microsteps[currentTime - 1].tid != microsteps[currentTime].tid)) {
     var mis = microsteps[currentTime];
     var mes = megasteps[mis.mesidx];
-    mes.nextstep.innerHTML = "next: " + mis.explain;
+    mes.nextstep.innerHTML = "next: " + explain_expand(mis.explain2);
     var mesrow = mestable.rows[mis.mesidx];
     mesrow.cells[3].innerHTML = mis.pc;
 
