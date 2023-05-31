@@ -51,7 +51,7 @@ class Scope:
                 #    return None
                 return tv
             ancestor = ancestor.parent
-        # print("Warning: unknown name:", name, " (assuming global variable)")
+        # print("Warning: unknown name:", name, " (assuming global variable)")  TODO
         if lexeme != '_':
             self.names[lexeme] = ("global", name)
         return ("global", name)

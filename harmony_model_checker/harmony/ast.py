@@ -2046,7 +2046,10 @@ class GlobalAST(AST):
         return "Global(" + str(self.vars) + ")"
 
     def compile(self, scope, code, stmt):
-        assert False
+        for v in self.vars:
+            assert isinstance(v, NameAST)
+            lexeme, file, line, column = v.name
+            scope.set(lexeme, ("global", (lexeme, file, line, column)))
 
     def getLabels(self):
         return set()
