@@ -178,7 +178,8 @@ def summaryMain(filenames, hco):
 
     def friendlyOutput():
         issueText = hco["issue"]
-        output = f"{issueText}\n"
+        # output = f"{issueText}\n"
+        output = ""
         if issueText == "No issues":
             output += "Congratulations, your program has no issues!\n"
             return
