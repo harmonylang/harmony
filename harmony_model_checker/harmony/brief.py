@@ -156,10 +156,10 @@ class Brief:
 
             # print("Issue:", top["issue"])
             assert isinstance(top["macrosteps"], list)
-            # for mes in top["macrosteps"]:
-            #     self.print_macrostep(mes)
-            # self.flush()
-            # print(self.failure)
+            for mes in top["macrosteps"]:
+                self.print_macrostep(mes)
+            self.flush()
+            print(self.failure)
             print("Phase 6: print failure summary")
             print(summaryMain(outputfiles, top))
             return False

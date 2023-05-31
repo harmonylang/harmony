@@ -185,24 +185,24 @@ def summaryMain(filenames, hco):
             return
         elif issueText == "Safety violation":
             output += "Unfortunately, there exists some state in your program that violates a safety property. \n"
-            output += "Here is a shortest execution trace summary that exhibits the issue:\n"
+            output += "Here is an execution trace summary that exhibits the issue:\n"
         elif issueText == "Invariant violation":
             output += "Unfortunately, an invariant in your program can violate. \n"
-            output += "Here is a shortest execution trace summary that exhibits the issue:\n"
+            output += "Here is an execution trace summary that exhibits the issue:\n"
         elif issueText == "Finally predicate violation":
             output += "Unfortunately, the finally assertion in your program can fail. \n"
-            output += "Here is a shortest execution trace summary that exhibits the issue:\n"
+            output += "Here is an execution trace summary that exhibits the issue:\n"
         elif issueText == "Behavior Violation: terminal state not final":
             pass
         elif issueText == "Non-terminating state":
             output += "Unfortunately, there exists some case where your program can't terminate. \n"
-            output += "Here is a shortest execution trace summary that exhibits the issue:\n"
+            output += "Here is an execution trace summary that exhibits the issue:\n"
         elif issueText == "Active busy waiting":
             output += "Unfortunately, there is active busy waiting in your program. That is, a thread is waiting for a condition while changing the state. \n"
-            output += "Here is a shortest execution trace summary that exhibits the issue:\n"
+            output += "Here is an execution trace summary that exhibits the issue:\n"
         elif "Data race" in issueText:
             output += f"Unfortunately, there is a data race in your program on {getDataRaceTarget(issueText)}. \n"
-            output += "Here is a shortest execution trace summary that exhibits the issue:\n"
+            output += "Here is an execution trace summary that exhibits the issue:\n"
         else:
             print(issueText)
             raise Exception("issue match failure")
@@ -216,7 +216,8 @@ def summaryMain(filenames, hco):
         trace = ""
         counter = 0
         subCounter = 0
-        trace += f"{counter}. Program starts with the initial thread T{int(summaryMain.microSteps[0]['tid'])} {summaryMain.threadNames[0]} at line {getStartLine(0)}.\n"
+        # trace += f"{counter}. Program starts with the initial thread T{int(summaryMain.microSteps[0]['tid'])} {summaryMain.threadNames[0]} at line {getStartLine(0)}.\n"
+        trace += f"{counter}. Program starts with the initial thread T{int(summaryMain.microSteps[0]['tid'])}\n"
         for i in range(len(summaryMain.microSteps)):
             if (i == len(summaryMain.microSteps) - 1):
                 break
@@ -259,7 +260,7 @@ def summaryMain(filenames, hco):
                     for variableName, variable in sharedVariableListAfter.items():
                         if (sharedVariableListBefore == None) or (variableName not in sharedVariableListBefore):
                             subCounter += 1
-                            trace += (f"    At line {getEndLine(i_line_prev)}, T{prev_tid} {prev_tname} initializes shared variable <{variableName}> to {verbose_string(variable)}. \n")
+                            trace += f"    At line {getEndLine(i_line_prev)}, T{prev_tid} {prev_tname} initializes global variable <{variableName}> to {verbose_string(variable)}. \n"
                         elif sharedVariableListBefore[variableName] != sharedVariableListAfter[variableName]:
                             variableBefore = sharedVariableListBefore[variableName]
                             subCounter += 1
@@ -268,9 +269,9 @@ def summaryMain(filenames, hco):
                                 traceStr = ""
                                 for e in lst:
                                     traceStr += f"[{e if isinstance(e, int) else verbose_string(e)}]"
-                                trace += (f"    At line {getEndLine(i_line_prev)}, T{prev_tid} updates {variableName + traceStr} to {entryChangeTo(lst, variable)}. Shared variable <{variableName}> becomes {verbose_string(variable)}. \n")
+                                trace += (f"    At line {getEndLine(i_line_prev)}, T{prev_tid} updates {variableName + traceStr} to {entryChangeTo(lst, variable)}. Global variable <{variableName}> becomes {verbose_string(variable)}. \n")
                             else: # len(lst) == 0
-                                trace += (f"    At line {getEndLine(i_line_prev)}, T{prev_tid} updates shared variable <{variableName}> to {verbose_string(variable)}. \n")
+                                trace += (f"    At line {getEndLine(i_line_prev)}, T{prev_tid} updates global variable <{variableName}> to {verbose_string(variable)}. \n")
                         
 
         # a failure in the end
@@ -294,10 +295,16 @@ def summaryMain(filenames, hco):
         return hvm['locs'][getPc(i)]['module']
     
     def getEndLine(i):
-        return hvm['locs'][getPc(i)]['endline']
+        loc = hvm['locs'][getPc(i)]
+        if loc['module'] == "__main__":
+            return loc['endline']
+        return loc['module'] + ":" + str(loc['endline'])
     
     def getStartLine(i):
-        return hvm['locs'][getPc(i)]['line']
+        loc = hvm['locs'][getPc(i)]
+        if loc['module'] == "__main__":
+            return loc['line']
+        return loc['module'] + ":" + str(loc['line'])
 
     def getStatus(s):
         start = s.find("[")
@@ -324,7 +331,7 @@ def summaryMain(filenames, hco):
         if microStepPointer == 0:
             return None
         microStepPointer -= 1
-        # find current shared variable state
+        # find current global variable state
         mostRecentSharedVariablePointer = microStepPointer
         while 'shared' not in summaryMain.microSteps[mostRecentSharedVariablePointer]:
             mostRecentSharedVariablePointer -= 1
@@ -409,16 +416,15 @@ def summaryMain(filenames, hco):
         
     # with open(filenames['hco'], 'r') as hcoFile:
     #     hco = json.load(hcoFile, strict=False)
-    if True:
-        hvm = hco['hvm']
+    hvm = hco['hvm']
 
-        # construct summaryMain.microSteps to be a list of microsteps
-        constructMicrosteps()
-        # construct summaryMain.threadMode
-        constructThreadMode()
-        # construct stackTraceText to be stack trace to display at each microstep
-        constructStackTraceTextList()
-        # construct stackTopDisplay
-        constructStackTopDisplay()
+    # construct summaryMain.microSteps to be a list of microsteps
+    constructMicrosteps()
+    # construct summaryMain.threadMode
+    constructThreadMode()
+    # construct stackTraceText to be stack trace to display at each microstep
+    constructStackTraceTextList()
+    # construct stackTopDisplay
+    constructStackTopDisplay()
 
-        return friendlyOutput()
+    return friendlyOutput()
