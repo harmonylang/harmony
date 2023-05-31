@@ -161,5 +161,5 @@ class Brief:
             self.flush()
             print(self.failure)
             print("Phase 6: print failure summary")
-            print(summaryMain(outputfiles))
+            print(summaryMain(outputfiles, top))
             return False

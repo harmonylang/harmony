@@ -5,8 +5,8 @@ from harmony_model_checker.harmony.verbose import verbose_string
 """
 Takes in filenames. Returns summary in string.
 """
-def summaryMain(filenames):
-    hco = {}
+def summaryMain(filenames, hco):
+    # hco = {}
     hvm = {}
     summaryMain.microSteps = []
     # summaryMain.stackTraceList is a list of string with length <number of threads>. Each entry is the stack trace for each thread
@@ -406,8 +406,9 @@ def summaryMain(filenames):
         else:
             return f"about to {nxt['type']}"
         
-    with open(filenames['hco'], 'r') as hcoFile:
-        hco = json.load(hcoFile, strict=False)
+    # with open(filenames['hco'], 'r') as hcoFile:
+    #     hco = json.load(hcoFile, strict=False)
+    if True:
         hvm = hco['hvm']
 
         # construct summaryMain.microSteps to be a list of microsteps
@@ -420,5 +421,3 @@ def summaryMain(filenames):
         constructStackTopDisplay()
 
         return friendlyOutput()
-
-
