@@ -7,6 +7,13 @@
 #endif
 #else
 #define ALIGNED_ALLOC
+
+#include <stdlib.h>
+#ifdef __APPLE__
+void *my_aligned_alloc(size_t alignment, size_t size);
+#else
+#define my_aligned_alloc(a, s)  aligned_alloc(a, s)
+#endif
 #endif
 
 #ifndef __STDC_NO_ATOMICS__

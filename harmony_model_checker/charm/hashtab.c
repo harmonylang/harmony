@@ -63,7 +63,7 @@ struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int log_b
     }
     ht->log_unstable = log_buckets;
 #ifdef ALIGNED_ALLOC
-    ht->unstable = aligned_alloc(64, sizeof(*ht->unstable) << ht->log_unstable);
+    ht->unstable = my_aligned_alloc(64, sizeof(*ht->unstable) << ht->log_unstable);
 #else
     ht->unstable = malloc(sizeof(*ht->unstable) << ht->log_unstable);
 #endif
@@ -74,7 +74,7 @@ struct hashtab *ht_new(char *whoami, unsigned int value_size, unsigned int log_b
     ht->stable = calloc(1u << (ht->log_stable + ht->log_unstable), sizeof(*ht->stable));
     ht->nlocks = nworkers * 256;        // TODO: how much?
 #ifdef ALIGNED_ALLOC
-    ht->locks = aligned_alloc(sizeof(*ht->locks), ht->nlocks * sizeof(*ht->locks));
+    ht->locks = my_aligned_alloc(sizeof(*ht->locks), ht->nlocks * sizeof(*ht->locks));
 #else
     ht->locks = malloc(ht->nlocks * sizeof(*ht->locks));
 #endif

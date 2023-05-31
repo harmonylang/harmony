@@ -49,6 +49,16 @@ void panic(char *s){
     exit(1);
 }
 
+#ifdef __APPLE__
+void *my_aligned_alloc(size_t alignment, size_t size){
+    if (__builtin_available(macOS 10.15, *)) {
+        return aligned_alloc(alignment, size);
+    }
+    panic("aligned_alloc not available in current version of MacOSX");
+    return NULL;
+}
+#endif
+
 #ifdef notdef
 bool file_read(char *filename, /* OUT */ json_buf_t *buf){
 	FILE *fp;

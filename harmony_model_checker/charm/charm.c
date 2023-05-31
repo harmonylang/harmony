@@ -120,7 +120,7 @@ static void *walloc(void *ctx, unsigned int size, bool zero, bool align16){
         if (w->alloc_ptr16 + asize > w->alloc_buf16 + WALLOC_CHUNK) {
             w->frag_waste += WALLOC_CHUNK - (w->alloc_ptr16 - w->alloc_buf16);
 #ifdef ALIGNED_ALLOC
-            w->alloc_buf16 = aligned_alloc(ALIGNMASK + 1, WALLOC_CHUNK);
+            w->alloc_buf16 = my_aligned_alloc(ALIGNMASK + 1, WALLOC_CHUNK);
             w->alloc_ptr16 = w->alloc_buf16;
 #else
             w->alloc_buf16 = malloc(WALLOC_CHUNK);
@@ -2659,8 +2659,10 @@ int main(int argc, char **argv){
     printf("Phase 3: analysis\n");
 
     // Shortest path to initial state (Dijkstra + minheap)
-    printf("Phase 3a: shortest path to initial state\n");
-    fflush(stdout);
+    if (global->graph.size > 10000) {
+        printf("Phase 3a: shortest path to initial state\n");
+        fflush(stdout);
+    }
     struct minheap *shp = minheap_create(node_cmp);
     struct node *current = global->graph.nodes[0];
     for (;;) {
@@ -2691,8 +2693,10 @@ int main(int argc, char **argv){
     }
 
     if (minheap_empty(global->failures)) {
-        printf("Phase 3b: strongly connected components\n");
-        fflush(stdout);
+        if (global->graph.size > 10000) {
+            printf("Phase 3b: strongly connected components\n");
+            fflush(stdout);
+        }
         double now = gettime();
         global->phase2 = true;
         global->scc_todo = scc_alloc(0, global->graph.size, NULL, NULL);
