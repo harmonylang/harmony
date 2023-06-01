@@ -85,6 +85,8 @@ def verbose_print_trace(f, trace):
 
 def get_mode(ctx):
     mode = ctx["mode"]
+    if mode == "terminated":
+        return mode
     if "atomic" in ctx and int(ctx["atomic"]) > 0:
         mode += " atomic"
     if "readonly" in ctx and int(ctx["readonly"]) > 0:
@@ -111,28 +113,33 @@ class Summarize:
         for ctx in self.contexts:
             if ctx["tid"] != exclude:
                 mode = get_mode(ctx)
-                print("    T%s: %s "%(ctx["tid"], mode), end="", file=f)
+                print("    T%s: (%s) "%(ctx["tid"], mode), end="", file=f)
                 verbose_print_trace(f, ctx["trace"])
                 if "next" in ctx:
-                    print("        about to ", end="", file=f)
-                    self.about(ctx, f)
+                    self.about(ctx, "        ", f)
 
-    def about(self, ctx, f):
+    def about(self, ctx, prefix, f):
         nxt = ctx["next"]
         if nxt["type"] == "Frame":
+            print("%sabout to " % prefix, end="", file=f)
             self.aboutFrame(nxt, f)
         elif nxt["type"] == "Load":
+            print("%sabout to " % prefix, end="", file=f)
             self.aboutLoad(nxt, f)
         elif nxt["type"] == "Store":
-            self.aboutStore(nxt, f)
+            print("%sabout to " % prefix, end="", file=f)
+            self.aboutStore(ctx["pc"], nxt, f)
         elif nxt["type"] == "Print":
+            print("%sabout to " % prefix, end="", file=f)
             self.aboutPrint(nxt, f)
         elif nxt["type"] == "AtomicInc":
+            print("%sabout to " % prefix, end="", file=f)
             self.aboutAtomicInc(ctx["pc"], f)
         elif nxt["type"] == "Assert":
+            print("%sabout to " % prefix, end="", file=f)
             self.aboutAssert(ctx["pc"], f)
-        else:
-            print(nxt, file=f)
+        # else:
+        #     print(nxt, file=f)
 
     def aboutFrame(self, nxt, f):
         print("run method %s with argument %s"%(nxt["name"], verbose_string(nxt["value"])), file=f)
@@ -140,8 +147,11 @@ class Summarize:
     def aboutLoad(self, nxt, f):
         print("load variable %s"%nxt["var"], file=f)
 
-    def aboutStore(self, nxt, f):
-        print("store %s into variable %s"%(verbose_string(nxt["value"]), nxt["var"]), file=f)
+    def aboutStore(self, pc, nxt, f):
+        print("store %s into variable %s in "%(verbose_string(nxt["value"]), nxt["var"]), end="", file=f)
+        loc = self.locations[int(pc)]
+        self.print_loc_basic(loc, f)
+        print(file=f)
 
     def aboutPrint(self, nxt, f):
         print("print %s"%verbose_string(nxt["value"]), file=f)
@@ -149,12 +159,21 @@ class Summarize:
     def aboutAtomicInc(self, pc, f):
         loc = self.locations[int(pc)]
         module = self.hvm["modules"][loc["module"]]
-        print("execute %s:%s: %s"%(loc["module"], loc["line"], module["lines"][int(loc["line"]) - 1]), file=f)
+        print("execute atomic section in ", end="", file=f)
+        loc = self.locations[int(pc)]
+        self.print_loc_basic(loc, f)
+        print(file=f)
 
     def aboutAssert(self, pc, f):
         loc = self.locations[int(pc)]
         module = self.hvm["modules"][loc["module"]]
         print("fail assertion %s:%s: %s"%(loc["module"], loc["line"], module["lines"][int(loc["line"]) - 1]), file=f)
+
+    def print_loc_basic(self, loc, f):
+        if loc["module"] == "__main__":
+            print("line %d" % loc["line"], end="", file=f)
+        else:
+            print("line %s:%d" % (loc["module"], loc["line"]), end="", file=f)
 
     def print_loc(self, prefix, loc, f):
         if loc["module"] == "__main__":
@@ -232,11 +251,10 @@ class Summarize:
                         mode = get_mode(ctx)
                         # if mode != "runnable":
                         #     print("    Mode = %s"%mode, file=f)
-                        print("    Preempted in: ", end="", file=f)
+                        print("    Preempted in ", end="", file=f)
                         verbose_print_trace(f, ctx["trace"])
                         if "next" in ctx:
-                            print("      about to ", end="", file=f)
-                            self.about(ctx, f)
+                            self.about(ctx, "      ", f)
 
             self.tid = mas["tid"]
             # print(file=f)
@@ -256,7 +274,7 @@ class Summarize:
             #     print("other threads:", file=f)
             #     self.dump_contexts(f, self.tid)
             if len(self.shared) != 0:
-                print("    Current values of shared variables:", file=f)
+                print("    Current values of global variables:", file=f)
                 for k, v in self.shared.items():
                     print("      %s: %s"%(k, verbose_string(v)), file=f)
             # print("================================================", file=f)
@@ -348,7 +366,7 @@ class Summarize:
 
             if top["issue"] == "Non-terminating state":
                 print(file=output)
-                print("Final state:", file=output)
+                print("Final state (all threads are terminated or blocked):", file=output)
                 print("  Threads:", file=output)
                 self.dump_contexts(output, None)
                 print("  Variables:", file=output)
