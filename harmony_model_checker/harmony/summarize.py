@@ -113,10 +113,10 @@ class Summarize:
         for ctx in self.contexts:
             if ctx["tid"] != exclude:
                 mode = get_mode(ctx)
-                print("    T%s: (%s) "%(ctx["tid"], mode), end="", file=f)
+                print("  * T%s: (%s) "%(ctx["tid"], mode), end="", file=f)
                 verbose_print_trace(f, ctx["trace"])
                 if "next" in ctx:
-                    self.about(ctx, "        ", f)
+                    self.about(ctx, "    * ", f)
 
     def about(self, ctx, prefix, f):
         nxt = ctx["next"]
@@ -203,10 +203,10 @@ class Summarize:
             for i in range(blen):
                 self.deepcmp(path + [i], before["value"][i], after["value"][i], loc, f)
             self.print_loc("    ", loc, f)
-            print("Set %s to %s" % (self.path_str(path + [blen]), verbose_string(after["value"][blen])), file=f)
+            print("Set *%s* to %s" % (self.path_str(path + [blen]), verbose_string(after["value"][blen])), file=f)
         else:
             self.print_loc("    ", loc, f)
-            print("Set %s to %s" % (self.path_str(path), verbose_string(after)), file=f)
+            print("Set *%s* to %s" % (self.path_str(path), verbose_string(after)), file=f)
 
     def dictcmp(self, path, before, after, loc, f):
         if all(kv["key"]["type"] == "atom" for kv in before["value"]) and all(kv["key"]["type"] == "atom" for kv in after["value"]):
@@ -220,7 +220,7 @@ class Summarize:
             self.deepdiff(path, bd, ad, loc, f)
             return
         self.print_loc("    ", loc, f)
-        print("Set %s to %s" % (self.path_str(path), verbose_string(after)), file=f)
+        print("Set *%s* to %s" % (self.path_str(path), verbose_string(after)), file=f)
 
     def deepcmp(self, path, before, after, loc, f):
         if before != after:
@@ -230,7 +230,7 @@ class Summarize:
                 self.dictcmp(path, before, after, loc, f)
             else:
                 self.print_loc("    ", loc, f)
-                print("Set %s to %s" % (self.path_str(path), verbose_string(after)), file=f)
+                print("Set *%s* to %s" % (self.path_str(path), verbose_string(after)), file=f)
 
     def deepdiff(self, path, before, after, loc, f):
         bk = set(before.keys())
@@ -238,11 +238,11 @@ class Summarize:
         if len(ak - bk) != 0:
             for k in sorted(ak - bk):
                 self.print_loc("    ", loc, f)
-                print("Initialize %s to %s" % (self.path_str(path + [k]), verbose_string(after[k])), file=f)
+                print("Initialize *%s* to %s" % (self.path_str(path + [k]), verbose_string(after[k])), file=f)
         if len(bk - ak) != 0:
             for k in sorted(bk - ak):
                 self.print_loc("    ", loc, f)
-                print("Delete variable %s" % self.path_str(path + [k]), file=f)
+                print("Delete variable *%s*" % self.path_str(path + [k]), file=f)
         for k in sorted(ak & bk):
             self.deepcmp(path + [k], before[k], after[k], loc, f)
 
@@ -252,12 +252,12 @@ class Summarize:
             for ctx in self.contexts:
                 if ctx["tid"] == self.tid:
                     if ctx["mode"] == "terminated":
-                        print("    Terminated", file=f)
+                        print("  * **Terminated**", file=f)
                     else:
                         mode = get_mode(ctx)
                         # if mode != "runnable":
                         #     print("    Mode = %s"%mode, file=f)
-                        print("    Preempted in ", end="", file=f)
+                        print("  * Preempted in ", end="", file=f)
                         verbose_print_trace(f, ctx["trace"])
                         if "next" in ctx:
                             self.about(ctx, "      ", f)
@@ -280,9 +280,9 @@ class Summarize:
             #     print("other threads:", file=f)
             #     self.dump_contexts(f, self.tid)
             if len(self.shared) != 0:
-                print("    Current values of global variables:", file=f)
+                print("  * Current values of global variables:", file=f)
                 for k, v in self.shared.items():
-                    print("      %s: %s"%(k, verbose_string(v)), file=f)
+                    print("    * *%s*: %s"%(k, verbose_string(v)), file=f)
             # print("================================================", file=f)
             self.lastmis = mis[0]
             self.start = int(self.lastmis["pc"])
@@ -337,11 +337,11 @@ class Summarize:
                 return True
 
             if top["issue"] == "Safety violation":
-                print("Summary: something went wrong in an execution", file=output)
+                print("## Summary: something went wrong in an execution", file=output)
             elif top["issue"] == "Non-terminating state":
-                print("Summary: some execution cannot terminate", file=output)
+                print("## Summary: some execution cannot terminate", file=output)
             else:
-                print("Summary:", top["issue"], file=output)
+                print("## Summary:", top["issue"], file=output)
 
             assert isinstance(top["macrosteps"], list)
             self.hvm = top["hvm"]
@@ -354,22 +354,22 @@ class Summarize:
 
             if top["issue"] == "Non-terminating state":
                 print(file=output)
-                print("Final state (all threads are terminated or blocked):", file=output)
-                print("  Threads:", file=output)
+                print("### Final state (all threads are terminated or blocked):", file=output)
+                print("* Threads:", file=output)
                 self.dump_contexts(output, None)
-                print("  Variables:", file=output)
+                print("* Variables:", file=output)
                 for k, v in self.shared.items():
-                    print("    %s: %s"%(k, verbose_string(v)), file=output)
+                    print("  * *%s*: %s"%(k, verbose_string(v)), file=output)
 
             if len(self.hvm["modules"]) > 1:
                 print(file=output)
                 print("This program uses the following modules:", file=output)
                 for modname in sorted(self.hvm["modules"].keys()):
                     mod = self.hvm["modules"][modname]
-                    print("  %s: %s"%(modname, mod["file"]), file=output)
+                    print("* %s: %s"%(modname, mod["file"]), file=output)
 
         print(file=output)
         p = pathlib.Path(outputfiles["htm"]).resolve()
         url = "file://" + str(p)
-        print("open " + url + " for detailed information", file=output)
-        print("alternatively, use the HarmonyGUI", file=output)
+        print("open " + url + " for detailed information,", file=output)
+        print("or use the HarmonyGUI", file=output)

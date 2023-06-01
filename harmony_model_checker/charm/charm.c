@@ -2411,7 +2411,7 @@ int main(int argc, char **argv){
     // Determine how many worker threads to use
     struct global *global = new_alloc(struct global);
     global->nworkers = nworkers == 0 ? getNumCores() : nworkers;
-	printf("Phase 2: run the model checker (nworkers = %d)\n", global->nworkers);
+	printf("* Phase 2: run the model checker (nworkers = %d)\n", global->nworkers);
     global->numa = ((unsigned int) (gettime() * 1000) % 2) == 0;
 
     barrier_t start_barrier, middle_barrier, end_barrier, scc_barrier;
@@ -2647,7 +2647,7 @@ int main(int argc, char **argv){
         end_wait / global->nworkers);
 #endif
 
-    printf("#states %d (time %.2lfs, mem=%.3lfGB)\n", global->graph.size, gettime() - before, (double) allocated / (1L << 30));
+    printf("  * %d states (time %.2lfs, mem=%.3lfGB)\n", global->graph.size, gettime() - before, (double) allocated / (1L << 30));
 
     if (outfile == NULL) {
         exit(0);
@@ -2656,11 +2656,11 @@ int main(int argc, char **argv){
     dict_set_sequential(global->values);
     dict_set_sequential(visited);
 
-    printf("Phase 3: analysis\n");
+    printf("* Phase 3: analysis\n");
 
     // Shortest path to initial state (Dijkstra + minheap)
     if (global->graph.size > 10000) {
-        printf("Phase 3a: shortest path to initial state\n");
+        printf("* Phase 3a: shortest path to initial state\n");
         fflush(stdout);
     }
     struct minheap *shp = minheap_create(node_cmp);
@@ -2694,7 +2694,7 @@ int main(int argc, char **argv){
 
     if (minheap_empty(global->failures)) {
         if (global->graph.size > 10000) {
-            printf("Phase 3b: strongly connected components\n");
+            printf("* Phase 3b: strongly connected components\n");
             fflush(stdout);
         }
         double now = gettime();
@@ -2707,7 +2707,7 @@ int main(int argc, char **argv){
         }
         scc_worker(&scc_workers[0]);
 
-        printf("%u components (%.2lf seconds)\n", global->ncomponents, gettime() - now);
+        printf("  * %u components (%.2lf seconds)\n", global->ncomponents, gettime() - now);
 
 #ifdef DUMP_GRAPH
         printf("digraph Harmony {\n");
@@ -2946,7 +2946,7 @@ int main(int argc, char **argv){
 
     bool no_issues = minheap_empty(global->failures) && minheap_empty(warnings);
     if (no_issues) {
-        printf("No issues\n");
+        printf("  * **No issues**\n");
     }
 
     FILE *out = fopen(outfile, "w");
@@ -2961,7 +2961,7 @@ int main(int argc, char **argv){
     fprintf(out, "{\n");
 
     if (no_issues) {
-        printf("Phase 4: write results to %s\n", outfile);
+        printf("* Phase 4: write results to %s\n", outfile);
         fflush(stdout);
 
         fprintf(out, "  \"issue\": \"No issues\",\n");
@@ -3049,12 +3049,12 @@ int main(int argc, char **argv){
 
         switch (bad->type) {
         case FAIL_SAFETY:
-            printf("Safety Violation\n");
+            printf("  * **Safety Violation**\n");
             fprintf(out, "  \"issue\": \"Safety violation\",\n");
             break;
         case FAIL_INVARIANT:
             {
-                printf("Invariant Violation\n");
+                printf("  * **Invariant Violation**\n");
                 assert(VALUE_TYPE(bad->address) == VALUE_PC);
                 fprintf(out, "  \"issue\": \"Invariant violation\",\n");
                 fprintf(out, "  \"invpc\": %d,\n", (int) VALUE_FROM_PC(bad->address));
@@ -3062,22 +3062,22 @@ int main(int argc, char **argv){
             break;
         case FAIL_FINALLY:
             {
-                printf("Finally Predicate Violation\n");
+                printf("  * **Finally Predicate Violation**\n");
                 assert(VALUE_TYPE(bad->address) == VALUE_PC);
                 fprintf(out, "  \"issue\": \"Finally predicate violation\",\n");
                 fprintf(out, "  \"finpc\": %d,\n", (int) VALUE_FROM_PC(bad->address));
             }
             break;
         case FAIL_BEHAVIOR:
-            printf("Behavior Violation: terminal state not final\n");
+            printf("  * **Behavior Violation**: terminal state not final\n");
             fprintf(out, "  \"issue\": \"Behavior violation: terminal state not final\",\n");
             break;
         case FAIL_TERMINATION:
-            printf("Non-terminating state\n");
+            printf("  * **Non-terminating state**\n");
             fprintf(out, "  \"issue\": \"Non-terminating state\",\n");
             break;
         case FAIL_BUSYWAIT:
-            printf("Active busy waiting\n");
+            printf("  * **Active busy waiting**\n");
             fprintf(out, "  \"issue\": \"Active busy waiting\",\n");
             break;
         case FAIL_RACE:
@@ -3085,7 +3085,7 @@ int main(int argc, char **argv){
             assert(bad->address != VALUE_ADDRESS_SHARED);
             char *addr = value_string(bad->address);
             char *json = json_string_encode(addr, strlen(addr));
-            printf("Data race (%s)\n", json);
+            printf("  * **Data race** (%s)\n", json);
             fprintf(out, "  \"issue\": \"Data race (%s)\",\n", json);
             free(json);
             free(addr);
@@ -3094,7 +3094,7 @@ int main(int argc, char **argv){
             panic("main: bad fail type");
         }
 
-        printf("Phase 4: write results to %s\n", outfile);
+        printf("* Phase 4: write results to %s\n", outfile);
         fflush(stdout);
 
         fprintf(out, "  \"hvm\": ");

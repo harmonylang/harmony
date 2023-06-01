@@ -62,7 +62,7 @@ args.add_argument("--cf", action="append", type=str, help=argparse.SUPPRESS)
 args.add_argument("args", metavar="args", type=str, nargs='*', help="arguments")
 
 def handle_hny(ns, output_files, parse_code_only, filenames):
-    print("Phase 1: compile Harmony program to bytecode")
+    print("* Phase 1: compile Harmony program to bytecode", flush=True)
 
     consts: List[str] = ns.const or []
     interface: Optional[str] = ns.intf
@@ -121,7 +121,7 @@ def handle_hvm(ns, output_files, parse_code_only, code, scope):
         exit()
 
     if ns.direct:
-        print("Phase 2: run", flush=True)
+        print("* Phase 2: run", flush=True)
         r = charm.run_model_checker(
             *charm_options,
             output_files["hvm"]
@@ -130,7 +130,7 @@ def handle_hvm(ns, output_files, parse_code_only, code, scope):
             print("charm failed")
             exit(r)
     else:
-        # print("Phase 2: run the model checker", flush=True)
+        # print("* Phase 2: run the model checker", flush=True)
         r = charm.run_model_checker(
             *charm_options,
             "-o" + output_files["hco"],
@@ -272,14 +272,14 @@ def main():
             handle_hvm(ns, output_files, parse_code_only, code, scope)
             handle_hco(ns, output_files)
         else:
-            print("Skipping Phases 2-5...")
+            print("Skipping Phases 2-5...", flush=True)
             legacy_harmony.dumpCode(print_code, code, scope)
 
     if input_file_type == ".hvm":
-        print("Skipping Phase 1...")
+        print("Skipping Phase 1...", flush=True)
         handle_hvm(ns, output_files, parse_code_only, None, None)
         handle_hco(ns, output_files)
         
     if input_file_type == ".hco":
-        print("Skipping Phases 1-4...")
+        print("Skipping Phases 1-4...", flush=True)
         handle_hco(ns, output_files)
