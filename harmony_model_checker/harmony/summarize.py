@@ -173,13 +173,13 @@ class Summarize:
         if loc["module"] == "__main__":
             print("line %d" % loc["line"], end="", file=f)
         else:
-            print("line %s:%d" % (loc["module"], loc["line"]), end="", file=f)
+            print("line %s/%d" % (loc["module"], loc["line"]), end="", file=f)
 
     def print_loc(self, prefix, loc, f):
         if loc["module"] == "__main__":
             print("%s- Line %d: " % (prefix, loc["line"]), end="", file=f)
         else:
-            print("%s- Line %s:%d: " % (prefix, loc["module"], loc["line"]), end="", file=f)
+            print("%s- Line %s/%d: " % (prefix, loc["module"], loc["line"]), end="", file=f)
 
     def path_str(self, path):
         result = path[0]
@@ -287,28 +287,8 @@ class Summarize:
         self.contexts = mas["contexts"]
         for step in mis:
             self.step += 1
-
-            code = step["code"]
-            args = step["explain2"]["args"]
             loc = self.locations[int(step["pc"])]
 
-            if code.startswith("Frame"):
-                method = args[0] if len(args) == 1 else args[1]
-                if method["type"] == "atom":
-                    mname = method["value"]
-                else:
-                    mname = verbose_string(method)
-                if loc["module"] != "__main__":
-                    mname = loc["module"] + "." + mname
-                if False:
-                    if len(args) == 1:
-                        print("  Call method %s()" % mname, file=f)
-                    elif args[1]["type"] == "list":
-                        print("  Call method %s(%s)" %(mname, verbose_list(args[0]["value"])), file=f)
-                    else:
-                        print("  Call method %s(%s)" %(mname, verbose_string(args[0])), file=f)
-            elif False and code.startswith("Return"):
-                print("  Current method returns %s" % verbose_string(args[0]), file=f)
             if "shared" in step and step["shared"] != self.shared:
                 self.deepdiff([], self.shared, step["shared"], loc, f)
                 # print("  Set global variables in line %d: " % loc["line"], end="", file=f)
