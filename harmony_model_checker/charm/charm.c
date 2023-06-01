@@ -2411,7 +2411,7 @@ int main(int argc, char **argv){
     // Determine how many worker threads to use
     struct global *global = new_alloc(struct global);
     global->nworkers = nworkers == 0 ? getNumCores() : nworkers;
-	printf("nworkers = %d\n", global->nworkers);
+	printf("Phase 2: run the model checker (nworkers = %d)\n", global->nworkers);
     global->numa = ((unsigned int) (gettime() * 1000) % 2) == 0;
 
     barrier_t start_barrier, middle_barrier, end_barrier, scc_barrier;
@@ -2955,15 +2955,15 @@ int main(int argc, char **argv){
         exit(1);
     }
 
-    printf("Phase 4: write results to %s\n", outfile);
-    fflush(stdout);
-
     global->pretty = dict_lookup(jv->u.map, "pretty", 6);
     assert(global->pretty->type == JV_LIST);
 
     fprintf(out, "{\n");
 
     if (no_issues) {
+        printf("Phase 4: write results to %s\n", outfile);
+        fflush(stdout);
+
         fprintf(out, "  \"issue\": \"No issues\",\n");
         fprintf(out, "  \"hvm\": ");
         json_dump(jv, out, 2);
@@ -3093,6 +3093,9 @@ int main(int argc, char **argv){
         default:
             panic("main: bad fail type");
         }
+
+        printf("Phase 4: write results to %s\n", outfile);
+        fflush(stdout);
 
         fprintf(out, "  \"hvm\": ");
         json_dump(jv, out, 2);

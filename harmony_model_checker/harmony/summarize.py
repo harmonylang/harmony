@@ -338,6 +338,8 @@ class Summarize:
 
             if top["issue"] == "Safety violation":
                 print("Summary: something went wrong in an execution", file=output)
+            elif top["issue"] == "Non-terminating state":
+                print("Summary: some execution cannot terminate", file=output)
             else:
                 print("Summary:", top["issue"], file=output)
 
