@@ -291,7 +291,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
     # print("transitions", transitions)
 
     if len(states) > 1:
-        print("Phase 6: convert NFA (%d states) to DFA"%len(states))
+        print("* Phase 6: convert NFA (%d states) to DFA"%len(states))
 
     if got_automata:
         nfa = NFA(
@@ -304,10 +304,10 @@ def behavior_parse(js, minify, outputfiles, behavior):
         intermediate_dfa = DFA.from_nfa(nfa)  # returns an equivalent DFA
         if minify and len(final_states) != 0:
             if len(intermediate_dfa.states) > 1: 
-                print("minify #states=%d"%len(intermediate_dfa.states))
+                print("    * minify #states=%d"%len(intermediate_dfa.states))
             dfa = intermediate_dfa.minify(retain_names = True)
             if len(dfa.states) > 1: 
-                print("minify done #states=%d"%len(dfa.states))
+                print("    * minify done #states=%d"%len(dfa.states))
         else:
             dfa = intermediate_dfa
         dfa_states = dfa.states
