@@ -383,4 +383,5 @@ class Summarize:
         print(file=output)
         p = pathlib.Path(outputfiles["htm"]).resolve()
         url = "file://" + str(p)
-        print("open " + url + " for more information", file=sys.stderr)
+        print("open " + url + " for detailed information", file=output)
+        print("alternatively, use the HarmonyGUI", file=output)
