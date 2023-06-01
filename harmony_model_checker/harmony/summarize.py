@@ -125,13 +125,13 @@ class Summarize:
             self.aboutFrame(nxt, f)
         elif nxt["type"] == "Load":
             print("%sabout to " % prefix, end="", file=f)
-            self.aboutLoad(nxt, f)
+            self.aboutLoad(ctx["pc"], nxt, f)
         elif nxt["type"] == "Store":
             print("%sabout to " % prefix, end="", file=f)
             self.aboutStore(ctx["pc"], nxt, f)
         elif nxt["type"] == "Print":
             print("%sabout to " % prefix, end="", file=f)
-            self.aboutPrint(nxt, f)
+            self.aboutPrint(ctx["pc"], nxt, f)
         elif nxt["type"] == "AtomicInc":
             print("%sabout to " % prefix, end="", file=f)
             self.aboutAtomicInc(ctx["pc"], f)
@@ -144,8 +144,11 @@ class Summarize:
     def aboutFrame(self, nxt, f):
         print("run method %s with argument %s"%(nxt["name"], verbose_string(nxt["value"])), file=f)
 
-    def aboutLoad(self, nxt, f):
-        print("load variable %s"%nxt["var"], file=f)
+    def aboutLoad(self, pc, nxt, f):
+        print("load variable %s in "%nxt["var"], end="", file=f)
+        loc = self.locations[int(pc)]
+        self.print_loc_basic(loc, f)
+        print(file=f)
 
     def aboutStore(self, pc, nxt, f):
         print("store %s into variable %s in "%(verbose_string(nxt["value"]), nxt["var"]), end="", file=f)
@@ -153,8 +156,11 @@ class Summarize:
         self.print_loc_basic(loc, f)
         print(file=f)
 
-    def aboutPrint(self, nxt, f):
-        print("print %s"%verbose_string(nxt["value"]), file=f)
+    def aboutPrint(self, pc, nxt, f):
+        print("print %s in "%verbose_string(nxt["value"]), end="", file=f)
+        loc = self.locations[int(pc)]
+        self.print_loc_basic(loc, f)
+        print(file=f)
 
     def aboutAtomicInc(self, pc, f):
         loc = self.locations[int(pc)]
