@@ -1,4 +1,3 @@
-import pathlib
 import json
 import sys
 
@@ -334,42 +333,35 @@ class Summarize:
             assert isinstance(top, dict)
             if top["issue"] == "No issues":
                 print("No issues were detected with this program.", file=output)
-                return True
-
-            if top["issue"] == "Safety violation":
-                print("## Summary: something went wrong in an execution", file=output)
-            elif top["issue"] == "Non-terminating state":
-                print("## Summary: some execution cannot terminate", file=output)
             else:
-                print("## Summary:", top["issue"], file=output)
+                if top["issue"] == "Safety violation":
+                    print("## Summary: something went wrong in an execution", file=output)
+                elif top["issue"] == "Non-terminating state":
+                    print("## Summary: some execution cannot terminate", file=output)
+                else:
+                    print("## Summary:", top["issue"], file=output)
 
-            assert isinstance(top["macrosteps"], list)
-            self.hvm = top["hvm"]
+                assert isinstance(top["macrosteps"], list)
+                self.hvm = top["hvm"]
 
-            print(file=output)
-            print("Here is a summary of an execution that exhibits the issue:", file=output)
-            self.locations = self.hvm["locs"]
-            for mes in top["macrosteps"]:
-                self.print_macrostep(output, mes)
-
-            if top["issue"] == "Non-terminating state":
                 print(file=output)
-                print("### Final state (all threads are terminated or blocked):", file=output)
-                print("* Threads:", file=output)
-                self.dump_contexts(output, None)
-                print("* Variables:", file=output)
-                for k, v in self.shared.items():
-                    print("  * *%s*: %s"%(k, verbose_string(v)), file=output)
+                print("Here is a summary of an execution that exhibits the issue:", file=output)
+                self.locations = self.hvm["locs"]
+                for mes in top["macrosteps"]:
+                    self.print_macrostep(output, mes)
 
-            if len(self.hvm["modules"]) > 1:
-                print(file=output)
-                print("This program uses the following modules:", file=output)
-                for modname in sorted(self.hvm["modules"].keys()):
-                    mod = self.hvm["modules"][modname]
-                    print("* %s: %s"%(modname, mod["file"]), file=output)
+                if top["issue"] == "Non-terminating state":
+                    print(file=output)
+                    print("### Final state (all threads are terminated or blocked):", file=output)
+                    print("* Threads:", file=output)
+                    self.dump_contexts(output, None)
+                    print("* Variables:", file=output)
+                    for k, v in self.shared.items():
+                        print("  * *%s*: %s"%(k, verbose_string(v)), file=output)
 
-        print(file=output)
-        p = pathlib.Path(outputfiles["htm"]).resolve()
-        url = "file://" + str(p)
-        print("open " + url + " for detailed information,", file=output)
-        print("or use the HarmonyGUI", file=output)
+                if len(self.hvm["modules"]) > 1:
+                    print(file=output)
+                    print("This program uses the following modules:", file=output)
+                    for modname in sorted(self.hvm["modules"].keys()):
+                        mod = self.hvm["modules"][modname]
+                        print("* %s: %s"%(modname, mod["file"]), file=output)

@@ -1,3 +1,4 @@
+import pathlib
 import json
 
 from harmony_model_checker.harmony.behavior import behavior_parse
@@ -153,7 +154,14 @@ class Brief:
             assert isinstance(top, dict)
             if top["issue"] == "No issues":
                 behavior_parse(top, False, outputfiles, behavior)
-                return True
+            else:
+                se = Summarize()
+                se.run(outputfiles, top)
+
+            print()
+            p = pathlib.Path(outputfiles["htm"]).resolve()
+            url = "file://" + str(p)
+            print("open " + url + " for detailed information, or use the HarmonyGUI")
 
             # print("Issue:", top["issue"])
             # assert isinstance(top["macrosteps"], list)
@@ -163,6 +171,3 @@ class Brief:
             # print(self.failure)
             # print("* Phase 6: print failure summary")
             # print(summaryMain(outputfiles, top))
-            se = Summarize()
-            se.run(outputfiles, top)
-            return False
