@@ -1,7 +1,8 @@
 import json
 
 from harmony_model_checker.harmony.behavior import behavior_parse
-from harmony_model_checker.harmony.summary import summaryMain
+# from harmony_model_checker.harmony.summary import summaryMain
+from harmony_model_checker.harmony.summarize import Summarize
 
 def brief_kv(js):
     return (brief_string(js["key"]), brief_string(js["value"]))
@@ -155,11 +156,13 @@ class Brief:
                 return True
 
             # print("Issue:", top["issue"])
-            assert isinstance(top["macrosteps"], list)
-            for mes in top["macrosteps"]:
-                self.print_macrostep(mes)
-            self.flush()
-            print(self.failure)
-            print("Phase 6: print failure summary")
-            print(summaryMain(outputfiles, top))
+            # assert isinstance(top["macrosteps"], list)
+            # for mes in top["macrosteps"]:
+            #     self.print_macrostep(mes)
+            # self.flush()
+            # print(self.failure)
+            # print("Phase 6: print failure summary")
+            # print(summaryMain(outputfiles, top))
+            se = Summarize()
+            se.run(outputfiles, top)
             return False

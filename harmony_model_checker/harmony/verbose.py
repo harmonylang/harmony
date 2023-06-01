@@ -258,7 +258,7 @@ class Verbose:
                 print("  operation failed:  %s"%step["failure"], file=f)
             self.lastmis = step
 
-    def run(self, outputfiles, behavior):
+    def run(self, outputfiles):
         with open(outputfiles["hco"], encoding='utf-8') as input:
           with open(outputfiles["hvb"], "w", encoding='utf-8') as output:
             top = json.load(input, strict=False)

@@ -152,10 +152,10 @@ def handle_hco(ns, output_files):
     b = Brief()
     b.run(output_files, behavior)
     vb = Verbose()
-    vb.run(output_files, behavior)
+    vb.run(output_files)
     gh = GenHTML()
     gh.run(output_files)
-    if not suppress_output:
+    if False and not suppress_output:
         p = pathlib.Path(output_files["htm"]).resolve()
         url = "file://" + str(p)
         print("open " + url + " for more information", file=sys.stderr)
