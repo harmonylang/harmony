@@ -2647,7 +2647,7 @@ int main(int argc, char **argv){
         end_wait / global->nworkers);
 #endif
 
-    printf("  * %d states (time %.2lfs, mem=%.3lfGB)\n", global->graph.size, gettime() - before, (double) allocated / (1L << 30));
+    printf("    * %d states (time %.2lfs, mem=%.3lfGB)\n", global->graph.size, gettime() - before, (double) allocated / (1L << 30));
 
     if (outfile == NULL) {
         exit(0);
@@ -2707,7 +2707,7 @@ int main(int argc, char **argv){
         }
         scc_worker(&scc_workers[0]);
 
-        printf("  * %u components (%.2lf seconds)\n", global->ncomponents, gettime() - now);
+        printf("    * %u components (%.2lf seconds)\n", global->ncomponents, gettime() - now);
 
 #ifdef DUMP_GRAPH
         printf("digraph Harmony {\n");
@@ -2934,7 +2934,7 @@ int main(int argc, char **argv){
 	// TODO.  Don't need failures/warnings distinction any more
     struct minheap *warnings = minheap_create(fail_cmp);
     if (!Rflag && minheap_empty(global->failures)) {
-        printf("Check for data races\n");
+        printf("    * Check for data races\n");
         for (unsigned int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
             graph_check_for_data_race(node, warnings, &engine);
@@ -2946,7 +2946,7 @@ int main(int argc, char **argv){
 
     bool no_issues = minheap_empty(global->failures) && minheap_empty(warnings);
     if (no_issues) {
-        printf("  * **No issues**\n");
+        printf("    * **No issues found**\n");
     }
 
     FILE *out = fopen(outfile, "w");
@@ -3049,35 +3049,31 @@ int main(int argc, char **argv){
 
         switch (bad->type) {
         case FAIL_SAFETY:
-            printf("  * **Safety Violation**\n");
+            printf("    * **Safety Violation**\n");
             fprintf(out, "  \"issue\": \"Safety violation\",\n");
             break;
         case FAIL_INVARIANT:
-            {
-                printf("  * **Invariant Violation**\n");
-                assert(VALUE_TYPE(bad->address) == VALUE_PC);
-                fprintf(out, "  \"issue\": \"Invariant violation\",\n");
-                fprintf(out, "  \"invpc\": %d,\n", (int) VALUE_FROM_PC(bad->address));
-            }
+            printf("    * **Invariant Violation**\n");
+            assert(VALUE_TYPE(bad->address) == VALUE_PC);
+            fprintf(out, "  \"issue\": \"Invariant violation\",\n");
+            fprintf(out, "  \"invpc\": %d,\n", (int) VALUE_FROM_PC(bad->address));
             break;
         case FAIL_FINALLY:
-            {
-                printf("  * **Finally Predicate Violation**\n");
-                assert(VALUE_TYPE(bad->address) == VALUE_PC);
-                fprintf(out, "  \"issue\": \"Finally predicate violation\",\n");
-                fprintf(out, "  \"finpc\": %d,\n", (int) VALUE_FROM_PC(bad->address));
-            }
+            printf("    * **Finally Predicate Violation**\n");
+            assert(VALUE_TYPE(bad->address) == VALUE_PC);
+            fprintf(out, "  \"issue\": \"Finally predicate violation\",\n");
+            fprintf(out, "  \"finpc\": %d,\n", (int) VALUE_FROM_PC(bad->address));
             break;
         case FAIL_BEHAVIOR:
-            printf("  * **Behavior Violation**: terminal state not final\n");
+            printf("    * **Behavior Violation**: terminal state not final\n");
             fprintf(out, "  \"issue\": \"Behavior violation: terminal state not final\",\n");
             break;
         case FAIL_TERMINATION:
-            printf("  * **Non-terminating state**\n");
+            printf("    * **Non-terminating state**\n");
             fprintf(out, "  \"issue\": \"Non-terminating state\",\n");
             break;
         case FAIL_BUSYWAIT:
-            printf("  * **Active busy waiting**\n");
+            printf("    * **Active busy waiting**\n");
             fprintf(out, "  \"issue\": \"Active busy waiting\",\n");
             break;
         case FAIL_RACE:
@@ -3085,7 +3081,7 @@ int main(int argc, char **argv){
             assert(bad->address != VALUE_ADDRESS_SHARED);
             char *addr = value_string(bad->address);
             char *json = json_string_encode(addr, strlen(addr));
-            printf("  * **Data race** (%s)\n", json);
+            printf("    * **Data race** (%s)\n", json);
             fprintf(out, "  \"issue\": \"Data race (%s)\",\n", json);
             free(json);
             free(addr);
