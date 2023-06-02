@@ -158,10 +158,10 @@ class Brief:
                 se = Summarize()
                 se.run(outputfiles, top)
 
-            print()
-            p = pathlib.Path(outputfiles["htm"]).resolve()
-            url = "file://" + str(p)
-            print("open " + url + " for detailed information, or use the HarmonyGUI")
+            # print()
+            # p = pathlib.Path(outputfiles["htm"]).resolve()
+            # url = "file://" + str(p)
+            # print("open " + url + " for detailed information, or use the HarmonyGUI")
 
             # print("Issue:", top["issue"])
             # assert isinstance(top["macrosteps"], list)

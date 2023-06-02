@@ -112,10 +112,10 @@ class Summarize:
         for ctx in self.contexts:
             if ctx["tid"] != exclude:
                 mode = get_mode(ctx)
-                print("  * T%s: (%s) "%(ctx["tid"], mode), end="", file=f)
+                print("    * T%s: (%s) "%(ctx["tid"], mode), end="", file=f)
                 verbose_print_trace(f, ctx["trace"])
                 if "next" in ctx:
-                    self.about(ctx, "    * ", f)
+                    self.about(ctx, "        * ", f)
 
     def about(self, ctx, prefix, f):
         nxt = ctx["next"]
@@ -182,9 +182,9 @@ class Summarize:
 
     def print_loc(self, prefix, loc, f):
         if loc["module"] == "__main__":
-            print("%s- Line %d: " % (prefix, loc["line"]), end="", file=f)
+            print("%s* Line %d: " % (prefix, loc["line"]), end="", file=f)
         else:
-            print("%s- Line %s/%d: " % (prefix, loc["module"], loc["line"]), end="", file=f)
+            print("%s* Line %s/%d: " % (prefix, loc["module"], loc["line"]), end="", file=f)
 
     def path_str(self, path):
         result = path[0]
@@ -251,12 +251,12 @@ class Summarize:
             for ctx in self.contexts:
                 if ctx["tid"] == self.tid:
                     if ctx["mode"] == "terminated":
-                        print("  * **Terminated**", file=f)
+                        print("    * **Terminated**", file=f)
                     else:
                         mode = get_mode(ctx)
                         # if mode != "runnable":
                         #     print("    Mode = %s"%mode, file=f)
-                        print("  * Preempted in ", end="", file=f)
+                        print("    * Preempted in ", end="", file=f)
                         verbose_print_trace(f, ctx["trace"])
                         if "next" in ctx:
                             self.about(ctx, "      ", f)
@@ -264,7 +264,7 @@ class Summarize:
             self.tid = mas["tid"]
             # print(file=f)
             # print("================================================", file=f)
-            print("- Schedule thread T%s: "%mas["tid"], end="", file=f)
+            print("* Schedule thread T%s: "%mas["tid"], end="", file=f)
             ctx = mas["context"]
             trace = ctx["trace"]
             verbose_print_trace(f, trace)
@@ -279,9 +279,9 @@ class Summarize:
             #     print("other threads:", file=f)
             #     self.dump_contexts(f, self.tid)
             if len(self.shared) != 0:
-                print("  * Current values of global variables:", file=f)
+                print("    * Current values of global variables:", file=f)
                 for k, v in self.shared.items():
-                    print("    * *%s*: %s"%(k, verbose_string(v)), file=f)
+                    print("        * *%s*: %s"%(k, verbose_string(v)), file=f)
             # print("================================================", file=f)
             self.lastmis = mis[0]
             self.start = int(self.lastmis["pc"])
@@ -330,34 +330,39 @@ class Summarize:
             output = sys.stdout
             # with open("summary.txt", "w", encoding='utf-8') as output:
             print(file=output)
+            print("----------------------------------------", file=output)
+            print(file=output)
             assert isinstance(top, dict)
             if top["issue"] == "No issues":
                 print("No issues were detected with this program.", file=output)
             else:
                 if top["issue"] == "Safety violation":
-                    print("## Summary: something went wrong in an execution", file=output)
+                    print("**Summary: something went wrong in an execution**", file=output)
                 elif top["issue"] == "Non-terminating state":
-                    print("## Summary: some execution cannot terminate", file=output)
+                    print("**Summary: some execution cannot terminate**", file=output)
                 else:
-                    print("## Summary:", top["issue"], file=output)
+                    print("**Summary: %s**" % top["issue"], file=output)
 
                 assert isinstance(top["macrosteps"], list)
                 self.hvm = top["hvm"]
 
                 print(file=output)
                 print("Here is a summary of an execution that exhibits the issue:", file=output)
+                print(file=output)
                 self.locations = self.hvm["locs"]
                 for mes in top["macrosteps"]:
                     self.print_macrostep(output, mes)
 
                 if top["issue"] == "Non-terminating state":
                     print(file=output)
-                    print("### Final state (all threads are terminated or blocked):", file=output)
+                    print("----------------------------------------", file=output)
+                    print(file=output)
+                    print("**Final state** (all threads are terminated or blocked):", file=output)
                     print("* Threads:", file=output)
                     self.dump_contexts(output, None)
                     print("* Variables:", file=output)
                     for k, v in self.shared.items():
-                        print("  * *%s*: %s"%(k, verbose_string(v)), file=output)
+                        print("    * *%s*: %s"%(k, verbose_string(v)), file=output)
 
                 if len(self.hvm["modules"]) > 1:
                     print(file=output)

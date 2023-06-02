@@ -2046,10 +2046,19 @@ class GlobalAST(AST):
         return "Global(" + str(self.vars) + ")"
 
     def compile(self, scope, code, stmt):
-        for v in self.vars:
-            assert isinstance(v, NameAST)
-            lexeme, file, line, column = v.name
-            scope.set(lexeme, ("global", (lexeme, file, line, column)))
+        for var in self.vars:
+            assert isinstance(var, NameAST)
+            (t, v) = scope.lookup(var.name)
+            lexeme, file, line, column = var.name
+            if t != "global":
+                raise HarmonyCompilerError(
+                    filename=file,
+                    lexeme=lexeme,
+                    line=line,
+                    column=column,
+                    message="%s: Parse error: shadows prior definition" % lexeme
+                )
+            # scope.set(lexeme, ("global", (lexeme, file, line, column)))
 
     def getLabels(self):
         return set()
@@ -2067,6 +2076,18 @@ class SequentialAST(AST):
         return "Sequential(" + str(self.vars) + ")"
 
     def compile(self, scope, code, stmt):
+        for var in self.vars:
+            assert isinstance(var, NameAST)
+            (t, v) = scope.lookup(var.name)
+            lexeme, file, line, column = var.name
+            if t != "global":
+                raise HarmonyCompilerError(
+                    filename=file,
+                    lexeme=lexeme,
+                    line=line,
+                    column=column,
+                    message="%s: Parse error: shadows prior definition" % lexeme
+                )
         stmt = self.stmt()
         for lv in self.vars:
             lv.ph1(scope, code, stmt)

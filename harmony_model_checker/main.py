@@ -155,10 +155,11 @@ def handle_hco(ns, output_files):
     vb.run(output_files)
     gh = GenHTML()
     gh.run(output_files)
-    if False and not suppress_output:
+    if not suppress_output:
+        print()
         p = pathlib.Path(output_files["htm"]).resolve()
         url = "file://" + str(p)
-        print("open " + url + " for more information", file=sys.stderr)
+        print("open " + url + " for detailed information, or use the HarmonyGUI", file=sys.stderr)
         if not disable_browser:
             webbrowser.open(url)
     
