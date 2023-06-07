@@ -329,16 +329,22 @@ static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock, str
     if (!initialized) {
         next->initialized = true;
         next->state = state;        // TODO.  Don't technically need this
+        next->failed = edge->failed;
         next->lock = lock;
+
+        // TODOTODO
+        next->to_parent = edge;
+        next->len = node->len + 1;
+        next->steps = node->steps + edge->nsteps;
+
         edge->bwdnext = NULL;
-        if (!edge->failed) {
-            next->next = *results;
-            *results = next;
-            w->count++;
-            w->enqueued++;
-        }
+        next->next = *results;
+        *results = next;
+        w->count++;
+        w->enqueued++;
     }
     else {
+        assert(next->failed == edge->failed);
         edge->bwdnext = next->bwd;
     }
 
@@ -424,6 +430,9 @@ static bool onestep(
     int multiplicity,       // #contexts that are in the current state
     struct node **results   // where to place the resulting new states
 ) {
+    assert(node->state == (struct state *) &node[1]);
+    assert(state_size(sc) == state_size(node->state));
+
     assert(!step->ctx->terminated);
     assert(!step->ctx->failed);
     assert(step->engine.allocator == &w->allocator);
@@ -1584,6 +1593,86 @@ static void path_output_macrostep(struct global *global, FILE *file, struct macr
     fprintf(file, "    }");
 }
 
+// Optimize the path by reordering macrosteps. One cannot reorder macrosteps
+// that conflict.  Macrosteps conflict if they are by the same thread or
+// if they print something or if they read/write conflicting variables.
+static void path_optimize(struct global *global){
+    struct ctxblock {
+        unsigned int tid, start, end;
+    };
+    struct ctxblock *cbs;
+    unsigned int ncbs, current;
+
+again:
+    cbs = calloc(1, sizeof(*cbs));
+    ncbs = 0;
+    current = global->macrosteps[0]->tid;
+
+    // Figure out where the actual context switches are
+    for (unsigned int i = 1; i < global->nmacrosteps; i++) {
+        if (global->macrosteps[i]->tid != current) {
+            cbs[ncbs].tid = current;
+            cbs[ncbs++].end = i;
+            current = global->macrosteps[i]->tid;
+            cbs = realloc(cbs, (ncbs + 1) * sizeof(*cbs));
+            cbs[ncbs].start = i;
+        }
+    }
+    cbs[ncbs].tid = current;
+    cbs[ncbs++].end = global->nmacrosteps;
+    // printf("%u blocks:\n", ncbs);
+    // for (unsigned int i = 0; i < ncbs; i++) {
+    //     printf("   %u %u %u\n", cbs[i].tid, cbs[i].start, cbs[i].end);
+    // }
+
+    // Now try to reorder and combine context blocks.
+    for (unsigned int i = 1; i < ncbs; i++) {
+        // Find the next context block for the same thread, if any.  Stop
+        // if there are any conflicts
+        for (unsigned int j = i + 1; j < ncbs; j++) {
+            if (cbs[j].tid == cbs[i].tid) {
+                // Combine block i with block j
+                // First save block i
+                unsigned int size = (cbs[i].end - cbs[i].start) *
+                                                sizeof(struct macrostep *);
+                struct macrostep **copy = malloc(size);
+                memcpy(copy, &global->macrosteps[cbs[i].start], size);
+
+                // Then move over the blocks in between
+                memcpy(&global->macrosteps[cbs[i].start],
+                        &global->macrosteps[cbs[i+1].start],
+                        (cbs[j].start - cbs[i+1].start) *
+                                            sizeof(struct macrostep *));
+
+                // Move the saved block over
+                memcpy(&global->macrosteps[cbs[j].start -
+                            (cbs[i].end - cbs[i].start)], copy, size);
+                free(copy);
+                free(cbs);
+                goto again;         // TODO
+            }
+
+            // See if there are conflicts
+            bool conflict = false;
+            for (unsigned int x = cbs[i].start; !conflict && x < cbs[i].end; x++) {
+                for (unsigned int y = cbs[j].start; !conflict && y < cbs[j].end; y++) {
+                    if ((global->macrosteps[x]->edge->nlog > 0 &&
+                                    global->macrosteps[y]->edge->nlog > 0) ||
+                            graph_edge_conflict(NULL, NULL, NULL,
+                                    global->macrosteps[x]->edge,
+                                    global->macrosteps[y]->edge)) {
+                        conflict = true;
+                    }
+                }
+            }
+            if (conflict) {
+                // printf("%u and %u conflict\n", i, j);
+                break;
+            }
+        }
+    }
+}
+
 // Output the macrosteps
 static void path_output(struct global *global, FILE *file){
     fprintf(file, "\n");
@@ -1848,6 +1937,9 @@ static int fail_cmp(void *f1, void *f2){
 }
 
 void do_work1(struct worker *w, struct node *node, unsigned int level){
+    if (node->failed) {
+        return;
+    }
     struct state *state = node->state;
     if (state->choosing != 0) {
         assert(VALUE_TYPE(state->choosing) == VALUE_CONTEXT);
@@ -2586,7 +2678,7 @@ int main(int argc, char **argv){
     struct dict_assoc *hn = dict_find_lock(visited, &workers[0].allocator, state, state_size(state), NULL, &lock);
     struct node *node = (struct node *) &hn[1];
     memset(node, 0, sizeof(*node));
-    node->state = state;
+    node->state = (struct state *) &node[1];
     node->lock = lock;
     mutex_release(lock);
     graph_add(&global->graph, node);
@@ -2658,6 +2750,7 @@ int main(int argc, char **argv){
 
     printf("* Phase 3: analysis\n");
 
+#ifdef notdef
     // Shortest path to initial state (Dijkstra + minheap)
     if (global->graph.size > 10000) {
         printf("* Phase 3a: shortest path to initial state\n");
@@ -2669,8 +2762,8 @@ int main(int argc, char **argv){
         for (struct edge *e = current->fwd; e != NULL; e = e->fwdnext) {
             struct node *d = e->dst;
             assert(e->src == current);
-            unsigned int weight =
-                (current->to_parent == NULL || e->ctx == current->to_parent->after) ? 0 : 1;
+            unsigned int weight = 1;
+            // TODOTODO   (current->to_parent == NULL || e->ctx == current->to_parent->after) ? 0 : 1;
             unsigned int len = current->len + weight;
             unsigned int steps = current->steps + e->nsteps;
             if (d->to_parent == NULL) {
@@ -2691,6 +2784,7 @@ int main(int argc, char **argv){
         }
         current = minheap_getmin(shp);
     }
+#endif
 
     if (minheap_empty(global->failures)) {
         if (global->graph.size > 10000) {
@@ -2817,6 +2911,7 @@ int main(int argc, char **argv){
         }
     }
 
+#define DUMP_GRAPH      // TODOTODO.  Make part of Dflag
 #ifdef DUMP_GRAPH
     if (true) {
         FILE *df = fopen("charm.gv", "w");
@@ -2836,10 +2931,18 @@ int main(int argc, char **argv){
                     }
                 }
                 assert(j < state->bagsize);
-                fprintf(df, " s%u -> s%u [style=%s label=\"%u\"]\n",
+                if (edge->failed) {
+                    fprintf(df, " s%u -> s%u [style=%s label=\"F %u\"]\n",
                         node->id, edge->dst->id,
                         edge->dst->to_parent == edge ? "solid" : "dashed",
                         multiplicities(state)[j]);
+                }
+                else {
+                    fprintf(df, " s%u -> s%u [style=%s label=\"%u\"]\n",
+                        node->id, edge->dst->id,
+                        edge->dst->to_parent == edge ? "solid" : "dashed",
+                        multiplicities(state)[j]);
+                }
             }
         }
         fprintf(df, "}\n");
@@ -2850,6 +2953,7 @@ int main(int argc, char **argv){
     if (Dflag) {
         FILE *df = fopen("charm.dump", "w");
         assert(df != NULL);
+        // setbuf(df, NULL);
         for (unsigned int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
             assert(node->id == i);
@@ -2867,15 +2971,21 @@ int main(int argc, char **argv){
             }
             fprintf(df, "    vars: %s\n", value_string(node->state->vars));
             fprintf(df, "    len: %u %u\n", node->len, node->steps);
+            if (node->failed) {
+                fprintf(df, "    failed\n");
+            }
             fprintf(df, "    fwd:\n");
             int eno = 0;
             for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext, eno++) {
                 fprintf(df, "        %d:\n", eno);
                 struct context *ctx = value_get(edge->ctx, NULL);
                 fprintf(df, "            node: %d (%d)\n", edge->dst->id, edge->dst->component);
-                fprintf(df, "            context before: %"PRIx64" %d\n", edge->ctx, ctx->pc);
+                fprintf(df, "            context before: %"PRIx64" pc=%d\n", edge->ctx, ctx->pc);
                 ctx = value_get(edge->after, NULL);
-                fprintf(df, "            context after:  %"PRIx64" %d\n", edge->after, ctx->pc);
+                fprintf(df, "            context after:  %"PRIx64" pc=%d\n", edge->after, ctx->pc);
+                if (edge->failed != 0) {
+                    fprintf(df, "            failed\n");
+                }
                 if (edge->choice != 0) {
                     fprintf(df, "            choice: %s\n", value_string(edge->choice));
                 }
@@ -2914,20 +3024,6 @@ int main(int argc, char **argv){
         }
         fclose(df);
     }
-
-#ifdef OBSOLETE
-    if (false) {
-        FILE *df = fopen("charm.dump", "w");
-        assert(df != NULL);
-        char **table = malloc(global->graph.size * sizeof(char*));
-        for (unsigned int i = 0; i < global->graph.size; i++) {
-            struct node *node = global->graph.nodes[i];
-            table[i] = state_string(node->state);
-            fprintf(df, "%s\n", table[i]);
-        }
-        fclose(df);
-    }
-#endif // OBSOLETE
 
     // Look for data races
     // TODO.  Can easily be parallelized
@@ -3183,6 +3279,7 @@ int main(int argc, char **argv){
         if (bad->type == FAIL_INVARIANT || bad->type == FAIL_SAFETY) {
             path_trim(global, &engine);
         }
+        path_optimize(global);
         path_output(global, out);
 
         fprintf(out, "\n");

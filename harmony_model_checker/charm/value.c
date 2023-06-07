@@ -98,7 +98,7 @@ hvalue_t value_put_address(struct engine *engine, void *p, unsigned int size){
     if (size == 0) {
         return VALUE_ADDRESS_SHARED;
     }
-    assert(size > sizeof(hvalue_t));
+    assert(size % sizeof(hvalue_t) == 0);
     void *q = dict_find(engine->values, engine->allocator, p, size, NULL);
     if (* (hvalue_t *) p == VALUE_PC_SHARED) {
         return (hvalue_t) q | VALUE_ADDRESS_SHARED;
@@ -1009,7 +1009,6 @@ hvalue_t value_address(struct engine *engine, struct dict *map){
     assert(func->type == JV_MAP);
     struct json_value *args = dict_lookup(map, "args", 4);
     assert(args->type == JV_LIST);
-    assert(args->u.list.nvals > 0);
     unsigned int size = (1 + args->u.list.nvals) * sizeof(hvalue_t);
     hvalue_t *vals = malloc(size);
     vals[0] = value_from_json(engine, func->u.map);

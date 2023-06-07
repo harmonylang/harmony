@@ -70,6 +70,7 @@ struct node {
     uint16_t len;           // length of path to initial state
     uint16_t steps;         // #microsteps from root
     bool initialized : 1;   // this node structure has been initialized
+    bool failed : 1;        // a thread has failed
     bool final : 1;         // only eternal threads left (TODO: need this?)
     bool visited : 1;       // for busy wait detection
 
@@ -92,6 +93,13 @@ struct graph {
 
 void graph_init(struct graph *graph, unsigned int initial_size);
 
+bool graph_edge_conflict(
+    struct minheap *warnings,
+    struct engine *engine,
+    struct node *node,
+    struct edge *edge,
+    struct edge *edge2
+);
 void graph_check_for_data_race(
     struct node *node,
     struct minheap *warnings,

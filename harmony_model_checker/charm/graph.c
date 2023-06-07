@@ -198,12 +198,45 @@ unsigned int graph_find_scc(struct graph *graph) {
     return count;
 }
 
+bool graph_edge_conflict(
+    struct minheap *warnings,
+    struct engine *engine,
+    struct node *node,
+    struct edge *edge,
+    struct edge *edge2
+) {
+    for (struct access_info *ai = edge->ai; ai != NULL; ai = ai->next) {
+        if (ai->indices != NULL) {
+            for (struct access_info *ai2 = edge2->ai; ai2 != NULL; ai2 = ai2->next) {
+                if (ai2->indices != NULL && !(ai->load && ai2->load) && (!ai->atomic || !ai2->atomic)) {
+                    int min = ai->n < ai2->n ? ai->n : ai2->n;
+                    assert(min > 0);
+                    if (memcmp(ai->indices, ai2->indices,
+                               min * sizeof(hvalue_t)) == 0) {
+                        if (warnings != NULL) {
+                            struct failure *f = new_alloc(struct failure);
+                            f->type = FAIL_RACE;
+                            f->edge = node->to_parent;
+                            f->address = value_put_address(engine, ai->indices, min * sizeof(hvalue_t));
+                            minheap_insert(warnings, f);
+                        }
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    return false;
+}
+
 void graph_check_for_data_race(
     struct node *node,
     struct minheap *warnings,
     struct engine *engine
 ) {
-    // TODO.  We're checking both if x and y conflict and y and x conflict for any two x and y, which is redundant
+    // First check whether any edges conflict with themselves.  That could
+    // happen if more than one thread is in the same state and (all) write
+    // the same variable
     for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
         for (struct access_info *ai = edge->ai; ai != NULL; ai = ai->next) {
             if (ai->indices != NULL) {
@@ -215,25 +248,15 @@ void graph_check_for_data_race(
                     f->address = value_put_address(engine, ai->indices, ai->n * sizeof(hvalue_t));
                     minheap_insert(warnings, f);
                 }
-                else {
-                    for (struct edge *edge2 = edge->fwdnext; edge2 != NULL; edge2 = edge2->fwdnext) {
-                        for (struct access_info *ai2 = edge2->ai; ai2 != NULL; ai2 = ai2->next) {
-                            if (ai2->indices != NULL && !(ai->load && ai2->load) &&
-                                (!ai->atomic || !ai2->atomic)) {
-                                int min = ai->n < ai2->n ? ai->n : ai2->n;
-                                assert(min > 0);
-                                if (memcmp(ai->indices, ai2->indices,
-                                           min * sizeof(hvalue_t)) == 0) {
-                                    struct failure *f = new_alloc(struct failure);
-                                    f->type = FAIL_RACE;
-                                    f->edge = node->to_parent;
-                                    f->address = value_put_address(engine, ai->indices, min * sizeof(hvalue_t));
-                                    minheap_insert(warnings, f);
-                                }
-                            }
-                        }
-                    }
-                }
+            }
+        }
+    }
+
+    // TODO.  We're checking both if x and y conflict and y and x conflict for any two x and y, which is redundant
+    for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
+        for (struct edge *edge2 = edge->fwdnext; edge2 != NULL; edge2 = edge2->fwdnext) {
+            if (graph_edge_conflict(warnings, engine, node, edge, edge2)) {
+                break;
             }
         }
     }
