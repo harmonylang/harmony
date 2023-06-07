@@ -2911,118 +2911,122 @@ int main(int argc, char **argv){
         }
     }
 
-#define DUMP_GRAPH      // TODOTODO.  Make part of Dflag
-#ifdef DUMP_GRAPH
-    if (true) {
-        FILE *df = fopen("charm.gv", "w");
-        fprintf(df, "digraph Harmony {\n");
-        for (unsigned int i = 0; i < global->graph.size; i++) {
-            struct node *node = global->graph.nodes[i];
-            fprintf(df, " s%u [label=\"%u/%u\"]\n", i, i, node->len);
-        }
-        for (unsigned int i = 0; i < global->graph.size; i++) {
-            struct node *node = global->graph.nodes[i];
-            for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
-                struct state *state = node->state;
-                unsigned int j;
-                for (j = 0; j < state->bagsize; j++) {
-                    if (state_contexts(state)[j] == edge->ctx) {
-                        break;
-                    }
-                }
-                assert(j < state->bagsize);
-                if (edge->failed) {
-                    fprintf(df, " s%u -> s%u [style=%s label=\"F %u\"]\n",
-                        node->id, edge->dst->id,
-                        edge->dst->to_parent == edge ? "solid" : "dashed",
-                        multiplicities(state)[j]);
-                }
-                else {
-                    fprintf(df, " s%u -> s%u [style=%s label=\"%u\"]\n",
-                        node->id, edge->dst->id,
-                        edge->dst->to_parent == edge ? "solid" : "dashed",
-                        multiplicities(state)[j]);
-                }
-            }
-        }
-        fprintf(df, "}\n");
-        fclose(df);
-    }
-#endif
-
     if (Dflag) {
-        FILE *df = fopen("charm.dump", "w");
-        assert(df != NULL);
-        // setbuf(df, NULL);
-        for (unsigned int i = 0; i < global->graph.size; i++) {
-            struct node *node = global->graph.nodes[i];
-            assert(node->id == i);
-            fprintf(df, "\nNode %d:\n", node->id);
-            fprintf(df, "    component: %d\n", node->component);
-            if (node->to_parent != NULL) {
-                fprintf(df, "    ancestors:");
-                for (struct node *n = node->to_parent->src;; n = n->to_parent->src) {
-                    fprintf(df, " %u", n->id);
-                    if (n->to_parent == NULL) {
-                        break;
-                    }
-                }
-                fprintf(df, "\n");
-            }
-            fprintf(df, "    vars: %s\n", value_string(node->state->vars));
-            fprintf(df, "    len: %u %u\n", node->len, node->steps);
-            if (node->failed) {
-                fprintf(df, "    failed\n");
-            }
-            fprintf(df, "    fwd:\n");
-            int eno = 0;
-            for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext, eno++) {
-                fprintf(df, "        %d:\n", eno);
-                struct context *ctx = value_get(edge->ctx, NULL);
-                fprintf(df, "            node: %d (%d)\n", edge->dst->id, edge->dst->component);
-                fprintf(df, "            context before: %"PRIx64" pc=%d\n", edge->ctx, ctx->pc);
-                ctx = value_get(edge->after, NULL);
-                fprintf(df, "            context after:  %"PRIx64" pc=%d\n", edge->after, ctx->pc);
-                if (edge->failed != 0) {
-                    fprintf(df, "            failed\n");
-                }
-                if (edge->choice != 0) {
-                    fprintf(df, "            choice: %s\n", value_string(edge->choice));
-                }
-                if (edge->nlog > 0) {
-                    fprintf(df, "            log:");
-                    for (unsigned int j = 0; j < edge->nlog; j++) {
-                        char *p = value_string(edge_log(edge)[j]);
-                        fprintf(df, " %s", p);
-                        free(p);
-                    }
-                    fprintf(df, "\n");
-                }
-            }
-            fprintf(df, "    bwd:\n");
-            eno = 0;
-            for (struct edge *edge = node->bwd; edge != NULL; edge = edge->bwdnext, eno++) {
-                fprintf(df, "        %d:\n", eno);
-                fprintf(df, "            node: %d (%d)\n", edge->src->id, edge->src->component);
-                struct context *ctx = value_get(edge->ctx, NULL);
-                fprintf(df, "            context before: %"PRIx64" %d\n", edge->ctx, ctx->pc);
-                ctx = value_get(edge->after, NULL);
-                fprintf(df, "            context after:  %"PRIx64" %d\n", edge->after, ctx->pc);
-                if (edge->choice != 0) {
-                    fprintf(df, "            choice: %s\n", value_string(edge->choice));
-                }
-                if (edge->nlog > 0) {
-                    fprintf(df, "            log:");
-                    for (int j = 0; j < edge->nlog; j++) {
-                        char *p = value_string(edge_log(edge)[j]);
-                        fprintf(df, " %s", p);
-                        free(p);
-                    }
-                    fprintf(df, "\n");
-                }
-            }
+        FILE *df = fopen("charm.gv", "w");
+        if (df == NULL) {
+            fprintf(stderr, "can't create charm.gv\n");
         }
-        fclose(df);
+        else {
+            fprintf(df, "digraph Harmony {\n");
+            for (unsigned int i = 0; i < global->graph.size; i++) {
+                struct node *node = global->graph.nodes[i];
+                fprintf(df, " s%u [label=\"%u/%u\"]\n", i, i, node->len);
+            }
+            for (unsigned int i = 0; i < global->graph.size; i++) {
+                struct node *node = global->graph.nodes[i];
+                for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
+                    struct state *state = node->state;
+                    unsigned int j;
+                    for (j = 0; j < state->bagsize; j++) {
+                        if (state_contexts(state)[j] == edge->ctx) {
+                            break;
+                        }
+                    }
+                    assert(j < state->bagsize);
+                    if (edge->failed) {
+                        fprintf(df, " s%u -> s%u [style=%s label=\"F %u\"]\n",
+                            node->id, edge->dst->id,
+                            edge->dst->to_parent == edge ? "solid" : "dashed",
+                            multiplicities(state)[j]);
+                    }
+                    else {
+                        fprintf(df, " s%u -> s%u [style=%s label=\"%u\"]\n",
+                            node->id, edge->dst->id,
+                            edge->dst->to_parent == edge ? "solid" : "dashed",
+                            multiplicities(state)[j]);
+                    }
+                }
+            }
+            fprintf(df, "}\n");
+            fclose(df);
+        }
+
+        df = fopen("charm.dump", "w");
+        if (df == NULL) {
+            fprintf(stderr, "Can't create charm.dump\n");
+        }
+        else {
+            // setbuf(df, NULL);
+            for (unsigned int i = 0; i < global->graph.size; i++) {
+                struct node *node = global->graph.nodes[i];
+                assert(node->id == i);
+                fprintf(df, "\nNode %d:\n", node->id);
+                fprintf(df, "    component: %d\n", node->component);
+                if (node->to_parent != NULL) {
+                    fprintf(df, "    ancestors:");
+                    for (struct node *n = node->to_parent->src;; n = n->to_parent->src) {
+                        fprintf(df, " %u", n->id);
+                        if (n->to_parent == NULL) {
+                            break;
+                        }
+                    }
+                    fprintf(df, "\n");
+                }
+                fprintf(df, "    vars: %s\n", value_string(node->state->vars));
+                fprintf(df, "    len: %u %u\n", node->len, node->steps);
+                if (node->failed) {
+                    fprintf(df, "    failed\n");
+                }
+                fprintf(df, "    fwd:\n");
+                int eno = 0;
+                for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext, eno++) {
+                    fprintf(df, "        %d:\n", eno);
+                    struct context *ctx = value_get(edge->ctx, NULL);
+                    fprintf(df, "            node: %d (%d)\n", edge->dst->id, edge->dst->component);
+                    fprintf(df, "            context before: %"PRIx64" pc=%d\n", edge->ctx, ctx->pc);
+                    ctx = value_get(edge->after, NULL);
+                    fprintf(df, "            context after:  %"PRIx64" pc=%d\n", edge->after, ctx->pc);
+                    if (edge->failed != 0) {
+                        fprintf(df, "            failed\n");
+                    }
+                    if (edge->choice != 0) {
+                        fprintf(df, "            choice: %s\n", value_string(edge->choice));
+                    }
+                    if (edge->nlog > 0) {
+                        fprintf(df, "            log:");
+                        for (unsigned int j = 0; j < edge->nlog; j++) {
+                            char *p = value_string(edge_log(edge)[j]);
+                            fprintf(df, " %s", p);
+                            free(p);
+                        }
+                        fprintf(df, "\n");
+                    }
+                }
+                fprintf(df, "    bwd:\n");
+                eno = 0;
+                for (struct edge *edge = node->bwd; edge != NULL; edge = edge->bwdnext, eno++) {
+                    fprintf(df, "        %d:\n", eno);
+                    fprintf(df, "            node: %d (%d)\n", edge->src->id, edge->src->component);
+                    struct context *ctx = value_get(edge->ctx, NULL);
+                    fprintf(df, "            context before: %"PRIx64" %d\n", edge->ctx, ctx->pc);
+                    ctx = value_get(edge->after, NULL);
+                    fprintf(df, "            context after:  %"PRIx64" %d\n", edge->after, ctx->pc);
+                    if (edge->choice != 0) {
+                        fprintf(df, "            choice: %s\n", value_string(edge->choice));
+                    }
+                    if (edge->nlog > 0) {
+                        fprintf(df, "            log:");
+                        for (int j = 0; j < edge->nlog; j++) {
+                            char *p = value_string(edge_log(edge)[j]);
+                            fprintf(df, " %s", p);
+                            free(p);
+                        }
+                        fprintf(df, "\n");
+                    }
+                }
+            }
+            fclose(df);
+        }
     }
 
     // Look for data races
