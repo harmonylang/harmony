@@ -370,6 +370,7 @@ class Summarize:
                 if len(self.hvm["modules"]) > 1:
                     print(file=output)
                     print("This program uses the following modules:", file=output)
+                    print(file=output)
                     for modname in sorted(self.hvm["modules"].keys()):
                         mod = self.hvm["modules"][modname]
                         print("* %s: %s"%(modname, mod["file"]), file=output)
