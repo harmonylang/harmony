@@ -2496,6 +2496,10 @@ int main(int argc, char **argv){
     char *fname = argv[i];
     double timeout = gettime() + maxtime;
 
+#ifdef NDEBUG
+    fprintf(stderr, "Warning: NDEBUG defined in source code\n");
+#endif
+
 #ifndef _WIN32
     signal(SIGINT, inthandler);
 #endif
