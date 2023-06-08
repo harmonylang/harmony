@@ -112,6 +112,8 @@ class Summarize:
         for ctx in self.contexts:
             if ctx["tid"] != exclude:
                 mode = get_mode(ctx)
+                if int(ctx["tid"]) == 0 and mode == "terminated":
+                    continue
                 print("    * T%s: (%s) "%(ctx["tid"], mode), end="", file=f)
                 verbose_print_trace(f, ctx["trace"])
                 if "next" in ctx:
@@ -150,7 +152,7 @@ class Summarize:
         print(file=f)
 
     def aboutStore(self, pc, nxt, f):
-        print("store %s into variable %s in "%(verbose_string(nxt["value"]), nxt["var"]), end="", file=f)
+        print("store %s into %s in "%(verbose_string(nxt["value"]), nxt["var"]), end="", file=f)
         loc = self.locations[int(pc)]
         self.print_loc_basic(loc, f)
         print(file=f)
@@ -202,10 +204,10 @@ class Summarize:
             for i in range(blen):
                 self.deepcmp(path + [i], before["value"][i], after["value"][i], loc, f)
             self.print_loc("    ", loc, f)
-            print("Set *%s* to %s" % (self.path_str(path + [blen]), verbose_string(after["value"][blen])), file=f)
+            print("Set %s to %s" % (self.path_str(path + [blen]), verbose_string(after["value"][blen])), file=f)
         else:
             self.print_loc("    ", loc, f)
-            print("Set *%s* to %s" % (self.path_str(path), verbose_string(after)), file=f)
+            print("Set %s to %s" % (self.path_str(path), verbose_string(after)), file=f)
 
     def dictcmp(self, path, before, after, loc, f):
         if all(kv["key"]["type"] == "atom" for kv in before["value"]) and all(kv["key"]["type"] == "atom" for kv in after["value"]):
@@ -219,7 +221,7 @@ class Summarize:
             self.deepdiff(path, bd, ad, loc, f)
             return
         self.print_loc("    ", loc, f)
-        print("Set *%s* to %s" % (self.path_str(path), verbose_string(after)), file=f)
+        print("Set %s to %s" % (self.path_str(path), verbose_string(after)), file=f)
 
     def deepcmp(self, path, before, after, loc, f):
         if before != after:
@@ -229,7 +231,7 @@ class Summarize:
                 self.dictcmp(path, before, after, loc, f)
             else:
                 self.print_loc("    ", loc, f)
-                print("Set *%s* to %s" % (self.path_str(path), verbose_string(after)), file=f)
+                print("Set %s to %s" % (self.path_str(path), verbose_string(after)), file=f)
 
     def deepdiff(self, path, before, after, loc, f):
         bk = set(before.keys())
@@ -237,11 +239,11 @@ class Summarize:
         if len(ak - bk) != 0:
             for k in sorted(ak - bk):
                 self.print_loc("    ", loc, f)
-                print("Initialize *%s* to %s" % (self.path_str(path + [k]), verbose_string(after[k])), file=f)
+                print("Initialize %s to %s" % (self.path_str(path + [k]), verbose_string(after[k])), file=f)
         if len(bk - ak) != 0:
             for k in sorted(bk - ak):
                 self.print_loc("    ", loc, f)
-                print("Delete variable *%s*" % self.path_str(path + [k]), file=f)
+                print("Delete variable %s" % self.path_str(path + [k]), file=f)
         for k in sorted(ak & bk):
             self.deepcmp(path + [k], before[k], after[k], loc, f)
 
@@ -281,7 +283,7 @@ class Summarize:
             if len(self.shared) != 0:
                 print("    * Current values of global variables:", file=f)
                 for k, v in self.shared.items():
-                    print("        * *%s*: %s"%(k, verbose_string(v)), file=f)
+                    print("        * %s: %s"%(k, verbose_string(v)), file=f)
             # print("================================================", file=f)
             self.lastmis = mis[0]
             self.start = int(self.lastmis["pc"])
@@ -357,12 +359,13 @@ class Summarize:
                     print(file=output)
                     print("----------------------------------------", file=output)
                     print(file=output)
-                    print("**Final state** (all threads are terminated or blocked):", file=output)
+                    print("**Final state** (all threads have terminated or are blocked):", file=output)
+                    print(file=output)
                     print("* Threads:", file=output)
                     self.dump_contexts(output, None)
                     print("* Variables:", file=output)
                     for k, v in self.shared.items():
-                        print("    * *%s*: %s"%(k, verbose_string(v)), file=output)
+                        print("    * %s: %s"%(k, verbose_string(v)), file=output)
 
                 if len(self.hvm["modules"]) > 1:
                     print(file=output)
