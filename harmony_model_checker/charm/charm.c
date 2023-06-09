@@ -1272,58 +1272,14 @@ void path_serialize(
     struct global *global,
     struct edge *e
 ) {
-    struct node *node = e->dst, *parent = e->src;
-
     // First recurse to the previous step
+    struct node *parent = e->src;
     if (parent->to_parent != NULL) {
         path_serialize(global, parent->to_parent);
     }
 
-    /* Find the starting context in the list of processes.  Prefer
-     * sticking with the same pid if possible.
-     */
-    hvalue_t ctx = e->ctx;
-    unsigned int pid;
-    if (global->processes[oldpid] == ctx) {
-        pid = oldpid;
-    }
-    else {
-        for (pid = 0; pid < global->nprocesses; pid++) {
-            if (global->processes[pid] == ctx) {
-                break;
-            }
-        }
-        oldpid = pid;
-    }
-    assert(pid < global->nprocesses);
-    if (pid >= global->nprocesses) {
-        printf("PID %u %u\n", pid, global->nprocesses);
-        panic("bad pid");
-    }
-
     struct macrostep *macro = calloc(sizeof(*macro), 1);
     macro->edge = e;
-    macro->tid = pid;
-    macro->cs = global->callstacks[pid];
-
-    // Recreate the steps
-    twostep(
-        global,
-        parent,
-        ctx,
-        global->callstacks[pid],
-        e->choice,
-        e->interrupt,
-        node->state->vars,
-        e->nsteps,
-        pid,
-        macro
-    );
-
-    // Copy thread state
-    macro->nprocesses = global->nprocesses;
-    macro->processes = copy(global->processes, global->nprocesses * sizeof(hvalue_t));
-    macro->callstacks = copy(global->callstacks, global->nprocesses * sizeof(struct callstack *));
 
     if (global->nmacrosteps == global->alloc_macrosteps) {
         global->alloc_macrosteps *= 2;
@@ -1334,6 +1290,58 @@ void path_serialize(
             global->alloc_macrosteps * sizeof(*global->macrosteps));
     }
     global->macrosteps[global->nmacrosteps++] = macro;
+}
+
+void path_rerun(struct global *global){
+    for (unsigned int i = 0; i < global->nmacrosteps; i++) {
+        struct macrostep *macro = global->macrosteps[i];
+        struct edge *e = macro->edge;
+        struct node *node = e->dst, *parent = e->src;
+
+        /* Find the starting context in the list of processes.  Prefer
+         * sticking with the same pid if possible.
+         */
+        hvalue_t ctx = e->ctx;
+        unsigned int pid;
+        if (global->processes[oldpid] == ctx) {
+            pid = oldpid;
+        }
+        else {
+            for (pid = 0; pid < global->nprocesses; pid++) {
+                if (global->processes[pid] == ctx) {
+                    break;
+                }
+            }
+            oldpid = pid;
+        }
+        assert(pid < global->nprocesses);
+        if (pid >= global->nprocesses) {
+            printf("PID %u %u\n", pid, global->nprocesses);
+            panic("bad pid");
+        }
+
+        macro->tid = pid;
+        macro->cs = global->callstacks[pid];
+
+        // Recreate the steps
+        twostep(
+            global,
+            parent,
+            ctx,
+            global->callstacks[pid],
+            e->choice,
+            e->interrupt,
+            node->state->vars,
+            e->nsteps,
+            pid,
+            macro
+        );
+
+        // Copy thread state
+        macro->nprocesses = global->nprocesses;
+        macro->processes = copy(global->processes, global->nprocesses * sizeof(hvalue_t));
+        macro->callstacks = copy(global->callstacks, global->nprocesses * sizeof(struct callstack *));
+    }
 }
 
 static void path_output_microstep(struct global *global, FILE *file,
@@ -3289,10 +3297,11 @@ int main(int argc, char **argv){
 
         fprintf(out, "  \"macrosteps\": [");
         path_serialize(global, edge);
+        path_optimize(global);
+        path_rerun(global);
         if (bad->type == FAIL_INVARIANT || bad->type == FAIL_SAFETY) {
             path_trim(global, &engine);
         }
-        path_optimize(global);
         path_output(global, out);
 
         fprintf(out, "\n");
