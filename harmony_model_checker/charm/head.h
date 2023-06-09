@@ -1,4 +1,6 @@
-#undef NDEBUG
+#ifndef NDEBUG
+#define NDEBUG
+#endif
 
 #ifdef _WIN32
 #define HEAP_ALLOC

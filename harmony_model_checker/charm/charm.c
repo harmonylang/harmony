@@ -2531,8 +2531,8 @@ int main(int argc, char **argv){
     char *fname = argv[i];
     double timeout = gettime() + maxtime;
 
-#ifdef NDEBUG
-    fprintf(stderr, "Warning: NDEBUG defined in source code\n");
+#ifndef NDEBUG
+    fprintf(stderr, "Warning: NDEBUG not defined in source code\n");
 #endif
 
 #ifndef _WIN32
@@ -3260,7 +3260,7 @@ int main(int argc, char **argv){
             edge->ctx = inv_context;
             edge->choice = 0;
             edge->interrupt = false;
-            edge->after = inv_context;
+            edge->after = inv_context;      // TODOTODO
             edge->ai = NULL;
             edge->nlog = 0;
             edge->nsteps = 65000;
@@ -3295,7 +3295,7 @@ int main(int argc, char **argv){
             edge->ctx = inv_context;
             edge->choice = 0;
             edge->interrupt = false;
-            edge->after = inv_context;
+            edge->after = inv_context;      // TODOTODO
             edge->ai = NULL;
             edge->nlog = 0;
             edge->nsteps = 65000;
