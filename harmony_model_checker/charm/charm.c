@@ -1099,20 +1099,15 @@ static void make_microstep(
 // similar to onestep.  Used to recompute a faulty execution
 void twostep(
     struct global *global,
-    struct node *node,
+    struct state *sc,
     hvalue_t ctx,
     struct callstack *cs,
     hvalue_t choice,
     bool interrupt,
-    hvalue_t nextvars,
     unsigned int nsteps,
     unsigned int pid,
     struct macrostep *macro
 ){
-    // printf("TWOSTEP %d\n", (int) nsteps);
-    // Make a copy of the state
-    struct state *sc = calloc(1, sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1));
-    memcpy(sc, node->state, state_size(node->state));
     sc->choosing = 0;
 
     struct step step;
@@ -1252,7 +1247,6 @@ void twostep(
         context_add(sc, after);
     }
 
-    free(sc);
     free(step.ctx);
     strbuf_deinit(&step.explain);
     // TODO free(step.log);
@@ -1267,7 +1261,7 @@ static void *copy(void *p, unsigned int size){
     return c;
 }
 
-// Recursively reconstruct the steps to edge e using the twostep() function
+// Take the path and put it in an array
 void path_serialize(
     struct global *global,
     struct edge *e
@@ -1292,11 +1286,16 @@ void path_serialize(
     global->macrosteps[global->nmacrosteps++] = macro;
 }
 
-void path_rerun(struct global *global){
+void path_recompute(struct global *global){
+    struct node *node = global->graph.nodes[0];
+    struct state *sc = calloc(1,
+        sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1));
+    memcpy(sc, node->state, state_size(node->state));
+
     for (unsigned int i = 0; i < global->nmacrosteps; i++) {
+        // printf("REC %u/%u\n", i, global->nmacrosteps);
         struct macrostep *macro = global->macrosteps[i];
         struct edge *e = macro->edge;
-        struct node *node = e->dst, *parent = e->src;
 
         /* Find the starting context in the list of processes.  Prefer
          * sticking with the same pid if possible.
@@ -1314,9 +1313,9 @@ void path_rerun(struct global *global){
             }
             oldpid = pid;
         }
-        assert(pid < global->nprocesses);
+        // assert(pid < global->nprocesses);
         if (pid >= global->nprocesses) {
-            printf("PID %u %u\n", pid, global->nprocesses);
+            printf("PID %p %u %u\n", (void *) ctx, pid, global->nprocesses);
             panic("bad pid");
         }
 
@@ -1326,22 +1325,24 @@ void path_rerun(struct global *global){
         // Recreate the steps
         twostep(
             global,
-            parent,
+            sc,
             ctx,
             global->callstacks[pid],
             e->choice,
             e->interrupt,
-            node->state->vars,
             e->nsteps,
             pid,
             macro
         );
+        assert(global->processes[pid] == e->after);
 
         // Copy thread state
         macro->nprocesses = global->nprocesses;
         macro->processes = copy(global->processes, global->nprocesses * sizeof(hvalue_t));
         macro->callstacks = copy(global->callstacks, global->nprocesses * sizeof(struct callstack *));
     }
+
+    free(sc);
 }
 
 static void path_output_microstep(struct global *global, FILE *file,
@@ -1601,6 +1602,27 @@ static void path_output_macrostep(struct global *global, FILE *file, struct macr
     fprintf(file, "    }");
 }
 
+bool path_edge_conflict(
+    struct edge *edge,
+    struct edge *edge2
+) {
+    for (struct access_info *ai = edge->ai; ai != NULL; ai = ai->next) {
+        if (ai->indices != NULL) {
+            for (struct access_info *ai2 = edge2->ai; ai2 != NULL; ai2 = ai2->next) {
+                if (ai2->indices != NULL && !(ai->load && ai2->load)) {
+                    int min = ai->n < ai2->n ? ai->n : ai2->n;
+                    assert(min > 0);
+                    if (memcmp(ai->indices, ai2->indices,
+                               min * sizeof(hvalue_t)) == 0) {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    return false;
+}
+
 // Optimize the path by reordering macrosteps. One cannot reorder macrosteps
 // that conflict.  Macrosteps conflict if they are by the same thread or
 // if they print something or if they read/write conflicting variables.
@@ -1671,7 +1693,7 @@ again:
                 for (unsigned int y = cbs[j].start; !conflict && y < cbs[j].end; y++) {
                     if ((global->macrosteps[x]->edge->nlog > 0 &&
                                     global->macrosteps[y]->edge->nlog > 0) ||
-                            graph_edge_conflict(NULL, NULL, NULL,
+                            path_edge_conflict(
                                     global->macrosteps[x]->edge,
                                     global->macrosteps[y]->edge)) {
                         conflict = true;
@@ -3298,7 +3320,7 @@ int main(int argc, char **argv){
         fprintf(out, "  \"macrosteps\": [");
         path_serialize(global, edge);
         path_optimize(global);
-        path_rerun(global);
+        path_recompute(global);
         if (bad->type == FAIL_INVARIANT || bad->type == FAIL_SAFETY) {
             path_trim(global, &engine);
         }
