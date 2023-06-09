@@ -1,6 +1,8 @@
 import json
 import sys
 
+contexts = []
+
 def verbose_kv(js):
     return (verbose_string(js["key"]), verbose_string(js["value"]))
 
@@ -14,6 +16,8 @@ def verbose_tuple(v):
     return "(" + ", ".join(lst) + ")"
 
 def verbose_string(js):
+    global contexts 
+
     type = js["type"]
     if type == "address":
         if "func" not in js:
@@ -62,7 +66,11 @@ def verbose_string(js):
     if type == "pc":
         return "PC(%s)"%v
     if type == "context":
-        return "CONTEXT(" + str(v["pc"]) + ")"
+        if v in contexts:
+            return "C" + str(contexts.index(v) + 1)
+        else:
+            contexts += [v]
+            return "C" + str(len(contexts))
 
 def verbose_print_vars(f, d):
     print("{", end="", file=f)
@@ -366,6 +374,13 @@ class Summarize:
                     print("* Variables:", file=output)
                     for k, v in self.shared.items():
                         print("    * %s: %s"%(k, verbose_string(v)), file=output)
+
+                if len(contexts) > 0:
+                    print(file=output)
+                    print("This program uses the following contexts:", file=output)
+                    print(file=output)
+                    for i, ctx in enumerate(contexts):
+                        print("* C%d: %s"%(i+1, str(ctx)), file=output)
 
                 if len(self.hvm["modules"]) > 1:
                     print(file=output)
