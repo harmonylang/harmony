@@ -1268,7 +1268,7 @@ static void *copy(void *p, unsigned int size){
 }
 
 // Recursively reconstruct the steps to edge e using the twostep() function
-void path_recompute(
+void path_serialize(
     struct global *global,
     struct edge *e
 ) {
@@ -1276,7 +1276,7 @@ void path_recompute(
 
     // First recurse to the previous step
     if (parent->to_parent != NULL) {
-        path_recompute(global, parent->to_parent);
+        path_serialize(global, parent->to_parent);
     }
 
     /* Find the starting context in the list of processes.  Prefer
@@ -1598,31 +1598,36 @@ static void path_output_macrostep(struct global *global, FILE *file, struct macr
 // if they print something or if they read/write conflicting variables.
 static void path_optimize(struct global *global){
     struct ctxblock {
-        unsigned int tid, start, end;
+        hvalue_t before, after;
+        unsigned int start, end;
     };
     struct ctxblock *cbs;
-    unsigned int ncbs, current;
+    unsigned int ncbs;
+    hvalue_t current;
 
 again:
     cbs = calloc(1, sizeof(*cbs));
+    cbs->before = global->macrosteps[0]->edge->ctx;
     ncbs = 0;
-    current = global->macrosteps[0]->tid;
+    current = global->macrosteps[0]->edge->after;
 
     // Figure out where the actual context switches are
     for (unsigned int i = 1; i < global->nmacrosteps; i++) {
-        if (global->macrosteps[i]->tid != current) {
-            cbs[ncbs].tid = current;
+        if (global->macrosteps[i]->edge->ctx != current) {
+            cbs[ncbs].after = current;
             cbs[ncbs++].end = i;
-            current = global->macrosteps[i]->tid;
             cbs = realloc(cbs, (ncbs + 1) * sizeof(*cbs));
             cbs[ncbs].start = i;
+            cbs[ncbs].before = global->macrosteps[i]->edge->ctx;
         }
+        current = global->macrosteps[i]->edge->after;
     }
-    cbs[ncbs].tid = current;
+    cbs[ncbs].after = current;
     cbs[ncbs++].end = global->nmacrosteps;
+
     // printf("%u blocks:\n", ncbs);
     // for (unsigned int i = 0; i < ncbs; i++) {
-    //     printf("   %u %u %u\n", cbs[i].tid, cbs[i].start, cbs[i].end);
+    //     printf("   %u %u %u\n", cbs[i].before, cbs[i].start, cbs[i].end);
     // }
 
     // Now try to reorder and combine context blocks.
@@ -1630,7 +1635,7 @@ again:
         // Find the next context block for the same thread, if any.  Stop
         // if there are any conflicts
         for (unsigned int j = i + 1; j < ncbs; j++) {
-            if (cbs[j].tid == cbs[i].tid) {
+            if (cbs[i].after == cbs[j].before) {
                 // Combine block i with block j
                 // First save block i
                 unsigned int size = (cbs[i].end - cbs[i].start) *
@@ -3283,7 +3288,7 @@ int main(int argc, char **argv){
         // printf("LEN=%u, STEPS=%u\n", bad->edge->dst->len, bad->edge->dst->steps);
 
         fprintf(out, "  \"macrosteps\": [");
-        path_recompute(global, edge);
+        path_serialize(global, edge);
         if (bad->type == FAIL_INVARIANT || bad->type == FAIL_SAFETY) {
             path_trim(global, &engine);
         }
