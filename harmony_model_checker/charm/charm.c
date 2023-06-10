@@ -1334,7 +1334,7 @@ void path_recompute(struct global *global){
             pid,
             macro
         );
-        assert(global->processes[pid] == e->after);
+        assert(global->processes[pid] == e->after || e->after == 0);
 
         // Copy thread state
         macro->nprocesses = global->nprocesses;
@@ -3260,7 +3260,7 @@ int main(int argc, char **argv){
             edge->ctx = inv_context;
             edge->choice = 0;
             edge->interrupt = false;
-            edge->after = inv_context;      // TODOTODO
+            edge->after = 0;
             edge->ai = NULL;
             edge->nlog = 0;
             edge->nsteps = 65000;
@@ -3295,7 +3295,7 @@ int main(int argc, char **argv){
             edge->ctx = inv_context;
             edge->choice = 0;
             edge->interrupt = false;
-            edge->after = inv_context;      // TODOTODO
+            edge->after = 0;
             edge->ai = NULL;
             edge->nlog = 0;
             edge->nsteps = 65000;

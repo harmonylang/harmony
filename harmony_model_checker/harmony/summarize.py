@@ -326,7 +326,12 @@ class Summarize:
             #     print("  New mode:          %s"%step["mode"], file=f)
             if "interruptlevel" in step:
                 self.print_loc("    ", loc, f)
-                print("Interrupt level: %s"%step["interruptlevel"], file=f)
+                if int(step["interruptlevel"]) == 0:
+                    print("Interrupts enabled", file=f)
+                elif int(step["interruptlevel"]) == 1:
+                    print("Interrupts disabled", file=f)
+                else:
+                    print("Interrupt level: %s"%step["interruptlevel"], file=f)
             if "failure" in step:
                 self.print_loc("    ", loc, f)
                 if step["failure"].startswith("Harmony"):
