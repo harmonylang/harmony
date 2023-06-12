@@ -1313,11 +1313,11 @@ void path_recompute(struct global *global){
             }
             oldpid = pid;
         }
-        // assert(pid < global->nprocesses);
         if (pid >= global->nprocesses) {
             printf("PID %p %u %u\n", (void *) ctx, pid, global->nprocesses);
             panic("bad pid");
         }
+        assert(pid < global->nprocesses);
 
         macro->tid = pid;
         macro->cs = global->callstacks[pid];
@@ -1635,6 +1635,15 @@ static void path_optimize(struct global *global){
     unsigned int ncbs;
     hvalue_t current;
 
+#ifdef notdef
+    printf("Original path:");
+    for (unsigned int i = 0; i < global->nmacrosteps; i++) {
+        struct edge *e = global->macrosteps[i]->edge;
+        printf(" %u", e->dst->id);
+    }
+    printf("\n");
+#endif
+
 again:
     cbs = calloc(1, sizeof(*cbs));
     cbs->before = global->macrosteps[0]->edge->ctx;
@@ -1655,10 +1664,12 @@ again:
     cbs[ncbs].after = current;
     cbs[ncbs++].end = global->nmacrosteps;
 
-    // printf("%u blocks:\n", ncbs);
-    // for (unsigned int i = 0; i < ncbs; i++) {
-    //     printf("   %u %u %u\n", cbs[i].before, cbs[i].start, cbs[i].end);
-    // }
+#ifdef notdef
+    printf("%u blocks:\n", ncbs);
+    for (unsigned int i = 0; i < ncbs; i++) {
+        printf("   %llx %u %u\n", cbs[i].before, cbs[i].start, cbs[i].end);
+    }
+#endif
 
     // Now try to reorder and combine context blocks.
     for (unsigned int i = 1; i < ncbs; i++) {
@@ -1705,6 +1716,33 @@ again:
                 break;
             }
         }
+    }
+
+    // Now fix the edges.
+    struct node *node = global->graph.nodes[0];
+    for (unsigned int i = 0; i < global->nmacrosteps; i++) {
+        // printf("--> %u/%u\n", i, global->nmacrosteps);
+        // Find the edge
+        hvalue_t ctx = global->macrosteps[i]->edge->ctx;
+        hvalue_t choice = global->macrosteps[i]->edge->choice;
+        bool interrupt = global->macrosteps[i]->edge->interrupt;
+        struct edge *e;
+        for (e = node->fwd; e != NULL; e = e->fwdnext) {
+            if (e->ctx == ctx && e->choice == choice && (bool) e->interrupt == interrupt) {
+                global->macrosteps[i]->edge = e;
+                break;
+            }
+        }
+
+        // TODO.  This should generally never happen, but it can
+        //        happen for the fake edges that are added at the
+        //        end in the case of invariant or finally violations.
+        if (e == NULL) {
+            assert(i == global->nmacrosteps - 1);
+            break;
+        }
+        global->macrosteps[i]->edge = e;
+        node = e->dst;
     }
 }
 

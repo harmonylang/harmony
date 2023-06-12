@@ -36,6 +36,7 @@ struct edge {
     uint16_t nsteps;         // # microsteps
     uint16_t multiplicity;   // multiplicity of context
     bool interrupt : 1;      // set if state change is an interrupt
+    // TODO.  Is choosing == (choice != 0)?
     bool choosing : 1;       // destination state is choosing
     bool failed : 1;         // context failed
     uint16_t nlog : 12;      // size of print history
