@@ -1,14 +1,14 @@
 from barrier import *
 
-const N = 5
+const N = 5     # size of list to be sorted
 
 list = [ choose({ 1 .. N }) for i in { 1 .. N } ]
 
 finally all(list[i-1] <= list[i] for i in { 1 .. N - 1 })
 
-nthreads = (N + 1) / 2
-bar = Barrier(nthreads)
-swapped = [ False, ] * nthreads
+const NTHREADS = (N + 1) / 2
+bar = Barrier(NTHREADS)
+swapped = [ False, ] * NTHREADS
 
 def sorter(self):
     let i = self * 2:
@@ -34,5 +34,5 @@ def sorter(self):
 
             bwait(?bar)
 
-for i in { 0 .. nthreads - 1 }:
+for i in { 0 .. NTHREADS - 1 }:
     spawn sorter(i)
