@@ -1,0 +1,38 @@
+from barrier import *
+
+const N = 5
+
+list = [ choose({ 1 .. N }) for i in { 1 .. N } ]
+
+finally all(list[i-1] <= list[i] for i in { 1 .. N - 1 })
+
+nthreads = (N + 1) / 2
+bar = Barrier(nthreads)
+swapped = [ False, ] * nthreads
+
+def sorter(self):
+    let i = self * 2:
+        var sorted = False
+        while not sorted:
+            swapped[self] = False
+
+            # Even phase
+            if (i < (N - 1)) and (list[i] > list[i + 1]):
+                list[i], list[i + 1] = list[i + 1], list[i]
+                swapped[self] = True
+
+            bwait(?bar)
+
+            # Odd phase
+            if (i > 0) and (list[i - 1] > list[i]):
+                list[i - 1], list[i] = list[i], list[i - 1]
+                swapped[self] = True
+
+            bwait(?bar)
+
+            sorted = not any(swapped)
+
+            bwait(?bar)
+
+for i in { 0 .. nthreads - 1 }:
+    spawn sorter(i)
