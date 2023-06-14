@@ -1,6 +1,6 @@
 from barrier import *
 
-const N = 4     # size of list to be sorted
+const N = 5     # size of list to be sorted
 
 list = [ choose({ 1 .. N }) for i in { 1 .. N } ]
 
