@@ -391,7 +391,8 @@ static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock, str
                 w->failures = f;
             }
         }
-        
+ 
+#ifdef notdef       // TODO  Should be elsewhere
         // Check final state if there are no non-eternal contexts
         if (!initialized && w->global->nfinals != 0) {
             hvalue_t *ctxs = state_contexts(state);
@@ -415,6 +416,7 @@ static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock, str
                 }
             }
         }
+#endif
     }
 }
 
@@ -2951,6 +2953,17 @@ int main(int argc, char **argv){
                     minheap_insert(global->failures, f);
                     // break;
                 }
+#ifdef TODOTODO
+                // Check "finally"
+                unsigned int fin = check_finals(w, node, &w->inv_step);
+                if (fin != 0) {
+                    struct failure *f = new_alloc(struct failure);
+                    f->type = FAIL_FINALLY;
+                    f->edge = node->to_parent;
+                    f->address = VALUE_TO_PC(fin);
+                    minheap_insert(global->failures, f);
+                }
+#endif
             }
         }
 
