@@ -83,6 +83,16 @@ def verbose_print_vars(f, d):
         print(" %s: %s"%(k, verbose_string(v)), end="", file=f)
     print(" }", file=f)
 
+def print_context(f, ctx):
+    for k, v in ctx.items():
+        if k == "vars":
+            print("    * vars: ", end="", file=f)
+            verbose_print_vars(f, v)
+        elif "type" in v:
+            print("    * %s: %s"%(k, verbose_string(v)), file=f)
+        else:
+            print("    * %s: %s"%(k, str(v)), file=f)
+
 def verbose_print_trace(f, trace):
     for i, call in enumerate(trace):
         if i != 0:
@@ -385,7 +395,8 @@ class Summarize:
                     print("This program uses the following contexts:", file=output)
                     print(file=output)
                     for i, ctx in enumerate(contexts):
-                        print("* C%d: %s"%(i+1, str(ctx)), file=output)
+                        print("* C%d:"%(i+1), file=output)
+                        print_context(output, ctx)
 
                 if len(self.hvm["modules"]) > 1:
                     print(file=output)
