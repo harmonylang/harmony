@@ -207,7 +207,7 @@ class ComprehensionAST(AST):
 
             global labelcnt
             startlabel = LabelValue(None, "$%d_start" % labelcnt)
-            endlabel = LabelValue(None, "$%d_end" % labelcnt)
+            endlabel = LabelValue(None, "$%d_end1" % labelcnt)
             labelcnt += 1
             code.nextLabel(startlabel)
             code.append(CutOp(var, var2), self.token, self.token, stmt=stmt)
@@ -600,7 +600,7 @@ class NaryAST(AST):
         if op == "and" or op == "or":
             self.args[0].compile(scope, code, stmt)
             lastlabel = LabelValue(None, "$%d_last" % labelcnt)
-            endlabel = LabelValue(None, "$%d_end" % labelcnt)
+            endlabel = LabelValue(None, "$%d_end2" % labelcnt)
             labelcnt += 1
             for i in range(1, n):
                 code.append(JumpCondOp(op == "or", lastlabel), self.token, self.endtoken, stmt=stmt)
@@ -613,7 +613,7 @@ class NaryAST(AST):
             assert n == 2, n
             self.args[0].compile(scope, code, stmt)
             truelabel = LabelValue(None, "$%d_true" % labelcnt)
-            endlabel = LabelValue(None, "$%d_end" % labelcnt)
+            endlabel = LabelValue(None, "$%d_end3" % labelcnt)
             labelcnt += 1
             code.append(JumpCondOp(False, truelabel), self.token, self.endtoken, stmt=stmt)
             self.args[1].compile(scope, code, stmt)
@@ -627,7 +627,7 @@ class NaryAST(AST):
             cond = self.args[1].args[0] if negate else self.args[1]
             cond.compile(scope, code, stmt)
             elselabel = LabelValue(None, "$%d_else" % labelcnt)
-            endlabel = LabelValue(None, "$%d_end" % labelcnt)
+            endlabel = LabelValue(None, "$%d_end4" % labelcnt)
             labelcnt += 1
             code.append(JumpCondOp(negate, elselabel), self.token, self.endtoken, stmt=stmt)
             self.args[0].compile(scope, code, stmt)  # "if" expr
@@ -1280,7 +1280,7 @@ class IfAST(AST):
         label = labelcnt
         labelcnt += 1
         sublabel = 0
-        endlabel = LabelValue(None, "$%d_end" % label)
+        endlabel = LabelValue(None, "$%d_end5" % label)
         if self.atomically:
             code.append(AtomicIncOp(False), self.token, self.endtoken, stmt=stmt)
         last = len(self.alts) - 1
@@ -1338,7 +1338,7 @@ class WhileAST(AST):
         cond = self.cond.args[0] if negate else self.cond
         global labelcnt
         startlabel = LabelValue(None, "$%d_start" % labelcnt)
-        endlabel = LabelValue(None, "$%d_end" % labelcnt)
+        endlabel = LabelValue(None, "$%d_end6" % labelcnt)
         labelcnt += 1
         code.nextLabel(startlabel)
         cond.compile(scope, code, stmt)
@@ -2157,7 +2157,6 @@ class ConstAST(AST):
 
     def compile(self, scope, code, stmt):
         stmt = self.stmt()
-        # TODO.  What does the following if statement do again?
         if not self.expr.isConstant(scope):
             lexeme, file, line, column = self.expr.token if isinstance(self.expr, AST) else self.token
             raise HarmonyCompilerError(
@@ -2170,6 +2169,8 @@ class ConstAST(AST):
         code2 = Code(code)
         code2.modpush(code.curModule)
         self.expr.compile(scope, code2, stmt)
+        code2.append(ContinueOp(), self.token, self.endtoken, stmt=stmt)      # Hack: get endlabels evaluated
+        code2.link()
         state = State(code2, scope.labels)
         ctx = ContextValue(("__const__", None, None, None), 0, emptytuple, emptydict)
         ctx.atomic = 1
