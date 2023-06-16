@@ -240,9 +240,8 @@ bool predicate_check(struct global *global, struct state *sc, struct step *step)
 }
 
 // Returns 0 if there are no issues, or the pc of the invariant if it failed.
-unsigned int check_invariants(struct worker *w, struct node *node,
+unsigned int check_invariants(struct global *global, struct node *node,
                         struct node *before, struct step *step){
-    struct global *global = w->global;
     struct state *state = node->state;
     assert(node->state != NULL);
     assert(state != NULL);
@@ -289,8 +288,7 @@ unsigned int check_invariants(struct worker *w, struct node *node,
 }
 
 // Returns 0 if there are no issues, or the pc of the finally predicate if it failed.
-unsigned int check_finals(struct worker *w, struct node *node, struct step *step){
-    struct global *global = w->global;
+unsigned int check_finals(struct global *global, struct node *node, struct step *step){
     struct state *state = node->state;
     assert(node->state != NULL);
     assert(state != NULL);
@@ -315,7 +313,6 @@ unsigned int check_finals(struct worker *w, struct node *node, struct step *step
             return global->finals[i];
         }
     }
-
     return 0;
 }
 
@@ -377,10 +374,10 @@ static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock, str
         if (w->global->ninvs != 0) {
             unsigned int inv = 0;
             if (!initialized) {      // try self-loop if a new node
-                inv = check_invariants(w, next, next, &w->inv_step);
+                inv = check_invariants(w->global, next, next, &w->inv_step);
             }
             if (inv == 0) { // try new edge
-                inv = check_invariants(w, next, node, &w->inv_step);
+                inv = check_invariants(w->global, next, node, &w->inv_step);
             }
             if (inv != 0) {
                 struct failure *f = new_alloc(struct failure);
@@ -405,7 +402,7 @@ static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock, str
                 }
             }
             if (all_eternal) {
-                unsigned int fin = check_finals(w, next, &w->inv_step);
+                unsigned int fin = check_finals(w->global, next, &w->inv_step);
                 if (fin != 0) {
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_FINALLY;
@@ -805,7 +802,7 @@ static bool onestep(
         w->count++;
         w->enqueued++;
         if (!edge->choosing) {
-            check_invariants(w, edge->dst, edge->dst, &w->inv_step);
+            check_invariants(w->global, edge->dst, edge->dst, &w->inv_step);
             assert(VALUE_TYPE(edge->dst->state->vars) == VALUE_DICT);
         }
     }
@@ -2938,6 +2935,18 @@ int main(int argc, char **argv){
             }
         }
 
+        // Create a context for evaluating finally clauses
+        struct step fin_step;
+        memset(&fin_step, 0, sizeof(fin_step));
+        fin_step.ctx = calloc(1, sizeof(struct context) +
+                                MAX_CONTEXT_STACK * sizeof(hvalue_t));
+        fin_step.ctx->vars = VALUE_DICT;
+        fin_step.ctx->atomic = fin_step.ctx->readonly = 1;
+        fin_step.ctx->atomicFlag = true;
+        fin_step.ctx->interruptlevel = false;
+        fin_step.engine.allocator = &workers[0].allocator;
+        fin_step.engine.values = global->values;
+
         // Look for states in final components
         for (unsigned int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
@@ -2953,9 +2962,9 @@ int main(int argc, char **argv){
                     minheap_insert(global->failures, f);
                     // break;
                 }
-#ifdef TODOTODO
-                // Check "finally"
-                unsigned int fin = check_finals(w, node, &w->inv_step);
+
+                // Check "finally" clauses
+                unsigned int fin = check_finals(global, node, &fin_step);
                 if (fin != 0) {
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_FINALLY;
@@ -2963,7 +2972,6 @@ int main(int argc, char **argv){
                     f->address = VALUE_TO_PC(fin);
                     minheap_insert(global->failures, f);
                 }
-#endif
             }
         }
 
