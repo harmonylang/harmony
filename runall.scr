@@ -19,6 +19,11 @@ echo ==============
 ./harmony --noweb code/Up.hny
 
 echo ==============
+echo Upf
+echo ==============
+./harmony --noweb code/Upf.hny
+
+echo ==============
 echo UpEnter
 echo ==============
 ./harmony --noweb code/UpEnter.hny
