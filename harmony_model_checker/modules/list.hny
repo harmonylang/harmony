@@ -76,3 +76,12 @@ def foldr(d, f, z) returns result:
 # Python functools reduce operator
 def reduce(f, d, z) returns result:
     result = foldl(d, f, z)
+
+# Return a permutation of set s
+def permute(s) returns perm:
+    perm = []
+    var c = s
+    while c != {}:
+        let e = choose c:
+            perm += [ e, ]
+            c -= { e }

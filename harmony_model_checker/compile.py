@@ -106,7 +106,7 @@ def _load_file(filename: str, scope: Scope, code: Code, init: bool):
         (lexeme, file, line, column) = token
         if scope.find(token):
             raise HarmonyCompilerError(
-                message="Duplicate label %s (defined before in line %d)" % (lexeme, scope.names[lexeme][1][2]),
+                message="Duplicate label %s" % lexeme,
                 filename=file,
                 line=line,
                 column=column,
