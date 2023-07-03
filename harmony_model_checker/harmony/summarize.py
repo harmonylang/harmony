@@ -312,9 +312,16 @@ class Summarize:
         self.contexts = mas["contexts"]
         for step in mis:
             self.step += 1
-            loc = self.locations[int(step["pc"])]
+            pc = int(step["pc"])
+            loc = self.locations[pc]
 
-            if "shared" in step and step["shared"] != self.shared:
+            if self.code[pc]["op"] == "Store":
+                self.print_loc("    ", loc, f)
+                args = step["explain2"]["args"]
+                val = verbose_string(args[0])
+                var = verbose_string(args[1])
+                print("Set %s to %s"%(var[1:], val), file=f)
+            elif "shared" in step and step["shared"] != self.shared:
                 self.deepdiff([], self.shared, step["shared"], loc, f)
                 # print("  Set global variables in line %d: " % loc["line"], end="", file=f)
                 # verbose_print_vars(f, step["shared"])
@@ -370,6 +377,7 @@ class Summarize:
 
                 assert isinstance(top["macrosteps"], list)
                 self.hvm = top["hvm"]
+                self.code = self.hvm["code"]
 
                 print(file=output)
                 print("Here is a summary of an execution that exhibits the issue:", file=output)
