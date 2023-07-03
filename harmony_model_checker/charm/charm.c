@@ -1385,6 +1385,11 @@ static void path_output_microstep(struct global *global, FILE *file,
                 if (*p == '+') {
                     strbuf_value_string(&sb, micro->args[argc++]);
                 }
+                else if (*p == '@') {       // variable address
+                    char *p = value_string(micro->args[argc++]);
+                    strbuf_append(&sb, p + 1, strlen(p) - 1);
+                    free(p);
+                }
                 else {
                     strbuf_append(&sb, p, 1);
                 }

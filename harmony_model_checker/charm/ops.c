@@ -2127,34 +2127,13 @@ void next_Store(const void *env, struct context *ctx, struct global *global, FIL
 
 static bool store_match(struct state *state, struct step *step,
                     struct global *global, hvalue_t av, hvalue_t v){
-#ifdef notdef
-    if (VALUE_TYPE(av) == VALUE_LIST) {
-        if (VALUE_TYPE(v) != VALUE_LIST) {
-            value_ctx_failure(step->ctx, &step->engine, "Store: value not a tuple");
-            return false;
-        }
-        unsigned int lhssize, rhssize;
-        hvalue_t *lhs = value_get(av, &lhssize);
-        hvalue_t *rhs = value_get(v, &rhssize);
-        if (lhssize != rhssize) {
-            value_ctx_failure(step->ctx, &step->engine, "Store: tuple sizes don't match");
-            return false;
-        }
-        for (unsigned int i = 0; i < lhssize / sizeof(hvalue_t); i++) {
-            if (!store_match(state, step, global, lhs[i], rhs[i])) {
-                return false;
-            }
-        }
-        return true;
-    }
-#endif // notdef
-    if (VALUE_TYPE(av) != VALUE_ADDRESS_SHARED && VALUE_TYPE(av) != VALUE_ADDRESS_PRIVATE) {
+    if (VALUE_TYPE(av) != VALUE_ADDRESS_SHARED) {
         char *p = value_string(av);
         value_ctx_failure(step->ctx, &step->engine, "Store %s: not an address", p);
         free(p);
         return false;
     }
-    if (av == VALUE_ADDRESS_SHARED || av == VALUE_ADDRESS_PRIVATE) {
+    if (av == VALUE_ADDRESS_SHARED) {
         value_ctx_failure(step->ctx, &step->engine, "Store: address is None");
         return false;
     }
@@ -2163,6 +2142,7 @@ static bool store_match(struct state *state, struct step *step,
     hvalue_t *indices = value_get(av, &size);
     size /= sizeof(hvalue_t);
 
+    // You can store a constant only at its own address.
     if (VALUE_TYPE(indices[0]) == VALUE_BOOL ||
             VALUE_TYPE(indices[0]) == VALUE_INT ||
             VALUE_TYPE(indices[0]) == VALUE_ATOM ||
@@ -2173,7 +2153,7 @@ static bool store_match(struct state *state, struct step *step,
         if (indices[0] != v || size != 1) {
             char *addr = value_string(av);
             char *val = value_string(v);
-            value_ctx_failure(step->ctx, &step->engine, "Store %s: value is %s", addr, val);
+            value_ctx_failure(step->ctx, &step->engine, "Store bad address %s: value is %s", addr, val);
             free(addr);
             free(val);
             return false;
@@ -2181,38 +2161,6 @@ static bool store_match(struct state *state, struct step *step,
         return true;
     }
 
-    if (indices[0] == VALUE_PC_LOCAL) {
-        if (step->keep_callstack) {
-            char *x = indices_string(indices, size);
-            strbuf_printf(&step->explain, "pop value (#+) and address (%s) and store locally", x);
-            step->explain_args[step->explain_nargs++] = v;
-            free(x);
-        }
-
-        bool result;
-        if (indices[1] == this_atom) {      // TODOADDR
-            assert(size > 2);
-            if (!step->ctx->extended) {
-                value_ctx_extend(step->ctx);
-            }
-            if (VALUE_TYPE(ctx_this(step->ctx)) != VALUE_DICT) {
-                value_ctx_failure(step->ctx, &step->engine, "Store: 'this' is not a dictionary");
-                return false;
-            }
-            result = ind_trystore(ctx_this(step->ctx), &indices[2], size - 2, v, &step->engine, &ctx_this(step->ctx));
-        }
-
-        else {
-            result = ind_trystore(step->ctx->vars, indices + 1, size - 1, v, &step->engine, &step->ctx->vars);
-        }
-        if (!result) {
-            char *x = indices_string(indices, size);
-            value_ctx_failure(step->ctx, &step->engine, "Store: bad local address: %s", x);
-            free(x);
-            return false;
-        }
-        return true;
-    }
     if (indices[0] != VALUE_PC_SHARED) {
         char *p = value_string(av);
         value_ctx_failure(step->ctx, &step->engine, "Store %s: not the address of a shared variable", p);
@@ -2226,8 +2174,9 @@ static bool store_match(struct state *state, struct step *step,
     ai_add(step, indices, size, is_sequential(global->seqs, indices, size));
     if (step->keep_callstack) {
         char *x = indices_string(indices, size);
-        strbuf_printf(&step->explain, "pop value (#+) and address (%s) and store", x);
+        strbuf_printf(&step->explain, "pop value (#+) and address (#+) and store", x);
         step->explain_args[step->explain_nargs++] = v;
+        step->explain_args[step->explain_nargs++] = av;
         free(x);
     }
 
@@ -2269,10 +2218,9 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
             return;
         }
         if (step->keep_callstack) {
-            char *x = indices_string(es->indices, es->n);
-            strbuf_printf(&step->explain, "pop value (#+) and store into variable %s", x + 1);
+            strbuf_printf(&step->explain, "pop value (#+) and store into variable #@");
             step->explain_args[step->explain_nargs++] = v;
-            free(x);
+            step->explain_args[step->explain_nargs++] = es->address;
         }
         ai_add(step, es->indices, es->n,
                     is_sequential(global->seqs, es->indices, es->n));
@@ -2743,6 +2691,7 @@ void *init_Store(struct dict *map, struct engine *engine){
         assert(index->type == JV_MAP);
         env->indices[i + 1] = value_from_json(engine, index->u.map);
     }
+    env->address = value_put_address(engine, env->indices, env->n * sizeof(hvalue_t));
     return env;
 }
 

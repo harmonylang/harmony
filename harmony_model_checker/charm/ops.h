@@ -124,6 +124,7 @@ struct env_Stop {
 struct env_Store {
     hvalue_t *indices;
     unsigned int n;
+    hvalue_t address;
 };
 
 struct env_StoreVar {

@@ -678,6 +678,10 @@ function explain_expand(e) {
         else if (s[i] == '+') {
           result += json_string(e.args[arg++]);
         }
+        else if (s[i] == '@') {
+          var addr = json_string(e.args[arg++]);
+          result += addr.slice(1);
+        }
         else {
           result += json_string(e.args[parseInt(s[i])]);
         }

@@ -500,7 +500,7 @@ static void strbuf_indices_string(struct strbuf *sb, const hvalue_t *vec, int si
     int index = 1;
     if (VALUE_TYPE(vec[0]) == VALUE_PC) {
         int pc = (int) VALUE_FROM_PC(vec[0]);
-        if (pc == -1) {     // shared or method variable
+        if (pc == -1) {                  // shared variable
             char *s = value_string(vec[1]);     // TODO.  Inefficient
             assert(s[0] == '"');
             int len = strlen(s);
