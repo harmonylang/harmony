@@ -212,6 +212,45 @@ class Summarize:
             result += "[" + str(k) + "]"
         return result
 
+    def value_eq(self, x, y):
+        return x == y
+        # if x["type"] != y["type"]:
+        #     return False
+        # return json.dumps(x) == json.dumps(y)   # TODO
+
+    def value_lookup_list(self, path, value):
+        assert path != []
+        if path[0]["type"] != "int":
+            return None
+        idx = int(path[0]["value"])
+        if idx >= 0 and idx < len(value):
+            return self.value_lookup(path[1:], value[idx])
+        return None
+
+    def value_lookup_dict(self, path, value):
+        assert path != []
+        for (k, v) in value:
+            if self.value_eq(k, path[0]):
+                return self.value_lookup(path[1:], v)
+        return None
+
+    def value_lookup(self, path, value):
+        if path == []:
+            return value
+        if value["type"] == "list":
+            return self.value_lookup_list(path, value["value"])
+        if value["type"] == "dict":
+            return self.value_lookup_dict(path, value["value"])
+        return None
+
+    def lookup(self, path, dict):
+        # print("vl", path, dict)
+        assert path != []
+        assert path[0]["type"] == "atom"
+        if path[0]["value"] not in dict:
+            return None
+        return self.value_lookup(path[1:], dict[path[0]["value"]])
+
     def listcmp(self, path, before, after, loc, f):
         alen = len(after["value"])
         blen = len(before["value"])
@@ -315,21 +354,33 @@ class Summarize:
             pc = int(step["pc"])
             loc = self.locations[pc]
 
-            if self.code[pc]["op"] == "Store":
+            if "interrupt" in step:
+                self.print_loc("    ", loc, f)
+                print("Interrupted: jump to interrupt handler first", file=f)
+            elif self.code[pc]["op"] == "Store":
                 self.print_loc("    ", loc, f)
                 args = step["explain2"]["args"]
-                val = verbose_string(args[0])
-                var = verbose_string(args[1])
-                print("Set %s to %s"%(var[1:], val), file=f)
+                if args == []:
+                    print("Store: no args (pc=%d)???"%pc, file=f)
+                else:
+                    val = verbose_string(args[0])
+                    assert args[1]["type"] == "address"
+                    var = verbose_string(args[1])
+                    oldval = self.lookup(args[1]["args"], self.shared)
+                    if oldval == None:
+                        print("Initialize %s to %s"%(var[1:], val), file=f)
+                    elif self.value_eq(args[0], oldval):
+                        print("Set %s to %s (unchanged)"%(var[1:], val), file=f)
+                    else:
+                        print("Set %s to %s (was %s)"%(var[1:], val, verbose_string(oldval)), file=f)
             elif "shared" in step and step["shared"] != self.shared:
                 self.deepdiff([], self.shared, step["shared"], loc, f)
                 # print("  Set global variables in line %d: " % loc["line"], end="", file=f)
                 # verbose_print_vars(f, step["shared"])
+            
+            if "shared" in step:
                 self.shared = step["shared"]
 
-            if "interrupt" in step:
-                self.print_loc("    ", loc, f)
-                print("Interrupted: jump to interrupt handler first", file=f)
             if "choose" in step:
                 self.print_loc("    ", loc, f)
                 print("Choose %s"%verbose_string(step["choose"]), file=f)
