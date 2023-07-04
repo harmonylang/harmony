@@ -229,9 +229,9 @@ class Summarize:
 
     def value_lookup_dict(self, path, value):
         assert path != []
-        for (k, v) in value:
-            if self.value_eq(k, path[0]):
-                return self.value_lookup(path[1:], v)
+        for kv in value:
+            if self.value_eq(kv["key"], path[0]):
+                return self.value_lookup(path[1:], kv["value"])
         return None
 
     def value_lookup(self, path, value):
