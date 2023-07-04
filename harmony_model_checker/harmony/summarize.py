@@ -310,7 +310,7 @@ class Summarize:
             for ctx in self.contexts:
                 if ctx["tid"] == self.tid:
                     if ctx["mode"] == "terminated":
-                        print("    * **Terminated**", file=f)
+                        print("    * **Thread terminated**", file=f)
                     else:
                         mode = get_mode(ctx)
                         # if mode != "runnable":
@@ -337,7 +337,7 @@ class Summarize:
             # if self.contexts != []:
             #     print("other threads:", file=f)
             #     self.dump_contexts(f, self.tid)
-            if len(self.shared) != 0:
+            if False and len(self.shared) != 0:
                 print("    * Current values of global variables:", file=f)
                 for k, v in self.shared.items():
                     print("        * %s: %s"%(k, verbose_string(v)), file=f)
