@@ -78,10 +78,16 @@ def reduce(f, d, z) returns result:
     result = foldl(d, f, z)
 
 # Return a permutation of set s
-def permute(s) returns perm:
+def permuted(s) returns perm:
     perm = []
     var c = s
     while c != {}:
         let e = choose c:
             perm += [ e, ]
             c -= { e }
+
+# Return a list of elements satisfying the condition
+def filter(cond, s) returns t:
+    t = []
+    for e in s where cond(e):
+        t += [e,]

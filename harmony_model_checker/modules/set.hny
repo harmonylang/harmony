@@ -58,3 +58,9 @@ def reduce(f, d, z) returns result:
     result = z
     for e in d:
         result = f(result, e)
+
+# Return a set of elements satisfying the condition
+def filter(cond, s) returns t:
+    t = {}
+    for e in s where cond(e):
+        t |= {e}

@@ -1,6 +1,6 @@
 const N = 4
 
-sq = [ permute({ 1 .. N }) for _ in { 1 .. N } ]
+sq = [ permuted({ 1 .. N }) for _ in { 1 .. N } ]
 
 def is_a_solution() returns good:
     good = True
