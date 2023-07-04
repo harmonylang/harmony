@@ -88,6 +88,8 @@ def permuted(s) returns perm:
 
 # Return a list of elements satisfying the condition
 def filter(cond, s) returns t:
-    t = []
-    for e in s where cond(e):
-        t += [e,]
+    t = [ e for e in s where cond(e) ]
+
+# Return a list of elements mapped by f
+def map(f, s) returns t:
+    t = [ f(e) for e in s ]
