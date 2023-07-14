@@ -324,6 +324,7 @@ class Summarize:
             # print(file=f)
             # print("================================================", file=f)
             print("* Schedule thread T%s: "%mas["tid"], end="", file=f)
+            # print("STATE(", self.shared, ")", file=f)
             ctx = mas["context"]
             trace = ctx["trace"]
             verbose_print_trace(f, trace)
@@ -344,7 +345,7 @@ class Summarize:
             # print("================================================", file=f)
             self.lastmis = mis[0]
             self.start = int(self.lastmis["pc"])
-            if "shared" in self.lastmis:
+            if False and "shared" in self.lastmis:
                 self.shared = self.lastmis["shared"]
             lastpc = 0
             self.steps = ""
@@ -360,6 +361,7 @@ class Summarize:
             elif self.code[pc]["op"] == "Store":
                 self.print_loc("    ", loc, f)
                 args = step["explain2"]["args"]
+                # print("STORE(", self.shared, args, ")", file=f)
                 if args == []:
                     print("Store: no args (pc=%d)???"%pc, file=f)
                 else:

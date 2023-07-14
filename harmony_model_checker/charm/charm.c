@@ -1292,9 +1292,9 @@ void path_recompute(struct global *global){
     memcpy(sc, node->state, state_size(node->state));
 
     for (unsigned int i = 0; i < global->nmacrosteps; i++) {
-        // printf("REC %u/%u\n", i, global->nmacrosteps);
         struct macrostep *macro = global->macrosteps[i];
         struct edge *e = macro->edge;
+        // printf("REC %u/%u src=%u dst=%u bef=%p aft=%p\n", i, global->nmacrosteps, e->src->id, e->dst->id, (void *) e->ctx, (void *) e->after);
 
         /* Find the starting context in the list of processes.  Prefer
          * sticking with the same pid if possible.
@@ -1606,6 +1606,10 @@ static void path_output_macrostep(struct global *global, FILE *file, struct macr
     fprintf(file, "    }");
 }
 
+// Two edges conflict if they access the same variable and at least one
+// of the accesses is a store.  An access is identified by a path.  Two
+// accesses are to the same variable if one of the paths is a prefix of
+// the other.
 bool path_edge_conflict(
     struct edge *edge,
     struct edge *edge2
@@ -1654,7 +1658,8 @@ again:
     ncbs = 0;
     current = global->macrosteps[0]->edge->after;
 
-    // Figure out where the actual context switches are
+    // Figure out where the actual context switches are.  Each context
+    // block is a sequence of edges executed by the same thread
     for (unsigned int i = 1; i < global->nmacrosteps; i++) {
         if (global->macrosteps[i]->edge->ctx != current) {
             cbs[ncbs].after = current;
@@ -1675,13 +1680,15 @@ again:
     }
 #endif
 
-    // Now try to reorder and combine context blocks.
+    // Now try to reorder and combine context blocks.  Context block 0
+    // is for the initial thread, so we can skip it
     for (unsigned int i = 1; i < ncbs; i++) {
         // Find the next context block for the same thread, if any.  Stop
         // if there are any conflicts
         for (unsigned int j = i + 1; j < ncbs; j++) {
             if (cbs[i].after == cbs[j].before) {
-                // Combine block i with block j
+                // printf("SWAP %u (%u %u) %u (%u %u)\n", i, cbs[i].start, cbs[i].end, j, cbs[j].start, cbs[j].end);
+                // Combine block i with block j by moving block i up
                 // First save block i
                 unsigned int size = (cbs[i].end - cbs[i].start) *
                                                 sizeof(struct macrostep *);
@@ -1742,6 +1749,8 @@ again:
         //        happen for the fake edges that are added at the
         //        end in the case of invariant or finally violations.
         if (e == NULL) {
+            if (i != global->nmacrosteps - 1)
+                printf("KLUDGE %d %d\n", i, global->nmacrosteps - 1);
             assert(i == global->nmacrosteps - 1);
             break;
         }
@@ -3103,6 +3112,19 @@ int main(int argc, char **argv){
                             free(p);
                         }
                         fprintf(df, "\n");
+                    }
+                    if (edge->ai != NULL) {
+                        fprintf(df, "            ai:\n");
+                        for (struct access_info *ai = edge->ai; ai != NULL; ai = ai->next) {
+                            char *p = indices_string(ai->indices, ai->n);
+                            if (ai->load) {
+                                fprintf(df, "              load %s\n", p);
+                            }
+                            else {
+                                fprintf(df, "              store %s\n", p);
+                            }
+                            free(p);
+                        }
                     }
                 }
                 fprintf(df, "    bwd:\n");

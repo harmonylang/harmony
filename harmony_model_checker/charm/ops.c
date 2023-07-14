@@ -95,6 +95,10 @@ static inline hvalue_t ctx_peep(struct context *ctx){
 }
 
 static bool is_sequential(hvalue_t seqvars, hvalue_t *indices, unsigned int n){
+    if (seqvars == VALUE_SET) {
+        return false;
+    }
+
     assert(VALUE_TYPE(seqvars) == VALUE_SET);
     unsigned int size;
     hvalue_t *seqs = value_get(seqvars, &size);
@@ -1037,13 +1041,14 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
 }
 
 // For tracking data races
-static void ai_add(struct step *step, hvalue_t *indices, unsigned int n, bool load){
+static void ai_add(struct global *global, struct step *step, hvalue_t *indices, unsigned int n, bool load){
     struct allocator *al = step->engine.allocator;
     if (al != NULL) {
         struct access_info *ai = (*al->alloc)(al->ctx, sizeof(*ai), true, false);
         ai->indices = indices;
         ai->n = n;
-        ai->atomic = step->ctx->atomic > 0;
+        ai->atomic = (step->ctx->atomic > 0) ||
+                        is_sequential(global->seqs, indices, n);
         ai->load = load;
         ai->next = step->ai;
         step->ai = ai;
@@ -1082,7 +1087,7 @@ void op_Del(const void *env, struct state *state, struct step *step, struct glob
             return;
         }
         size /= sizeof(hvalue_t);
-        ai_add(step, indices, size, false);
+        ai_add(global, step, indices, size, false);
         hvalue_t nd;
         if (!ind_remove(state->vars, indices + 1, size - 1, &step->engine, &nd)) {
             value_ctx_failure(step->ctx, &step->engine, "Del: no such variable");
@@ -1093,7 +1098,7 @@ void op_Del(const void *env, struct state *state, struct step *step, struct glob
         }
     }
     else {
-        ai_add(step, ed->indices, ed->n, false);
+        ai_add(global, step, ed->indices, ed->n, false);
         hvalue_t nd;
         if (!ind_remove(state->vars, ed->indices + 1, ed->n - 1, &step->engine, &nd)) {
             value_ctx_failure(step->ctx, &step->engine, "Del: bad variable");
@@ -1528,7 +1533,7 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
             // Keep track for race detection
             // TODO.  Should it check the entire address?  Maybe part
             //        of it is not memory.
-            ai_add(step, indices, size, true);
+            ai_add(global, step, indices, size, true);
 
             do_Load(state, step, global, av, state->vars, indices + 1, size - 1);
         }
@@ -1551,7 +1556,7 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
             return;
         }
 
-        ai_add(step, el->indices, el->n, true);
+        ai_add(global, step, el->indices, el->n, true);
         hvalue_t v;
         unsigned int k = ind_tryload(&step->engine, state->vars, el->indices + 1, el->n - 1, &v);
         if (k != el->n - 1) {
@@ -2171,7 +2176,7 @@ static bool store_match(struct state *state, struct step *step,
         value_ctx_failure(step->ctx, &step->engine, "Can't update state in assert or invariant (including acquiring locks)");
         return false;
     }
-    ai_add(step, indices, size, is_sequential(global->seqs, indices, size));
+    ai_add(global, step, indices, size, false);
     if (step->keep_callstack) {
         char *x = indices_string(indices, size);
         strbuf_printf(&step->explain, "pop value (#+) and address (#+) and store", x);
@@ -2222,8 +2227,7 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
             step->explain_args[step->explain_nargs++] = v;
             step->explain_args[step->explain_nargs++] = es->address;
         }
-        ai_add(step, es->indices, es->n,
-                    is_sequential(global->seqs, es->indices, es->n));
+        ai_add(global, step, es->indices, es->n, false);
         if (es->n == 2 && !step->ctx->initial) {
             hvalue_t newvars;
             if (!value_dict_trystore(&step->engine, state->vars, es->indices[1], v, false, &newvars)){
