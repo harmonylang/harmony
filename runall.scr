@@ -59,6 +59,11 @@ echo ==============
 ./harmony --noweb code/Peterson.hny
 
 echo ==============
+echo PetersonBroken
+echo ==============
+./harmony --noweb code/PetersonBroken.hny
+
+echo ==============
 echo PetersonInductive
 echo ==============
 ./harmony --noweb code/PetersonInductive.hny
