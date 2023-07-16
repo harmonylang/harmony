@@ -737,7 +737,7 @@ static void ai_add(struct global *global, struct step *step, hvalue_t *indices, 
 }
 
 // Built-in alloc.malloc method
-// TODO.  DISABLED
+// TODO.  DISABLED.  Two problems: ai_add and atomic mode
 void op_Alloc_Malloc(const void *env, struct state *state, struct step *step, struct global *global){
     hvalue_t arg = ctx_pop(step->ctx);
     hvalue_t next = value_dict_load(state->vars, alloc_next_atom);
