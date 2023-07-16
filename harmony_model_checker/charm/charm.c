@@ -1645,7 +1645,7 @@ static void path_optimize(struct global *global){
 
 again:
 
-// #ifdef notdef
+#ifdef notdef
     current = 0;
     printf("Path:");
     for (unsigned int i = 0; i < global->nmacrosteps; i++) {
@@ -1668,7 +1668,7 @@ again:
         current = e->after;
     }
     printf(" %u\n", global->macrosteps[global->nmacrosteps - 1]->edge->dst->id);
-// #endif
+#endif
 
     cbs = calloc(1, sizeof(*cbs));
     cbs->before = global->macrosteps[0]->edge->ctx;
@@ -1704,7 +1704,7 @@ again:
         // if there are any conflicts
         for (unsigned int j = i + 1; j < ncbs; j++) {
             if (cbs[i].after == cbs[j].before) {
-                printf("SWAP %u (%u %u) %u (%u %u)\n", i, cbs[i].start, cbs[i].end, j, cbs[j].start, cbs[j].end);
+                // printf("SWAP %u (%u %u) %u (%u %u)\n", i, cbs[i].start, cbs[i].end, j, cbs[j].start, cbs[j].end);
                 // Combine block i with block j by moving block i up
                 // First save block i
                 unsigned int size = (cbs[i].end - cbs[i].start) *
