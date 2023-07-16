@@ -715,7 +715,29 @@ static void do_return(struct state *state, struct step *step, struct global *glo
     }
 }
 
+// For tracking data races
+static void ai_add(struct global *global, struct step *step, hvalue_t *indices, unsigned int n, bool load){
+    struct allocator *al = step->engine.allocator;
+    if (al != NULL) {
+        // Find the end of the list
+        struct access_info **pai, *ai;
+        for (pai = &step->ai; (ai = *pai) != NULL; pai = &ai->next)
+            ;
+
+        // Add a new entry
+        ai = (*al->alloc)(al->ctx, sizeof(*ai), true, false);
+        ai->indices = indices;
+        ai->n = n;
+        ai->atomic = (step->ctx->atomic > 0) ||
+                        is_sequential(global->seqs, indices, n);
+        ai->load = load;
+        ai->next = NULL;
+        *pai = ai;
+    }
+}
+
 // Built-in alloc.malloc method
+// TODO.  DISABLED
 void op_Alloc_Malloc(const void *env, struct state *state, struct step *step, struct global *global){
     hvalue_t arg = ctx_pop(step->ctx);
     hvalue_t next = value_dict_load(state->vars, alloc_next_atom);
@@ -725,11 +747,18 @@ void op_Alloc_Malloc(const void *env, struct state *state, struct step *step, st
     addr[0] = VALUE_PC_SHARED;
     addr[1] = alloc_pool_atom;
     addr[2] = next;
+    // TODO.  THIS CANNOT WORK AS addr IS NOT COPIED
+    ai_add(global, step, addr, 3, false);
     if (!ind_trystore(state->vars, addr + 1, 2, arg, &step->engine, &state->vars)) {
         panic("op_Alloc_Malloc: store value failed");
     }
 
     // Increment next
+    hvalue_t addr2[2];
+    addr2[0] = VALUE_PC_SHARED;
+    addr2[1] = alloc_next_atom;
+    // TODO.  THIS CANNOT WORK AS addr IS NOT COPIED
+    ai_add(global, step, addr2, 2, false);
     next = VALUE_TO_INT(VALUE_FROM_INT(next) + 1);
     state->vars = value_dict_store(&step->engine, state->vars, alloc_next_atom, next);
 
@@ -1038,21 +1067,6 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
         return;
     }
     value_ctx_failure(step->ctx, &step->engine, "op_Cut: not an iterable type");
-}
-
-// For tracking data races
-static void ai_add(struct global *global, struct step *step, hvalue_t *indices, unsigned int n, bool load){
-    struct allocator *al = step->engine.allocator;
-    if (al != NULL) {
-        struct access_info *ai = (*al->alloc)(al->ctx, sizeof(*ai), true, false);
-        ai->indices = indices;
-        ai->n = n;
-        ai->atomic = (step->ctx->atomic > 0) ||
-                        is_sequential(global->seqs, indices, n);
-        ai->load = load;
-        ai->next = step->ai;
-        step->ai = ai;
-    }
 }
 
 void op_Del(const void *env, struct state *state, struct step *step, struct global *global){
@@ -2075,6 +2089,8 @@ void op_Stop(const void *env, struct state *state, struct step *step, struct glo
         unsigned int size;
         hvalue_t *indices = value_get(av, &size);
         size /= sizeof(hvalue_t);
+        ai_add(global, step, indices, size, false);
+        // TODO: check if indices[0] == VALUE_PC_SHARED?
         if (!ind_trystore(state->vars, indices + 1, size - 1, v, &step->engine, &state->vars)) {
             char *x = indices_string(indices, size);
             value_ctx_failure(step->ctx, &step->engine, "Stop: bad address: %s", x);
@@ -2085,6 +2101,8 @@ void op_Stop(const void *env, struct state *state, struct step *step, struct glo
         step->ctx->stopped = true;
         step->ctx->pc++;
         hvalue_t v = value_put_context(&step->engine, step->ctx);
+        ai_add(global, step, es->indices, es->n, false);
+        // TODO: check if indices[0] == VALUE_PC_SHARED?
         if (!ind_trystore(state->vars, es->indices + 1, es->n - 1, v, &step->engine, &state->vars)) {
             value_ctx_failure(step->ctx, &step->engine, "Stop: bad variable");
         }

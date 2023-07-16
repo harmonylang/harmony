@@ -1,7 +1,8 @@
 pool = {:}
 next = 0
 
-builtin malloc "alloc$malloc"
+# builtin malloc "alloc$malloc"
+# TODO.  builtin malloc temporarily disabled
 def malloc(v) returns copy:
     atomically:
         pool[next] = v

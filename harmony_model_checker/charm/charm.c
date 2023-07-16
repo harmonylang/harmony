@@ -1643,16 +1643,33 @@ static void path_optimize(struct global *global){
     unsigned int ncbs;
     hvalue_t current;
 
-#ifdef notdef
-    printf("Original path:");
+again:
+
+// #ifdef notdef
+    current = 0;
+    printf("Path:");
     for (unsigned int i = 0; i < global->nmacrosteps; i++) {
         struct edge *e = global->macrosteps[i]->edge;
-        printf(" %u", e->dst->id);
+        if (e->ctx != current) {
+            printf("\n");
+        }
+        printf(" %u [", e->src->id);
+        for (struct access_info *ai = e->ai; ai != NULL; ai = ai->next) {
+            char *p = indices_string(ai->indices, ai->n);
+            if (ai->load) {
+                printf(" load %s", p);
+            }
+            else {
+                printf(" store %s", p);
+            }
+            free(p);
+        }
+        printf(" ]");
+        current = e->after;
     }
-    printf("\n");
-#endif
+    printf(" %u\n", global->macrosteps[global->nmacrosteps - 1]->edge->dst->id);
+// #endif
 
-again:
     cbs = calloc(1, sizeof(*cbs));
     cbs->before = global->macrosteps[0]->edge->ctx;
     ncbs = 0;
@@ -1687,7 +1704,7 @@ again:
         // if there are any conflicts
         for (unsigned int j = i + 1; j < ncbs; j++) {
             if (cbs[i].after == cbs[j].before) {
-                // printf("SWAP %u (%u %u) %u (%u %u)\n", i, cbs[i].start, cbs[i].end, j, cbs[j].start, cbs[j].end);
+                printf("SWAP %u (%u %u) %u (%u %u)\n", i, cbs[i].start, cbs[i].end, j, cbs[j].start, cbs[j].end);
                 // Combine block i with block j by moving block i up
                 // First save block i
                 unsigned int size = (cbs[i].end - cbs[i].start) *
