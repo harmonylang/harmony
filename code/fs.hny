@@ -3,18 +3,14 @@ from alloc import *
 from RW import *
 import list
 
-#### ACTOR CODE ####
-
-# Spawn an actor with main function func and return queue for it
-def actor(func, args) returns q:
-    q = malloc(Queue())
-    spawn eternal func(q, args)
+const N_BLOCKS = 10
+const INODES_PER_BLOCK = 2      # number of inodes that fit in a block
+const INDIR_PER_BLOCK = 4       # number of block pointers per block
 
 #### BLOCK SERVER INTERFACE ####
 #
-# Both the disk and file servers are block servers.  This disk server
-# has only one inode: 0.  In the interfaces below, req_q is the queue
-# for requests, while res_q is the queue for responses.
+# Both the disk and file servers are block servers.  In the interfaces below,
+# req_q is the queue for requests, while res_q is the queue for responses.
 
 def bs_getsize(req_q, res_q, ino) returns size:
     put(req_q, { .type: "getsize", .ino: ino, .q: res_q })
@@ -31,9 +27,7 @@ def bs_write(req_q, res_q, ino, offset, data):
 
 #### DISK CODE ####
 
-const N_BLOCKS = 10
-
-disk = [None,] * N_BLOCKS
+disk = [None,] * N_BLOCKS            # Shared disk
 
 def disk_getsize() returns size:
     size = N_BLOCKS
@@ -52,10 +46,6 @@ def disk_write(bno, block):
 #   - free: not in use
 #   - data: a data block
 #   - indir: an indirect block, with pointers to other blocks
-
-const INODES_PER_BLOCK = 2      # number of inodes that fit in a block
-const INDIR_PER_BLOCK = 4       # number of block pointers per block
-
 # An inode has a pointer to a direct block and a pointer to an indirect block,
 # so the maximum file size is 1 + INDIR_PER_BLOCK.
 
@@ -210,14 +200,14 @@ def fs_handle_request(res_q, fs_state, req):
                 read_release(?fs_state->ib_locks[ib])
 
 # A worker thread handles client requests
-def fs_worker(q, fs_state):
+def fs_worker(fs_state):
     let res_q = malloc(Queue()):
         while True:
-            fs_handle_request(res_q, fs_state, get(q))
+            fs_handle_request(res_q, fs_state, get(?file_queue))
 
 # The file server.  Initialize the file system and spawn worker threads
-def file_server(q, (n_inode_blocks, n_workers)):
-    # The in-memory state of the file server consists of:
+def file_server(n_inode_blocks, n_workers):
+    # The in-memory shared state of the file server consists of:
     #   super_lock: lock on the superblock (and free list in particular)
     #   ib_locks:   read/write locks on inode blocks
     let fs_state = malloc({
@@ -229,21 +219,21 @@ def file_server(q, (n_inode_blocks, n_workers)):
 
         # Start worker threads to handle client requests
         for i in { 1 .. n_workers }:
-            spawn eternal fs_worker(q, fs_state)
+            spawn eternal fs_worker(fs_state)
 
 #### TESTING CODE ####
 
-const N_INODE_BLOCKS = 2
-const N_WORKERS = 2
-file_queue = actor(file_server, (N_INODE_BLOCKS, N_WORKERS))
-
 def client(ino, offset, string):
     let res_q = malloc(Queue()):
-        bs_write(file_queue, res_q, ino, offset, string)
-        let data = bs_read(file_queue, res_q, ino, offset):
+        bs_write(?file_queue, res_q, ino, offset, string)
+        let data = bs_read(?file_queue, res_q, ino, offset):
             assert data == string, (data, string)
-        let size = bs_getsize(file_queue, res_q, ino):
+        let size = bs_getsize(?file_queue, res_q, ino):
             assert size == (offset + 1), (size, offset)
 
+# Shared queue for clients to send requests to the workers
+file_queue = Queue()
+
+spawn file_server(2, 2)
 spawn client(1, 1, "hello")
 spawn client(2, 1, "world")
