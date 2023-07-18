@@ -1,7 +1,7 @@
-from synch import *
-from alloc import *
-from RW import *
-import list
+from synch import *             # shared queue for file server and lock for superblock
+from alloc import *             # malloc/free
+from RW import *                # read/write locks for inode blocks
+from list import subseq         # list slicing
 
 const N_BLOCKS = 10
 const INODES_PER_BLOCK = 2      # number of inodes that fit in a block
@@ -85,8 +85,7 @@ def fs_alloc(res_q, fs_state) returns bno:
                 disk_write(0, super)
             else:
                 bno = fb[len(fb) - 1]
-                disk_write(super.free,
-                    list.subseq(fb, 0, len(fb) - 1))
+                disk_write(super.free, subseq(fb, 0, len(fb) - 1))
     release(?fs_state->super_lock)
 
 # Initialize the file system by writing the superblock, the i-node blocks,
