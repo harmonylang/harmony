@@ -106,19 +106,22 @@ def fs_alloc(res_q, fs_state) returns bno:
 
 # Initialize the file system by writing the superblock, the i-node blocks,
 # and creating the free list.
-def fs_init(res_q, fs_state, n_inode_blocks):
-    # Initialize the superblock
-    bs_write(fs_state->disk, res_q, 0, 0, { .n_inode_blocks: n_inode_blocks, .free: None })
+def fs_init(fs_state, n_inode_blocks):
+    let res_q = malloc(Queue()):
+        # Initialize the superblock
+        bs_write(fs_state->disk, res_q, 0, 0, { .n_inode_blocks: n_inode_blocks, .free: None })
 
-    # Initialize the i-node blocks
-    for i in { 1 .. n_inode_blocks }:
-        bs_write(fs_state->disk, res_q, 0, i, [
-            { .direct: None, .indir: None, .size: 0 }, ] * INODES_PER_BLOCK)
+        # Initialize the i-node blocks
+        for i in { 1 .. n_inode_blocks }:
+            bs_write(fs_state->disk, res_q, 0, i, [
+                { .direct: None, .indir: None, .size: 0 }, ] * INODES_PER_BLOCK)
 
-    # Initialize the free list
-    let n_disk_blocks = bs_getsize(fs_state->disk, res_q, 0):
-        for i in { n_inode_blocks + 1 .. n_disk_blocks - 1 }:
-            fs_release(res_q, fs_state, i)
+        # Initialize the free list
+        let n_disk_blocks = bs_getsize(fs_state->disk, res_q, 0):
+            for i in { n_inode_blocks + 1 .. n_disk_blocks - 1 }:
+                fs_release(res_q, fs_state, i)
+
+        free(res_q)
 
 # Handle a request for the file server.  res_q is the response queue to the
 # client, disk is the request queue to the disk server, and req is the request
@@ -219,23 +222,20 @@ def fs_worker(q, fs_state):
 
 # The file server.  Initialize the file system and spawn worker threads
 def file_server(q, (disk, n_inode_blocks, n_workers)):
-    let res_q = malloc(Queue())
-    let disk_size = bs_getsize(disk, res_q, 0):
-        # The in-memory state of the file server consists of:
-        #   disk:       the queue to the disk server
-        #   super_lock: lock on the superblock (and free list in particular)
-        #   ib_locks:   read/write locks on inode blocks
-        let fs_state = malloc({
-                .disk: disk, .super_lock: Lock(),
-                .ib_locks: [ RWlock(), ] * n_inode_blocks }):
+    # The in-memory state of the file server consists of:
+    #   disk:       the queue to the disk server
+    #   super_lock: lock on the superblock (and free list in particular)
+    #   ib_locks:   read/write locks on inode blocks
+    let fs_state = malloc({
+            .disk: disk, .super_lock: Lock(),
+            .ib_locks: [ RWlock(), ] * n_inode_blocks }):
 
-            # Initialize the file system on disk
-            fs_init(res_q, fs_state, n_inode_blocks)
+        # Initialize the file system on disk
+        fs_init(fs_state, n_inode_blocks)
 
-            # Start worker threads to handle client requests
-            for i in { 1 .. n_workers }:
-                spawn eternal fs_worker(q, fs_state)
-        free(res_q)
+        # Start worker threads to handle client requests
+        for i in { 1 .. n_workers }:
+            spawn eternal fs_worker(q, fs_state)
 
 #### TESTING CODE ####
 
