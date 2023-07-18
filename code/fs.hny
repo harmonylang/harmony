@@ -29,21 +29,20 @@ def bs_write(req_q, res_q, ino, offset, data):
     let status = get(res_q):
         assert status == "ok"
 
-#### DISK SERVER CODE ####
+#### DISK CODE ####
 
-def disk_server(q, n_disk_blocks):
-    var blocks = [None,] * n_disk_blocks
-    while True:
-        let req = get(q):
-            assert req.type in { "getsize", "read", "write" }
-            assert req.ino == 0
-            if req.type == "getsize":
-                put(req.q, n_disk_blocks)
-            elif req.type == "read":
-                put(req.q, blocks[req.offset])
-            else:
-                blocks[req.offset] = req.data
-                put(req.q, "ok")
+const N_BLOCKS = 10
+
+disk = [None,] * N_BLOCKS
+
+def disk_getsize() returns size:
+    size = N_BLOCKS
+
+def disk_read(bno) returns block:
+    block = disk[bno]
+
+def disk_write(bno, block):
+    disk[bno] = block
 
 #### FILE SERVER CODE ####
 #
@@ -60,47 +59,43 @@ const INDIR_PER_BLOCK = 4       # number of block pointers per block
 # An inode has a pointer to a direct block and a pointer to an indirect block,
 # so the maximum file size is 1 + INDIR_PER_BLOCK.
 
-# The superblock is in block 0
-def fs_get_superblock(res_q, disk) returns super:
-    super = bs_read(disk, res_q, 0, 0)
-
 # Put block bno on the free list.  The free list is a linked list of
 # indirect blocks.  The first entry in a free list block points to the
 # next free list block.  The other entries point to free blocks.  The
 # superblock points to the first free list block.
 def fs_release(res_q, fs_state, bno):
     acquire(?fs_state->super_lock)
-    var super = fs_get_superblock(res_q, fs_state->disk)
+    var super = disk_read(0)
     if super.free == None:
-        bs_write(fs_state->disk, res_q, 0, bno, [ None, ])
+        disk_write(bno, [ None, ])
         super.free = bno
-        bs_write(fs_state->disk, res_q, 0, 0, super)
+        disk_write(0, super)
     else:
-        let fb = bs_read(fs_state->disk, res_q, 0, super.free):
+        let fb = disk_read(super.free):
             if len(fb) == INDIR_PER_BLOCK:
                 # The first free list block is full
-                bs_write(fs_state->disk, res_q, 0, bno, [ super.free, ])
+                disk_write(bno, [ super.free, ])
                 super.free = bno
-                bs_write(fs_state->disk, res_q, 0, 0, super)
+                disk_write(0, super)
             else:
-                bs_write(fs_state->disk, res_q, 0, super.free, fb + [ bno, ])
+                disk_write(super.free, fb + [ bno, ])
     release(?fs_state->super_lock)
 
 # Allocate a disk block
 def fs_alloc(res_q, fs_state) returns bno:
     acquire(?fs_state->super_lock)
-    var super = fs_get_superblock(res_q, fs_state->disk)
+    var super = disk_read(0)
     if super.free == None:
         bno = None
     else:
-        let fb = bs_read(fs_state->disk, res_q, 0, super.free):
+        let fb = disk_read(super.free):
             if len(fb) == 1:
                 bno = super.free
                 super.free = fb[0]
-                bs_write(fs_state->disk, res_q, 0, 0, super)
+                disk_write(0, super)
             else:
                 bno = fb[len(fb) - 1]
-                bs_write(fs_state->disk, res_q, 0, super.free,
+                disk_write(super.free,
                     list.subseq(fb, 0, len(fb) - 1))
     release(?fs_state->super_lock)
 
@@ -109,15 +104,15 @@ def fs_alloc(res_q, fs_state) returns bno:
 def fs_init(fs_state, n_inode_blocks):
     let res_q = malloc(Queue()):
         # Initialize the superblock
-        bs_write(fs_state->disk, res_q, 0, 0, { .n_inode_blocks: n_inode_blocks, .free: None })
+        disk_write(0, { .n_inode_blocks: n_inode_blocks, .free: None })
 
         # Initialize the i-node blocks
         for i in { 1 .. n_inode_blocks }:
-            bs_write(fs_state->disk, res_q, 0, i, [
+            disk_write(i, [
                 { .direct: None, .indir: None, .size: 0 }, ] * INODES_PER_BLOCK)
 
         # Initialize the free list
-        let n_disk_blocks = bs_getsize(fs_state->disk, res_q, 0):
+        let n_disk_blocks = disk_getsize():
             for i in { n_inode_blocks + 1 .. n_disk_blocks - 1 }:
                 fs_release(res_q, fs_state, i)
 
@@ -134,7 +129,7 @@ def fs_handle_request(res_q, fs_state, req):
             read_acquire(?fs_state->ib_locks[ib])
 
         # Read the inode block and extract the inode
-        var inode_block = bs_read(fs_state->disk, res_q, 0, 1 + ib)
+        var inode_block = disk_read(1 + ib)
         var inode = inode_block[req.ino % INODES_PER_BLOCK]
 
         if req.type == "getsize":
@@ -144,22 +139,22 @@ def fs_handle_request(res_q, fs_state, req):
             # Read the direct block.  Return None if there is no direct block.
             if req.offset == 0:
                 if inode.direct == None:
-                    put(req.q, bs_read(fs_state->disk, res_q, 0, None))
+                    put(req.q, disk_read(None))
                 else:
-                    put(req.q, bs_read(fs_state->disk, res_q, 0, inode.direct))
+                    put(req.q, disk_read(inode.direct))
 
             # Read indirectly.  If there is no indirect block return None
             elif inode.indir == None:
-                put(req.q, bs_read(fs_state->disk, res_q, 0, None))
+                put(req.q, disk_read(None))
 
             # Read the indirect block and get the pointer to the data block,
             # which may be None.
             else:
-                let indir = bs_read(fs_state->disk, res_q, 0, inode.indir):
+                let indir = disk_read(inode.indir):
                     if indir[req.offset - 1] == None:
-                        put(req.q, bs_read(fs_state->disk, res_q, 0, None))
+                        put(req.q, disk_read(None))
                     else:
-                        put(req.q, bs_read(fs_state->disk, res_q, 0, indir[req.offset - 1]))
+                        put(req.q, disk_read(indir[req.offset - 1]))
 
         else:
             assert req.type == "write"
@@ -171,8 +166,8 @@ def fs_handle_request(res_q, fs_state, req):
                     assert inode.direct != None
                     inode.size = max(inode.size, 1)
                     inode_block[req.ino % INODES_PER_BLOCK] = inode
-                    bs_write(fs_state->disk, res_q, 0, 1 + ib, inode_block)
-                bs_write(fs_state->disk, res_q, 0, inode.direct, req.data)
+                    disk_write(1 + ib, inode_block)
+                disk_write(inode.direct, req.data)
 
             # Write a block indirectly
             else:
@@ -183,27 +178,27 @@ def fs_handle_request(res_q, fs_state, req):
                     assert inode.indir != None
                     inode.size = max(inode.size, req.offset + 1)
                     inode_block[req.ino % INODES_PER_BLOCK] = inode
-                    bs_write(fs_state->disk, res_q, 0, 1 + ib, inode_block)
+                    disk_write(1 + ib, inode_block)
                     let bno = fs_alloc(res_q, fs_state)
                     let indir = [ bno if i == (req.offset - 1) else None
                                     for i in { 0 .. INODES_PER_BLOCK - 1 } ]:
                         assert bno != None
-                        bs_write(fs_state->disk, res_q, 0, bno, req.data)
-                        bs_write(fs_state->disk, res_q, 0, inode.indir, indir)
+                        disk_write(bno, req.data)
+                        disk_write(inode.indir, indir)
 
                 # Read the indirect block first.  If needed allocate a data block,
                 # otherwise just overwrite the existing data block.
                 else:
-                    var indir = bs_read(fs_state->disk, res_q, 0, inode.indir)
+                    var indir = disk_read(inode.indir)
                     if indir[req.offset - 1] == None:
                         indir[req.offset - 1] = fs_alloc(res_q, fs_state)
                         assert indir[req.offset - 1] != None
-                        bs_write(fs_state->disk, res_q, 0, inode.indir, indir)
-                    bs_write(fs_state->disk, res_q, 0, indir[req.offset - 1], req.data)
+                        disk_write(inode.indir, indir)
+                    disk_write(indir[req.offset - 1], req.data)
                     if inode.size <= req.offset:
                         inode.size = req.offset + 1
                         inode_block[req.ino % INODES_PER_BLOCK] = inode
-                        bs_write(fs_state->disk, res_q, 0, 1 + ib, inode_block)
+                        disk_write(1 + ib, inode_block)
 
                 # Response from write request is ok
                 put(req.q, "ok")
@@ -221,13 +216,12 @@ def fs_worker(q, fs_state):
             fs_handle_request(res_q, fs_state, get(q))
 
 # The file server.  Initialize the file system and spawn worker threads
-def file_server(q, (disk, n_inode_blocks, n_workers)):
+def file_server(q, (n_inode_blocks, n_workers)):
     # The in-memory state of the file server consists of:
-    #   disk:       the queue to the disk server
     #   super_lock: lock on the superblock (and free list in particular)
     #   ib_locks:   read/write locks on inode blocks
     let fs_state = malloc({
-            .disk: disk, .super_lock: Lock(),
+            .super_lock: Lock(),
             .ib_locks: [ RWlock(), ] * n_inode_blocks }):
 
         # Initialize the file system on disk
@@ -239,11 +233,9 @@ def file_server(q, (disk, n_inode_blocks, n_workers)):
 
 #### TESTING CODE ####
 
-const N_DISK_BLOCKS = 10
 const N_INODE_BLOCKS = 2
 const N_WORKERS = 2
-let disk_queue = actor(disk_server, N_DISK_BLOCKS):
-    file_queue = actor(file_server, (disk_queue, N_INODE_BLOCKS, N_WORKERS))
+file_queue = actor(file_server, (N_INODE_BLOCKS, N_WORKERS))
 
 def client(ino, offset, string):
     let res_q = malloc(Queue()):
