@@ -1,0 +1,13 @@
+from alloc import malloc
+
+def disk_init(n_blocks) returns disk:
+    disk = malloc([ None, ] * n_blocks)
+
+def disk_getsize(disk) returns size:
+    size = len !disk
+
+def disk_read(disk, bno) returns block:
+    block = (!disk)[bno]
+
+def disk_write(disk, bno, block):
+    (!disk)[bno] = block
