@@ -1,0 +1,13 @@
+from alloc import malloc
+
+def file_init(n_files) returns fs:
+    fs = malloc([ [], ] * n_files)
+
+def file_getsize(fs, ino) returns size:
+    atomically size = len (!fs)[ino] 
+
+def file_read(fs, ino, offset) returns data:
+    atomically data = (!fs)[ino][offset]
+
+def file_write(fs, ino, offset, data):
+    atomically (!fs)[ino][offset] = data

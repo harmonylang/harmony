@@ -7,24 +7,6 @@ const N_BLOCKS = 10
 const INODES_PER_BLOCK = 2      # number of inodes that fit in a block
 const INDIR_PER_BLOCK = 4       # number of block pointers per block
 
-#### BLOCK SERVER INTERFACE ####
-#
-# Both the disk and file servers are block servers.  In the interfaces below,
-# req_q is the queue for requests, while res_q is the queue for responses.
-
-def bs_getsize(req_q, res_q, ino) returns size:
-    put(req_q, { .type: "getsize", .ino: ino, .q: res_q })
-    size = get(res_q)
-
-def bs_read(req_q, res_q, ino, offset) returns block:
-    put(req_q, { .type: "read", .ino: ino, .offset: offset, .q: res_q })
-    block = get(res_q)
-
-def bs_write(req_q, res_q, ino, offset, data):
-    put(req_q, { .type: "write", .ino: ino, .offset: offset, .data: data, .q: res_q })
-    let status = get(res_q):
-        assert status == "ok"
-
 #### DISK CODE ####
 
 disk = [None,] * N_BLOCKS            # Shared disk
@@ -189,8 +171,8 @@ def fs_handle_request(res_q, fs_state, req):
                         inode_block[req.ino % INODES_PER_BLOCK] = inode
                         disk_write(1 + ib, inode_block)
 
-                # Response from write request is ok
-                put(req.q, "ok")
+            # Response from write request is ok
+            put(req.q, "ok")
 
             # Release the lock on the inode block
             if req.type == "write":
@@ -202,15 +184,16 @@ def fs_handle_request(res_q, fs_state, req):
 def fs_worker(fs_state):
     let res_q = malloc(Queue()):
         while True:
-            fs_handle_request(res_q, fs_state, get(?file_queue))
+            fs_handle_request(res_q, fs_state, get(fs_state->req_q))
 
 # The file server.  Initialize the file system and spawn worker threads
-def file_server(n_inode_blocks, n_workers):
+def file_server(req_q, n_inode_blocks, n_workers):
     # The in-memory shared state of the file server consists of:
+    #   req_q:      the request queue
     #   super_lock: lock on the superblock (and free list in particular)
     #   ib_locks:   read/write locks on inode blocks
     let fs_state = malloc({
-            .super_lock: Lock(),
+            .req_q: req_q, .super_lock: Lock(),
             .ib_locks: [ RWlock(), ] * n_inode_blocks }):
 
         # Initialize the file system on disk
@@ -220,19 +203,28 @@ def file_server(n_inode_blocks, n_workers):
         for i in { 1 .. n_workers }:
             spawn eternal fs_worker(fs_state)
 
-#### TESTING CODE ####
+#### FILE INTERFACE ####
 
-def client(ino, offset, string):
+def file_init(n_files) returns fs:
+    fs = malloc(Queue())
+    spawn file_server(fs,
+        (n_files + (INODES_PER_BLOCK - 1)) / INODES_PER_BLOCK, 2)
+
+def file_getsize(req_q, ino) returns size:
     let res_q = malloc(Queue()):
-        bs_write(?file_queue, res_q, ino, offset, string)
-        let data = bs_read(?file_queue, res_q, ino, offset):
-            assert data == string, (data, string)
-        let size = bs_getsize(?file_queue, res_q, ino):
-            assert size == (offset + 1), (size, offset)
+        put(req_q, { .type: "getsize", .ino: ino, .q: res_q })
+        size = get(res_q)
+        free(res_q)
 
-# Shared queue for clients to send requests to the workers
-file_queue = Queue()
+def file_read(req_q, ino, offset) returns data:
+    let res_q = malloc(Queue()):
+        put(req_q, { .type: "read", .ino: ino, .offset: offset, .q: res_q })
+        data = get(res_q)
+        free(res_q)
 
-spawn file_server(2, 2)
-spawn client(1, 1, "hello")
-spawn client(2, 1, "world")
+def file_write(req_q, ino, offset, data):
+    let res_q = malloc(Queue()):
+        put(req_q, { .type: "write", .ino: ino, .offset: offset, .data: data, .q: res_q })
+        let status = get(res_q):
+            assert status == "ok"
+        free(res_q)

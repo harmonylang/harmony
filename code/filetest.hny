@@ -1,0 +1,15 @@
+from file import *
+
+file_system = file_init(4)
+
+def client(ino, offset, string):
+    for i in { 0 .. offset }:
+        file_write(file_system, ino, i, string)
+    let data = file_read(file_system, ino, offset):
+        assert data == string, (data, string)
+    let size = file_getsize(file_system, ino):
+        assert size == (offset + 1), (size, offset)
+
+# Shared queue for clients to send requests to the workers
+spawn client(1, 1, "hello")
+spawn client(2, 1, "world")
