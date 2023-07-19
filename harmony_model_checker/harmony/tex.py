@@ -273,6 +273,7 @@ def doProcess(filename, fd, pmap):
     print("\\providecommand{\\hnyReserved}[1]{\\textbf{#1}}", file=fd)
     print("\\providecommand{\\hnyModule}[1]{\\texttt{#1}}", file=fd)
     print("\\providecommand{\\hnyConstant}[1]{\\texttt{#1}}", file=fd)
+    print("\\providecommand{\\hnyImported}[1]{\\texttt{#1}}", file=fd)
     print("\\providecommand{\\hnyGlobal}[1]{\\textit{#1}}", file=fd)
     print("\\providecommand{\\hnyLocalVar}[1]{\\textit{#1}}", file=fd)
     print("\\providecommand{\\hnyLocalConst}[1]{\\textit{#1}}", file=fd)
