@@ -298,7 +298,7 @@ class NameAST(AST):
             code.append(LoadVarOp(self.name), self.token, self.endtoken, stmt=stmt)
             if self.name[0] == "pre":
                 scope.uses_pre = True
-        elif t == "constant":
+        elif t in { "constant", "imported" }:
             (lexeme, file, line, column) = self.name
             code.append(PushOp(v), self.token, self.endtoken, stmt=stmt)
         else:
@@ -309,13 +309,13 @@ class NameAST(AST):
     # TODO.  How about local-const?
     def localVar(self, scope):
         (t, v) = scope.lookup(self.name)
-        assert t in {"constant", "local-var", "local-const", "global", "module"}
+        assert t in {"constant", "imported", "local-var", "local-const", "global", "module"}
         return self.name[0] if t in { "local-var", "local-const" } else None
 
     def ph1(self, scope, code, stmt):
         # TODO: what if lexeme == "_"?
         (t, v) = scope.lookup(self.name)
-        if t == "constant":
+        if t in { "constant", "imported" }:
             (lexeme, file, line, column) = v
             code.append(PushOp((AddressValue(lexeme, []), file, line, column)), self.token, self.endtoken, stmt=stmt)
         elif t == "local-const":
@@ -337,7 +337,7 @@ class NameAST(AST):
     def address(self, scope, code, stmt):
         # TODO: what if lexeme == "_"?
         (t, v) = scope.lookup(self.name)
-        if t == "constant":
+        if t in { "constant", "imported" }:
             (lexeme, file, line, column) = v
             code.append(PushOp((AddressValue(lexeme, []), file, line, column)), self.token, self.endtoken, stmt=stmt)
         elif t in { "local-const", "local-var" }:
@@ -371,7 +371,7 @@ class NameAST(AST):
         (t, v) = scope.lookup(self.name)
         if t in {"local-var", "local-const", "global", "module"}:
             return False
-        elif t == "constant":
+        elif t in { "constant", "imported" }:
             return not isinstance(v[0], LabelValue)
         else:
             assert False, (t, v, self.name)
@@ -725,7 +725,7 @@ class ApplyAST(AST):
                         )
 
                     (t2, v2) = tv
-                    assert t2 == "constant", (t2, v2)
+                    assert t2 in { "constant", "imported" }, (t2, v2)
                     code.append(PushOp(v2), self.token, self.endtoken, stmt=stmt)
                     return True
                 raise HarmonyCompilerError(
@@ -736,7 +736,7 @@ class ApplyAST(AST):
                     column=column
                 )
 
-            if t == "constant":
+            if t in { "constant", "imported" }:
                 code.append(PushOp(v), self.token, self.endtoken, stmt=stmt)
                 self.arg.compile(scope, code, stmt)
                 code.append(NaryOp(("Closure", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
@@ -800,7 +800,7 @@ class ApplyAST(AST):
         # TODO.  Can same be done with lambda?
         if isinstance(self.method, NameAST):
             (t, v) = scope.lookup(self.method.name)
-            if t == "constant" and isinstance(v[0], LabelValue):
+            if t in { "constant", "imported" } and isinstance(v[0], LabelValue):
                 self.arg.compile(scope, code, stmt)
                 code.append(ApplyOp(v), self.token, self.endtoken, stmt=stmt)
                 return
@@ -821,7 +821,7 @@ class ApplyAST(AST):
             (t, v) = scope.lookup(self.method.name)
             if t == "module" and isinstance(self.arg, ConstantAST) and isinstance(self.arg.const[0], str):
                 (t2, v2) = v.lookup(self.arg.const)
-                assert t2 == "constant"
+                assert t2 in { "constant", "imported" }
                 raise HarmonyCompilerError(
                     message="Cannot assign to constant %s %s" % (self.method.name, self.arg.const),
                     lexeme=lexeme,
@@ -848,7 +848,7 @@ class ApplyAST(AST):
             (t, v) = scope.lookup(self.method.name)
             if t == "module" and isinstance(self.arg, ConstantAST) and isinstance(self.arg.const[0], str):
                 (t2, v2) = v.lookup(self.arg.const)
-                assert t2 == "constant"
+                assert t2 in { "constant", "imported" }
                 raise HarmonyCompilerError(
                     message="Cannot assign to constant %s %s" % (self.method.name, self.arg.const),
                     lexeme=lexeme,
@@ -959,7 +959,7 @@ class AssignmentAST(AST):
                         column=column,
                         message='Cannot assign to module %s' % str(lvs.name),
                     )
-                if t in {"constant", "local-const"}:
+                if t in {"constant", "imported", "local-const"}:
                     raise HarmonyCompilerError(
                         lexeme=lexeme,
                         filename=file,
@@ -1020,7 +1020,7 @@ class AuxAssignmentAST(AST):
                     column=column,
                     message='Cannot operate on module %s' % str(lv.name),
                 )
-            if t in {"constant", "local-const"}:
+            if t in {"constant", "imported", "local-const"}:
                 raise HarmonyCompilerError(
                     filename=file,
                     lexeme=lexeme,
@@ -1957,7 +1957,7 @@ class FromAST(AST):
         if self.items == []:  # from module import *
             for (item, (t, v)) in names.items():
                 if t == "constant":
-                    scope.tryset((item, file, line, column), ("constant", v))
+                    scope.tryset((item, file, line, column), ("imported", v))
         else:
             for token in self.items:
                 (lexeme, file, line, column) = token
@@ -1969,8 +1969,14 @@ class FromAST(AST):
                         line=line,
                         column=column)
                 (t, v) = names[lexeme]
-                assert t == "constant", (lexeme, v)
-                scope.tryset(token, ("constant", v))
+                if t != "constant":
+                    raise HarmonyCompilerError(
+                        filename=file,
+                        lexeme=lexeme,
+                        message="%s line %s: can't import %s from %s: not a constant" % (file, line, lexeme, self.module[0]),
+                        line=line,
+                        column=column)
+                scope.tryset(token, ("imported", v))
 
     def getImports(self):
         return [self.module]

@@ -8,8 +8,6 @@ const N_BLOCKS = 10
 const INODES_PER_BLOCK = 2      # number of inodes that fit in a block
 const INDIR_PER_BLOCK = 4       # number of block pointers per block
 
-#### FILE SERVER CODE ####
-#
 # The file system consists of a superblock, an array of inode blocks, and
 # the remaining blocks.  The remaining blocks are dynamic and can be of
 # the following types:
