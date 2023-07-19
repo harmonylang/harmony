@@ -96,20 +96,20 @@ def fs_handle_request(res_q, fs_state, req):
             # Read the direct block.  Return None if there is no direct block.
             if req.offset == 0:
                 if inode.direct == None:
-                    put(req.q, disk_read(fs_state->disk, None))
+                    put(req.q, None)
                 else:
                     put(req.q, disk_read(fs_state->disk, inode.direct))
 
             # Read indirectly.  If there is no indirect block return None
             elif inode.indir == None:
-                put(req.q, disk_read(fs_state->disk, None))
+                put(req.q, None)
 
             # Read the indirect block and get the pointer to the data block,
             # which may be None.
             else:
                 let indir = disk_read(fs_state->disk, inode.indir):
                     if indir[req.offset - 1] == None:
-                        put(req.q, disk_read(fs_state->disk, None))
+                        put(req.q, None)
                     else:
                         put(req.q, disk_read(fs_state->disk, indir[req.offset - 1]))
 

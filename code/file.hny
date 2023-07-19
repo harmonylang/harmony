@@ -7,7 +7,12 @@ def file_getsize(fs, ino) returns size:
     atomically size = len (!fs)[ino] 
 
 def file_read(fs, ino, offset) returns data:
-    atomically data = (!fs)[ino][offset]
+    atomically data = (!fs)[ino][offset] if 0 <= offset < len (!fs)[ino] else None
 
 def file_write(fs, ino, offset, data):
-    atomically (!fs)[ino][offset] = data
+    atomically:
+        let n = len (!fs)[ino]:
+            if 0 <= offset <= n:
+                (!fs)[ino][offset] = data
+            else:
+                (!fs)[ino] += ([ None, ] * (offset - n)) + [data,]
