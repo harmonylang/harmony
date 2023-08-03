@@ -1,6 +1,11 @@
+#define _GNU_SOURCE
+
 #include "head.h"
 
-#define _GNU_SOURCE
+#ifdef __linux__
+#include <sched.h>   //cpu_set_t, CPU_SET
+#endif
+
 #include <stdint.h>
 
 #ifdef USE_ATOMIC
@@ -13,7 +18,6 @@
 #include <sys/param.h>
 #include <unistd.h>
 #include <signal.h>
-#include <sched.h>   //cpu_set_t, CPU_SET
 #endif
 
 #include <stdio.h>
@@ -2412,7 +2416,11 @@ static void worker(void *arg){
     struct global *global = w->global;
     bool done = false;
 
-#ifdef CPU_SET
+    if (w->index == 0) {
+        printf("worker\n");
+    }
+
+#ifdef __linux__
     if (w->index == 0) {
         printf("pinning cores\n");
     }
@@ -2436,6 +2444,8 @@ static void worker(void *arg){
     CPU_SET(w->vproc, &cpuset);
 #endif // OBSOLETE
     sched_setaffinity(0, sizeof(cpuset), &cpuset);
+#else
+    printf("NO CPU_SET\n");
 #endif
 
     for (/* int epoch = 0;; epoch++ */;;) {
