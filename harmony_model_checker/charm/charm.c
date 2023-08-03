@@ -2372,8 +2372,6 @@ static void vproc_tree_create(){
         struct vproc_tree *vt = vproc_tree_insert(vproc_root, ids, 3, 0);
         vt->virtual_id = i;
     }
-
-    // vproc_tree_dump(vproc_root, 0);     // DEBUG
 }
 
 // Allocate n virtual processors, eagerly.
@@ -2416,10 +2414,6 @@ static void worker(void *arg){
     struct global *global = w->global;
     bool done = false;
 
-    if (w->index == 0) {
-        printf("worker\n");
-    }
-
 #ifdef __linux__
     if (w->index == 0) {
         printf("pinning cores\n");
@@ -2444,8 +2438,6 @@ static void worker(void *arg){
     CPU_SET(w->vproc, &cpuset);
 #endif // OBSOLETE
     sched_setaffinity(0, sizeof(cpuset), &cpuset);
-#else
-    printf("NO CPU_SET\n");
 #endif
 
     for (/* int epoch = 0;; epoch++ */;;) {
@@ -2972,11 +2964,11 @@ int main(int argc, char **argv){
                 fprintf(stderr, "unknown id in -w flag\n");
                 exit(1);
             }
-            if (global->nworkers == 0) {
-                global->nworkers = vt->n_vprocessors;
-            }
         }
-        if (global->nworkers > vt->n_vprocessors) {
+        if (global->nworkers == 0) {
+            global->nworkers = vt->n_vprocessors;
+        }
+	else if (global->nworkers > vt->n_vprocessors) {
             fprintf(stderr, "too many processors requested (max is %u)\n", vt->n_vprocessors);
             exit(1);
         }
@@ -3146,7 +3138,7 @@ int main(int argc, char **argv){
 
     // Pin workers to particular virtual processors
     unsigned int worker_index = 0;
-    vproc_tree_alloc(vproc_root, workers, &worker_index, global->nworkers);
+    vproc_tree_alloc(vt, workers, &worker_index, global->nworkers);
 
     struct scc_worker *scc_workers = calloc(global->nworkers, sizeof(*scc_workers));
     for (unsigned int i = 0; i < global->nworkers; i++) {
