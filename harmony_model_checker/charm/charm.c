@@ -52,12 +52,25 @@ mutex_t run_waiting;     // for main thread to wait on
 
 // Info about virtual processors
 struct vproc_info {
-    int phys_id, core_id, hyper_id;
+    int *ids;            // list of n_vproc_ids ids
+    bool selected;       // selected for a worker
+} *vproc_info;
+unsigned int n_vproc_info, n_vproc_ids;
+
+// To select virtual processors, the user specifies a disjunct
+// of patterns using the -w flag.  Each pattern is a list of
+// ids or wildcards.
+struct pattern {
+    struct id_opt {
+        bool wildcard;      // any id will do
+        int id;             // specific id
+    } *ids;
+    unsigned int nids;
 };
 
 // Nodes in the vproc_tree map local ids to children.
 struct vproc_map {
-    unsigned int local_id;
+    int local_id;
     struct vproc_tree *child;
 };
 
@@ -2144,74 +2157,10 @@ void process_results(struct global *global, struct worker *w){
     }
 }
 
-// Insert a virtual processor into the tree recursively.  Return
-// a pointer to the new leaf node.
-static struct vproc_tree *vproc_tree_insert(
-    struct vproc_tree *parent,
-    unsigned int *ids,              // local id 'path'
-    unsigned int len,               // length of path
-    unsigned int offset             // offset into path
-){
-    parent->n_vprocessors++;
-    if (offset == len) {
-        assert(parent->nchildren == 0);
-        assert(parent->n_vprocessors == 1);
-        return parent;
-    }
-    for (unsigned int i = 0; i < parent->nchildren; i++) {
-        if (parent->children[i].local_id == ids[offset]) {
-            return vproc_tree_insert(parent->children[i].child, ids, len, offset + 1);
-        }
-    }
-    struct vproc_tree *vt = calloc(1, sizeof(*vt));
-    parent->children = realloc(parent->children,
-                (parent->nchildren + 1) * sizeof(struct vproc_map));
-    parent->children[parent->nchildren].local_id = ids[offset];
-    parent->children[parent->nchildren].child = vt;
-    parent->nchildren++;
-    return vproc_tree_insert(vt, ids, len, offset + 1);
-}
-
-// Find a virtual processor into the tree recursively.
-static struct vproc_tree *vproc_tree_find(
-    struct vproc_tree *parent,
-    unsigned int *ids,              // local id 'path'
-    unsigned int len,               // length of path
-    unsigned int offset             // offset into path
-){
-    if (offset == len) {
-        return parent;
-    }
-    for (unsigned int i = 0; i < parent->nchildren; i++) {
-        if (parent->children[i].local_id == ids[offset]) {
-            return vproc_tree_find(parent->children[i].child, ids, len, offset + 1);
-        }
-    }
-    return NULL;
-}
-
-// For debugging, dump the contents of the virtual processor tree
-static void vproc_tree_dump(struct vproc_tree *vt, unsigned int level){
-    printf("%p; vid = %u; # = %u", vt, vt->virtual_id, vt->n_vprocessors);
-    if (vt->nchildren > 0) {
-        printf("; nchildren = %u:", vt->nchildren);
-    }
-    printf("\n");
-    for (unsigned int i = 0; i < vt->nchildren; i++) {
-        for (unsigned int j = 0; j < level; j++) {
-            printf(" ");
-        }
-        printf("%u: ", vt->children[i].local_id);
-        vproc_tree_dump(vt->children[i].child, level + 1);
-    }
-}
-
 // Add a new virtual processor to the list and determine its
 // ``hyper_id'' (hyperthread id) to make the identifier
 // (phys_id, core_id, hyper_id) unique.
-static bool cpuinfo_addrecord(struct vproc_info *vproc_info,
-            int nprocessors, int processor,
-            int phys_id, int core_id){
+static bool cpuinfo_addrecord(int processor, int phys_id, int core_id){
     if (processor < 0) {
         fprintf(stderr, "cpuinfo_addrecord: no processor id?\n");
         return false;
@@ -2224,17 +2173,17 @@ static bool cpuinfo_addrecord(struct vproc_info *vproc_info,
         fprintf(stderr, "cpuinfo_addrecord: processor without core id\n");
         return false;
     }
-    if (processor >= nprocessors) {
+    if ((unsigned) processor >= n_vproc_info) {
         fprintf(stderr, "cpuinfo_addrecord: processor id too large\n");
         return true;        // pretend it didn't happen
     }
-    vproc_info[processor].phys_id = phys_id;
-    vproc_info[processor].core_id = core_id;
-    vproc_info[processor].hyper_id = 0;
+    vproc_info[processor].ids[0] = phys_id;
+    vproc_info[processor].ids[1] = 0;
+    vproc_info[processor].ids[2] = core_id;
     for (int i = 0; i < processor; i++) {
-        if (vproc_info[i].phys_id == phys_id &&
-                            vproc_info[i].core_id == core_id) {
-            vproc_info[processor].hyper_id++;
+        if (vproc_info[i].ids[0] == phys_id &&
+                            vproc_info[i].ids[2] == core_id) {
+            vproc_info[processor].ids[1]++;
         }
     }
     return true;
@@ -2242,10 +2191,7 @@ static bool cpuinfo_addrecord(struct vproc_info *vproc_info,
 
 // Read the /proc/cpuinfo file if available to get info about the
 // architecture.  Return false if something goes wrong.
-static bool get_cpuinfo(
-    struct vproc_info *vproc_info,
-    int nprocessors
-){
+static bool get_cpuinfo(){
     FILE *fp;
     if ((fp = fopen("/proc/cpuinfo", "r")) == NULL) {
         return false;
@@ -2301,8 +2247,7 @@ static bool get_cpuinfo(
         // See if it's the start of a new processor record.
         if (strcmp(line, "processor") == 0) {
             if (processor >= 0) {
-                if (!cpuinfo_addrecord(vproc_info, nprocessors, processor,
-                                                phys_id, core_id)) {
+                if (!cpuinfo_addrecord(processor, phys_id, core_id)) {
                     return false;
                 }
             }
@@ -2323,54 +2268,134 @@ static bool get_cpuinfo(
             core_id = atoi(value);
         }
     }
-    if (!cpuinfo_addrecord(vproc_info, nprocessors, processor,
-                                                phys_id, core_id)) {
+    if (!cpuinfo_addrecord(processor, phys_id, core_id)) {
         return false;
     }
-    if (processor != nprocessors - 1) {
+    if ((unsigned) processor != n_vproc_info - 1) {
         fprintf(stderr, "/proc/cpuinfo: not all processors?\n");
         return false;
     }
     return true;
 }
 
-// This function creates a tree, more or less representing the memory
-// hierarchy, with the virtual processors at its leaves.  In this case,
-// the levels are:
-//      1) sockets or packages (or L3 caches)
-//      2) hyperthreads (0 or 1)
-//      3) core id (representing L1/L2 caches)
-// When pinning workers on virtual processors, we try to do this as "deep"
-// as possible, keeping them together in this hierarchy, but no more than
-// one worker per leaf in the tree.
-static void vproc_tree_create(){
-    unsigned int nprocessors = getNumCores();
-    struct vproc_info *vproc_info =
-                calloc(nprocessors, sizeof(struct vproc_info));
+static void vproc_info_dump(){
+    for (unsigned int i = 0; i < n_vproc_info; i++) {
+        printf("%u:", i);
+        for (unsigned int j = 0; j < n_vproc_ids; j++) {
+            printf(" %d", vproc_info[i].ids[j]);
+        }
+        printf("\n");
+    }
+}
 
-    // See if we can read /proc/cpuinfo for more info
-    if (nprocessors > 1 && !get_cpuinfo(vproc_info, nprocessors)) {
-        // Pretend there is just one socket and two hyperthreads per core
-        unsigned int half = nprocessors / 2;
-        for (unsigned int i = 0; i < half; i++) {
-            vproc_info[i].core_id = i;
-        }
-        for (unsigned int i = 0; i < half; i++) {
-            vproc_info[half + i].core_id = i;
-            vproc_info[half + i].hyper_id = 1;
-        }
+static void vproc_info_create(){
+    n_vproc_ids = 3;        // socket id, hyperthread id, core id
+    n_vproc_info = getNumCores();
+    vproc_info = calloc(n_vproc_info, sizeof(struct vproc_info));
+    for (unsigned int i = 0; i < n_vproc_info; i++) {
+        vproc_info[i].ids = calloc(n_vproc_ids, sizeof(int));
     }
 
+    // See if we can read /proc/cpuinfo for more info
+    if (n_vproc_info > 1 && !get_cpuinfo()) {
+        // Pretend there is just one socket and two hyperthreads per core
+        unsigned int half = n_vproc_info / 2;
+        for (unsigned int i = 0; i < half; i++) {
+            vproc_info[i].ids[2] = i;
+        }
+        for (unsigned int i = 0; i < half; i++) {
+            vproc_info[half + i].ids[1] = 1;
+            vproc_info[half + i].ids[2] = i;
+        }
+    }
+}
+
+static bool vproc_match(struct vproc_info *vi, struct pattern *pat){
+    for (unsigned int k = 0; k < pat->nids; k++) {
+        if (k >= n_vproc_ids) {
+            return false;
+        }
+        if (!pat->ids[k].wildcard && pat->ids[k].id != vi->ids[k]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// Insert a virtual processor into the tree recursively.  Return
+// a pointer to the new leaf node.
+static struct vproc_tree *vproc_tree_insert(
+    struct vproc_tree *parent,
+    int *ids,             // local id 'path'
+    unsigned int len,     // length of path
+    unsigned int offset   // offset into path
+){
+    parent->n_vprocessors++;
+    if (offset == len) {
+        assert(parent->nchildren == 0);
+        assert(parent->n_vprocessors == 1);
+        return parent;
+    }
+    for (unsigned int i = 0; i < parent->nchildren; i++) {
+        if (parent->children[i].local_id == ids[offset]) {
+            return vproc_tree_insert(parent->children[i].child, ids, len, offset + 1);
+        }
+    }
+    struct vproc_tree *vt = calloc(1, sizeof(*vt));
+    parent->children = realloc(parent->children,
+                (parent->nchildren + 1) * sizeof(struct vproc_map));
+    parent->children[parent->nchildren].local_id = ids[offset];
+    parent->children[parent->nchildren].child = vt;
+    parent->nchildren++;
+    return vproc_tree_insert(vt, ids, len, offset + 1);
+}
+
+#ifdef OBSOLETE
+// Find a virtual processor into the tree recursively.
+static struct vproc_tree *vproc_tree_find(
+    struct vproc_tree *parent,
+    unsigned int *ids,              // local id 'path'
+    unsigned int len,               // length of path
+    unsigned int offset             // offset into path
+){
+    if (offset == len) {
+        return parent;
+    }
+    for (unsigned int i = 0; i < parent->nchildren; i++) {
+        if (parent->children[i].local_id == ids[offset]) {
+            return vproc_tree_find(parent->children[i].child, ids, len, offset + 1);
+        }
+    }
+    return NULL;
+}
+
+// For debugging, dump the contents of the virtual processor tree
+static void vproc_tree_dump(struct vproc_tree *vt, unsigned int level){
+    printf("%p; vid = %u; # = %u", vt, vt->virtual_id, vt->n_vprocessors);
+    if (vt->nchildren > 0) {
+        printf("; nchildren = %u:", vt->nchildren);
+    }
+    printf("\n");
+    for (unsigned int i = 0; i < vt->nchildren; i++) {
+        for (unsigned int j = 0; j < level; j++) {
+            printf(" ");
+        }
+        printf("%u: ", vt->children[i].local_id);
+        vproc_tree_dump(vt->children[i].child, level + 1);
+    }
+}
+#endif // OBSOLETE
+
+// This function creates a tree, more or less representing the memory
+// hierarchy, with the selected virtual processors at its leaves.
+static void vproc_tree_create(){
     // Create the virtual processor tree.
     vproc_root = calloc(1, sizeof(*vproc_root));
-    for (unsigned int i = 0; i < nprocessors; i++) {
-        unsigned int ids[3] = {
-            vproc_info[i].phys_id,
-            vproc_info[i].hyper_id,
-            vproc_info[i].core_id
-        };
-        struct vproc_tree *vt = vproc_tree_insert(vproc_root, ids, 3, 0);
-        vt->virtual_id = i;
+    for (unsigned int i = 0; i < n_vproc_info; i++) {
+        if (vproc_info[i].selected) {
+            struct vproc_tree *vt = vproc_tree_insert(vproc_root, vproc_info[i].ids, n_vproc_ids, 0);
+            vt->virtual_id = i;
+        }
     }
 }
 
@@ -2439,6 +2464,8 @@ static void worker(void *arg){
 #endif // OBSOLETE
     sched_setaffinity(0, sizeof(cpuset), &cpuset);
 #endif
+
+    // printf("PIN %d to %d\n", w->index, w->vproc);
 
     for (/* int epoch = 0;; epoch++ */;;) {
         double before = gettime();
@@ -2829,6 +2856,37 @@ static void print_transitions(FILE *out, struct dict *symbols, struct edge *edge
     dict_delete(d);
 }
 
+// Split s into components separated by sep.  Returns #components.
+// Return the components themselves into *parts.  All is malloc'd.
+unsigned int str_split(const char *s, char sep, char ***parts){
+    // Count the number of components
+    unsigned int n = 1;
+    for (const char *p = s; *p != '\0'; p++) {
+        if (*p == sep) {
+            n++;
+        }
+    }
+
+    // Allocate an array of strings and fill it with the components
+    *parts = malloc(n * sizeof(char *));
+    n = 0;
+    for (const char *p = s;;) {
+        // Find the end of the component
+        const char *q;
+        for (q = p; *q != sep && *q != '\0'; q++)
+            ;
+        (*parts)[n] = malloc((q - p) + 1);
+        memcpy((*parts)[n], p, q - p);
+        (*parts)[n++][q - p] = '\0';
+        if (*q == '\0') {
+            break;
+        }
+        p = q + 1;
+    }
+
+    return n;
+}
+
 #ifndef _WIN32
 static void inthandler(int sig){
     printf("Caught interrupt\n");
@@ -2903,18 +2961,19 @@ int main(int argc, char **argv){
     // here (yet).
     struct global *global = new_alloc(struct global);
 
-    // Create a tree of virtual processors, essentially organized by cache hierarchy.
-    vproc_tree_create();
+    // Get info about virtual processors
+    vproc_info_create();
 
     // From the -w flag, figure out how many workers we need.
-    struct vproc_tree *vt;
     if (worker_flag == NULL) {
-        global->nworkers = getNumCores();
-        vt = vproc_root;
+        global->nworkers = n_vproc_info;
+        for (unsigned int i = 0; i < n_vproc_info; i++) {
+            vproc_info[i].selected = true;
+        }
     }
     else {
         if (*worker_flag == '/') {
-            vproc_tree_dump(vproc_root, 0);
+            vproc_info_dump();
             worker_flag++;
         }
 
@@ -2926,53 +2985,64 @@ int main(int argc, char **argv){
             worker_flag = endstr;
         }
 
-        // Count the number of colons
-        unsigned int ncolons = 0;
-        for (char *p = worker_flag; *p != '\0'; p++) {
-            if (*p == ':') {
-                ncolons++;
+        // See if the workers are specified.
+        if (*worker_flag == '\0') {
+            global->nworkers = n_vproc_info;
+            for (unsigned int i = 0; i < n_vproc_info; i++) {
+                vproc_info[i].selected = true;
             }
         }
-
-        if (ncolons == 0) {
-            if (*worker_flag != '\0') {
-                fprintf(stderr, "-w flag must be of the form -w[nworkers]?[:id]* but has additional characters (%s)\n", worker_flag);
-                exit(1);
-            }
-            vt = vproc_root;
-        }
-        else {
-            // Allocate and initialize an id path of local ids in the vproc tree
-            unsigned int *ids = calloc(ncolons, sizeof(*ids));
-            for (unsigned i = 0; i < ncolons; i++) {
-                if (*worker_flag != ':') {
-                    fprintf(stderr, "-w flag must be of the form -w[nworkers]?[:id]* (%s)\n", worker_flag);
-                    exit(1);
-                }
-                worker_flag++;
-                ids[i] = (unsigned int) strtol(worker_flag, &endstr, 10);
-                if (endstr == worker_flag) {
-                    fprintf(stderr, "-w flag must be of the form -w[nworkers]?[:id]* but is missing an id (%s)\n", worker_flag);
-                    exit(1);
-                }
-                worker_flag = endstr;
-            }
-
-            // Find the specified vproc_tree node
-            vt = vproc_tree_find(vproc_root, ids, ncolons, 0);
-            if (vt == NULL) {
-                fprintf(stderr, "unknown id in -w flag\n");
-                exit(1);
-            }
-        }
-        if (global->nworkers == 0) {
-            global->nworkers = vt->n_vprocessors;
-        }
-	else if (global->nworkers > vt->n_vprocessors) {
-            fprintf(stderr, "too many processors requested (max is %u)\n", vt->n_vprocessors);
+        else if (*worker_flag != ':') {
+            fprintf(stderr, "-w flag must be of the form -w[nworkers]?[:id]* but has additional characters (%s)\n", worker_flag);
             exit(1);
         }
+        else {
+            worker_flag++;
+
+            // Disjuncts of patterns are separated by '+'
+            char **disjuncts;
+            unsigned int npatterns = str_split(worker_flag, '+', &disjuncts);
+            struct pattern *patterns = malloc(npatterns * sizeof(*patterns));
+            // The identifiers in a pattern are separated by colons
+            for (unsigned int i = 0; i < npatterns; i++) {
+                char **parts;
+                patterns[i].nids = str_split(disjuncts[i], ':', &parts);
+                patterns[i].ids = malloc(patterns[i].nids * sizeof(*patterns[i].ids));
+                for (unsigned int j = 0; j < patterns[i].nids; j++) {
+                    char *endstr;
+                    patterns[i].ids[j].id = strtol(parts[j], &endstr, 10);
+                    patterns[i].ids[j].wildcard = endstr == parts[j];
+                    if (endstr == parts[j]) {
+                        endstr++;
+                    }
+                }
+            }
+
+            // Now that we have the patterns, figure out which
+            // virtual processors qualify
+            unsigned int nselected = 0;
+            for (unsigned i = 0; i < n_vproc_info; i++) {
+                for (unsigned int j = 0; j < npatterns; j++) {
+                    if (vproc_match(&vproc_info[i], &patterns[j])) {
+                        vproc_info[i].selected = true;
+                    }
+                }
+                if (vproc_info[i].selected) {
+                    nselected++;
+                }
+            }
+            if (nselected == 0) {
+                fprintf(stderr, "no virtual processors match -w pattern\n");
+                exit(1);
+            }
+            if (global->nworkers == 0 || global->nworkers > nselected) {
+                global->nworkers = nselected;
+            }
+        }
     }
+
+    // Create a tree of the selected processors
+    vproc_tree_create();
 
     // Determine how many worker threads to use
 	printf("* Phase 2: run the model checker (nworkers = %d)\n", global->nworkers);
@@ -3138,7 +3208,7 @@ int main(int argc, char **argv){
 
     // Pin workers to particular virtual processors
     unsigned int worker_index = 0;
-    vproc_tree_alloc(vt, workers, &worker_index, global->nworkers);
+    vproc_tree_alloc(vproc_root, workers, &worker_index, global->nworkers);
 
     struct scc_worker *scc_workers = calloc(global->nworkers, sizeof(*scc_workers));
     for (unsigned int i = 0; i < global->nworkers; i++) {
