@@ -2965,6 +2965,82 @@ int main(int argc, char **argv){
     // Get info about virtual processors
     vproc_info_create();
 
+    // The -w flag allows specifying which "virtual processors"
+    // to consider.  For example, on a server with two CPUs, 16
+    // cores per CPU, and two hyperthreads per core, there are
+    // 2x16x2 = 64 virtual processors.  OSs organizes them in a
+    // particular way.  An important consideration is to look at
+    // the cache hierarchy.  When threads run on sibling caches,
+    // there are going to be a lot of invalidations across the
+    // caches.  It's therefore useful to try and keep threads
+    // close together if possible.
+    //
+    // Charm tries to organize the virtual processors into a
+    // hiearchy.  The leaves are the virtual processors, while
+    // the internal nodes represent some kind of affinity like
+    // a shared cache.  Each node has an identifier so that
+    // siblings in the tree do not share identifiers.  As a
+    // result, a path of identifiers in the tree uniquely
+    // identify a virtual processor.  The OS also assigns an
+    // integer id to each virtual processor, so the tree maps
+    // identifier paths to the OS id for a virtual processor.
+    //
+    // Ideally the tree should follow the cache hierarchy, but
+    // currently only a rough approximation is implemented
+    // using three levels:
+    //      - socket id
+    //      - hyperthread id
+    //      - core id
+    // In Linux, this info is extracted from /proc/cpuinfo.
+    // Using other OSs, the info is a simple guess based on the
+    // number of virtual processors, N: one socket, two
+    // hyperthread per core, N/2 cores per socket.
+    // That said, the software in theory allows arbitrary trees.
+    //
+    // The format of the -w flag is as follows:
+    //
+    //    -w[/]?[n]?[:pattern[+pattern]*]
+    //
+    // where pattern is a path of ids separated by colons.
+    // Omitting an id functions as a wildcard.
+    // Here n is the maximum number of threads to use, and a
+    // pattern identifies a path in the tree.  If no patterns
+    // are specified, all virtual processors are considered.
+    // Adding a '/' prints the list of virtual processors along
+    // with their paths.
+    //
+    // For example, suppose we have a server as described above
+    // (two sockets, two hyperthreads per CPU, 16 cores per server
+    //
+    //      -w4
+    //            this specifies that at most 4 workers should
+    //            be spawned
+    //
+    //      -w/4
+    //            same, but print list of virtual processors
+    //
+    //      -w:0:1
+    //            only consider socket 0 and hyperthread 1.
+    //            So this should only spawn 16 workers.
+    //
+    //      -w::1
+    //            same, but uses a wildcard for the socket.
+    //            So this should run 32 workers on the second
+    //            hyperthreads
+    //
+    //      -w4::1
+    //            same, but spawns only 4 workers on those
+    //            hyperthreads
+    //
+    //      -w:1:0:2+1:0:3
+    //            2 workers on hyperthread 0 of cores 2 and 3
+    //            of socket 1
+    //
+    //      -w:1:0:2+0:1
+    //            1 worker on core 2 of socket 1, and 16 workers
+    //            on the second hyperthreads of socket 0, for
+    //            a total of 17 workers
+
     // From the -w flag, figure out how many workers we need.
     if (worker_flag == NULL) {
         global->nworkers = n_vproc_info;
