@@ -52,10 +52,11 @@ mutex_t run_waiting;     // for main thread to wait on
 
 // Info about virtual processors
 struct vproc_info {
-    int *ids;            // list of n_vproc_ids ids
-    bool selected;       // selected for a worker
+    int *ids;            // path of ids identifying this processor
+    unsigned int nids;   // length of path
+    bool selected;       // selected to be used for a worker
 } *vproc_info;
-unsigned int n_vproc_info, n_vproc_ids;
+unsigned int n_vproc_info;
 
 // To select virtual processors, the user specifies a disjunct
 // of patterns using the -w flag.  Each pattern is a list of
@@ -2281,7 +2282,7 @@ static bool get_cpuinfo(){
 static void vproc_info_dump(){
     for (unsigned int i = 0; i < n_vproc_info; i++) {
         printf("%u:", i);
-        for (unsigned int j = 0; j < n_vproc_ids; j++) {
+        for (unsigned int j = 0; j < vproc_info[i].nids; j++) {
             printf(" %d", vproc_info[i].ids[j]);
         }
         printf("\n");
@@ -2289,11 +2290,11 @@ static void vproc_info_dump(){
 }
 
 static void vproc_info_create(){
-    n_vproc_ids = 3;        // socket id, hyperthread id, core id
     n_vproc_info = getNumCores();
     vproc_info = calloc(n_vproc_info, sizeof(struct vproc_info));
     for (unsigned int i = 0; i < n_vproc_info; i++) {
-        vproc_info[i].ids = calloc(n_vproc_ids, sizeof(int));
+        vproc_info[i].nids = 3;     // currently hardwired
+        vproc_info[i].ids = calloc(vproc_info[i].nids, sizeof(int));
     }
 
     // See if we can read /proc/cpuinfo for more info
@@ -2312,7 +2313,7 @@ static void vproc_info_create(){
 
 static bool vproc_match(struct vproc_info *vi, struct pattern *pat){
     for (unsigned int k = 0; k < pat->nids; k++) {
-        if (k >= n_vproc_ids) {
+        if (k >= vi->nids) {
             return false;
         }
         if (!pat->ids[k].wildcard && pat->ids[k].id != vi->ids[k]) {
@@ -2393,7 +2394,7 @@ static void vproc_tree_create(){
     vproc_root = calloc(1, sizeof(*vproc_root));
     for (unsigned int i = 0; i < n_vproc_info; i++) {
         if (vproc_info[i].selected) {
-            struct vproc_tree *vt = vproc_tree_insert(vproc_root, vproc_info[i].ids, n_vproc_ids, 0);
+            struct vproc_tree *vt = vproc_tree_insert(vproc_root, vproc_info[i].ids, vproc_info[i].nids, 0);
             vt->virtual_id = i;
         }
     }
