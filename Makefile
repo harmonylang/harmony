@@ -59,11 +59,16 @@ dist: gen parser
 	rm -rf build/ dist/ harmony_model_checker.egg-info/
 	python3 setup.py sdist
 
-upload-test: dist
-	twine upload -r testpypi dist/*
+upload-test: dist upload-env
+	source .upload_env testing && twine upload --non-interactive -r testpypi dist/*
 
-upload: dist
-	twine upload dist/*
+upload: dist upload-env
+	source .upload_env release && twine upload --non-interactive -r pypi dist/*
+
+upload-env:
+ifeq ("$(wildcard .upload_env)", "")
+	$(error Missing .upload_env file. Create one using .upload_env.template)
+endif
 
 clean:
 	rm -f code/*.htm code/*.hvm code/*.hco code/*.png code/*.hfa code/*.tla code/*.gv *.html
