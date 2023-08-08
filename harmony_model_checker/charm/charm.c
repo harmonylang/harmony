@@ -2192,37 +2192,25 @@ static bool cpuinfo_addrecord(int processor, int phys_id, int core_id){
 }
 
 // Like POSIX getline, but works in Windows too
-int my_getline(char **linep, size_t *cap, FILE *fp) {
-    char *buf = *linep;
-    size_t n = *cap;
-
+int my_getline(char **buf, size_t *cap, FILE *fp) {
     int c = fgetc(fp);
     if (c == EOF) {
         return -1;
     }
-    if (buf == NULL) {
-        if ((buf = malloc(LINE_CHUNK)) == NULL) {
-            return -1;
-        }
-        n = LINE_CHUNK;
-    }
-    char *p = buf;
-    while (c != EOF) {
-        if ((size_t) (p - buf) >= n) {
-            n += LINE_CHUNK;
-            if ((buf = realloc(buf, n)) == NULL) {
+    size_t offset = 0;
+    do {
+        if (offset >= *cap) {
+            *cap += LINE_CHUNK;
+            if ((*buf = realloc(*buf, *cap)) == NULL) {
                 return -1;
             }
         }
-        if ((*p++ = c) == '\n') {
+        if (((*buf)[offset++] = c) == '\n') {
             break;
         }
-        c = fgetc(fp);
-    }
-    *p++ = '\0';
-    *linep = buf;
-    *cap = n;
-    return (p - buf) - 1;
+    } while ((c = fgetc(fp)) != EOF);
+    (*buf)[offset] = '\0';
+    return offset;
 }
 
 // Read the /proc/cpuinfo file if available to get info about the
@@ -2233,13 +2221,13 @@ static bool get_cpuinfo(){
         return false;
     }
     char *line = NULL;
-    size_t size = 0;
+    size_t alloced = 0;
     int processor = -1, phys_id = -1, core_id = -1;
 
     // Go through the lines one by one
     for (;;) {
         // Read a line
-        int n = my_getline(&line, &size, fp);
+        int n = my_getline(&line, &alloced, fp);
         if (n <= 0) {
             break;
         }
