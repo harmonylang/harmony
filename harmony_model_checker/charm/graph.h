@@ -74,7 +74,7 @@ struct node {
     // For Tarjan SCC
     int32_t index;
     int32_t lowlink;
-    uint32_t comp_id;       // strongly connected component id
+    // uint32_t comp_id;       // strongly connected component id
     bool on_stack : 1;
 
     bool initialized : 1;   // this node structure has been initialized

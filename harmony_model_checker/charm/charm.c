@@ -2730,22 +2730,23 @@ static void tarjan(struct global *global){
                     stack_push(&call_stack, e->dst->id, NULL);
                 }
                 else if (n->lowlink == n->index) {
-                    comp_id++;
                     for (;;) {
                         unsigned int v2;
                         stack_pop(&stack, &v2, NULL);
                         struct node *n2 = global->graph.nodes[v2];
                         n2->on_stack = false;
-                        n2->comp_id = comp_id;
+                        n2->component = comp_id;
                         if (v2 == v1) {
                             break;
                         }
                     }
+                    comp_id++;
                 }
             }
         }
     }
-    printf("TARJAN: %u\n", comp_id);
+    global->ncomponents = comp_id;
+    // printf("TARJAN: %u\n", comp_id);
     // for (unsigned int i = 0; i < global->graph.size; i++) {
     //     printf("%3u: %u\n", i, global->graph.nodes[i]->comp_id);
     // }
@@ -3549,11 +3550,10 @@ int main(int argc, char **argv){
             printf("* Phase 3b: strongly connected components\n");
             fflush(stdout);
         }
-        double Xnow = gettime();
-        tarjan(global);
         double now = gettime();
-	printf("TJ: %lf\n", now - Xnow);
+        tarjan(global);
         global->phase2 = true;
+#ifdef OBSOLETE
         global->scc_todo = scc_alloc(0, global->graph.size, NULL, NULL);
 
         // Start all but one of the workers, who'll wait on the start barrier
@@ -3561,6 +3561,7 @@ int main(int argc, char **argv){
             thread_create(scc_worker, &scc_workers[i]);
         }
         scc_worker(&scc_workers[0]);
+#endif
 
         printf("    * %u components (%.2lf seconds)\n", global->ncomponents, gettime() - now);
 
