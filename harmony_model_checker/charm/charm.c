@@ -3087,8 +3087,10 @@ int main(int argc, char **argv){
 
         // See if the workers are specified.
         if (*worker_flag == '\0') {
-            global->nworkers = n_vproc_info;
-            for (unsigned int i = 0; i < n_vproc_info; i++) {
+	    if (global->nworkers == 0) {
+		global->nworkers = n_vproc_info;
+	    }
+            for (unsigned int i = 0; i < n_vproc_info && i < global->nworkers; i++) {
                 vproc_info[i].selected = true;
             }
         }
