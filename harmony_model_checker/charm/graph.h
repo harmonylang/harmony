@@ -70,6 +70,12 @@ struct node {
     uint32_t component;     // strongly connected component id
     uint16_t len;           // length of path to initial state
     uint16_t steps;         // #microsteps from root
+
+    // For Tarjan SCC
+    int32_t index;
+    int32_t lowlink;
+    bool on_stack : 1;
+
     bool initialized : 1;   // this node structure has been initialized
     bool failed : 1;        // a thread has failed
     bool final : 1;         // only eternal threads left (TODO: need this?)
