@@ -42,6 +42,7 @@
 
 #define MAX_STEPS       4096        // limit on partial order reduction
 #define WALLOC_CHUNK    (16 * 1024 * 1024)
+#define LINE_CHUNK      128
 
 static unsigned int oldpid = 0;
 
@@ -2190,6 +2191,40 @@ static bool cpuinfo_addrecord(int processor, int phys_id, int core_id){
     return true;
 }
 
+// Like POSIX getline, but works in Windows too
+int my_getline(char **linep, size_t *cap, FILE *fp) {
+    char *buf = *linep;
+    size_t n = *cap;
+
+    int c = fgetc(fp);
+    if (c == EOF) {
+        return -1;
+    }
+    if (buf == NULL) {
+        if ((buf = malloc(LINE_CHUNK)) == NULL) {
+            return -1;
+        }
+        n = LINE_CHUNK;
+    }
+    char *p = buf;
+    while (c != EOF) {
+        if ((size_t) (p - buf) >= n) {
+            n += LINE_CHUNK;
+            if ((buf = realloc(buf, n)) == NULL) {
+                return -1;
+            }
+        }
+        if ((*p++ = c) == '\n') {
+            break;
+        }
+        c = fgetc(fp);
+    }
+    *p++ = '\0';
+    *linep = buf;
+    *cap = n;
+    return (p - buf) - 1;
+}
+
 // Read the /proc/cpuinfo file if available to get info about the
 // architecture.  Return false if something goes wrong.
 static bool get_cpuinfo(){
@@ -2204,13 +2239,13 @@ static bool get_cpuinfo(){
     // Go through the lines one by one
     for (;;) {
         // Read a line
-        ssize_t n = getline(&line, &size, fp);
+        int n = my_getline(&line, &size, fp);
         if (n <= 0) {
             break;
         }
 
         // Find the separator
-        char *value = index(line, ':');
+        char *value = strchr(line, ':');
         if (value == NULL) {
             continue;
         }
