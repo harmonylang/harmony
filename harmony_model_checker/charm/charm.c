@@ -2650,13 +2650,16 @@ static void worker(void *arg){
 struct stack {
     struct stack *next;
     unsigned int v1;
-    unsigned int v2;
+    struct edge *v2;
 } *stack_free;
 
-static void stack_push(struct stack **sp, unsigned int v1, unsigned int v2) {
+static void stack_push(struct stack **sp, unsigned int v1, struct edge *v2) {
     struct stack *s = stack_free;
     if (s == NULL) {
         s = malloc(sizeof(*s));
+    }
+    else {
+	stack_free = s->next;
     }
     s->next = *sp;
     s->v1 = v1;
@@ -2664,7 +2667,7 @@ static void stack_push(struct stack **sp, unsigned int v1, unsigned int v2) {
     *sp = s;
 }
 
-static void stack_pop(struct stack **sp, unsigned int *v1, unsigned int *v2) {
+static void stack_pop(struct stack **sp, unsigned int *v1, struct edge **v2) {
     struct stack *s = *sp;
     *sp = s->next;
     *v1 = s->v1;
@@ -2675,10 +2678,10 @@ static void stack_pop(struct stack **sp, unsigned int *v1, unsigned int *v2) {
     stack_free = s;
 }
 
-static struct node *node_adj(struct node *n, unsigned int pi) {
-    for (struct edge *e = n->fwd; e != NULL; e++, pi--) {
+static struct edge *node_adj(struct node *n, unsigned int pi) {
+    for (struct edge *e = n->fwd; e != NULL; e = e->fwdnext, pi--) {
         if (pi == 0) {
-            return e->dst;
+            return e;
         }
     }
     return NULL;
@@ -2689,42 +2692,42 @@ static void tarjan(struct global *global){
     struct stack *stack = NULL;
     struct stack *call_stack = NULL;
     for (unsigned int v = 0; v < global->graph.size; v++) {
-        printf("TJ %u\n", v);
         struct node *n = global->graph.nodes[v];
         if (n->index == -1) {
-            stack_push(&call_stack, v, 0);
+            stack_push(&call_stack, v, NULL);
             while (call_stack != NULL) {
-                unsigned int pi;
-                stack_pop(&call_stack, &v, &pi);
-                printf("TJ pop %u\n", v);
-                n = global->graph.nodes[v];
-                if (pi == 0) {
+		unsigned int v1;
+		struct edge *e;
+                stack_pop(&call_stack, &v1, &e);
+                n = global->graph.nodes[v1];
+                if (e == NULL) {
                     n->index = i;
                     n->lowlink = i;
                     i++;
-                    stack_push(&stack, v, 0);
+                    stack_push(&stack, v1, NULL);
                     n->on_stack = true;
+		    e = n->fwd;
                 }
                 else {
-                    struct node *prev = node_adj(n, pi - 1);
-                    if (prev->lowlink < n->lowlink) {
-                        n->lowlink = prev->lowlink;
+                    if (e->dst->lowlink < n->lowlink) {
+                        n->lowlink = e->dst->lowlink;
                     }
+		    e = e->fwdnext;
                 }
-                struct node *w;
-                for (;;) {
-                    w = node_adj(n, pi);
-                    if (w == NULL || w->index < 0) {
+                while (e != NULL) {
+                    struct node *w = e->dst;
+                    if (w->index < 0) {
                         break;
                     }
                     if (w->on_stack && w->index < n->lowlink) {
                         n->lowlink = w->index;
                     }
-                    pi++;
+		    e = e->fwdnext;
                 }
-                if (w != NULL) {
-                    stack_push(&call_stack, v, pi + 1);
-                    stack_push(&call_stack, w->id, 0);
+                if (e != NULL) {
+		    // printf("TJ2 push %u %u, %u 0\n", v1, pi+1, e->dst->id);
+                    stack_push(&call_stack, v1, e);
+                    stack_push(&call_stack, e->dst->id, NULL);
                 }
                 else if (n->lowlink == n->index) {
                     comp_id++;
@@ -2733,9 +2736,8 @@ static void tarjan(struct global *global){
                         stack_pop(&stack, &v2, NULL);
                         struct node *n2 = global->graph.nodes[v2];
                         n2->on_stack = false;
-                        n2->component = comp_id;
-                        stack_pop(&stack, &v2, NULL);
-                        if (v2 == v) {
+                        n2->comp_id = comp_id;
+                        if (v2 == v1) {
                             break;
                         }
                     }
@@ -2744,6 +2746,9 @@ static void tarjan(struct global *global){
         }
     }
     printf("TARJAN: %u\n", comp_id);
+    for (unsigned int i = 0; i < global->graph.size; i++) {
+ 	printf("%3u: %u\n", i, global->graph.nodes[i]->comp_id);
+    }
 }
 
 static void scc_worker(void *arg){
@@ -3543,8 +3548,10 @@ int main(int argc, char **argv){
             printf("* Phase 3b: strongly connected components\n");
             fflush(stdout);
         }
+        double Xnow = gettime();
         tarjan(global);
         double now = gettime();
+	printf("TJ: %lf\n", now - Xnow);
         global->phase2 = true;
         global->scc_todo = scc_alloc(0, global->graph.size, NULL, NULL);
 
