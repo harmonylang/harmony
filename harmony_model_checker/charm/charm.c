@@ -2691,7 +2691,7 @@ static void tarjan(struct global *global){
     unsigned int i = 0, comp_id = 0;
     struct stack *stack = NULL;
     struct stack *call_stack = NULL;
-    for (unsigned int v = 0; v < global->graph.size; v++) {
+    for (unsigned int v = 0; v < 1 /*global->graph.size*/; v++) {
         struct node *n = global->graph.nodes[v];
         if (n->index == -1) {
             stack_push(&call_stack, v, NULL);
