@@ -1,0 +1,13 @@
+# This file is a template for .upload_env
+export TWINE_USERNAME=#TODO
+TEST_TWINE_PASSWORD=#TODO
+RELEASE_TWINE_PASSWORD=#TODO
+
+if [[ $1 == "testing" ]]; then
+    export TWINE_PASSWORD=$TEST_TWINE_PASSWORD
+elif [[ $1 == "release" ]]; then
+    export TWINE_PASSWORD=$RELEASE_TWINE_PASSWORD
+else
+    echo "Missing [target_repo] argument"
+    exit 1
+fi
