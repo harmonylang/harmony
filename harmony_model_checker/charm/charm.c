@@ -2746,9 +2746,9 @@ static void tarjan(struct global *global){
         }
     }
     printf("TARJAN: %u\n", comp_id);
-    for (unsigned int i = 0; i < global->graph.size; i++) {
- 	printf("%3u: %u\n", i, global->graph.nodes[i]->comp_id);
-    }
+    // for (unsigned int i = 0; i < global->graph.size; i++) {
+    //     printf("%3u: %u\n", i, global->graph.nodes[i]->comp_id);
+    // }
 }
 
 static void scc_worker(void *arg){
@@ -3438,6 +3438,7 @@ int main(int argc, char **argv){
     node->state = (struct state *) &node[1];
     node->lock = lock;
     mutex_release(lock);
+    node->index = -1;
     graph_add(&global->graph, node);
 
     // Compute how much table space is allocated
