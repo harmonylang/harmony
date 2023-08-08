@@ -2392,7 +2392,6 @@ static struct vproc_tree *vproc_tree_find(
     }
     return NULL;
 }
-#endif // OBSOLETE
 
 // For debugging, dump the contents of the virtual processor tree
 static void vproc_tree_dump(struct vproc_tree *vt, unsigned int level){
@@ -2409,6 +2408,7 @@ static void vproc_tree_dump(struct vproc_tree *vt, unsigned int level){
         vproc_tree_dump(vt->children[i].child, level + 1);
     }
 }
+#endif // OBSOLETE
 
 // This function creates a tree, more or less representing the memory
 // hierarchy, with the selected virtual processors at its leaves.
@@ -3145,7 +3145,7 @@ int main(int argc, char **argv){
 
     // Create a tree of the selected processors
     vproc_tree_create();
-    vproc_tree_dump(vproc_root, 0);
+    // vproc_tree_dump(vproc_root, 0);
 
     // Determine how many worker threads to use
 	printf("* Phase 2: run the model checker (nworkers = %d)\n", global->nworkers);
