@@ -354,6 +354,7 @@ static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock, str
     bool initialized = next->initialized;
     if (!initialized) {
         next->initialized = true;
+        next->reachable = true;
         // next->state = state;        // TODO.  Don't technically need this
         next->failed = edge->failed;
         next->u.ph1.lock = lock;
@@ -367,18 +368,11 @@ static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock, str
 
         next->index = -1;       // for Tarjan
 
-        edge->bwdnext = NULL;
         next->u.ph1.next = *results;
         *results = next;
         w->count++;
         w->enqueued++;
     }
-    else {
-        assert(next->failed == edge->failed);
-        edge->bwdnext = next->bwd;
-    }
-
-    next->bwd = edge;
 
     mutex_release(lock);
 
@@ -2643,55 +2637,84 @@ static void worker(void *arg){
     }
 }
 
-struct stack {
-    struct stack *next;
-    unsigned int v1;        // TODO == v2->src
-    struct edge *v2;
-} *stack_free;
+#define STACK_CHUNK 3
 
-static void stack_push(struct stack **sp, unsigned int v1, struct edge *v2) {
-    struct stack *s = stack_free;
-    if (s == NULL) {
-        s = malloc(sizeof(*s));
+// The stack contains pointers to either nodes or edges.
+// Which of the two it is is captured in the lowest bit.
+// Memory space is at premium here...
+struct stack {
+    struct stack *next, *prev;
+    void *ptrs[STACK_CHUNK];          // low bit = 1 --> edge
+    unsigned int sp;
+};
+
+static void stack_push(struct stack **sp, struct node *v1, struct edge *v2) {
+    // See if there's space in the current chunk
+    struct stack *s = *sp;
+    if (s->sp == STACK_CHUNK) {
+        if (s->next == NULL) {
+            s->next = malloc(sizeof(*s));
+            s->next->prev = s;
+            s = s->next;
+            s->sp = 0;
+            s->next = NULL;
+        }
+        else {
+            s = s->next;
+            assert(s->sp == 0);
+        }
+        *sp = s;
+    }
+
+    // Push either a node or edge pointer
+    if (v2 != NULL) {
+        assert(v1 == v2->src);
+        s->ptrs[s->sp++] = (char *) v2 + 1;
     }
     else {
-	stack_free = s->next;
+        s->ptrs[s->sp++] = v1;
     }
-    s->next = *sp;
-    s->v1 = v1;
-    s->v2 = v2;
-    *sp = s;
 }
 
-static void stack_pop(struct stack **sp, unsigned int *v1, struct edge **v2) {
+static void stack_pop(struct stack **sp, struct node **v1, struct edge **v2) {
+    // If the current chunk is empty, go to the previous one
     struct stack *s = *sp;
-    *sp = s->next;
-    *v1 = s->v1;
-    if (v2 != NULL) {
-        *v2 = s->v2;
+    if (s->sp == 0) {
+        s = s->prev;
+        assert(s->sp == STACK_CHUNK);
+        *sp = s;
     }
-    s->next = stack_free;
-    stack_free = s;
+
+    void *ptr = s->ptrs[--s->sp];
+    if ((hvalue_t) ptr & 1) {        // edge
+        *v2 = (struct edge *) ((char *) ptr - 1);
+        *v1 = (*v2)->src;
+    }
+    else {                              // node
+        *v1 = ptr;
+        if (v2 != NULL) {
+            *v2 = NULL;
+        }
+    }
 }
 
+// Tarjan SCC algorithm
 static void tarjan(struct global *global){
     unsigned int i = 0, comp_id = 0;
-    struct stack *stack = NULL;
-    struct stack *call_stack = NULL;
+    struct stack *stack = calloc(1, sizeof(*stack));
+    struct stack *call_stack = calloc(1, sizeof(*call_stack));
     for (unsigned int v = 0; v < 1 /*global->graph.size*/; v++) {
         struct node *n = global->graph.nodes[v];
         if (n->index == -1) {
-            stack_push(&call_stack, v, NULL);
+            stack_push(&call_stack, n, NULL);
             while (call_stack != NULL) {
-		        unsigned int v1;
                 struct edge *e;
-                stack_pop(&call_stack, &v1, &e);
-                n = global->graph.nodes[v1];
+                stack_pop(&call_stack, &n, &e);
                 if (e == NULL) {
                     n->index = i;
                     n->u.ph2.lowlink = i;
                     i++;
-                    stack_push(&stack, v1, NULL);
+                    stack_push(&stack, n, NULL);
                     n->on_stack = true;
                     e = n->fwd;
                 }
@@ -2712,17 +2735,16 @@ static void tarjan(struct global *global){
                     e = e->fwdnext;
                 }
                 if (e != NULL) {
-                    stack_push(&call_stack, v1, e);
-                    stack_push(&call_stack, e->dst->id, NULL);
+                    stack_push(&call_stack, n, e);
+                    stack_push(&call_stack, e->dst, NULL);
                 }
                 else if (n->u.ph2.lowlink == n->index) {
                     for (;;) {
-                        unsigned int v2;
-                        stack_pop(&stack, &v2, NULL);
-                        struct node *n2 = global->graph.nodes[v2];
+                        struct node *n2;
+                        stack_pop(&stack, &n2, NULL);
                         n2->on_stack = false;
                         n2->u.ph2.component = comp_id;
-                        if (v2 == v1) {
+                        if (n2 == n) {
                             break;
                         }
                     }
@@ -2751,57 +2773,63 @@ char *state_string(struct state *state){
 
 // This routine removes all nodes that have a single incoming edge and it's
 // an "epsilon" edge (empty print log).  These are essentially useless nodes.
-// Typically about half of the nodes can be removed this way.
 static void destutter1(struct global *global){
     struct graph *graph = &global->graph;
+
+    // If nothing got printed, we can just return a single node
     if (!global->printed_something) {
-        global->graph.size = 1;
-        struct node *n = global->graph.nodes[0];
+        graph->size = 1;
+        struct node *n = graph->nodes[0];
         n->final = 1;
-        n->fwd = n->bwd = NULL;
+        n->fwd = NULL;
     }
+
+#ifdef OBSOLETE
+    graph->nodes[0]->reachable = true;
+    int ndropped = 0;
     for (unsigned int i = 0; i < graph->size; i++) {
-        struct node *n = graph->nodes[i];
+        struct node *parent = graph->nodes[i];
+        struct edge **pe, *e;
+        for (pe = &parent->fwd; (e = *pe) != NULL;) {
+            struct node *n = e->dst;
+            if (e->nlog == 0) {     // epsilon edge (no prints)
+                assert(n->bwd != NULL);
+                if (n->bwd->bwdnext == NULL) {
+                    assert(n->bwd == e);
 
-        if (n->bwd != NULL && n->bwd->bwdnext == NULL && n->bwd->nlog == 0) {
-            struct node *parent = n->bwd->src;
-
-            if (n->final) {
-                parent->final = true;
-            }
-
-            // Remove the edge from the parent
-            struct edge **pe, *e;
-            for (pe = &parent->fwd; (e = *pe) != NULL; pe = &e->fwdnext) {
-                if (e->dst == n && e->nlog == 0) {
-                    *pe = e->fwdnext;
-                    // free(e);
-                    break;
-                }
-            }
-
-            struct edge *next;
-            for (struct edge *e = n->fwd; e != NULL; e = next) {
-                // Move the outgoing edge to the parent.
-                next = e->fwdnext;
-                e->fwdnext = parent->fwd;
-                parent->fwd = e;
-
-                // Fix the corresponding backwards edge
-                for (struct edge *f = e->dst->bwd; f != NULL; f = f->bwdnext) {
-                    if (f->src == n && f->nlog == e->nlog &&
-                            memcmp(edge_log(f), edge_log(e), f->nlog * sizeof(hvalue_t)) == 0) {
-                        f->src = parent;
-                        break;
+                    if (n->final) {
+                        parent->final = true;
                     }
+
+                    // Remove the edge
+                    *pe = e->fwdnext;
+                    n->bwd = NULL;
+                    // free(e);
+
+                    ndropped++;
+
+                    // Move the outgoing edges to the parent.
+                    while ((e = n->fwd) != NULL) {
+                        n->fwd = e->fwdnext;
+                        e->fwdnext = *pe;
+                        *pe = e;
+                        e->src = parent;
+                    }
+                    n->reachable = false;
+                }
+                else {
+                    n->reachable = true;
+                    pe = &e->fwdnext;
                 }
             }
-            n->reachable = false;
-        }
-        else {
-            n->reachable = true;
+            else {
+                n->reachable = true;
+                pe = &e->fwdnext;
+            }
         }
     }
+    // printf("DROPPED %d / %d\n", ndropped, graph->size);
+#endif // OBSOLETE
 }
 
 static struct dict *collect_symbols(struct graph *graph){
@@ -3348,6 +3376,7 @@ int main(int argc, char **argv){
     // node->state = (struct state *) &node[1];
     node->u.ph1.lock = lock;
     mutex_release(lock);
+    node->reachable = true;
     node->index = -1;
     graph_add(&global->graph, node);
 
@@ -3661,28 +3690,6 @@ int main(int argc, char **argv){
                         }
                     }
                 }
-                fprintf(df, "    bwd:\n");
-                eno = 0;
-                for (struct edge *edge = node->bwd; edge != NULL; edge = edge->bwdnext, eno++) {
-                    fprintf(df, "        %d:\n", eno);
-                    fprintf(df, "            node: %d (%d)\n", edge->src->id, edge->src->u.ph2.component);
-                    struct context *ctx = value_get(edge->ctx, NULL);
-                    fprintf(df, "            context before: %"PRIx64" %d\n", edge->ctx, ctx->pc);
-                    ctx = value_get(edge->after, NULL);
-                    fprintf(df, "            context after:  %"PRIx64" %d\n", edge->after, ctx->pc);
-                    if (edge->choice != 0) {
-                        fprintf(df, "            choice: %s\n", value_string(edge->choice));
-                    }
-                    if (edge->nlog > 0) {
-                        fprintf(df, "            log:");
-                        for (int j = 0; j < edge->nlog; j++) {
-                            char *p = value_string(edge_log(edge)[j]);
-                            fprintf(df, " %s", p);
-                            free(p);
-                        }
-                        fprintf(df, "\n");
-                    }
-                }
             }
             fclose(df);
         }
@@ -3728,6 +3735,9 @@ int main(int argc, char **argv){
         json_dump(jv, out, 2);
         fprintf(out, ",\n");
 
+        // Reduce the output graph by removing nodes with only
+        // one incoming edge that is an epsilon edge
+        //
         destutter1(global);
 
         // Output the symbols;

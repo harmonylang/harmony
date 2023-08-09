@@ -27,7 +27,6 @@ struct access_info {
 
 struct edge {
     struct edge *fwdnext;    // forward linked list maintenance
-    struct edge *bwdnext;    // backward linked list maintenance
     hvalue_t ctx, choice;    // ctx that made the microstep, choice if any
     struct node *src;        // source node
     struct node *dst;        // destination node
@@ -69,11 +68,7 @@ struct node {
         } ph2;
     } u;
 
-    // Information about state
-    // struct state *state;    // state corresponding to this node
-    struct edge *bwd;       // backward edges
     struct edge *fwd;       // forward edges
-
     struct edge *to_parent; // shortest path to initial state
     uint32_t id;            // nodes are numbered starting from 0
     int32_t index;          // for Tarjan algorithm
