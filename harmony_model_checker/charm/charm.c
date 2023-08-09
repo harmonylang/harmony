@@ -2677,7 +2677,7 @@ static void stack_push(struct stack **sp, struct node *v1, struct edge *v2) {
     }
 }
 
-static void stack_pop(struct stack **sp, struct node **v1, struct edge **v2) {
+static struct node *stack_pop(struct stack **sp, struct edge **v2) {
     // If the current chunk is empty, go to the previous one
     struct stack *s = *sp;
     if (s->sp == 0) {
@@ -2690,13 +2690,13 @@ static void stack_pop(struct stack **sp, struct node **v1, struct edge **v2) {
     void *ptr = s->ptrs[--s->sp];
     if ((hvalue_t) ptr & 1) {        // edge
         *v2 = (struct edge *) ((char *) ptr - 1);
-        *v1 = (*v2)->src;
+        return (*v2)->src;
     }
     else {                              // node
-        *v1 = ptr;
         if (v2 != NULL) {
             *v2 = NULL;
         }
+        return ptr;
     }
 }
 
@@ -2715,7 +2715,7 @@ static void tarjan(struct global *global){
             stack_push(&call_stack, n, NULL);
             while (!stack_empty(call_stack)) {
                 struct edge *e;
-                stack_pop(&call_stack, &n, &e);
+                n = stack_pop(&call_stack, &e);
                 if (e == NULL) {
                     n->index = i;
                     n->u.ph2.lowlink = i;
@@ -2747,7 +2747,7 @@ static void tarjan(struct global *global){
                 else if (n->u.ph2.lowlink == n->index) {
                     for (;;) {
                         struct node *n2;
-                        stack_pop(&stack, &n2, NULL);
+                        n2 = stack_pop(&stack, NULL);
                         n2->on_stack = false;
                         n2->u.ph2.component = comp_id;
                         if (n2 == n) {
