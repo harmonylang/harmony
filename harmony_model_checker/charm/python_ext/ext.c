@@ -1,7 +1,7 @@
 
 #include "Python.h"
 
-int main(int argc, char** argv);
+int exec_model_checker(int argc, char** argv);
 
 static PyObject* run_model_checker(PyObject *self, PyObject *args) {
     Py_ssize_t tupleSize = PyTuple_Size(args);
@@ -9,14 +9,14 @@ static PyObject* run_model_checker(PyObject *self, PyObject *args) {
     char **argv = malloc(argc * sizeof(char *));
     argv[0] = "charm";
     for (Py_ssize_t i = 0; i < tupleSize; ++i) {
-        PyObject *a = PyTuple_GetItem(args, i);        
+        PyObject *a = PyTuple_GetItem(args, i);
         char *s;
         if (!PyArg_Parse(a, "s", &s)) {
             return NULL;
         }
         argv[i + 1] = s;
     }
-    PyObject *r = PyLong_FromLong(main(argc, argv));
+    PyObject *r = PyLong_FromLong(exec_model_checker(argc, argv));
     free(argv);
     return r;
 }

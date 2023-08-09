@@ -3030,7 +3030,7 @@ static void usage(char *prog){
     exit(1);
 }
 
-int main(int argc, char **argv){
+int exec_model_checker(int argc, char **argv){
     bool cflag = false, dflag = false, Dflag = false, Rflag = false;
     int i, maxtime = 300000000 /* about 10 years */;
     char *outfile = NULL, *dfafile = NULL, *worker_flag = NULL;
@@ -4096,4 +4096,8 @@ int main(int argc, char **argv){
 
     free(global);
     return 0;
+}
+
+int main(int argc, char** argv) {
+    return exec_model_checker(argc, argv);
 }
