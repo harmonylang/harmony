@@ -57,21 +57,22 @@ enum fail_type {
 
 struct node {
     union {
+        // Data we only need while creating the Kripke structure
         struct {
             struct node *next;		// for linked list
+            ht_lock_t *lock;        // lock for forward edges
         } ph1;
+        // Data we only need when analyzing the Kripke structure
         struct {
-            int32_t lowlink;        // for Tarjan algorithm
+            int32_t lowlink;        // for Tarjan SCC algorithm
             uint32_t component;     // strongly connected component id
         } ph2;
     } u;
 
     // Information about state
-    // TODO.  state contiguous to this node, so don't need pointer
-    struct state *state;    // state corresponding to this node
+    // struct state *state;    // state corresponding to this node
     struct edge *bwd;       // backward edges
     struct edge *fwd;       // forward edges
-    ht_lock_t *lock;        // lock for forward edges
 
     struct edge *to_parent; // shortest path to initial state
     uint32_t id;            // nodes are numbered starting from 0
@@ -86,6 +87,8 @@ struct node {
     // NFA compression
     bool reachable : 1;
 };
+
+#define node_state(n)   ((struct state *) &(n)[1])
 
 struct failure {
     struct failure *next;   // for linked list maintenance
