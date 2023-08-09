@@ -35,13 +35,13 @@ jobs:
         make gen
         python -m build
     - name: Publish package (Release)
-      if: github.event == 'released'
+      if: ${{ !github.event.prerelease }}
       uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
       with:
         user: __token__
         password: ${{ secrets.PYPI_API_TOKEN }}
     - name: Publish package (Pre-Release)
-      if: github.event == 'prereleased'
+      if: ${{ github.event.prerelease }}
       uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
       with:
         user: __token__
