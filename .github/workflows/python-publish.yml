@@ -10,7 +10,7 @@ name: Upload Python Package
 
 on:
   release:
-    types: [published]
+    types: [published,prereleased]
 
 permissions:
   contents: read
@@ -32,8 +32,15 @@ jobs:
         pip install build
     - name: Build package
       run: python -m build
-    - name: Publish package
+    - name: Publish package (Release)
+      if: github.event == 'published'
       uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
       with:
         user: __token__
         password: ${{ secrets.PYPI_API_TOKEN }}
+    - name: Publish package (Pre-Release)
+      if: github.event == 'prereleased'
+      uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
+      with:
+        user: __token__
+        password: ${{ secrets.TESTING_PYPI_API_TOKEN }}
