@@ -130,14 +130,6 @@ struct worker {
     hvalue_t stack[MAX_CONTEXT_STACK];
 };
 
-// One of these per SCC worker thread
-struct scc_worker {
-    struct global *global;     // global state
-    double timeout;
-    barrier_t *scc_barrier;
-    void *scc_cache;            // for SCC alloc/free
-};
-
 #ifdef CACHE_LINE_ALIGNED
 #define ALIGNMASK       0x3F
 #else
@@ -371,13 +363,15 @@ static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock, str
 
         // TODOTODO
         next->to_parent = edge;
+#ifdef notdef
         next->len = node->len + 1;
         next->steps = node->steps + edge->nsteps;
+#endif
 
         next->index = -1;       // for Tarjan
 
         edge->bwdnext = NULL;
-        next->next = *results;
+        next->u.ph1.next = *results;
         *results = next;
         w->count++;
         w->enqueued++;
@@ -399,6 +393,7 @@ static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock, str
     edge->fwdnext = *pe;
     *pe = edge;
 #else
+    // TODO.  Do we need node->lock or can we just use the lock argument??
     if (mutex_try_acquire(node->lock)) {
         edge->fwdnext = node->fwd;
         node->fwd = edge;
@@ -1562,7 +1557,7 @@ static void path_output_microstep(struct global *global, FILE *file,
 static void path_output_macrostep(struct global *global, FILE *file, struct macrostep *macro, struct state *oldstate){
     fprintf(file, "    {\n");
     fprintf(file, "      \"id\": \"%d\",\n", macro->edge->dst->id);
-    fprintf(file, "      \"len\": \"%d\",\n", macro->edge->dst->len);
+    // fprintf(file, "      \"len\": \"%d\",\n", macro->edge->dst->len);
     fprintf(file, "      \"tid\": \"%d\",\n", macro->tid);
 
     fprintf(file, "      \"shared\": ");
@@ -2008,7 +2003,7 @@ static enum busywait is_stuck(
     hvalue_t ctx,
     bool change
 ) {
-	if (node->component != start->component) {
+	if (node->u.ph2.component != start->u.ph2.component) {
 		return BW_ESCAPE;
 	}
 	if (node->visited) {
@@ -2063,6 +2058,7 @@ static void detect_busywait(struct minheap *failures, struct node *node){
 	}
 }
 
+#ifdef notdef
 static int node_cmp(void *n1, void *n2){
     struct node *node1 = n1, *node2 = n2;
 
@@ -2074,11 +2070,16 @@ static int node_cmp(void *n1, void *n2){
     }
     return node1->id - node2->id;
 }
+#endif
 
 static int fail_cmp(void *f1, void *f2){
+#ifdef notdef
     struct failure *fail1 = f1, *fail2 = f2;
 
     return node_cmp(fail1->edge->dst, fail2->edge->dst);
+#else
+    return 0;
+#endif
 }
 
 void do_work1(struct worker *w, struct node *node, unsigned int level){
@@ -2636,7 +2637,7 @@ static void worker(void *arg){
                 assert(node->id == 0);
                 node->id = w->node_id;
                 global->graph.nodes[w->node_id++] = node;
-                w->results = node->next;
+                w->results = node->u.ph1.next;
                 w->count--;
             }
             assert(w->results == NULL);
@@ -2649,7 +2650,7 @@ static void worker(void *arg){
 
 struct stack {
     struct stack *next;
-    unsigned int v1;
+    unsigned int v1;        // TODO == v2->src
     struct edge *v2;
 } *stack_free;
 
@@ -2678,15 +2679,6 @@ static void stack_pop(struct stack **sp, unsigned int *v1, struct edge **v2) {
     stack_free = s;
 }
 
-static struct edge *node_adj(struct node *n, unsigned int pi) {
-    for (struct edge *e = n->fwd; e != NULL; e = e->fwdnext, pi--) {
-        if (pi == 0) {
-            return e;
-        }
-    }
-    return NULL;
-}
-
 static void tarjan(struct global *global){
     unsigned int i = 0, comp_id = 0;
     struct stack *stack = NULL;
@@ -2696,46 +2688,45 @@ static void tarjan(struct global *global){
         if (n->index == -1) {
             stack_push(&call_stack, v, NULL);
             while (call_stack != NULL) {
-		unsigned int v1;
-		struct edge *e;
+		        unsigned int v1;
+                struct edge *e;
                 stack_pop(&call_stack, &v1, &e);
                 n = global->graph.nodes[v1];
                 if (e == NULL) {
                     n->index = i;
-                    n->lowlink = i;
+                    n->u.ph2.lowlink = i;
                     i++;
                     stack_push(&stack, v1, NULL);
                     n->on_stack = true;
-		    e = n->fwd;
+                    e = n->fwd;
                 }
                 else {
-                    if (e->dst->lowlink < n->lowlink) {
-                        n->lowlink = e->dst->lowlink;
+                    if (e->dst->u.ph2.lowlink < n->u.ph2.lowlink) {
+                        n->u.ph2.lowlink = e->dst->u.ph2.lowlink;
                     }
-		    e = e->fwdnext;
+                    e = e->fwdnext;
                 }
                 while (e != NULL) {
                     struct node *w = e->dst;
                     if (w->index < 0) {
                         break;
                     }
-                    if (w->on_stack && w->index < n->lowlink) {
-                        n->lowlink = w->index;
+                    if (w->on_stack && w->index < n->u.ph2.lowlink) {
+                        n->u.ph2.lowlink = w->index;
                     }
-		    e = e->fwdnext;
+                    e = e->fwdnext;
                 }
                 if (e != NULL) {
-		    // printf("TJ2 push %u %u, %u 0\n", v1, pi+1, e->dst->id);
                     stack_push(&call_stack, v1, e);
                     stack_push(&call_stack, e->dst->id, NULL);
                 }
-                else if (n->lowlink == n->index) {
+                else if (n->u.ph2.lowlink == n->index) {
                     for (;;) {
                         unsigned int v2;
                         stack_pop(&stack, &v2, NULL);
                         struct node *n2 = global->graph.nodes[v2];
                         n2->on_stack = false;
-                        n2->component = comp_id;
+                        n2->u.ph2.component = comp_id;
                         if (v2 == v1) {
                             break;
                         }
@@ -2746,75 +2737,6 @@ static void tarjan(struct global *global){
         }
     }
     global->ncomponents = comp_id;
-    // printf("TARJAN: %u\n", comp_id);
-    // for (unsigned int i = 0; i < global->graph.size; i++) {
-    //     printf("%3u: %u\n", i, global->graph.nodes[i]->comp_id);
-    // }
-}
-
-static void scc_worker(void *arg){
-    struct scc_worker *w = arg;
-    struct global *global = w->global;
-    mutex_acquire(&global->todo_enter);
-    for (;;) {
-        if (global->scc_todo == NULL) {
-            global->scc_nwaiting++;
-            if (global->scc_nwaiting == global->nworkers) {
-                mutex_release(&global->todo_wait);
-                break;
-            }
-            mutex_release(&global->todo_enter);
-            mutex_acquire(&global->todo_wait);
-            if (global->scc_nwaiting == global->nworkers) {
-                mutex_release(&global->todo_wait);
-                break;
-            }
-            global->scc_nwaiting--;
-        }
-
-        // Grab work
-        unsigned int component = global->ncomponents++;
-        struct scc *scc = global->scc_todo;
-        assert(scc != NULL);
-        global->scc_todo = scc->next;
-        scc->next = NULL;
-
-        // Split binary semaphore release
-        if (global->scc_todo != NULL && global->scc_nwaiting > 0) {
-            mutex_release(&global->todo_wait);
-        }
-        else {
-            mutex_release(&global->todo_enter);
-        }
-
-        for (;;) {
-            // Do the work
-            assert(scc->next == NULL);
-            scc = graph_find_scc_one(&global->graph, scc, component, &w->scc_cache);
-
-            // Put new work on the list except the last (which we'll do ourselves)
-            mutex_acquire(&global->todo_enter);
-            while (scc != NULL && scc->next != NULL) {
-                struct scc *next = scc->next;
-                scc->next = global->scc_todo;
-                global->scc_todo = scc;
-                scc = next;
-            }
-            if (scc == NULL) {      // get more work
-                break;
-            }
-            component = global->ncomponents++;
-
-            // Split binary semaphore release
-            if (global->scc_todo != NULL && global->scc_nwaiting > 0) {
-                mutex_release(&global->todo_wait);
-            }
-            else {
-                mutex_release(&global->todo_enter);
-            }
-        }
-    }
-    barrier_wait(w->scc_barrier);
 }
 
 char *state_string(struct state *state){
@@ -3260,11 +3182,10 @@ int main(int argc, char **argv){
     global->numa = ((unsigned int) (gettime() * 1000) % 2) == 0;
 #endif
 
-    barrier_t start_barrier, middle_barrier, end_barrier, scc_barrier;
+    barrier_t start_barrier, middle_barrier, end_barrier;
     barrier_init(&start_barrier, global->nworkers);
     barrier_init(&middle_barrier, global->nworkers);
     barrier_init(&end_barrier, global->nworkers);
-    barrier_init(&scc_barrier, global->nworkers);
 
     // initialize modules
     mutex_init(&global->inv_lock);
@@ -3420,13 +3341,6 @@ int main(int argc, char **argv){
     unsigned int worker_index = 0;
     vproc_tree_alloc(vproc_root, workers, &worker_index, global->nworkers);
 
-    struct scc_worker *scc_workers = calloc(global->nworkers, sizeof(*scc_workers));
-    for (unsigned int i = 0; i < global->nworkers; i++) {
-        struct scc_worker *w = &scc_workers[i];
-        w->global = global;
-        w->scc_barrier = &scc_barrier;
-    }
-
     // Put the state and value dictionaries in concurrent mode
     dict_set_concurrent(global->values);
     dict_set_concurrent(visited);
@@ -3508,43 +3422,6 @@ int main(int argc, char **argv){
     dict_set_sequential(visited);
 
     printf("* Phase 3: analysis\n");
-
-#ifdef notdef
-    // Shortest path to initial state (Dijkstra + minheap)
-    if (global->graph.size > 10000) {
-        printf("* Phase 3a: shortest path to initial state\n");
-        fflush(stdout);
-    }
-    struct minheap *shp = minheap_create(node_cmp);
-    struct node *current = global->graph.nodes[0];
-    for (;;) {
-        for (struct edge *e = current->fwd; e != NULL; e = e->fwdnext) {
-            struct node *d = e->dst;
-            assert(e->src == current);
-            unsigned int weight = 1;
-            // TODOTODO   (current->to_parent == NULL || e->ctx == current->to_parent->after) ? 0 : 1;
-            unsigned int len = current->len + weight;
-            unsigned int steps = current->steps + e->nsteps;
-            if (d->to_parent == NULL) {
-                d->to_parent = e;
-                d->len = len;
-                d->steps = steps;
-                minheap_insert(shp, d);
-            }
-            else if (len < d->len || (d->len == len && steps < e->nsteps)) {
-                d->to_parent = e;
-                d->len = len;
-                d->steps = steps;
-                minheap_decrease(shp, d);
-            }
-        }
-        if (minheap_empty(shp)) {
-            break;
-        }
-        current = minheap_getmin(shp);
-    }
-#endif
-
     if (minheap_empty(global->failures)) {
         if (global->graph.size > 10000) {
             printf("* Phase 3b: strongly connected components\n");
@@ -3553,15 +3430,6 @@ int main(int argc, char **argv){
         double now = gettime();
         tarjan(global);
         global->phase2 = true;
-#ifdef OBSOLETE
-        global->scc_todo = scc_alloc(0, global->graph.size, NULL, NULL);
-
-        // Start all but one of the workers, who'll wait on the start barrier
-        for (unsigned int i = 1; i < global->nworkers; i++) {
-            thread_create(scc_worker, &scc_workers[i]);
-        }
-        scc_worker(&scc_workers[0]);
-#endif
 
         printf("    * %u components (%.2lf seconds)\n", global->ncomponents, gettime() - now);
 
@@ -3569,7 +3437,7 @@ int main(int argc, char **argv){
         printf("digraph Harmony {\n");
         for (unsigned int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
-            printf(" s%u [label=\"%u/%u\"]\n", i, i, node->component);
+            printf(" s%u [label=\"%u/%u\"]\n", i, i, node->u.ph2.component);
         }
         for (unsigned int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
@@ -3584,8 +3452,8 @@ int main(int argc, char **argv){
         struct component *components = calloc(global->ncomponents, sizeof(*components));
         for (unsigned int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
-			assert(node->component < global->ncomponents);
-            struct component *comp = &components[node->component];
+			assert(node->u.ph2.component < global->ncomponents);
+            struct component *comp = &components[node->u.ph2.component];
             if (comp->size == 0) {
                 comp->rep = node;
                 comp->all_same = value_state_all_eternal(node->state)
@@ -3603,7 +3471,7 @@ int main(int argc, char **argv){
             // if this component has a way out, it is good
             for (struct edge *edge = node->fwd;
                             edge != NULL && !comp->good; edge = edge->fwdnext) {
-                if (edge->dst->component != node->component) {
+                if (edge->dst->u.ph2.component != node->u.ph2.component) {
                     comp->good = true;
                     break;
                 }
@@ -3636,8 +3504,8 @@ int main(int argc, char **argv){
         // Look for states in final components
         for (unsigned int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
-			assert(node->component < global->ncomponents);
-            struct component *comp = &components[node->component];
+			assert(node->u.ph2.component < global->ncomponents);
+            struct component *comp = &components[node->u.ph2.component];
             if (comp->final) {
                 node->final = true;
                 if (global->dfa != NULL &&
@@ -3666,7 +3534,7 @@ int main(int argc, char **argv){
             int nbad = 0;
             for (unsigned int i = 0; i < global->graph.size; i++) {
                 struct node *node = global->graph.nodes[i];
-                if (!components[node->component].good) {
+                if (!components[node->u.ph2.component].good) {
                     nbad++;
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_TERMINATION;
@@ -3687,7 +3555,7 @@ int main(int argc, char **argv){
                 }
                 for (unsigned int i = 0; i < global->graph.size; i++) {
                     struct node *node = global->graph.nodes[i];
-                    if (components[node->component].size > 1) {
+                    if (components[node->u.ph2.component].size > 1) {
                         detect_busywait(global->failures, node);
                     }
                 }
@@ -3703,8 +3571,7 @@ int main(int argc, char **argv){
         else {
             fprintf(df, "digraph Harmony {\n");
             for (unsigned int i = 0; i < global->graph.size; i++) {
-                struct node *node = global->graph.nodes[i];
-                fprintf(df, " s%u [label=\"%u/%u\"]\n", i, i, node->len);
+                fprintf(df, " s%u [label=\"%u\"]\n", i, i);
             }
             for (unsigned int i = 0; i < global->graph.size; i++) {
                 struct node *node = global->graph.nodes[i];
@@ -3745,7 +3612,7 @@ int main(int argc, char **argv){
                 struct node *node = global->graph.nodes[i];
                 assert(node->id == i);
                 fprintf(df, "\nNode %d:\n", node->id);
-                fprintf(df, "    component: %d\n", node->component);
+                fprintf(df, "    component: %d\n", node->u.ph2.component);
                 if (node->to_parent != NULL) {
                     fprintf(df, "    ancestors:");
                     for (struct node *n = node->to_parent->src;; n = n->to_parent->src) {
@@ -3757,7 +3624,7 @@ int main(int argc, char **argv){
                     fprintf(df, "\n");
                 }
                 fprintf(df, "    vars: %s\n", value_string(node->state->vars));
-                fprintf(df, "    len: %u %u\n", node->len, node->steps);
+                // fprintf(df, "    len: %u %u\n", node->len, node->steps);
                 if (node->failed) {
                     fprintf(df, "    failed\n");
                 }
@@ -3766,7 +3633,7 @@ int main(int argc, char **argv){
                 for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext, eno++) {
                     fprintf(df, "        %d:\n", eno);
                     struct context *ctx = value_get(edge->ctx, NULL);
-                    fprintf(df, "            node: %d (%d)\n", edge->dst->id, edge->dst->component);
+                    fprintf(df, "            node: %d (%d)\n", edge->dst->id, edge->dst->u.ph2.component);
                     fprintf(df, "            context before: %"PRIx64" pc=%d\n", edge->ctx, ctx->pc);
                     ctx = value_get(edge->after, NULL);
                     fprintf(df, "            context after:  %"PRIx64" pc=%d\n", edge->after, ctx->pc);
@@ -3803,7 +3670,7 @@ int main(int argc, char **argv){
                 eno = 0;
                 for (struct edge *edge = node->bwd; edge != NULL; edge = edge->bwdnext, eno++) {
                     fprintf(df, "        %d:\n", eno);
-                    fprintf(df, "            node: %d (%d)\n", edge->src->id, edge->src->component);
+                    fprintf(df, "            node: %d (%d)\n", edge->src->id, edge->src->u.ph2.component);
                     struct context *ctx = value_get(edge->ctx, NULL);
                     fprintf(df, "            context before: %"PRIx64" %d\n", edge->ctx, ctx->pc);
                     ctx = value_get(edge->after, NULL);
@@ -3891,7 +3758,7 @@ int main(int argc, char **argv){
                 }
                 fprintf(out, "    {\n");
                 fprintf(out, "      \"idx\": %d,\n", node->id);
-                fprintf(out, "      \"component\": %d,\n", node->component);
+                fprintf(out, "      \"component\": %d,\n", node->u.ph2.component);
 #ifdef notdef
                 if (node->parent != NULL) {
                     fprintf(out, "      \"parent\": %d,\n", node->parent->id);

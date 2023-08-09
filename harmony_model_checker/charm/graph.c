@@ -101,7 +101,7 @@ struct scc *graph_find_scc_one(struct graph *graph, struct scc *scc, unsigned in
         }
     }
     if (optim) {
-        node->component = component;
+        node->u.ph2.component = component;
         scc->start++;
         if (scc->start < scc->finish) {
             return scc;
@@ -120,7 +120,7 @@ struct scc *graph_find_scc_one(struct graph *graph, struct scc *scc, unsigned in
         swap(graph, start, (finish + start) / 2);
     }
 
-    graph->nodes[start]->component = component;
+    graph->nodes[start]->u.ph2.component = component;
 
     // Phase 1: move all successors of nodes[0] to the bottom
     unsigned int lo = start + 1;
@@ -156,7 +156,7 @@ struct scc *graph_find_scc_one(struct graph *graph, struct scc *scc, unsigned in
             }
             if (next->id < lo) {        // in SCC
                 if (next->id >= mid) {
-                    next->component = component;
+                    next->u.ph2.component = component;
                     if (next->id > mid) {
                         swap(graph, mid, next->id);
                     }
