@@ -9,6 +9,10 @@
 #define MAX_CONTEXT_STACK   250        // maximum size of context stack
 #define MAX_CONTEXT_BAG       32        // maximum number of distinct contexts
 
+// TODO.  State can be reduced in size in various ways;
+//  - pre and stopbag are not always used
+//  - choosing could be an index into the context bag
+//  - the entire thing could be replaced with a collision-resistant hash
 typedef struct state {
     hvalue_t vars;        // shared variables
     hvalue_t pre;         // "pre" state (same as vars in non-choosing states)
