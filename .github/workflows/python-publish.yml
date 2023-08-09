@@ -38,13 +38,13 @@ jobs:
     - name: Build Wheels
       run: python -m cibuildwheel --output-dir dist
     - name: Publish package (Release)
-      if: ${{ !github.event.prerelease }}
+      if: ${{ github.event.action == 'released' }}
       uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
       with:
         user: __token__
         password: ${{ secrets.PYPI_API_TOKEN }}
     - name: Publish package (Pre-Release)
-      if: ${{ github.event.prerelease }}
+      if: ${{ github.event.action == 'prereleased' }}
       uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
       with:
         user: __token__
