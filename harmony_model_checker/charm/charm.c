@@ -2637,7 +2637,7 @@ static void worker(void *arg){
     }
 }
 
-#define STACK_CHUNK 3
+#define STACK_CHUNK 4096
 
 // The stack contains pointers to either nodes or edges.
 // Which of the two it is is captured in the lowest bit.
@@ -2660,6 +2660,7 @@ static void stack_push(struct stack **sp, struct node *v1, struct edge *v2) {
             s->next = NULL;
         }
         else {
+	    assert(s->next->prev == s);
             s = s->next;
             assert(s->sp == 0);
         }
@@ -2680,6 +2681,7 @@ static void stack_pop(struct stack **sp, struct node **v1, struct edge **v2) {
     // If the current chunk is empty, go to the previous one
     struct stack *s = *sp;
     if (s->sp == 0) {
+	assert(s->prev->next == s);
         s = s->prev;
         assert(s->sp == STACK_CHUNK);
         *sp = s;
@@ -2698,6 +2700,10 @@ static void stack_pop(struct stack **sp, struct node **v1, struct edge **v2) {
     }
 }
 
+static inline bool stack_empty(struct stack *s) {
+    return s->prev == NULL && s->sp == 0;
+}
+
 // Tarjan SCC algorithm
 static void tarjan(struct global *global){
     unsigned int i = 0, comp_id = 0;
@@ -2707,7 +2713,7 @@ static void tarjan(struct global *global){
         struct node *n = global->graph.nodes[v];
         if (n->index == -1) {
             stack_push(&call_stack, n, NULL);
-            while (call_stack != NULL) {
+            while (!stack_empty(call_stack)) {
                 struct edge *e;
                 stack_pop(&call_stack, &n, &e);
                 if (e == NULL) {
