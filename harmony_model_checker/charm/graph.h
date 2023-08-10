@@ -70,7 +70,7 @@ struct node {
     } u;
 
     struct edge *fwd;       // forward edges
-    struct edge *to_parent; // shortest path to initial state
+    struct edge *to_parent; // a path to initial state
     uint32_t id;            // nodes are numbered starting from 0
     int32_t index;          // for Tarjan algorithm
 
