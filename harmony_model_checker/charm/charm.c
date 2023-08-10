@@ -4,6 +4,7 @@
 
 #ifdef __linux__
 #include <sched.h>   //cpu_set_t, CPU_SET
+#include <numa.h>
 #endif
 
 #include <stdint.h>
@@ -2982,6 +2983,10 @@ static void usage(char *prog){
 }
 
 int main(int argc, char **argv){
+#ifdef NUMA
+    numa_available();
+    numa_set_preferred(0);
+#endif
     bool cflag = false, dflag = false, Dflag = false, Rflag = false;
     int i, maxtime = 300000000 /* about 10 years */;
     char *outfile = NULL, *dfafile = NULL, *worker_flag = NULL;
