@@ -137,6 +137,57 @@ struct worker {
 #define ALIGNMASK       0xF
 #endif
 
+#ifdef NUMA
+
+#define WALLOC_BSIZE    4
+
+struct bounded_buffer {
+    void *buf[WALLOC_BSIZE];
+    int occupied;
+    int nextin;
+    int nextout;
+    pthread_mutex_t mutex;
+    pthread_cond_t more;
+    pthread_cond_t less;
+} walloc_bb;
+
+// This thread allocates chunks of memory and puts them in a buffer
+static void walloc_producer(void *arg){
+#ifdef __linux__
+    struct worker *w = arg;
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(w->vproc, &cpuset);
+#endif
+
+    pthread_mutex_lock(&walloc_bb.mutex);
+    for (;;) {
+        while (walloc_bb.occupied >= WALLOC_BSIZE)
+            pthread_cond_wait(&walloc_bb.less, &walloc_bb.mutex);
+        assert(walloc_bb.occupied < WALLOC_BSIZE);
+        walloc_bb.buf[walloc_bb.nextin++] = aligned_alloc(16, WALLOC_CHUNK);
+        walloc_bb.nextin %= WALLOC_BSIZE;
+        walloc_bb.occupied++;
+        pthread_cond_signal(&walloc_bb.more);
+    }
+    // pthread_mutex_unlock(&walloc_bb.mutex);
+}
+
+void *walloc_consume(){
+    pthread_mutex_lock(&walloc_bb.mutex);
+    while(walloc_bb.occupied <= 0)
+        pthread_cond_wait(&walloc_bb.more, &walloc_bb.mutex);
+    assert(walloc_bb.occupied > 0);
+    void *item = walloc_bb.buf[walloc_bb.nextout++];
+    walloc_bb.nextout %= WALLOC_BSIZE;
+    walloc_bb.occupied--;
+    pthread_cond_signal(&walloc_bb.less);
+    pthread_mutex_unlock(&walloc_bb.mutex);
+    return item;
+}
+
+#endif // NUMA
+
 // Per thread one-time memory allocator (no free())
 static void *walloc(void *ctx, unsigned int size, bool zero, bool align16){
     struct worker *w = ctx;
@@ -152,16 +203,21 @@ static void *walloc(void *ctx, unsigned int size, bool zero, bool align16){
         w->align_waste += asize - size;
         if (w->alloc_ptr16 + asize > w->alloc_buf16 + WALLOC_CHUNK) {
             w->frag_waste += WALLOC_CHUNK - (w->alloc_ptr16 - w->alloc_buf16);
+#ifdef NUMA
+            w->alloc_buf16 = walloc_consume();
+            w->alloc_ptr16 = w->alloc_buf16;
+#else // NUMA
 #ifdef ALIGNED_ALLOC
             w->alloc_buf16 = my_aligned_alloc(ALIGNMASK + 1, WALLOC_CHUNK);
             w->alloc_ptr16 = w->alloc_buf16;
-#else
+#else // ALIGNED_ALLOC
             w->alloc_buf16 = malloc(WALLOC_CHUNK);
             w->alloc_ptr16 = w->alloc_buf16;
             if (((hvalue_t) w->alloc_ptr16 & ALIGNMASK) != 0) {
                 w->alloc_ptr16 = (char *) ((hvalue_t) (w->alloc_ptr16 + ALIGNMASK) & ~ALIGNMASK);
             }
-#endif
+#endif // ALIGNED_ALLOC
+#endif // NUMA
             w->allocated += WALLOC_CHUNK;
         }
         result = w->alloc_ptr16;
@@ -172,7 +228,11 @@ static void *walloc(void *ctx, unsigned int size, bool zero, bool align16){
         w->align_waste += asize - size;
         if (w->alloc_ptr + asize > w->alloc_buf + WALLOC_CHUNK) {
             w->frag_waste += WALLOC_CHUNK - (w->alloc_ptr - w->alloc_buf);
+#ifdef NUMA
+            w->alloc_buf = walloc_consume();
+#else
             w->alloc_buf = malloc(WALLOC_CHUNK);
+#endif
             w->alloc_ptr = w->alloc_buf;
             w->allocated += WALLOC_CHUNK;
         }
@@ -2983,9 +3043,11 @@ static void usage(char *prog){
 }
 
 int main(int argc, char **argv){
-#ifdef NUMA
+#ifdef XNUMA
+#ifdef __linux__
     numa_available();
     numa_set_preferred(0);
+#endif
 #endif
     bool cflag = false, dflag = false, Dflag = false, Rflag = false;
     int i, maxtime = 300000000 /* about 10 years */;
@@ -3394,6 +3456,10 @@ int main(int argc, char **argv){
     // Compute how much table space is allocated
     global->allocated = global->graph.size * sizeof(struct node *) +
         dict_allocated(visited) + dict_allocated(global->values);
+
+#ifdef NUMA
+    thread_create(walloc_producer, &workers[0]);
+#endif
 
     // Start all but one of the workers, who'll wait on the start barrier
     for (unsigned int i = 1; i < global->nworkers; i++) {

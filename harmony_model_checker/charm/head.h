@@ -19,3 +19,5 @@ void *my_aligned_alloc(size_t alignment, size_t size);
 #ifndef __STDC_NO_ATOMICS__
 #define USE_ATOMIC
 #endif
+
+#define NUMA
