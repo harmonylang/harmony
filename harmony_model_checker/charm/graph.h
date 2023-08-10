@@ -27,7 +27,6 @@ struct access_info {
 
 struct edge {
     struct edge *fwdnext;    // forward linked list maintenance
-    struct edge *bwdnext;    // backward linked list maintenance
     hvalue_t ctx, choice;    // ctx that made the microstep, choice if any
     struct node *src;        // source node
     struct node *dst;        // destination node
@@ -37,6 +36,7 @@ struct edge {
     uint16_t multiplicity;   // multiplicity of context
     bool interrupt : 1;      // set if state change is an interrupt
     // TODO.  Is choosing == (choice != 0)?
+    //        Also, edge->src->choosing is probably the same
     bool choosing : 1;       // destination state is choosing
     bool failed : 1;         // context failed
     uint16_t nlog : 12;      // size of print history
@@ -56,27 +56,25 @@ enum fail_type {
 };
 
 struct node {
-	struct node *next;		// for linked list
+    union {
+        // Data we only need while creating the Kripke structure
+        struct {
+            struct node *next;		// for linked list
+            ht_lock_t *lock;        // lock for forward edges
+        } ph1;
+        // Data we only need when analyzing the Kripke structure
+        struct {
+            int32_t lowlink;        // for Tarjan SCC algorithm
+            uint32_t component;     // strongly connected component id
+        } ph2;
+    } u;
 
-    // Information about state
-    // TODO.  state contiguous to this node, so don't need pointer
-    struct state *state;    // state corresponding to this node
-    struct edge *bwd;       // backward edges
     struct edge *fwd;       // forward edges
-    ht_lock_t *lock;        // lock for forward edges
-
-    struct edge *to_parent; // shortest path to initial state
+    struct edge *to_parent; // a path to initial state
     uint32_t id;            // nodes are numbered starting from 0
-    uint32_t component;     // strongly connected component id
-    uint16_t len;           // length of path to initial state
-    uint16_t steps;         // #microsteps from root
+    int32_t index;          // for Tarjan algorithm
 
-    // For Tarjan SCC
-    int32_t index;
-    int32_t lowlink;
-    // uint32_t comp_id;       // strongly connected component id
-    bool on_stack : 1;
-
+    bool on_stack : 1;      // for Tarjan
     bool initialized : 1;   // this node structure has been initialized
     bool failed : 1;        // a thread has failed
     bool final : 1;         // only eternal threads left (TODO: need this?)
@@ -85,6 +83,8 @@ struct node {
     // NFA compression
     bool reachable : 1;
 };
+
+#define node_state(n)   ((struct state *) &(n)[1])
 
 struct failure {
     struct failure *next;   // for linked list maintenance

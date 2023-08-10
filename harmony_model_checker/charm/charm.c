@@ -4,6 +4,7 @@
 
 #ifdef __linux__
 #include <sched.h>   //cpu_set_t, CPU_SET
+#include <numa.h>
 #endif
 
 #include <stdint.h>
@@ -130,14 +131,6 @@ struct worker {
     hvalue_t stack[MAX_CONTEXT_STACK];
 };
 
-// One of these per SCC worker thread
-struct scc_worker {
-    struct global *global;     // global state
-    double timeout;
-    barrier_t *scc_barrier;
-    void *scc_cache;            // for SCC alloc/free
-};
-
 #ifdef CACHE_LINE_ALIGNED
 #define ALIGNMASK       0x3F
 #else
@@ -162,13 +155,13 @@ static void *walloc(void *ctx, unsigned int size, bool zero, bool align16){
 #ifdef ALIGNED_ALLOC
             w->alloc_buf16 = my_aligned_alloc(ALIGNMASK + 1, WALLOC_CHUNK);
             w->alloc_ptr16 = w->alloc_buf16;
-#else
+#else // ALIGNED_ALLOC
             w->alloc_buf16 = malloc(WALLOC_CHUNK);
             w->alloc_ptr16 = w->alloc_buf16;
             if (((hvalue_t) w->alloc_ptr16 & ALIGNMASK) != 0) {
                 w->alloc_ptr16 = (char *) ((hvalue_t) (w->alloc_ptr16 + ALIGNMASK) & ~ALIGNMASK);
             }
-#endif
+#endif // ALIGNED_ALLOC
             w->allocated += WALLOC_CHUNK;
         }
         result = w->alloc_ptr16;
@@ -282,19 +275,18 @@ bool predicate_check(struct global *global, struct state *sc, struct step *step)
 // Returns 0 if there are no issues, or the pc of the invariant if it failed.
 unsigned int check_invariants(struct global *global, struct node *node,
                         struct node *before, struct step *step){
-    struct state *state = node->state;
-    assert(node->state != NULL);
+    struct state *state = node_state(node);
     assert(state != NULL);
 
     assert(step->ctx->sp == 0);
 
     // pre == 0 means it is a non-initialized state.
     hvalue_t args[2];   // (pre, post)
-    if (before->state->pre == 0) {
+    if (node_state(before)->pre == 0) {
         args[0] = state->vars;
     }
     else {
-        args[0] = before->state->pre;
+        args[0] = node_state(before)->pre;
     }
     args[1] = state->vars;
 
@@ -329,8 +321,7 @@ unsigned int check_invariants(struct global *global, struct node *node,
 
 // Returns 0 if there are no issues, or the pc of the finally predicate if it failed.
 unsigned int check_finals(struct global *global, struct node *node, struct step *step){
-    struct state *state = node->state;
-    assert(node->state != NULL);
+    struct state *state = node_state(node);
     assert(state != NULL);
 
     // Check each finally predicate
@@ -358,36 +349,31 @@ unsigned int check_finals(struct global *global, struct node *node, struct step 
 
 static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock, struct node **results) {
     struct node *node = edge->src, *next = edge->dst;
-    struct state *state = (struct state *) &next[1];
 
     // mutex_acquire(lock);
 
     bool initialized = next->initialized;
     if (!initialized) {
         next->initialized = true;
-        next->state = state;        // TODO.  Don't technically need this
+        next->reachable = true;
+        // next->state = state;        // TODO.  Don't technically need this
         next->failed = edge->failed;
-        next->lock = lock;
+        next->u.ph1.lock = lock;
 
         // TODOTODO
         next->to_parent = edge;
+#ifdef notdef
         next->len = node->len + 1;
         next->steps = node->steps + edge->nsteps;
+#endif
 
         next->index = -1;       // for Tarjan
 
-        edge->bwdnext = NULL;
-        next->next = *results;
+        next->u.ph1.next = *results;
         *results = next;
         w->count++;
         w->enqueued++;
     }
-    else {
-        assert(next->failed == edge->failed);
-        edge->bwdnext = next->bwd;
-    }
-
-    next->bwd = edge;
 
     mutex_release(lock);
 
@@ -399,10 +385,10 @@ static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock, str
     edge->fwdnext = *pe;
     *pe = edge;
 #else
-    if (mutex_try_acquire(node->lock)) {
+    if (mutex_try_acquire(node->u.ph1.lock)) {
         edge->fwdnext = node->fwd;
         node->fwd = edge;
-        mutex_release(node->lock);
+        mutex_release(node->u.ph1.lock);
     }
     else {
         struct edge **pe = &w->edges[node->id % w->nworkers];
@@ -471,8 +457,7 @@ static bool onestep(
     int multiplicity,       // #contexts that are in the current state
     struct node **results   // where to place the resulting new states
 ) {
-    assert(node->state == (struct state *) &node[1]);
-    assert(state_size(sc) == state_size(node->state));
+    assert(state_size(sc) == state_size(node_state(node)));
 
     assert(!step->ctx->terminated);
     assert(!step->ctx->failed);
@@ -790,7 +775,7 @@ static bool onestep(
     // also keep track of "pre" state.
     if (choosing) {
         sc->choosing = after;
-        sc->pre = global->inv_pre ? node->state->pre : sc->vars;
+        sc->pre = global->inv_pre ? node_state(node)->pre : sc->vars;
     }
     else {
         sc->pre = sc->vars;
@@ -869,7 +854,7 @@ static void make_step(
     step.engine.values = w->global->values;
 
     // Make a copy of the state
-    unsigned int statesz = state_size(node->state);
+    unsigned int statesz = state_size(node_state(node));
     // Room to grown in copy for op_Spawn
 #ifdef HEAP_ALLOC
     char *copy = malloc(statesz + 64*sizeof(hvalue_t));
@@ -877,7 +862,7 @@ static void make_step(
     char copy[statesz + 64*sizeof(hvalue_t)];
 #endif
     struct state *sc = (struct state *) copy;
-    memcpy(sc, node->state, statesz);
+    memcpy(sc, node_state(node), statesz);
     assert(step.engine.allocator == &w->allocator);
 
     // Make a copy of the context
@@ -896,14 +881,14 @@ static void make_step(
         assert(step.engine.allocator == &w->allocator);
         if (!succ) {        // ran into an infinite loop
             step.nlog = 0;
-            memcpy(sc, node->state, statesz);
+            memcpy(sc, node_state(node), statesz);
             memcpy(&w->ctx, cc, size);
             assert(step.engine.allocator == &w->allocator);
             (void) onestep(w, node, sc, ctx, &step, choice, true, true, multiplicity, results);
             assert(step.engine.allocator == &w->allocator);
         }
 
-        memcpy(sc, node->state, statesz);
+        memcpy(sc, node_state(node), statesz);
         memcpy(&w->ctx, cc, size);
         assert(step.engine.allocator == &w->allocator);
     }
@@ -913,7 +898,7 @@ static void make_step(
     assert(step.engine.allocator == &w->allocator);
     if (!succ) {        // ran into an infinite loop
         step.nlog = 0;
-        memcpy(sc, node->state, statesz);
+        memcpy(sc, node_state(node), statesz);
         memcpy(&w->ctx, cc, size);
         assert(step.engine.allocator == &w->allocator);
         (void) onestep(w, node, sc, ctx, &step, choice, false, true, multiplicity, results);
@@ -926,10 +911,10 @@ static void make_step(
 }
 
 char *ctx_status(struct node *node, hvalue_t ctx) {
-    if (node->state->choosing == ctx) {
+    if (node_state(node)->choosing == ctx) {
         return "choosing";
     }
-    while (node->state->choosing != 0) {
+    while (node_state(node)->choosing != 0) {
         node = node->to_parent->src;
     }
     struct edge *edge;
@@ -1331,7 +1316,7 @@ void path_recompute(struct global *global){
     struct node *node = global->graph.nodes[0];
     struct state *sc = calloc(1,
         sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1));
-    memcpy(sc, node->state, state_size(node->state));
+    memcpy(sc, node_state(node), state_size(node_state(node)));
 
     for (unsigned int i = 0; i < global->nmacrosteps; i++) {
         struct macrostep *macro = global->macrosteps[i];
@@ -1562,7 +1547,7 @@ static void path_output_microstep(struct global *global, FILE *file,
 static void path_output_macrostep(struct global *global, FILE *file, struct macrostep *macro, struct state *oldstate){
     fprintf(file, "    {\n");
     fprintf(file, "      \"id\": \"%d\",\n", macro->edge->dst->id);
-    fprintf(file, "      \"len\": \"%d\",\n", macro->edge->dst->len);
+    // fprintf(file, "      \"len\": \"%d\",\n", macro->edge->dst->len);
     fprintf(file, "      \"tid\": \"%d\",\n", macro->tid);
 
     fprintf(file, "      \"shared\": ");
@@ -1622,7 +1607,7 @@ static void path_output_macrostep(struct global *global, FILE *file, struct macr
     fprintf(file, "\n      ],\n");
   
     fprintf(file, "      \"ctxbag\": {\n");
-    struct state *state = macro->edge->dst->state;
+    struct state *state = node_state(macro->edge->dst);
     for (unsigned int i = 0; i < state->bagsize; i++) {
         if (i > 0) {
             fprintf(file, ",\n");
@@ -2008,13 +1993,13 @@ static enum busywait is_stuck(
     hvalue_t ctx,
     bool change
 ) {
-	if (node->component != start->component) {
+	if (node->u.ph2.component != start->u.ph2.component) {
 		return BW_ESCAPE;
 	}
 	if (node->visited) {
 		return BW_VISITED;
 	}
-    change = change || (node->state->vars != start->state->vars);
+    change = change || (node_state(node)->vars != node_state(start)->vars);
 	node->visited = true;
 	enum busywait result = BW_ESCAPE;
     for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
@@ -2052,8 +2037,8 @@ static enum busywait is_stuck(
 }
 
 static void detect_busywait(struct minheap *failures, struct node *node){
-	for (unsigned int i = 0; i < node->state->bagsize; i++) {
-		if (is_stuck(node, node, state_contexts(node->state)[i], false) == BW_RETURN) {
+	for (unsigned int i = 0; i < node_state(node)->bagsize; i++) {
+		if (is_stuck(node, node, state_contexts(node_state(node))[i], false) == BW_RETURN) {
 			struct failure *f = new_alloc(struct failure);
 			f->type = FAIL_BUSYWAIT;
 			f->edge = node->to_parent;
@@ -2063,6 +2048,7 @@ static void detect_busywait(struct minheap *failures, struct node *node){
 	}
 }
 
+#ifdef notdef
 static int node_cmp(void *n1, void *n2){
     struct node *node1 = n1, *node2 = n2;
 
@@ -2074,18 +2060,23 @@ static int node_cmp(void *n1, void *n2){
     }
     return node1->id - node2->id;
 }
+#endif
 
 static int fail_cmp(void *f1, void *f2){
+#ifdef notdef
     struct failure *fail1 = f1, *fail2 = f2;
 
     return node_cmp(fail1->edge->dst, fail2->edge->dst);
+#else
+    return 0;
+#endif
 }
 
 void do_work1(struct worker *w, struct node *node, unsigned int level){
     if (node->failed) {
         return;
     }
-    struct state *state = node->state;
+    struct state *state = node_state(node);
     if (state->choosing != 0) {
         assert(VALUE_TYPE(state->choosing) == VALUE_CONTEXT);
 
@@ -2636,7 +2627,7 @@ static void worker(void *arg){
                 assert(node->id == 0);
                 node->id = w->node_id;
                 global->graph.nodes[w->node_id++] = node;
-                w->results = node->next;
+                w->results = node->u.ph1.next;
                 w->count--;
             }
             assert(w->results == NULL);
@@ -2647,96 +2638,120 @@ static void worker(void *arg){
     }
 }
 
-struct stack {
-    struct stack *next;
-    unsigned int v1;
-    struct edge *v2;
-} *stack_free;
+#define STACK_CHUNK 4096
 
-static void stack_push(struct stack **sp, unsigned int v1, struct edge *v2) {
-    struct stack *s = stack_free;
-    if (s == NULL) {
-        s = malloc(sizeof(*s));
+// The stack contains pointers to either nodes or edges.
+// Which of the two it is is captured in the lowest bit.
+// Memory space is at premium here...
+struct stack {
+    struct stack *next, *prev;
+    void *ptrs[STACK_CHUNK];          // low bit = 1 --> edge
+    unsigned int sp;
+};
+
+static void stack_push(struct stack **sp, struct node *v1, struct edge *v2) {
+    // See if there's space in the current chunk
+    struct stack *s = *sp;
+    if (s->sp == STACK_CHUNK) {
+        if (s->next == NULL) {
+            s->next = malloc(sizeof(*s));
+            s->next->prev = s;
+            s = s->next;
+            s->sp = 0;
+            s->next = NULL;
+        }
+        else {
+	    assert(s->next->prev == s);
+            s = s->next;
+            assert(s->sp == 0);
+        }
+        *sp = s;
+    }
+
+    // Push either a node or edge pointer
+    if (v2 != NULL) {
+        assert(v1 == v2->src);
+        s->ptrs[s->sp++] = (char *) v2 + 1;
     }
     else {
-	stack_free = s->next;
+        s->ptrs[s->sp++] = v1;
     }
-    s->next = *sp;
-    s->v1 = v1;
-    s->v2 = v2;
-    *sp = s;
 }
 
-static void stack_pop(struct stack **sp, unsigned int *v1, struct edge **v2) {
+static struct node *stack_pop(struct stack **sp, struct edge **v2) {
+    // If the current chunk is empty, go to the previous one
     struct stack *s = *sp;
-    *sp = s->next;
-    *v1 = s->v1;
-    if (v2 != NULL) {
-        *v2 = s->v2;
+    if (s->sp == 0) {
+	assert(s->prev->next == s);
+        s = s->prev;
+        assert(s->sp == STACK_CHUNK);
+        *sp = s;
     }
-    s->next = stack_free;
-    stack_free = s;
-}
 
-static struct edge *node_adj(struct node *n, unsigned int pi) {
-    for (struct edge *e = n->fwd; e != NULL; e = e->fwdnext, pi--) {
-        if (pi == 0) {
-            return e;
+    void *ptr = s->ptrs[--s->sp];
+    if ((hvalue_t) ptr & 1) {        // edge
+        *v2 = (struct edge *) ((char *) ptr - 1);
+        return (*v2)->src;
+    }
+    else {                              // node
+        if (v2 != NULL) {
+            *v2 = NULL;
         }
+        return ptr;
     }
-    return NULL;
 }
 
+static inline bool stack_empty(struct stack *s) {
+    return s->prev == NULL && s->sp == 0;
+}
+
+// Tarjan SCC algorithm
 static void tarjan(struct global *global){
     unsigned int i = 0, comp_id = 0;
-    struct stack *stack = NULL;
-    struct stack *call_stack = NULL;
+    struct stack *stack = calloc(1, sizeof(*stack));
+    struct stack *call_stack = calloc(1, sizeof(*call_stack));
     for (unsigned int v = 0; v < 1 /*global->graph.size*/; v++) {
         struct node *n = global->graph.nodes[v];
         if (n->index == -1) {
-            stack_push(&call_stack, v, NULL);
-            while (call_stack != NULL) {
-		unsigned int v1;
-		struct edge *e;
-                stack_pop(&call_stack, &v1, &e);
-                n = global->graph.nodes[v1];
+            stack_push(&call_stack, n, NULL);
+            while (!stack_empty(call_stack)) {
+                struct edge *e;
+                n = stack_pop(&call_stack, &e);
                 if (e == NULL) {
                     n->index = i;
-                    n->lowlink = i;
+                    n->u.ph2.lowlink = i;
                     i++;
-                    stack_push(&stack, v1, NULL);
+                    stack_push(&stack, n, NULL);
                     n->on_stack = true;
-		    e = n->fwd;
+                    e = n->fwd;
                 }
                 else {
-                    if (e->dst->lowlink < n->lowlink) {
-                        n->lowlink = e->dst->lowlink;
+                    if (e->dst->u.ph2.lowlink < n->u.ph2.lowlink) {
+                        n->u.ph2.lowlink = e->dst->u.ph2.lowlink;
                     }
-		    e = e->fwdnext;
+                    e = e->fwdnext;
                 }
                 while (e != NULL) {
                     struct node *w = e->dst;
                     if (w->index < 0) {
                         break;
                     }
-                    if (w->on_stack && w->index < n->lowlink) {
-                        n->lowlink = w->index;
+                    if (w->on_stack && w->index < n->u.ph2.lowlink) {
+                        n->u.ph2.lowlink = w->index;
                     }
-		    e = e->fwdnext;
+                    e = e->fwdnext;
                 }
                 if (e != NULL) {
-		    // printf("TJ2 push %u %u, %u 0\n", v1, pi+1, e->dst->id);
-                    stack_push(&call_stack, v1, e);
-                    stack_push(&call_stack, e->dst->id, NULL);
+                    stack_push(&call_stack, n, e);
+                    stack_push(&call_stack, e->dst, NULL);
                 }
-                else if (n->lowlink == n->index) {
+                else if (n->u.ph2.lowlink == n->index) {
                     for (;;) {
-                        unsigned int v2;
-                        stack_pop(&stack, &v2, NULL);
-                        struct node *n2 = global->graph.nodes[v2];
+                        struct node *n2;
+                        n2 = stack_pop(&stack, NULL);
                         n2->on_stack = false;
-                        n2->component = comp_id;
-                        if (v2 == v1) {
+                        n2->u.ph2.component = comp_id;
+                        if (n2 == n) {
                             break;
                         }
                     }
@@ -2746,75 +2761,6 @@ static void tarjan(struct global *global){
         }
     }
     global->ncomponents = comp_id;
-    // printf("TARJAN: %u\n", comp_id);
-    // for (unsigned int i = 0; i < global->graph.size; i++) {
-    //     printf("%3u: %u\n", i, global->graph.nodes[i]->comp_id);
-    // }
-}
-
-static void scc_worker(void *arg){
-    struct scc_worker *w = arg;
-    struct global *global = w->global;
-    mutex_acquire(&global->todo_enter);
-    for (;;) {
-        if (global->scc_todo == NULL) {
-            global->scc_nwaiting++;
-            if (global->scc_nwaiting == global->nworkers) {
-                mutex_release(&global->todo_wait);
-                break;
-            }
-            mutex_release(&global->todo_enter);
-            mutex_acquire(&global->todo_wait);
-            if (global->scc_nwaiting == global->nworkers) {
-                mutex_release(&global->todo_wait);
-                break;
-            }
-            global->scc_nwaiting--;
-        }
-
-        // Grab work
-        unsigned int component = global->ncomponents++;
-        struct scc *scc = global->scc_todo;
-        assert(scc != NULL);
-        global->scc_todo = scc->next;
-        scc->next = NULL;
-
-        // Split binary semaphore release
-        if (global->scc_todo != NULL && global->scc_nwaiting > 0) {
-            mutex_release(&global->todo_wait);
-        }
-        else {
-            mutex_release(&global->todo_enter);
-        }
-
-        for (;;) {
-            // Do the work
-            assert(scc->next == NULL);
-            scc = graph_find_scc_one(&global->graph, scc, component, &w->scc_cache);
-
-            // Put new work on the list except the last (which we'll do ourselves)
-            mutex_acquire(&global->todo_enter);
-            while (scc != NULL && scc->next != NULL) {
-                struct scc *next = scc->next;
-                scc->next = global->scc_todo;
-                global->scc_todo = scc;
-                scc = next;
-            }
-            if (scc == NULL) {      // get more work
-                break;
-            }
-            component = global->ncomponents++;
-
-            // Split binary semaphore release
-            if (global->scc_todo != NULL && global->scc_nwaiting > 0) {
-                mutex_release(&global->todo_wait);
-            }
-            else {
-                mutex_release(&global->todo_enter);
-            }
-        }
-    }
-    barrier_wait(w->scc_barrier);
 }
 
 char *state_string(struct state *state){
@@ -2834,57 +2780,63 @@ char *state_string(struct state *state){
 
 // This routine removes all nodes that have a single incoming edge and it's
 // an "epsilon" edge (empty print log).  These are essentially useless nodes.
-// Typically about half of the nodes can be removed this way.
 static void destutter1(struct global *global){
     struct graph *graph = &global->graph;
+
+    // If nothing got printed, we can just return a single node
     if (!global->printed_something) {
-        global->graph.size = 1;
-        struct node *n = global->graph.nodes[0];
+        graph->size = 1;
+        struct node *n = graph->nodes[0];
         n->final = 1;
-        n->fwd = n->bwd = NULL;
+        n->fwd = NULL;
     }
+
+#ifdef OBSOLETE
+    graph->nodes[0]->reachable = true;
+    int ndropped = 0;
     for (unsigned int i = 0; i < graph->size; i++) {
-        struct node *n = graph->nodes[i];
+        struct node *parent = graph->nodes[i];
+        struct edge **pe, *e;
+        for (pe = &parent->fwd; (e = *pe) != NULL;) {
+            struct node *n = e->dst;
+            if (e->nlog == 0) {     // epsilon edge (no prints)
+                assert(n->bwd != NULL);
+                if (n->bwd->bwdnext == NULL) {
+                    assert(n->bwd == e);
 
-        if (n->bwd != NULL && n->bwd->bwdnext == NULL && n->bwd->nlog == 0) {
-            struct node *parent = n->bwd->src;
-
-            if (n->final) {
-                parent->final = true;
-            }
-
-            // Remove the edge from the parent
-            struct edge **pe, *e;
-            for (pe = &parent->fwd; (e = *pe) != NULL; pe = &e->fwdnext) {
-                if (e->dst == n && e->nlog == 0) {
-                    *pe = e->fwdnext;
-                    // free(e);
-                    break;
-                }
-            }
-
-            struct edge *next;
-            for (struct edge *e = n->fwd; e != NULL; e = next) {
-                // Move the outgoing edge to the parent.
-                next = e->fwdnext;
-                e->fwdnext = parent->fwd;
-                parent->fwd = e;
-
-                // Fix the corresponding backwards edge
-                for (struct edge *f = e->dst->bwd; f != NULL; f = f->bwdnext) {
-                    if (f->src == n && f->nlog == e->nlog &&
-                            memcmp(edge_log(f), edge_log(e), f->nlog * sizeof(hvalue_t)) == 0) {
-                        f->src = parent;
-                        break;
+                    if (n->final) {
+                        parent->final = true;
                     }
+
+                    // Remove the edge
+                    *pe = e->fwdnext;
+                    n->bwd = NULL;
+                    // free(e);
+
+                    ndropped++;
+
+                    // Move the outgoing edges to the parent.
+                    while ((e = n->fwd) != NULL) {
+                        n->fwd = e->fwdnext;
+                        e->fwdnext = *pe;
+                        *pe = e;
+                        e->src = parent;
+                    }
+                    n->reachable = false;
+                }
+                else {
+                    n->reachable = true;
+                    pe = &e->fwdnext;
                 }
             }
-            n->reachable = false;
-        }
-        else {
-            n->reachable = true;
+            else {
+                n->reachable = true;
+                pe = &e->fwdnext;
+            }
         }
     }
+    // printf("DROPPED %d / %d\n", ndropped, graph->size);
+#endif // OBSOLETE
 }
 
 static struct dict *collect_symbols(struct graph *graph){
@@ -3260,11 +3212,10 @@ int exec_model_checker(int argc, char **argv){
     global->numa = ((unsigned int) (gettime() * 1000) % 2) == 0;
 #endif
 
-    barrier_t start_barrier, middle_barrier, end_barrier, scc_barrier;
+    barrier_t start_barrier, middle_barrier, end_barrier;
     barrier_init(&start_barrier, global->nworkers);
     barrier_init(&middle_barrier, global->nworkers);
     barrier_init(&end_barrier, global->nworkers);
-    barrier_init(&scc_barrier, global->nworkers);
 
     // initialize modules
     mutex_init(&global->inv_lock);
@@ -3420,12 +3371,10 @@ int exec_model_checker(int argc, char **argv){
     unsigned int worker_index = 0;
     vproc_tree_alloc(vproc_root, workers, &worker_index, global->nworkers);
 
-    struct scc_worker *scc_workers = calloc(global->nworkers, sizeof(*scc_workers));
-    for (unsigned int i = 0; i < global->nworkers; i++) {
-        struct scc_worker *w = &scc_workers[i];
-        w->global = global;
-        w->scc_barrier = &scc_barrier;
-    }
+#ifdef __linux__
+    numa_available();
+    numa_set_preferred(vproc_info[workers[0].vproc].ids[0]);
+#endif
 
     // Put the state and value dictionaries in concurrent mode
     dict_set_concurrent(global->values);
@@ -3436,9 +3385,10 @@ int exec_model_checker(int argc, char **argv){
     struct dict_assoc *hn = dict_find_lock(visited, &workers[0].allocator, state, state_size(state), NULL, &lock);
     struct node *node = (struct node *) &hn[1];
     memset(node, 0, sizeof(*node));
-    node->state = (struct state *) &node[1];
-    node->lock = lock;
+    // node->state = (struct state *) &node[1];
+    node->u.ph1.lock = lock;
     mutex_release(lock);
+    node->reachable = true;
     node->index = -1;
     graph_add(&global->graph, node);
 
@@ -3508,43 +3458,6 @@ int exec_model_checker(int argc, char **argv){
     dict_set_sequential(visited);
 
     printf("* Phase 3: analysis\n");
-
-#ifdef notdef
-    // Shortest path to initial state (Dijkstra + minheap)
-    if (global->graph.size > 10000) {
-        printf("* Phase 3a: shortest path to initial state\n");
-        fflush(stdout);
-    }
-    struct minheap *shp = minheap_create(node_cmp);
-    struct node *current = global->graph.nodes[0];
-    for (;;) {
-        for (struct edge *e = current->fwd; e != NULL; e = e->fwdnext) {
-            struct node *d = e->dst;
-            assert(e->src == current);
-            unsigned int weight = 1;
-            // TODOTODO   (current->to_parent == NULL || e->ctx == current->to_parent->after) ? 0 : 1;
-            unsigned int len = current->len + weight;
-            unsigned int steps = current->steps + e->nsteps;
-            if (d->to_parent == NULL) {
-                d->to_parent = e;
-                d->len = len;
-                d->steps = steps;
-                minheap_insert(shp, d);
-            }
-            else if (len < d->len || (d->len == len && steps < e->nsteps)) {
-                d->to_parent = e;
-                d->len = len;
-                d->steps = steps;
-                minheap_decrease(shp, d);
-            }
-        }
-        if (minheap_empty(shp)) {
-            break;
-        }
-        current = minheap_getmin(shp);
-    }
-#endif
-
     if (minheap_empty(global->failures)) {
         if (global->graph.size > 10000) {
             printf("* Phase 3b: strongly connected components\n");
@@ -3553,15 +3466,6 @@ int exec_model_checker(int argc, char **argv){
         double now = gettime();
         tarjan(global);
         global->phase2 = true;
-#ifdef OBSOLETE
-        global->scc_todo = scc_alloc(0, global->graph.size, NULL, NULL);
-
-        // Start all but one of the workers, who'll wait on the start barrier
-        for (unsigned int i = 1; i < global->nworkers; i++) {
-            thread_create(scc_worker, &scc_workers[i]);
-        }
-        scc_worker(&scc_workers[0]);
-#endif
 
         printf("    * %u components (%.2lf seconds)\n", global->ncomponents, gettime() - now);
 
@@ -3569,7 +3473,7 @@ int exec_model_checker(int argc, char **argv){
         printf("digraph Harmony {\n");
         for (unsigned int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
-            printf(" s%u [label=\"%u/%u\"]\n", i, i, node->component);
+            printf(" s%u [label=\"%u/%u\"]\n", i, i, node->u.ph2.component);
         }
         for (unsigned int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
@@ -3584,16 +3488,16 @@ int exec_model_checker(int argc, char **argv){
         struct component *components = calloc(global->ncomponents, sizeof(*components));
         for (unsigned int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
-			assert(node->component < global->ncomponents);
-            struct component *comp = &components[node->component];
+			assert(node->u.ph2.component < global->ncomponents);
+            struct component *comp = &components[node->u.ph2.component];
             if (comp->size == 0) {
                 comp->rep = node;
-                comp->all_same = value_state_all_eternal(node->state)
-                    && value_ctx_all_eternal(node->state->stopbag);
+                comp->all_same = value_state_all_eternal(node_state(node))
+                    && value_ctx_all_eternal(node_state(node)->stopbag);
             }
-            else if (node->state->vars != comp->rep->state->vars ||
-                        !value_state_all_eternal(node->state) ||
-                        !value_ctx_all_eternal(node->state->stopbag)) {
+            else if (node_state(node)->vars != node_state(comp->rep)->vars ||
+                        !value_state_all_eternal(node_state(node)) ||
+                        !value_ctx_all_eternal(node_state(node)->stopbag)) {
                 comp->all_same = false;
             }
             comp->size++;
@@ -3603,7 +3507,7 @@ int exec_model_checker(int argc, char **argv){
             // if this component has a way out, it is good
             for (struct edge *edge = node->fwd;
                             edge != NULL && !comp->good; edge = edge->fwdnext) {
-                if (edge->dst->component != node->component) {
+                if (edge->dst->u.ph2.component != node->u.ph2.component) {
                     comp->good = true;
                     break;
                 }
@@ -3636,12 +3540,12 @@ int exec_model_checker(int argc, char **argv){
         // Look for states in final components
         for (unsigned int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
-			assert(node->component < global->ncomponents);
-            struct component *comp = &components[node->component];
+			assert(node->u.ph2.component < global->ncomponents);
+            struct component *comp = &components[node->u.ph2.component];
             if (comp->final) {
                 node->final = true;
                 if (global->dfa != NULL &&
-						!dfa_is_final(global->dfa, node->state->dfa_state)) {
+						!dfa_is_final(global->dfa, node_state(node)->dfa_state)) {
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_BEHAVIOR;
                     f->edge = node->to_parent;
@@ -3666,7 +3570,7 @@ int exec_model_checker(int argc, char **argv){
             int nbad = 0;
             for (unsigned int i = 0; i < global->graph.size; i++) {
                 struct node *node = global->graph.nodes[i];
-                if (!components[node->component].good) {
+                if (!components[node->u.ph2.component].good) {
                     nbad++;
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_TERMINATION;
@@ -3687,7 +3591,7 @@ int exec_model_checker(int argc, char **argv){
                 }
                 for (unsigned int i = 0; i < global->graph.size; i++) {
                     struct node *node = global->graph.nodes[i];
-                    if (components[node->component].size > 1) {
+                    if (components[node->u.ph2.component].size > 1) {
                         detect_busywait(global->failures, node);
                     }
                 }
@@ -3703,13 +3607,12 @@ int exec_model_checker(int argc, char **argv){
         else {
             fprintf(df, "digraph Harmony {\n");
             for (unsigned int i = 0; i < global->graph.size; i++) {
-                struct node *node = global->graph.nodes[i];
-                fprintf(df, " s%u [label=\"%u/%u\"]\n", i, i, node->len);
+                fprintf(df, " s%u [label=\"%u\"]\n", i, i);
             }
             for (unsigned int i = 0; i < global->graph.size; i++) {
                 struct node *node = global->graph.nodes[i];
                 for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
-                    struct state *state = node->state;
+                    struct state *state = node_state(node);
                     unsigned int j;
                     for (j = 0; j < state->bagsize; j++) {
                         if (state_contexts(state)[j] == edge->ctx) {
@@ -3745,7 +3648,7 @@ int exec_model_checker(int argc, char **argv){
                 struct node *node = global->graph.nodes[i];
                 assert(node->id == i);
                 fprintf(df, "\nNode %d:\n", node->id);
-                fprintf(df, "    component: %d\n", node->component);
+                fprintf(df, "    component: %d\n", node->u.ph2.component);
                 if (node->to_parent != NULL) {
                     fprintf(df, "    ancestors:");
                     for (struct node *n = node->to_parent->src;; n = n->to_parent->src) {
@@ -3756,8 +3659,8 @@ int exec_model_checker(int argc, char **argv){
                     }
                     fprintf(df, "\n");
                 }
-                fprintf(df, "    vars: %s\n", value_string(node->state->vars));
-                fprintf(df, "    len: %u %u\n", node->len, node->steps);
+                fprintf(df, "    vars: %s\n", value_string(node_state(node)->vars));
+                // fprintf(df, "    len: %u %u\n", node->len, node->steps);
                 if (node->failed) {
                     fprintf(df, "    failed\n");
                 }
@@ -3766,7 +3669,7 @@ int exec_model_checker(int argc, char **argv){
                 for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext, eno++) {
                     fprintf(df, "        %d:\n", eno);
                     struct context *ctx = value_get(edge->ctx, NULL);
-                    fprintf(df, "            node: %d (%d)\n", edge->dst->id, edge->dst->component);
+                    fprintf(df, "            node: %d (%d)\n", edge->dst->id, edge->dst->u.ph2.component);
                     fprintf(df, "            context before: %"PRIx64" pc=%d\n", edge->ctx, ctx->pc);
                     ctx = value_get(edge->after, NULL);
                     fprintf(df, "            context after:  %"PRIx64" pc=%d\n", edge->after, ctx->pc);
@@ -3797,28 +3700,6 @@ int exec_model_checker(int argc, char **argv){
                             }
                             free(p);
                         }
-                    }
-                }
-                fprintf(df, "    bwd:\n");
-                eno = 0;
-                for (struct edge *edge = node->bwd; edge != NULL; edge = edge->bwdnext, eno++) {
-                    fprintf(df, "        %d:\n", eno);
-                    fprintf(df, "            node: %d (%d)\n", edge->src->id, edge->src->component);
-                    struct context *ctx = value_get(edge->ctx, NULL);
-                    fprintf(df, "            context before: %"PRIx64" %d\n", edge->ctx, ctx->pc);
-                    ctx = value_get(edge->after, NULL);
-                    fprintf(df, "            context after:  %"PRIx64" %d\n", edge->after, ctx->pc);
-                    if (edge->choice != 0) {
-                        fprintf(df, "            choice: %s\n", value_string(edge->choice));
-                    }
-                    if (edge->nlog > 0) {
-                        fprintf(df, "            log:");
-                        for (int j = 0; j < edge->nlog; j++) {
-                            char *p = value_string(edge_log(edge)[j]);
-                            fprintf(df, " %s", p);
-                            free(p);
-                        }
-                        fprintf(df, "\n");
                     }
                 }
             }
@@ -3866,6 +3747,9 @@ int exec_model_checker(int argc, char **argv){
         json_dump(jv, out, 2);
         fprintf(out, ",\n");
 
+        // Reduce the output graph by removing nodes with only
+        // one incoming edge that is an epsilon edge
+        //
         destutter1(global);
 
         // Output the symbols;
@@ -3891,13 +3775,13 @@ int exec_model_checker(int argc, char **argv){
                 }
                 fprintf(out, "    {\n");
                 fprintf(out, "      \"idx\": %d,\n", node->id);
-                fprintf(out, "      \"component\": %d,\n", node->component);
+                fprintf(out, "      \"component\": %d,\n", node->u.ph2.component);
 #ifdef notdef
                 if (node->parent != NULL) {
                     fprintf(out, "      \"parent\": %d,\n", node->parent->id);
                 }
-                char *val = json_escape_value(node->state->vars);
-                fprintf(out, "      \"value\": \"%s:%d\",\n", val, node->state->choosing != 0);
+                char *val = json_escape_value(node_state(node)->vars);
+                fprintf(out, "      \"value\": \"%s:%d\",\n", val, node_state(node)->choosing != 0);
                 free(val);
 #endif
                 print_transitions(out, symbols, node->fwd);
@@ -4007,8 +3891,8 @@ int exec_model_checker(int argc, char **argv){
             inv_ctx->readonly = 1;
 
             hvalue_t args[2];
-            args[0] = bad->edge->src->state->vars;
-            args[1] = bad->edge->dst->state->vars;
+            args[0] = node_state(bad->edge->src)->vars;
+            args[1] = node_state(bad->edge->dst)->vars;
             value_ctx_push(inv_ctx, value_put_list(&engine, args, sizeof(args)));
 
             hvalue_t inv_context = value_put_context(&engine, inv_ctx);
