@@ -123,7 +123,8 @@ module = Extension(
     sources=get_c_extension_src(),
     include_dirs=get_c_extension_include_dirs(),
     extra_compile_args=[],
-    extra_link_args=["-lnuma"]
+    extra_link_args=
+        ["-lnuma"] if sys.platform.lower().startswith("linux") else []
 )
 
 setuptools.setup(
