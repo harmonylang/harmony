@@ -137,7 +137,7 @@ struct worker {
 #define ALIGNMASK       0xF
 #endif
 
-#ifdef NUMA
+#ifdef XNUMA
 
 #define WALLOC_BSIZE    4
 
@@ -165,7 +165,8 @@ static void walloc_producer(void *arg){
         while (walloc_bb.occupied >= WALLOC_BSIZE)
             pthread_cond_wait(&walloc_bb.less, &walloc_bb.mutex);
         assert(walloc_bb.occupied < WALLOC_BSIZE);
-        walloc_bb.buf[walloc_bb.nextin++] = aligned_alloc(16, WALLOC_CHUNK);
+        // walloc_bb.buf[walloc_bb.nextin++] = aligned_alloc(16, WALLOC_CHUNK);
+        walloc_bb.buf[walloc_bb.nextin++] = numa_alloc_onnode(WALLOC_CHUNK, 0);
         walloc_bb.nextin %= WALLOC_BSIZE;
         walloc_bb.occupied++;
         pthread_cond_signal(&walloc_bb.more);
@@ -203,7 +204,7 @@ static void *walloc(void *ctx, unsigned int size, bool zero, bool align16){
         w->align_waste += asize - size;
         if (w->alloc_ptr16 + asize > w->alloc_buf16 + WALLOC_CHUNK) {
             w->frag_waste += WALLOC_CHUNK - (w->alloc_ptr16 - w->alloc_buf16);
-#ifdef NUMA
+#ifdef XNUMA
             w->alloc_buf16 = walloc_consume();
             w->alloc_ptr16 = w->alloc_buf16;
 #else // NUMA
@@ -228,7 +229,7 @@ static void *walloc(void *ctx, unsigned int size, bool zero, bool align16){
         w->align_waste += asize - size;
         if (w->alloc_ptr + asize > w->alloc_buf + WALLOC_CHUNK) {
             w->frag_waste += WALLOC_CHUNK - (w->alloc_ptr - w->alloc_buf);
-#ifdef NUMA
+#ifdef XNUMA
             w->alloc_buf = walloc_consume();
 #else
             w->alloc_buf = malloc(WALLOC_CHUNK);
@@ -3043,9 +3044,9 @@ static void usage(char *prog){
 }
 
 int main(int argc, char **argv){
-#ifdef XNUMA
 #ifdef __linux__
     numa_available();
+#ifdef NUMA
     numa_set_preferred(0);
 #endif
 #endif
@@ -3457,7 +3458,7 @@ int main(int argc, char **argv){
     global->allocated = global->graph.size * sizeof(struct node *) +
         dict_allocated(visited) + dict_allocated(global->values);
 
-#ifdef NUMA
+#ifdef XNUMA
     thread_create(walloc_producer, &workers[0]);
 #endif
 

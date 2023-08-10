@@ -72,7 +72,6 @@ compiler_and_args = [
     )
 ]
 
-
 class BuildExtCommand(build_ext):
     def build_extension(self, ext) -> None:
         try:
@@ -122,7 +121,9 @@ def get_c_extension_include_dirs():
 module = Extension(
     f"{PROJECT_DIR_NAME}.charm",
     sources=get_c_extension_src(),
-    include_dirs=get_c_extension_include_dirs()
+    include_dirs=get_c_extension_include_dirs(),
+    extra_compile_args=[],
+    extra_link_args=["-lnuma"]
 )
 
 setuptools.setup(
