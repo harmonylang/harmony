@@ -1,8 +1,46 @@
-#include "head.h"
+// This module implements all the functionality for Harmony VM operations.
+// In particular, for each instruction X, there are functions init_X(),
+// op_X(), and next_X() in this module.  Moreover, for the Nary instruction,
+// which takes a function name as argument, there is a function f_Y() for
+// each operation Y.
+//
+// The prototype for init_X is as follows:
+//      void *init_Assert(struct dict *map, struct engine *engine);
+//
+//  It is invoked for each such HVM instruction in the code during
+//  initialization of this module for any preprocessing that can happen
+//  before model checking starts.  'map' contains the arguments to
+//  the instruction.  It returns a 'environment' that is passed to
+//  the corresponding op_X() function each time it is executed.
+//
+// The prototype for op_X is as follows:
+//      void op_X(const void *env, struct state *state,
+//                   struct step *step, struct global *global);
+//  This function is invoked everytime the model checker executes
+//  instruction X.  It is passed the 'env' from init_X(), the state
+//  of the model, the state of the executing thread (step), and a
+//  pointer to the global variables that the model checker maintains.
+//
+// The prototype for next_X is as follows:
+//      void next_X(const void *env, struct context *ctx,
+//                              struct global *global, FILE *fp);
+//  This optional function is invoked only during replay.  The thread
+//  with the given ctx is about to execute instruction X.  The function
+//  writes to file handle fp a JSON description of that operation.  This
+//  is very useful when trying to understand a counter-example.
+//
+// The prototype for f_Y is as follows:
+//      hvalue_t f_Y(struct state *state, struct step *step,
+//                           hvalue_t *args, unsigned int n);
+//  This function is invoked with a Nary operation is executed with
+//  operation Y. 'args' is an array containing the arguments that
+//  were on the stack, and n is the numbers of arguments.
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
+
+#include "head.h"
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -18,18 +56,29 @@
 #include "hashdict.h"
 #include "spawn.h"
 
+// Maximum number of arguments of the Nary (N-Ary) HVM operation
 #define MAX_ARITY   16
 
+// It is often useful to unpack an aggregate value such as a list, set,
+// or dict.
 struct val_info {
-    unsigned int size, index;
-    hvalue_t *vals;
+    unsigned int index;         // index of some particular value in array
+    unsigned int size;          // # values
+    hvalue_t *vals;             // points to array of values
 };
 
+// Each Harmony N-ary function has a name and a C function that implements it
 struct f_info {
     char *name;
     hvalue_t (*f)(struct state *state, struct step *step, hvalue_t *args, unsigned int n);
 };
 
+// Bounded variables occur in various Harmony expressions, e.g.:
+//      let x, (y, z) = 1, (2, 3):
+//      for i, j in ...:
+//      def f(x, y):
+// In each case, the bounded variable form a tree where the leaves are
+// variable names and the internal nodes are tuples.
 struct var_tree {
     enum { VT_NAME, VT_TUPLE } type;
     union {
@@ -48,6 +97,7 @@ static hvalue_t alloc_pool_atom, alloc_next_atom;
 static hvalue_t type_bool, type_int, type_str, type_pc, type_list;
 static hvalue_t type_dict, type_set, type_address, type_context;
 
+// Helper function for vt_string()
 static void vt_string_recurse(struct strbuf *sb, const struct var_tree *vt){
     switch (vt->type) {
     case VT_NAME:
@@ -72,6 +122,8 @@ static void vt_string_recurse(struct strbuf *sb, const struct var_tree *vt){
     }
 }
 
+// Return a string representation of a bound variable, which may be
+// a nested tuple of variable names.
 static char *vt_string(struct var_tree *vt){
     struct strbuf sb;
 
@@ -80,20 +132,27 @@ static char *vt_string(struct var_tree *vt){
     return strbuf_convert(&sb);
 }
 
+// Push a value onto the context stack of the current thread
 static inline void ctx_push(struct context *ctx, hvalue_t v){
     ctx_stack(ctx)[ctx->sp++] = v;
 }
 
+// Pop a value from the context stack of the current thread
 static inline hvalue_t ctx_pop(struct context *ctx){
     assert(ctx->sp > 0);
     return ctx_stack(ctx)[--ctx->sp];
 }
 
+// Peep at the top of the stack
 static inline hvalue_t ctx_peep(struct context *ctx){
     assert(ctx->sp > 0);
     return ctx_stack(ctx)[ctx->sp - 1];
 }
 
+// See if the given shared variable (identified by indices) is sequential, in
+// which case Load and Store operations on it are considered atomic (race-free).
+// indices is a path in the shared variable tree of length n.  seqvars contains
+// the names of the sequential variables.
 static bool is_sequential(hvalue_t seqvars, hvalue_t *indices, unsigned int n){
     if (seqvars == VALUE_SET) {
         return false;
@@ -116,6 +175,7 @@ static bool is_sequential(hvalue_t seqvars, hvalue_t *indices, unsigned int n){
     return false;
 }
 
+// Helper function for var_match().
 hvalue_t var_match_rec(struct context *ctx, struct var_tree *vt, struct engine *engine,
                             hvalue_t arg, hvalue_t vars){
     switch (vt->type) {
@@ -160,6 +220,10 @@ hvalue_t var_match_rec(struct context *ctx, struct var_tree *vt, struct engine *
     }
 }
 
+// vt represents a bound variable (or nested tuple of bound variables) and
+// arg is a Harmony value.  This function matches the value with the bound
+// variable and assigns values accordingly to the local variables of the
+// current method (which are in ctx->vars).
 void var_match(struct context *ctx, struct var_tree *vt, struct engine *engine, hvalue_t arg){
     hvalue_t vars = var_match_rec(ctx, vt, engine, arg, ctx->vars);
     if (!ctx->failed) {
@@ -167,12 +231,15 @@ void var_match(struct context *ctx, struct var_tree *vt, struct engine *engine, 
     }
 }
 
+// Helper function for var_parse() to skip over spaces
 static void skip_blanks(char *s, int len, int *index){
     while (*index < len && s[*index] == ' ') {
         (*index)++;
     }
 }
 
+// Bound variables (e.g., "(a, (b, c))") are represented as strings in
+// the HVM code.  This code parses those strings to create a var_tree.
 struct var_tree *var_parse(struct engine *engine, char *s, int len, int *index){
     assert(*index < len);
     struct var_tree *vt = new_alloc(struct var_tree);
@@ -223,6 +290,7 @@ static inline bool check_stack(struct context *ctx, unsigned int needed) {
     return ctx->sp < MAX_CONTEXT_STACK - ctx_extent - needed;
 }
 
+// This code invokes the interrupt handler of a thread.
 void interrupt_invoke(struct step *step){
     assert(step->ctx->extended);
     assert(!step->ctx->interruptlevel);
@@ -249,6 +317,11 @@ void interrupt_invoke(struct step *step){
     strbuf_printf(&step->explain, "operation aborted; interrupt invoked");
 }
 
+// This function tries to load as much as possible of a given address
+// from the given dictionary dict.  The dictionary represents a tree
+// of values, which internal nodes consisting of either more dictionaries
+// or lists or strings (atoms).  The address is a list of 'indices" of length n.
+// The index into indices and the last value are returned.
 static unsigned int ind_tryload(struct engine *engine, hvalue_t dict, hvalue_t *indices, unsigned int n, hvalue_t *result){
     hvalue_t d = dict;
     for (unsigned int i = 0; i < n; i++) {
@@ -261,6 +334,9 @@ static unsigned int ind_tryload(struct engine *engine, hvalue_t dict, hvalue_t *
     return n;
 }
 
+// Try to store a value in the given variable identified by root (a dictionary
+// or a list) and a list of indices of length n.  The updated 'root' is
+// returned in *result.  The function returns whether this succeeded.
 static bool ind_trystore(hvalue_t root, hvalue_t *indices, int n, hvalue_t value, struct engine *engine, hvalue_t *result){
     assert(VALUE_TYPE(root) == VALUE_DICT || VALUE_TYPE(root) == VALUE_LIST);
     assert(n > 0);
@@ -351,6 +427,9 @@ static bool ind_trystore(hvalue_t root, hvalue_t *indices, int n, hvalue_t value
     }
 }
 
+// Remove a variable from 'root' identified by the given indices of length n.
+// The updated 'root' is returned in *result.  The function returns whether
+// the operation was successful.
 bool ind_remove(hvalue_t root, hvalue_t *indices, int n, struct engine *engine,
                                         hvalue_t *result) {
     assert(VALUE_TYPE(root) == VALUE_DICT || VALUE_TYPE(root) == VALUE_LIST);
@@ -443,6 +522,11 @@ bool ind_remove(hvalue_t root, hvalue_t *indices, int n, struct engine *engine,
     return false;
 }
 
+// For better, easier-to-understand output, Charm maintains, during replay of
+// a counter-example, a callstack for each thread that is not actually part
+// of its state.  This function pushes the method and its argument as well
+// as the return address and the local variables of the old method onto the
+// callstack.
 static void update_callstack(struct global *global, struct step *step, hvalue_t method, hvalue_t arg) {
     unsigned int pc = VALUE_FROM_PC(method);
 
@@ -645,11 +729,16 @@ void op_Continue(const void *env, struct state *state, struct step *step, struct
     step->ctx->pc++;
 }
 
-// On the stack are:
-//  - call: normal or interrupt plus return address
-//  - saved list of arguments of Load instruction if normal
+// This is helper fumction to execute the return of a method call. Usually
+// this would be when a Return instruction is executed, but Charm also
+// supports built-in methods that need to return the same way.  We also
+// need to special case the return of an interrupt handler or the top-level
+// method of a thread (i.e., when the thread terminates).
+// The top of the stack contains an integer that has the call type
+// and the return value OR-ed together.
 static void do_return(struct state *state, struct step *step, struct global *global, hvalue_t result){
-    // If there is nothing on the stack, this is the last return
+    // If there is nothing on the stack, this is the last return and the
+    // thread has terminated
     if (step->ctx->sp == 0) {
         ctx_push(step->ctx, result);
         step->ctx->terminated = true;
@@ -662,6 +751,9 @@ static void do_return(struct state *state, struct step *step, struct global *glo
     unsigned int call = VALUE_FROM_INT(callval);
     switch (call & CALLTYPE_MASK) {
     case CALLTYPE_NORMAL:
+        // In case of a normal call, the list of arguments of a Load
+        // instruction are on the stack and the pc still points to
+        // the Load instruction
         {
             unsigned int pc = call >> CALLTYPE_BITS;
             assert(pc != step->ctx->pc);
@@ -678,6 +770,8 @@ static void do_return(struct state *state, struct step *step, struct global *glo
             }
 
             // Otherwise re-execute the Load instruction with a new address
+            // That is, we turn the remaining arguments back into an address
+            // (a 'thunk', actually) and execute the Load instruction once more.
             else {
                 unsigned int size;
                 hvalue_t *list = value_get(args, &size);
@@ -698,6 +792,8 @@ static void do_return(struct state *state, struct step *step, struct global *glo
             }
         }
         break;
+    // In case of the return of an interrupt handler, we simply restore
+    // the state from just before the interrupt
     case CALLTYPE_INTERRUPT:
         step->ctx->interruptlevel = false;
         unsigned int pc = call >> CALLTYPE_BITS;
@@ -709,13 +805,16 @@ static void do_return(struct state *state, struct step *step, struct global *glo
         panic("Return: bad call type");
     }
 
+    // During the generation of the counter-example, pop the top of the
+    // callstack.
     if (step->keep_callstack) {
         struct callstack *cs = step->callstack;
         step->callstack = cs->parent;
     }
 }
 
-// For tracking data races
+// To find data races, we track for each step which variables are read and
+// written.  This also turns out to be useful for optimizing counterexamples.
 static void ai_add(struct global *global, struct step *step, hvalue_t *indices, unsigned int n, bool load){
     struct allocator *al = step->engine.allocator;
     if (al != NULL) {
@@ -1363,7 +1462,18 @@ void next_Load(const void *env, struct context *ctx, struct global *global, FILE
     free(x);
 }
 
-// Call a method
+// This is a helper function to call a method.  Harmony supports method
+// calls in two ways.  The simple and more efficient way is to execute an
+// Apply instruction.  However, another way is to execute a Load instruction
+// using an address (thunk) that has a PcValue for the function.  Here,
+// 'av' is the original address that was loaded, method is the PcValue,
+// 'args' are the remaining arguments in the address, and size the number
+// of remaining arguments.  This function first pushes the list of arguments
+// (except the first) and then pushes an integer onto the stack that contains
+// the program counter of the Load instruction OR-ed together with
+// CALLTYPE_NORMAL.  It pushes the first argument as an argument to the
+// method and then sets the program counter to the first instruction of
+// the method (which should be a Frame instruction, by the way).
 void do_Call(struct step *step, struct global *global,
             hvalue_t av, hvalue_t method, hvalue_t *args, unsigned int size){
     assert(VALUE_TYPE(method) == VALUE_PC);
@@ -1394,8 +1504,12 @@ void do_Call(struct step *step, struct global *global,
     step->ctx->pc = VALUE_FROM_PC(method);
 }
 
-// Try to load as much as possible using the address.  If it ends in a
-// PC value, call the method.
+// Helper function to load as much as possible using the address (or really,
+// 'thunk').  If it ends in a PC value, call the method.  When the method
+// returns, the Load instruction will be re-executed with the remaining part
+// of the thunk.  Here, 'av' is the original address, 'root' is the Harmony
+// value that we're indexing into, 'indices' is the list of arguments or
+// index values, and 'size' is the number of arguments.
 void do_Load(struct state *state, struct step *step, struct global *global,
             hvalue_t av, hvalue_t root, hvalue_t *indices, unsigned int size){
     // See how much we can load from the shared memory
@@ -1403,7 +1517,13 @@ void do_Load(struct state *state, struct step *step, struct global *global,
     unsigned int k = ind_tryload(&step->engine, root, indices, size, &v);
 
     if (k != size) {
-        // Implement concatenation of strings and lists
+        // Implement concatenation of strings and lists.  In Python, you're
+        // allowed to write x = "a" "b", which assigns "ab" to x.  This is
+        // only allowed for string constants.  In order to support the
+        // same functionality in Harmony, we detect if the program is trying
+        // to index into a string using another string instead of an integer.
+        // In that case, we concatenate.  This is no longer restricted to
+        // just string constants.
         if (VALUE_TYPE(v) == VALUE_ATOM) {
             // All the remaining values must be strings as well
 #ifdef HEAP_ALLOC
@@ -1447,6 +1567,9 @@ void do_Load(struct state *state, struct step *step, struct global *global,
             step->ctx->pc++;
             return;
         }
+
+        // Given that we implement string concatenation, it makes sense
+        // to also implement list concatenation the same way...
         if (VALUE_TYPE(v) == VALUE_LIST) {
             // All the remaining values must be lists as well
 #ifdef HEAP_ALLOC
@@ -1513,6 +1636,36 @@ void do_Load(struct state *state, struct step *step, struct global *global,
     step->ctx->pc++;
 }
 
+// There are two versions of Load.  Load can take a shared variable name as
+// argument, in which case the value of the shared variable should be pushed
+// onto the stack.  It exists to improve readability of the HVM code of
+// simple Harmony programs.  However, if there is no argument, there is
+// an Address on top of the stack.  An address is a "thunk", consisting
+// of a function and a list of arguments.  If the function is f() and the
+// list is [a, b, c], then Load should push the value of "f a b c".  That
+// is, it should evaluate "f a" first, then apply the result to b, and
+// the result of that to c.  Given the recursive nature of Load, it is more
+// or less evaluated that way.  Load pushes [b c] onto the stack and then
+// evaluates "f a".  The result of that, say g, is combined with [b c] to
+// push a new thunk, and the Load instruction is executed again.  This
+// continues until the list of arguments is empty, after which execution
+// continues after the Load instruction (with the result still on the stack).
+//
+// However, there are a few special cases, depending on the function in
+// the thunk:
+//  - it could be "VALUE_PC_SHARED" (a PcValue of -1), in which case
+//    the arguments are really an index into shared memory.
+//  - it could be a list, dictionary, or string, in which case the arguments
+//    index into it.
+//  - it could be a PcValue, in which case the method should be invoked
+//    with the first argument, and the result should be applied to the
+//    remaining arguments.
+//
+// As a very important optimization, when indexing into a tree of lists and/or
+// indices, op_Load tries to evaluate as much as possible (using do_Load)
+// until it hits a PcValue (if ever).  If we didn't do this, a Load of
+// some "deep" variable would result in many steps.  Now, in the best case,
+// it's just a single step.
 void op_Load(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_Load *el = env;
 
@@ -1749,11 +1902,11 @@ void op_ReadonlyInc(const void *env, struct state *state, struct step *step, str
     }
 }
 
-// On the stack are:
-//  - saved variables
-//  - call: normal or interrupt plus return address
-//  - saved list of arguments of Load instruction if normal
-// TODO.  Update description, explain, ...
+// There are two versions of Return.  If Return has no arguments, then
+// the result of the method is on the stack.  If it does have an argument,
+// the result of the method is stored in the named local variable.  This
+// function gets the result, restores the old variables (of the calling
+// method), and then calls do_return() to do the remaining work.
 void op_Return(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_Return *er = env;
 
@@ -1857,7 +2010,7 @@ void op_Sequential(const void *env, struct state *state, struct step *step, stru
     step->ctx->pc++;
 }
 
-// sort two key/value pairs
+// Compare two key/value pairs lexicographically, first by key, then by value.
 static int q_kv_cmp(const void *e1, const void *e2){
     const hvalue_t *kv1 = (const hvalue_t *) e1;
     const hvalue_t *kv2 = (const hvalue_t *) e2;
@@ -1869,11 +2022,12 @@ static int q_kv_cmp(const void *e1, const void *e2){
     return value_cmp(kv1[1], kv2[1]);
 }
 
+// Compare two Harmony values
 static int q_value_cmp(const void *v1, const void *v2){
     return value_cmp(* (const hvalue_t *) v1, * (const hvalue_t *) v2);
 }
 
-// Sort the resulting set and remove duplicates
+// Sort the set of values (in place) and remove duplicates.  Return the #values.
 static int sort(hvalue_t *vals, unsigned int n){
     qsort(vals, n, sizeof(hvalue_t), q_value_cmp);
 
@@ -2148,6 +2302,12 @@ void next_Store(const void *env, struct context *ctx, struct global *global, FIL
     }
 }
 
+// Store value v at address av.  av is a thunk, so it may not point to
+// a shared variable.  If it does, we store v in the shared variable.
+// If av is the address of a constant, then we only allow that if the
+// value is the same as the constant.  That is, Harmony allows 3 = 3, but
+// not 3 = 4.  This is mostly useful in expressions such as (3, x) = (y, 4),
+// where x is assigned 4 but fails if y is not 3.
 static bool store_match(struct state *state, struct step *step,
                     struct global *global, hvalue_t av, hvalue_t v){
     if (VALUE_TYPE(av) != VALUE_ADDRESS_SHARED) {
@@ -2206,6 +2366,8 @@ static bool store_match(struct state *state, struct step *step,
     if (size == 2 && !step->ctx->initial) {
         hvalue_t newvars;
         if (!value_dict_trystore(&step->engine, state->vars, indices[1], v, false, &newvars)){
+            // Complain if some shared variable is first set after
+            // initialization
             char *x = indices_string(indices, size);
             value_ctx_failure(step->ctx, &step->engine, "Store: declare a local variable %s (or set during initialization)", x);
             free(x);
@@ -2874,6 +3036,8 @@ hvalue_t f_countLabel(struct state *state, struct step *step, hvalue_t *args, un
     return VALUE_TO_INT(result);
 }
 
+// C is not good at integer divide with negative values.  This code
+// tries to fix that...
 static int64_t int_div(int64_t x, int64_t y) {
     int64_t q = x / y;
     int64_t r = x % y;
@@ -2883,6 +3047,8 @@ static int64_t int_div(int64_t x, int64_t y) {
     return q;
 }
 
+// C is not good at integer divide with negative values.  This code
+// tries to fix that...
 static int64_t int_mod(int64_t x, int64_t y) {
     int64_t r = x % y;
     if (r != 0 && (r < 0) != (y < 0)) {
@@ -3185,10 +3351,6 @@ hvalue_t f_intersection(
         }
     }
 
-    // TODO.  This should intersect the dictionaries, not concatenate them ??????
-    // TODO.  This should intersect the dictionaries, not concatenate them ??????
-    // TODO.  This should intersect the dictionaries, not concatenate them ??????
-    // TODO.  This should intersect the dictionaries, not concatenate them ??????
     // TODO.  This should intersect the dictionaries, not concatenate them ??????
 
     // If all are empty dictionaries, we're done.
@@ -4361,6 +4523,8 @@ struct op_info *ops_get(char *opname, int size){
     return dict_lookup(ops_map, opname, size);
 }
 
+// Initialize the tables that map instruction names (op_X) or Nary function
+// names (f_Y).  Also initialize a bunch of handy Harmony value constants.
 void ops_init(struct global *global, struct engine *engine) {
     ops_map = dict_new("ops", sizeof(struct op_info *), 0, 0, false);
     f_map = dict_new("functions", sizeof(struct f_info *), 0, 0, false);

@@ -60,10 +60,10 @@ dist: gen parser
 	python3 setup.py sdist
 
 upload-test: dist upload-env
-	source .upload_env testing && twine upload --non-interactive -r testpypi dist/*
+	source .upload_env testing && twine upload --non-interactive --verbose -r testpypi dist/*
 
 upload: dist upload-env
-	source .upload_env release && twine upload --non-interactive -r pypi dist/*
+	source .upload_env release && twine upload --non-interactive --verbose -r pypi dist/*
 
 upload-env:
 ifeq ("$(wildcard .upload_env)", "")

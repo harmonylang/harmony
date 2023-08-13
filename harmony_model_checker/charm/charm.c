@@ -1,4 +1,10 @@
+// Main source file for the Harmony model checker.  It contains the main
+// loop of the model checker, the subsequent analysis of the Kripke
+// structure, and the code to regenerate a counter-example.
+
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #include "head.h"
 
@@ -41,18 +47,30 @@
 #include "thread.h"
 #include "spawn.h"
 
+// The model checker leverages partial order reduction to reduce the
+// number of states and interleavings considered.  In particular, it
+// will combine virtual machine instructions that have no effect on
+// the shared state.
 #define MAX_STEPS       4096        // limit on partial order reduction
+
+// To optimize memory allocation, each worker thread allocates large
+// chunks of memory and then uses parts of that.
 #define WALLOC_CHUNK    (16 * 1024 * 1024)
+
+// This is use for reading lines from the /proc/cpuinfo file
 #define LINE_CHUNK      128
 
-static unsigned int oldpid = 0;
-
 // For -d option
+// TODO: this is still experimental and not fully fleshed out
 unsigned int run_count;  // counter of #threads
 mutex_t run_mutex;       // to protect count
 mutex_t run_waiting;     // for main thread to wait on
 
-// Info about virtual processors
+// Info about virtual processors (cores or hyperthreads).  Virtual
+// processors are thought of a organized in a tree, for example based
+// on cache affinity.  Each processor is therefore uniquely identified
+// by a path of identifiers of nodes in this tree.  Each worker thread
+// runs on its own virtual processor.
 struct vproc_info {
     int *ids;            // path of ids identifying this processor
     unsigned int nids;   // length of path
@@ -71,7 +89,7 @@ struct pattern {
     unsigned int nids;
 };
 
-// Nodes in the vproc_tree map local ids to children.
+// Nodes in the vproc_tree map local node identifiers to children.
 struct vproc_map {
     int local_id;
     struct vproc_tree *child;
@@ -79,7 +97,7 @@ struct vproc_map {
 
 // Virtual processors are organized into a tree
 struct vproc_tree {
-    unsigned int n_vprocessors;  // #virtual processors
+    unsigned int n_vprocessors;  // #virtual processors in this subtree
     unsigned int virtual_id;     // virtual processor id, only for leaf nodes
     unsigned int nchildren;
     struct vproc_map *children;
@@ -87,31 +105,64 @@ struct vproc_tree {
 
 // One of these per worker thread
 struct worker {
-    struct global *global;     // global state
-    double timeout;
+    struct global *global;       // global state shared by all workers
+    double timeout;              // deadline for model checker (-t option)
+    struct failure *failures;    // list of discovered failures
+    unsigned int index;          // index of worker
+    struct worker *workers;      // points to array of workers
+    unsigned int nworkers;       // total number of workers
+    unsigned int vproc;          // virtual processor for pinning
+
+    // The worker thread loop through three phases:
+    //  1: model check part of the state space (parallel)
+    //  2: allocate larger tables if needed (mostly sequential)
+    //  3: copy from old to new hash tables (parallel)
+    // The barriers are to synchronize these three phases.
     barrier_t *start_barrier, *middle_barrier, *end_barrier;
+
+    // Statistics about the three phases for optimization purposes
     double start_wait, middle_wait, end_wait;
     unsigned int start_count, middle_count, end_count;
     double phase1, phase2a, phase2b, phase3;
     unsigned int fix_edge;
-
-    struct dict *visited;
-
-    unsigned int index;          // index of worker
-    struct worker *workers;      // points to list of workers
-    unsigned int nworkers;       // total number of workers
-    int timecnt;                 // to reduce gettime() overhead
-    struct step inv_step;        // for evaluating invariants
-
     unsigned int dequeued;      // total number of dequeued states
     unsigned int enqueued;      // total number of enqueued states
 
-    struct node *results;       // list of resulting states
-    unsigned int count;         // number of resulting states
-    struct edge **edges;        // lists of edges to fix, one for each worker
-    unsigned int node_id;       // node_ids to use for resulting states
-    struct failure *failures;   // list of failures
+    // A pointer to the Kripke structure, which is a hash table that
+    // maps states to nodes.  Nodes contain the list of edges and more.
+    struct dict *visited;
 
+    // Thread 0 periodically prints some information on what it's
+    // working on.  To avoid it getting the time too much, which might
+    // involve an expensive system call, we do it every timecnt steps.
+    int timecnt;                 // to reduce gettime() overhead
+
+    // State maintained while evaluating invariants
+    struct step inv_step;        // for evaluating invariants
+
+    // When a worker creates a new state, it puts the corresponding node
+    // in a list.  The nodes are added to the graph table after the
+    // graph table has been grown.
+    struct node *results;       // linked list of nodes
+    unsigned int count;         // size of the results list
+
+    // New nodes are assigned node identifiers in phase 3.  This is
+    // done in parallel by the various workers.  Each worker gets
+    // 'count' node_ids starting at the following node_id.
+    unsigned int node_id;
+
+    // When new edges are in the Kripke structure are discovered, we
+    // avoid workers stalling trying to get a lock on the source node
+    // and instead keep an NxN table of edge lists (N is the number of
+    // workers) that need to be inserted.  Worker i puts the edge in
+    // cell (i, j) if j is the worker that is responsible for the
+    // source node (node_id % N).
+    struct edge **edges;        // lists of edges to fix, one for each worker
+
+    // Workers optimize memory allocation.  In particular, it is not
+    // necessary for the memory to ever be freed.  So the worker allocates
+    // large chunks of memory (WALLOC_CHUNK) and then use a pointer into
+    // the chunk for allocation.
     char *alloc_buf;            // allocated buffer
     char *alloc_ptr;            // pointer into allocated buffer
     char *alloc_buf16;          // allocated buffer, 16 byte aligned
@@ -120,13 +171,17 @@ struct worker {
     unsigned long align_waste;
     unsigned long frag_waste;
 
-    struct allocator allocator; // mostly for hashdict
+    // This is used in the code when a worker must allocate memory.
+    struct allocator allocator;
 
-    unsigned int vproc;         // virtual processor for pinning
+    // Each worker keeps track of how often it executes a particular
+    // instruction for profiling purposes.
+    unsigned int *profile;      // one for each instruction in the HVM code
 
-    unsigned int *profile;      // one integer for every instruction in the HVM code
-
-    // These need to be next to one another
+    // These need to be next to one another.  When a worker performs a
+    // "step", it's on behalf of a particular thread with a particular
+    // context (state of the thread).  The context structure is immediately
+    // followed by its stack of Harmony values.
     struct context ctx;
     hvalue_t stack[MAX_CONTEXT_STACK];
 };
@@ -137,7 +192,8 @@ struct worker {
 #define ALIGNMASK       0xF
 #endif
 
-// Per thread one-time memory allocator (no free())
+// Per thread one-time memory allocator (no free(), although the last
+// thing allocated can be freed with wfree()).
 static void *walloc(void *ctx, unsigned int size, bool zero, bool align16){
     struct worker *w = ctx;
     void *result;
@@ -197,6 +253,7 @@ static void wfree(void *ctx, void *last, bool align16){
     }
 }
 
+// Part of experimental -d option, running Harmony programs "for real".
 static void run_thread(struct global *global, struct state *state, struct context *ctx){
     struct step step;
     memset(&step, 0, sizeof(step));
@@ -237,11 +294,13 @@ static void run_thread(struct global *global, struct state *state, struct contex
     mutex_release(&run_mutex);
 }
 
+// Part of experimental -d option, running Harmony programs "for real".
 static void wrap_thread(void *arg){
     struct spawn_info *si = arg;
     run_thread(si->global, si->state, si->ctx);
 }
 
+// Part of experimental -d option, running Harmony programs "for real".
 void spawn_thread(struct global *global, struct state *state, struct context *ctx){
     mutex_acquire(&run_mutex);
     run_count++;
@@ -254,15 +313,22 @@ void spawn_thread(struct global *global, struct state *state, struct context *ct
     thread_create(wrap_thread, si);
 }
 
-// Similar to onestep, but just for some predicate
+// This function evaluates a predicate.  The predicate is evaluated in
+// every state as if by some thread.  sc contains the state, while
+// step keeps track of the state of the thread specifically.
+//
+// The code of a predicate ends in an Assert HVM instruction that
+// checks the value of the predicate.  The predicate may thus fail, but
+// if could also fails if there is something wrong with the predicate
+// (e.g., divice by zero).
+//
+// This function returns true iff the predicate evaluated to true.
 bool predicate_check(struct global *global, struct state *sc, struct step *step){
     assert(!step->ctx->failed);
     assert(step->ctx->sp == 1);     // just the argument
     while (!step->ctx->terminated) {
         struct op_info *oi = global->code.instrs[step->ctx->pc].oi;
-
         (*oi->op)(global->code.instrs[step->ctx->pc].env, sc, step, global);
-
         if (step->ctx->failed) {
             step->ctx->sp = 0;
             return false;
@@ -272,7 +338,8 @@ bool predicate_check(struct global *global, struct state *sc, struct step *step)
     return true;
 }
 
-// Returns 0 if there are no issues, or the pc of the invariant if it failed.
+// Check all the invariants that the program specified.
+// Returns 0 if there are no issues, or the pc of some invariant that failed.
 unsigned int check_invariants(struct global *global, struct node *node,
                         struct node *before, struct step *step){
     struct state *state = node_state(node);
@@ -319,6 +386,8 @@ unsigned int check_invariants(struct global *global, struct node *node,
     return 0;
 }
 
+// Same as check_invariants but for "finally" predicates that are only
+// checked in final states.
 // Returns 0 if there are no issues, or the pc of the finally predicate if it failed.
 unsigned int check_finals(struct global *global, struct node *node, struct step *step){
     struct state *state = node_state(node);
@@ -347,16 +416,17 @@ unsigned int check_finals(struct global *global, struct node *node, struct step 
     return 0;
 }
 
+// This function is called when a new edge has been generated, possibly to
+// a new state with an uninitialized node.
 static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock, struct node **results) {
     struct node *node = edge->src, *next = edge->dst;
 
-    // mutex_acquire(lock);
+    // mutex_acquire(lock);    ==> this lock is already acquired
 
     bool initialized = next->initialized;
     if (!initialized) {
         next->initialized = true;
         next->reachable = true;
-        // next->state = state;        // TODO.  Don't technically need this
         next->failed = edge->failed;
         next->u.ph1.lock = lock;
 
@@ -1328,8 +1398,8 @@ void path_recompute(struct global *global){
          */
         hvalue_t ctx = e->ctx;
         unsigned int pid;
-        if (global->processes[oldpid] == ctx) {
-            pid = oldpid;
+        if (global->processes[global->oldpid] == ctx) {
+            pid = global->oldpid;
         }
         else {
             for (pid = 0; pid < global->nprocesses; pid++) {
@@ -1337,7 +1407,7 @@ void path_recompute(struct global *global){
                     break;
                 }
             }
-            oldpid = pid;
+            global->oldpid = pid;
         }
         if (pid >= global->nprocesses) {
             printf("PID %p %u %u\n", (void *) ctx, pid, global->nprocesses);

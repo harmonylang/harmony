@@ -17,7 +17,12 @@ struct step {
     struct engine engine;
     struct context *ctx;
     struct access_info *ai;
+
+    // TODO This field is a bit of a misnomer.  It is set during re-execution
+    // of a counter-example and instructs the Harmony instructions to keep
+    // additional information.  In particular this includes the callstack.
     bool keep_callstack;
+
     struct strbuf explain;
     hvalue_t explain_args[MAX_ARGS];
     unsigned int explain_nargs;

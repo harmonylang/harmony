@@ -1,6 +1,47 @@
-#include "head.h"
+// This module deals with Harmony values.  A Harmony value is a 64-bit entity
+// of type hvalue_t.  The least significant 4 bits are used to store the type
+// of value (bool, int, set, list, ...).  In case of basic types (bool, int,
+// program counter), the remaining 60 bits contain the actual value.
+// Otherwise, the value is a 16-byte aligned pointer to where the actual
+// value is stored.  The value is stored in the global->values hash table
+// so it can be easily retrieved.  The entry also maintains the size of
+// the value.  In the case of a set or list, the value is simply an array
+// of Harmony values (sorted in case of a set).  If it's a dictionary,
+// it's an array of alternating key/value pairs, sorted by key.  In case
+// of an address (thunk), it is an array where the first entry is the
+// function and the remaining values are the arguments.  Strings (aka atoms)
+// are simply a list of UTF-8 characters, while a context is a struct
+// context followed by an array of values representing the stack.
+//
+// Some important functions in this module are:
+//
+//  void *value_get(hvalue_t v, unsigned int *psize);
+//      Retrieve the value v.  *psize (if not NULL) will contain
+//      the size in bytes
+//
+//  hvalue_t value_put_X(struct engine *engine, const void *p,
+//                                            unsigned int size);
+//      Store a value pointed to by p (of value size in bytes) and
+//      return an hvalue_t.
+//
+//  int value_cmp(hvalue_t v1, hvalue_t v2);
+//      Compare v1 and v2.  Return a negative value if v1 < v2, a
+//      positive value if v1 > v2, and 0 if they are the same.
+//
+//  char *value_string(hvalue_t v);
+//      Return a string representation of the given value v.
+//
+//  char *value_json(hvalue_t v, struct global *global);
+//      Return a JSON representation of v.
+//
+//  hvalue_t value_from_json(struct engine *engine, struct dict *map);
+//      Return a value from the JSON encoded in the given map.
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
+
+#include "head.h"
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -18,10 +59,15 @@
 #include "ops.h"
 #include "json.h"
 
+// Return the value represented by v.  If psize != NULL, return the size
+// in bytes in *psize.  The value should be stored in the global->values
+// hash table.
 void *value_get(hvalue_t v, unsigned int *psize){
     v &= ~VALUE_MASK;
     if (v == 0) {
-        *psize = 0;
+        if (psize != NULL) {
+            *psize = 0;
+        }
         return NULL;
     }
     return dict_retrieve((void *) v, psize);
@@ -62,6 +108,7 @@ void *value_copy_extend(hvalue_t v, unsigned int inc, unsigned int *psize){
     return r;
 }
 
+// p points to an UTF-8 string of size bytes.  Return an hvalue.
 hvalue_t value_put_atom(struct engine *engine, const void *p, unsigned int size){
     if (size == 0) {
         return VALUE_ATOM;
@@ -70,6 +117,8 @@ hvalue_t value_put_atom(struct engine *engine, const void *p, unsigned int size)
     return (hvalue_t) q | VALUE_ATOM;
 }
 
+// p points to a sorted list of unique hvalues.  size is the number of
+// bytes that the list occupies.  Return an hvalue for the set.
 hvalue_t value_put_set(struct engine *engine, void *p, unsigned int size){
     if (size == 0) {
         return VALUE_SET;
@@ -78,6 +127,8 @@ hvalue_t value_put_set(struct engine *engine, void *p, unsigned int size){
     return (hvalue_t) q | VALUE_SET;
 }
 
+// p points to an array of key/value pairs, sorted by key (which must be
+// unique).  Return an hvalue.
 hvalue_t value_put_dict(struct engine *engine, void *p, unsigned int size){
     if (size == 0) {
         return VALUE_DICT;
@@ -86,6 +137,7 @@ hvalue_t value_put_dict(struct engine *engine, void *p, unsigned int size){
     return (hvalue_t) q | VALUE_DICT;
 }
 
+// p points to an array of hvalues.  Return an hvalue.
 hvalue_t value_put_list(struct engine *engine, void *p, unsigned int size){
     if (size == 0) {
         return VALUE_LIST;
@@ -94,6 +146,8 @@ hvalue_t value_put_list(struct engine *engine, void *p, unsigned int size){
     return (hvalue_t) q | VALUE_LIST;
 }
 
+// p points to an array of hvalues.  The first is the function, and the
+// rest are the arguments.  Return an hvalue.
 hvalue_t value_put_address(struct engine *engine, void *p, unsigned int size){
     if (size == 0) {
         return VALUE_ADDRESS_SHARED;
@@ -108,6 +162,7 @@ hvalue_t value_put_address(struct engine *engine, void *p, unsigned int size){
     }
 }
 
+// ctx points to a context.  Returns an hvalue.
 hvalue_t value_put_context(struct engine *engine, struct context *ctx){
 	assert(ctx->pc >= 0);
     void *q = dict_find(engine->values, engine->allocator, ctx, ctx_size(ctx), NULL);
