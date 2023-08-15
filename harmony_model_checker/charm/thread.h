@@ -1,3 +1,5 @@
+// Supports architecture-independent thread interface (POSIX and Windows)
+
 #ifndef SRC_THREAD_H
 #define SRC_THREAD_H
 

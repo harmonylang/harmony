@@ -3,9 +3,12 @@
 
 #include <stdarg.h>
 
+// A "string buffer" is simply a sequence of UTF-8 (or ASCII) characters.
+//
 typedef struct strbuf {
-    char *buf;
-    unsigned int len, allocated;
+    char *buf;                  // points to the characters
+    unsigned int len;           // actual #characters
+    unsigned int allocated;     // current size of the buffer
 } strbuf;
 
 void strbuf_init(strbuf *sb);

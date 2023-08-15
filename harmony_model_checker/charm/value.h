@@ -9,6 +9,8 @@
 #define MAX_CONTEXT_STACK   250        // maximum size of context stack
 #define MAX_CONTEXT_BAG       32        // maximum number of distinct contexts
 
+// This contains the state in a Harmony execution.
+//
 // TODO.  State can be reduced in size in various ways;
 //  - pre and stopbag are not always used
 //  - choosing could be an index into the context bag
@@ -31,6 +33,8 @@ typedef struct state {
 #define multiplicities(s)   ((uint8_t *) &state_contexts(s)[(s)->bagsize])
 #define state_size(s)       (sizeof(struct state) + (s)->bagsize * (sizeof(hvalue_t) + 1))
 
+// A context is the state of a Harmony thread.  The state, which is part of the
+// state of a thread, immediately follows this structure.
 typedef struct context {   // context value
     hvalue_t vars;            // method-local variables
     uint16_t pc;              // program counter
@@ -45,7 +49,7 @@ typedef struct context {   // context value
     bool extended : 1;        // context extended with more values
     uint8_t readonly;         // readonly counter
     uint8_t atomic;           // atomic counter
-    uint8_t sp;              // stack size
+    uint8_t sp;               // stack size
     // hvalue_t thestack[VAR_SIZE];     // growing stack
 
 // Context can be extended with the following additional values
@@ -79,11 +83,18 @@ char *value_json(hvalue_t v, struct global *global);
 void strbuf_value_string(strbuf *sb, hvalue_t v);
 void strbuf_value_json(strbuf *sb, hvalue_t v, struct global *global);
 
+// A Harmony value is represented by a 64 bit representation.  Currently the
+// low 4 bits indicate the type of the value.  We sometimes also use the top 16
+// bits which are not typically used by the underlying hardware if the value
+// represents a memory address.
+//
+// TODO.  Perhaps we should put everything in the top 16 bits.
 #define VALUE_BITS      4
 #define VALUE_HIBITS    ((hvalue_t) 0xFF << 48)
 #define VALUE_LOBITS    ((hvalue_t) ((1 << VALUE_BITS) - 1))
 #define VALUE_MASK      (VALUE_HIBITS | VALUE_LOBITS)
 
+// Value types
 #define VALUE_BOOL      1
 #define VALUE_INT       2
 #define VALUE_ATOM      3

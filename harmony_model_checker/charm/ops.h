@@ -13,30 +13,41 @@
 void ops_init(struct global *global, struct engine *engine);
 struct op_info *ops_get(char *opname, int size);
 
+// This contains information that is kept when the execution of some thread
+// is evaluated from some state.  During re-execution when a counter-example
+// is re-evaluated, more information is kept.
 struct step {
-    struct engine engine;
-    struct context *ctx;
-    struct access_info *ai;
+    struct engine engine;           // allocator and global variabels
+    struct context *ctx;            // points to the context (state of the thread)
+    struct access_info *ai;         // info about load and store operations
 
     // TODO This field is a bit of a misnomer.  It is set during re-execution
     // of a counter-example and instructs the Harmony instructions to keep
     // additional information.  In particular this includes the callstack.
     bool keep_callstack;
 
-    struct strbuf explain;
-    hvalue_t explain_args[MAX_ARGS];
-    unsigned int explain_nargs;
-    struct callstack *callstack;
-    unsigned int nlog;
-    hvalue_t log[MAX_PRINT];
+    // The extra information that is kept
+    struct strbuf explain;              // human-readable explanation of step
+    hvalue_t explain_args[MAX_ARGS];    // arguments to the explanation
+    unsigned int explain_nargs;         // #arguments
+    struct callstack *callstack;        // call stack (method invocations)
+    unsigned int nlog;                  // output values that are printed
+    hvalue_t log[MAX_PRINT];            // #output values
 };
 
+// Information about a Harmony instruction.  For each there are three methods:
+//      - initialize and return specific arnuments
+//      - execute the instruction
+//      - print what an execution is about to do (without doing it)
 struct op_info {
-    const char *name;
+    const char *name;       // name of the instruction
     void *(*init)(struct dict *, struct engine *engine);
     void (*op)(const void *env, struct state *state, struct step *step, struct global *global);
     void (*next)(const void *env, struct context *ctx, struct global *global, FILE *fp);
 };
+
+// Each instruction can have one or more arguments in the code.  Which arguments
+// depends on the instruction.  They are described below.
 
 struct env_Apply {
     hvalue_t method;

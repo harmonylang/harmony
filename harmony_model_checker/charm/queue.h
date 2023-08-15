@@ -1,3 +1,5 @@
+// TODO.  Possibly obsolete
+
 #ifndef SRC_QUEUE_H
 #define SRC_QUEUE_H
 
