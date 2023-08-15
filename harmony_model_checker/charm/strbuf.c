@@ -71,6 +71,7 @@ unsigned int strbuf_getlen(struct strbuf *sb){
     return sb->len;
 }
 
+// Frees the buffer of a string buffer
 void strbuf_deinit(struct strbuf *sb){
     free(sb->buf);
     sb->buf = (char *) 1;       // simplifies finding bugs

@@ -760,7 +760,8 @@ void print_vars(struct global *global, FILE *file, hvalue_t v){
     strbuf_deinit(&sb);
 }
 
-void value_json_trace(struct global *global, struct strbuf *sb, struct callstack *cs, unsigned int pc, hvalue_t vars){
+// Helper function for value_trace
+static void value_json_trace(struct global *global, struct strbuf *sb, struct callstack *cs, unsigned int pc, hvalue_t vars){
     if (cs->parent != NULL) {
         value_json_trace(global, sb, cs->parent, cs->return_address >> CALLTYPE_BITS, cs->vars);
         strbuf_printf(sb, ",");
@@ -803,6 +804,9 @@ void value_json_trace(struct global *global, struct strbuf *sb, struct callstack
     free(method);
 }
 
+// This function prints information about a context (state of a threads) with
+// additional information about its callstack which is kept during the re-execution
+// of a counter-example.
 void value_trace(struct global *global, FILE *file, struct callstack *cs, unsigned int pc, hvalue_t vars, char *prefix){
     struct strbuf sb;
     strbuf_init(&sb);
@@ -811,6 +815,7 @@ void value_trace(struct global *global, FILE *file, struct callstack *cs, unsign
     strbuf_deinit(&sb);
 }
 
+// Helper function for value_json
 static void value_json_context(struct strbuf *sb, hvalue_t v, struct global *global) {
     struct context *ctx = value_get(v, NULL);
     
@@ -891,6 +896,7 @@ static void value_json_context(struct strbuf *sb, hvalue_t v, struct global *glo
     strbuf_printf(sb, " } }");
 }
 
+// This function pretty-prints Harmony value v in the given string buffer
 void strbuf_value_string(struct strbuf *sb, hvalue_t v){
     switch (VALUE_TYPE(v)) {
     case VALUE_BOOL:
@@ -927,6 +933,8 @@ void strbuf_value_string(struct strbuf *sb, hvalue_t v){
     }
 }
 
+// This function pretty-prints Harmony value v and returns it in a malloc-ed
+// null-terminated byte buffer.
 char *value_string(hvalue_t v){
     struct strbuf sb;
     strbuf_init(&sb);
@@ -934,6 +942,7 @@ char *value_string(hvalue_t v){
     return strbuf_convert(&sb);
 }
 
+// Print Harmony value v encoded as a JSON object in the given string buffer
 void strbuf_value_json(struct strbuf *sb, hvalue_t v, struct global *global){
     switch VALUE_TYPE(v) {
     case VALUE_BOOL:
@@ -970,6 +979,7 @@ void strbuf_value_json(struct strbuf *sb, hvalue_t v, struct global *global){
     }
 }
 
+// Encode the given Harmony value v as a JSON value, returned as a string.
 char *value_json(hvalue_t v, struct global *global){
     struct strbuf sb;
     strbuf_init(&sb);
@@ -977,7 +987,9 @@ char *value_json(hvalue_t v, struct global *global){
     return strbuf_convert(&sb);
 }
 
-bool atom_cmp(json_buf_t buf, char *s){
+// buf.base points to a non-null terminated character string of length buf.len.
+// Compare this lexicographically with the null-terminated string s.
+static bool atom_cmp(json_buf_t buf, char *s){
     unsigned int n = strlen(s);
     if (n != buf.len) {
         return false;
@@ -985,7 +997,9 @@ bool atom_cmp(json_buf_t buf, char *s){
     return strncmp(buf.base, s, n) == 0;
 }
 
-hvalue_t value_bool(struct dict *map){
+// Helper function for value_from_json.  A bool has a "value" field that contains
+// either the string "False" or "True"
+static hvalue_t value_bool(struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_ATOM);
     if (atom_cmp(value->u.atom, "False")) {
@@ -998,10 +1012,13 @@ hvalue_t value_bool(struct dict *map){
     return 0;
 }
 
-hvalue_t value_int(struct dict *map){
+// Helper function for value_from_json.  An int contains a "value" field
+// that contains the integer.
+static hvalue_t value_int(struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_ATOM);
     hvalue_t v;
+    // TODO.  I think "inf" and "-inf" are obsolete.
     if (atom_cmp(value->u.atom, "inf")) {
         v = VALUE_MAX;
     }
@@ -1019,7 +1036,9 @@ hvalue_t value_int(struct dict *map){
     return VALUE_TO_INT(v);
 }
 
-hvalue_t value_pc(struct dict *map){
+// Helper function for value_from_json.  A program counter value contains a
+// "value" filed containing the integer representing a program counter
+static hvalue_t value_pc(struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_ATOM);
     char *copy = malloc(value->u.atom.len + 1);
@@ -1030,7 +1049,9 @@ hvalue_t value_pc(struct dict *map){
     return VALUE_TO_PC(v);
 }
 
-hvalue_t value_atom(struct engine *engine, struct dict *map){
+// Helper function for value_from_json.  An atom (string) has a "value" field
+// containing the string value.
+static hvalue_t value_atom(struct engine *engine, struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_ATOM);
     if (value->u.atom.len == 0) {
@@ -1040,7 +1061,9 @@ hvalue_t value_atom(struct engine *engine, struct dict *map){
     return (hvalue_t) p | VALUE_ATOM;
 }
 
-hvalue_t value_dict(struct engine *engine, struct dict *map){
+// Helper function for value_from_json.  A dictionary has a "value" field containing
+// a list of "key"/"value" pairs.
+static hvalue_t value_dict(struct engine *engine, struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_LIST);
     if (value->u.list.nvals == 0) {
@@ -1065,7 +1088,9 @@ hvalue_t value_dict(struct engine *engine, struct dict *map){
     return (hvalue_t) p | VALUE_DICT;
 }
 
-hvalue_t value_set(struct engine *engine, struct dict *map){
+// Helper function for value_from_json.  A set has a "value" field containing
+// a sorted list of the values.
+static hvalue_t value_set(struct engine *engine, struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_LIST);
     if (value->u.list.nvals == 0) {
@@ -1084,7 +1109,9 @@ hvalue_t value_set(struct engine *engine, struct dict *map){
     return (hvalue_t) p | VALUE_SET;
 }
 
-hvalue_t value_list(struct engine *engine, struct dict *map){
+// Helper function for value_from_json.  A list has a "value" field containing
+// a list of the values.
+static hvalue_t value_list(struct engine *engine, struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_LIST);
     if (value->u.list.nvals == 0) {
@@ -1101,7 +1128,10 @@ hvalue_t value_list(struct engine *engine, struct dict *map){
     return (hvalue_t) p | VALUE_LIST;
 }
 
-hvalue_t value_address(struct engine *engine, struct dict *map){
+// Helper function for value_from_json.  An address (or perhaps better, a "thunk")
+// has a "func" field containing a function value and an "args" field containing
+// a list of arguments.
+static hvalue_t value_address(struct engine *engine, struct dict *map){
     struct json_value *func = dict_lookup(map, "func", 4);
     if (func == NULL) {
         return (hvalue_t) VALUE_ADDRESS_SHARED;        // None
@@ -1123,6 +1153,7 @@ hvalue_t value_address(struct engine *engine, struct dict *map){
     return result;
 }
 
+// This function takes a JSON dictionary value and turns it into a Harmony value.
 hvalue_t value_from_json(struct engine *engine, struct dict *map){
     struct json_value *type = dict_lookup(map, "type", 4);
     assert(type != 0);
@@ -1156,37 +1187,6 @@ hvalue_t value_from_json(struct engine *engine, struct dict *map){
         return 0;
     }
 }
-
-#ifdef OBSOLETE
-
-// Memory allocation that returns pointers aligned to 1 << VALUE_BITS
-static void *align_alloc(size_t size){
-    char *q = malloc(size + (1 << VALUE_BITS));
-    size_t offset = (1 << VALUE_BITS) - (((size_t) q) & VALUE_MASK);
-    char *p = q + offset;
-    p[-1] = offset;
-    return p;
-}
-
-// Corresponding free
-static void align_free(void *p){
-    int offset = *((char *) p - 1);
-    free(((char *) p) - offset);
-}
-
-// Try to figure out the "native" alignment of this machine.  It's
-// probably good enough
-#define N_ALIGN_TESTS 16
-static bool align_test(){
-    for (int i = 0; i < N_ALIGN_TESTS; i++) {
-        if (((hvalue_t) malloc(1) & VALUE_MASK) != 0) {
-            return false;
-        }
-    }
-    return true;
-}
-
-#endif // OBSOLETE
 
 // Store key:value in the given dictionary and returns its value code
 // in *result.  May fail if allow_inserts is false and key does not exist
@@ -1254,6 +1254,7 @@ bool value_dict_trystore(struct engine *engine, hvalue_t dict, hvalue_t key, hva
     return true;
 }
 
+// Like value_dict_trystore, but panics if something goes wrong
 hvalue_t value_dict_store(struct engine *engine, hvalue_t dict, hvalue_t key, hvalue_t value){
     hvalue_t result;
     bool r = value_dict_trystore(engine, dict, key, value, true, &result);
@@ -1264,6 +1265,13 @@ hvalue_t value_dict_store(struct engine *engine, hvalue_t dict, hvalue_t key, hv
     return result;
 }
 
+// "root" should be either a dictionary or a key.  This function stores "value"
+// under "key" in "root" (i.e., it computes "root[key] = value"), and returns
+// a new dictionary or list.  "allow_inserts" specifies if a new value is allowed
+// to be inserted, or if only overwrites are allowed.
+//
+// For a list of size n, note that you can store in root[n] and extend the length
+// of the list by 1.
 bool value_trystore(struct engine *engine, hvalue_t root, hvalue_t key, hvalue_t value, bool allow_inserts, hvalue_t *result){
     assert(VALUE_TYPE(root) == VALUE_DICT || VALUE_TYPE(root) == VALUE_LIST);
 
@@ -1359,6 +1367,7 @@ bool value_trystore(struct engine *engine, hvalue_t root, hvalue_t key, hvalue_t
     }
 }
 
+// Like value_try_store but panics if something goes wrong
 hvalue_t value_store(struct engine *engine, hvalue_t root, hvalue_t key, hvalue_t value){
     hvalue_t result;
     bool r = value_trystore(engine, root, key, value, true, &result);
@@ -1369,27 +1378,29 @@ hvalue_t value_store(struct engine *engine, hvalue_t root, hvalue_t key, hvalue_
     return result;
 }
 
+// Look up the given key in the given dictionary and return the value.  Returns 0
+// if the key does not exist in the dictionary.
+//
+// TODO.  Is this functionality duplicated by value_tryload()??
 hvalue_t value_dict_load(hvalue_t dict, hvalue_t key){
     assert(VALUE_TYPE(dict) == VALUE_DICT);
+    if (dict == VALUE_DICT) {       // dictionary is empty
+        return 0;
+    }
 
     hvalue_t *vals;
     unsigned int size;
-    if (dict == VALUE_DICT) {
-        vals = NULL;
-        size = 0;
-    }
-    else {
-        vals = value_get(dict, &size);
-        size /= sizeof(hvalue_t);
-        assert(size % 2 == 0);
-    }
+    vals = value_get(dict, &size);
+    size /= sizeof(hvalue_t);
+    assert(size % 2 == 0);
 
     unsigned int i;
     for (i = 0; i < size; i += 2) {
         if (vals[i] == key) {
             return vals[i + 1];
         }
-        /*
+        /* TODO.  The following would be correct, but since value_cmp() is an
+                  expensive function, I figured it would be better to not use it.
             if (value_cmp(vals[i], key) > 0) {
                 break;
             }
@@ -1398,22 +1409,26 @@ hvalue_t value_dict_load(hvalue_t dict, hvalue_t key){
     return 0;
 }
 
+// Remove the given key from the dictionary and return the new dictionary.
+// TODO.  Does this duplicate the work of value_remove()??
 hvalue_t value_dict_remove(struct engine *engine, hvalue_t dict, hvalue_t key){
     assert(VALUE_TYPE(dict) == VALUE_DICT);
-
-    hvalue_t *vals;
-    unsigned int size;
-    if (dict == VALUE_DICT) {
+    if (dict == VALUE_DICT) {       // dictionary is empty
         return VALUE_DICT;
     }
-    vals = value_get(dict, &size);
+
+    unsigned int size;
+    hvalue_t *vals = value_get(dict, &size);
     size /= sizeof(hvalue_t);
     assert(size % 2 == 0);
 
+    // If there is only one key/value pair, the result is either unchanged
+    // or an empty dictionary.
     if (size == 2) {
         return vals[0] == key ? VALUE_DICT : dict;
     }
 
+    assert(size > 2);
     for (unsigned int i = 0; i < size; i += 2) {
         if (vals[i] == key) {
             int n = (size - 2) * sizeof(hvalue_t);
@@ -1441,6 +1456,8 @@ hvalue_t value_dict_remove(struct engine *engine, hvalue_t dict, hvalue_t key){
     return dict;
 }
 
+// Remove the given key from either a dictionary or a list.
+// TODO.  Should perhaps also support removing characters from a string.
 hvalue_t value_remove(struct engine *engine, hvalue_t root, hvalue_t key){
     assert(VALUE_TYPE(root) == VALUE_DICT || VALUE_TYPE(root) == VALUE_LIST);
 
@@ -1454,10 +1471,13 @@ hvalue_t value_remove(struct engine *engine, hvalue_t root, hvalue_t key){
     if (VALUE_TYPE(root) == VALUE_DICT) {
         assert(size % 2 == 0);
 
+        // Special case: if there is only one key value pair, the result
+        // is either unchanged or an empty dictionary.
         if (n == 2) {
             return vals[0] == key ? VALUE_DICT : root;
         }
 
+        assert(n > 2);
         for (unsigned i = 0; i < n; i += 2) {
             if (vals[i] == key) {
                 size -= 2 * sizeof(hvalue_t);
@@ -1489,9 +1509,15 @@ hvalue_t value_remove(struct engine *engine, hvalue_t root, hvalue_t key){
             return root;
         }
         unsigned int index = (unsigned int) VALUE_FROM_INT(key);
+
+        // TODO.  Should perhaps return an error in this case?
         if (index >= n) {
             return root;
         }
+
+        // TODO. For efficiency should perhaps special case removing entry 0
+        //       from a list of size 1 (which will be the empty list).
+
         size -= sizeof(hvalue_t);
 #ifdef HEAP_ALLOC
         hvalue_t *copy = malloc(size);
@@ -1570,6 +1596,8 @@ bool value_tryload(
     return false;
 }
 
+// A bag is a dictionary that maps elements to their multiplicity.  This function
+// add "multiplicity" copies of v to the given bag and returns a new bag.
 hvalue_t value_bag_add(struct engine *engine, hvalue_t bag, hvalue_t v, int multiplicity){
     hvalue_t count;
     assert(VALUE_TYPE(bag) == VALUE_DICT);
@@ -1584,6 +1612,7 @@ hvalue_t value_bag_add(struct engine *engine, hvalue_t bag, hvalue_t v, int mult
     }
 }
 
+// Remove a copy of v from the given bag (which must be in there).
 hvalue_t value_bag_remove(struct engine *engine, hvalue_t bag, hvalue_t v){
     assert(VALUE_TYPE(bag) == VALUE_DICT);
     hvalue_t count = value_dict_load(bag, v);
@@ -1597,6 +1626,8 @@ hvalue_t value_bag_remove(struct engine *engine, hvalue_t bag, hvalue_t v){
     }
 }
 
+// Push a copy of the given value on the stack of the given context (state of
+// a Harmony thread).  Detects stack overflow.
 bool value_ctx_push(struct context *ctx, hvalue_t v){
     if (ctx->sp == MAX_CONTEXT_STACK - ctx_extent) {
         return false;
@@ -1605,11 +1636,15 @@ bool value_ctx_push(struct context *ctx, hvalue_t v){
     return true;
 }
 
+// Pop and return a value from the context stack.
 hvalue_t value_ctx_pop(struct context *ctx){
     assert(ctx->sp > 0);
     return ctx_stack(ctx)[--ctx->sp];
 }
 
+// For memory efficiency, contexts have some optional values.  If those are
+// needed, value_ctx_extend adds them to the context (unless they are already
+// there).
 void value_ctx_extend(struct context *ctx){
     if (ctx->extended) {
         return;
@@ -1620,6 +1655,7 @@ void value_ctx_extend(struct context *ctx){
     ctx->extended = true;
 }
 
+// A failure has occurred and this is registered with the context.
 hvalue_t value_ctx_failure(struct context *ctx, struct engine *engine, char *fmt, ...){
     va_list args;
 
@@ -1640,6 +1676,9 @@ hvalue_t value_ctx_failure(struct context *ctx, struct engine *engine, char *fmt
     return 0;
 }
 
+// A Harmony state contains a bag (multiset) of contexts.  This function checks
+// if all that contexts are of "eternal" threads (threads that are allowed not
+// to terminate).
 bool value_state_all_eternal(struct state *state) {
     if (state->bagsize == 0) {
         return true;
@@ -1654,6 +1693,9 @@ bool value_state_all_eternal(struct state *state) {
     return true;
 }
 
+// ctxbag is a Harmony value containing a bag of contexts.  A bag is a
+// multiset represented as a dictionary that maps elements to their
+// multiplicity.  This function checks if all contexts are of eternal threads.
 bool value_ctx_all_eternal(hvalue_t ctxbag) {
     if (ctxbag == VALUE_DICT) {     // optimization
         return true;
@@ -1673,6 +1715,10 @@ bool value_ctx_all_eternal(hvalue_t ctxbag) {
     return true;
 }
 
+// This function takes a Harmony value, represents it as a string, and then
+// adds escape characters so it can be used as a JSON string.  If the value
+// is a list, it prints it as a tuple (surrounded by parentheses) instead
+// of brackets.
 char *json_escape_value(hvalue_t v){
     char *s = value_string(v);
     int len = strlen(s);
@@ -1685,6 +1731,8 @@ char *json_escape_value(hvalue_t v){
     return r;
 }
 
+// Remove context 'ctx' from the state.  The multiset of contexts in a state
+// is represented as a bag.
 void context_remove(struct state *state, hvalue_t ctx){
     for (unsigned int i = 0; i < state->bagsize; i++) {
         if (state_contexts(state)[i] == ctx) {
@@ -1704,6 +1752,8 @@ void context_remove(struct state *state, hvalue_t ctx){
     }
 }
 
+// Add context 'ctx' to the state's context bag.  May fail if there are too
+// many different contexts (i.e., >= MAX_CONTEXT_BAG).
 bool context_add(struct state *state, hvalue_t ctx){
     unsigned int i;
     for (i = 0; i < state->bagsize; i++) {

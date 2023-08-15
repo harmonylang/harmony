@@ -7,14 +7,25 @@
 #include "thread.h"
 #include "hashtab.h"
 
+// After the Kripke structure is computed, we run a Strongly Connected Component
+// analysis to break the structure into its connected components.  The most major
+// use of this is to determine if there is a "non-terminating state".  A component
+// with outgoing edges cannot have such a state.  If not, then check if any of
+// the states still have non-eternal threads.  If so, that's a problem.
 struct component {
     bool good;              // terminating or out-going edge
-    unsigned int size;      // #states
+    unsigned int size;      // #states in the component
     struct node *rep;       // lowest numbered state in the component
     bool all_same;          // shared state in component is the same
     bool final;             // all states in this component are final
 };
 
+// We maintain for each step if it loads or stores any variables in a linked
+// list.  This is useful to detect race conditions and also plays a role in
+// optimizing the counter-example that is produced if there is a failure.
+// A variable is identified by a list of "indices" (simply Harmony values),
+// representing a path in the hierarchy of dictionaries and lists that form
+// the shared state between the threads.
 struct access_info {
     struct access_info *next;        // linked list maintenance
     hvalue_t *indices;               // address of load/store
@@ -25,6 +36,15 @@ struct access_info {
     bool load : 1;                   // store or del if false
 };
 
+// For each (directed) edge in the Kripke structure (a graph of states), we maintain
+// information of how a program can get from the source state to the destination
+// state.  This structure is directly followed by an array of Harmony values that
+// were printed in this transition.
+//
+// We maintain the number of microsteps (Harmony instructions that were executed)
+// but, for memory efficiency, not the details of the microsteps themselves.  If
+// a failure is found, that information is recovered by re-executing the path to
+// the faulty state.
 struct edge {
     struct edge *fwdnext;    // forward linked list maintenance
     hvalue_t ctx, choice;    // ctx that made the microstep, choice if any
@@ -44,17 +64,20 @@ struct edge {
 };
 #define edge_log(x)     ((hvalue_t *) ((x) + 1))
 
+// Charm can detect a variety of failure types:
 enum fail_type {
     FAIL_NONE,
-    FAIL_SAFETY,
-    FAIL_BEHAVIOR,
-    FAIL_INVARIANT,
-    FAIL_FINALLY,
-    FAIL_TERMINATION,
-    FAIL_BUSYWAIT,
-    FAIL_RACE
+    FAIL_SAFETY,            // assertion failure, divide by zero, etc.
+    FAIL_BEHAVIOR,          // output behavior not allowed by input DFA
+    FAIL_INVARIANT,         // some invariant failed
+    FAIL_FINALLY,           // some "finally" predicate failed
+    FAIL_TERMINATION,       // a non-terminating state exists
+    FAIL_BUSYWAIT,          // the program allows busy waiting
+    FAIL_RACE               // the program has a race condition
 };
 
+// This is information about a node in the Kripke structure.  The Harmony state
+// corresponding to this node is stored directly behind this node.
 struct node {
     union {
         // Data we only need while creating the Kripke structure
@@ -81,11 +104,14 @@ struct node {
     bool visited : 1;       // for busy wait detection
 
     // NFA compression
-    bool reachable : 1;
+    bool reachable : 1;     // TODO.  Maybe obsolete at this time
 };
 
+// The state corresponding to a node, directly following the node
 #define node_state(n)   ((struct state *) &(n)[1])
 
+// Information about a failure.  Multiple failures may be detected, and these
+// are kept in a linked list.
 struct failure {
     struct failure *next;   // for linked list maintenance
     enum fail_type type;    // failure type
@@ -93,10 +119,12 @@ struct failure {
     hvalue_t address;       // in case of data race or invariant failure
 };
 
+// A graph is represented by a list of its nodes.  Each node maintains a linked
+// list of its outgoing edges.
 struct graph {
     struct node **nodes;         // vector of all nodes
-    unsigned int size;           // to create node identifiers
-    unsigned int alloc_size;     // size allocated
+    unsigned int size;           // #valid nodes in this vector
+    unsigned int alloc_size;     // #nodes allocated
 };
 
 void graph_init(struct graph *graph, unsigned int initial_size);

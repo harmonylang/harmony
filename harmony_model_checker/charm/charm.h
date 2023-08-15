@@ -7,47 +7,61 @@
 #include "json.h"
 #include "hashtab.h"
 
+#ifdef OBSOLETE
 struct scc {        // Strongly Connected Component
     struct scc *next;
     unsigned int start, finish;
 };
+#endif
 
+// Invariants are compiled into Harmony code (terminated by an Assert instruction)
+// Invariants are allowed to pairs of states (pre and post).  Since this comes at
+// a cost that we do not want to level against all invariants, we keep track of
+// whether an invariant refers to the pre state of a transition.
 struct invariant {
     unsigned int pc;                // location of invariant code
     // TODO.  May not need the following since we can get it from env
     bool pre;                       // uses "pre" or not
 };
 
-// Info about a microstep
+// Info about a microstep, which is the execution of a single Harmony instruction
+// by some thread during the re-execution of a counter-example.
 struct microstep {
-    struct microstep *next;
-    struct state *state;
-    struct context *ctx;
-    bool interrupt, choose;
-    hvalue_t choice, print;
-    struct callstack *cs;
-    char *explain;
-    hvalue_t *args;         // arguments to explanation
-    unsigned int nargs;
+    struct microstep *next;     // linked list maintenance
+    struct state *state;        // state before the microstep
+    struct context *ctx;        // context (thread state) before the microstep
+    bool interrupt;             // the instruction was interrupted
+    bool choose;                // the instruction is a "choose"
+    hvalue_t choice;            // the value that was chosen
+    hvalue_t print;             // the value that was printed (0 if none)
+    struct callstack *cs;       // the callstack of the execution
+    char *explain;              // a string explaining the execution
+    hvalue_t *args;             // arguments to explanation
+    unsigned int nargs;         // the number of argument
 };
 
-// Info about a macrostep (edge in Kripke structure)
+// Info about a macrostep (edge in Kripke structure representing a sequence
+// of microsteps)
 struct macrostep {
-    // struct macrostep *next;
-    struct edge *edge;
-    unsigned int tid;
-    hvalue_t name, arg;
-    struct callstack *cs;
+    struct edge *edge;              // the edge this macrostep corresponds to
+    unsigned int tid;               // thread identifier
+    hvalue_t name, arg;             // name and argument of the thread (first method)
+    struct callstack *cs;           // callstack of the thread at the beginning
+
+    // An array of microsteps.  nmicrosteps is the actual number of microsteps,
+    // which alloc_microsteps is how many entries were allocated
     unsigned int nmicrosteps, alloc_microsteps;
     struct microstep **microsteps;
+
     struct instr *trim;             // first instruction if trimmed
     hvalue_t value;                 // corresponding value
-
     hvalue_t *processes;            // array of contexts of processes
     struct callstack **callstacks;  // array of callstacks of processes
     unsigned int nprocesses;        // the number of processes in the list
 };
 
+// All global variables of Charm should be in here, at least the ones that
+// are used across multiple modules.
 struct global {
     struct code code;               // code of the Harmony program
     struct dict *values;            // dictionary of values

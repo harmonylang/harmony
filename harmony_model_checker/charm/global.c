@@ -19,6 +19,7 @@
 
 #define CHUNK_SIZE	4096
 
+// Get the current time as a double value for easy computation
 double gettime(){
 #if defined(TIME_UTC) && !defined(__APPLE__)
     struct timespec ts;
@@ -31,6 +32,7 @@ double gettime(){
 #endif
 }
 
+// Convert a string representation of an integer to an unsigned long value.
 unsigned long to_ulong(const char *p, int len){
 	unsigned long r = 0;
 
@@ -44,6 +46,7 @@ unsigned long to_ulong(const char *p, int len){
 	return r;
 }
 
+// Something went terribly wrong.  Print a message and exit.
 void panic(char *s){
     fprintf(stderr, "Panic: %s\n", s);
     exit(1);
@@ -58,36 +61,3 @@ void *my_aligned_alloc(size_t alignment, size_t size){
     return NULL;
 }
 #endif
-
-#ifdef notdef
-bool file_read(char *filename, /* OUT */ json_buf_t *buf){
-	FILE *fp;
-
-	if ((fp = fopen(filename, "r")) == NULL) {
-		perror(filename);
-		return false;
-	}
-
-	*buf = uv_buf_init(0, 0);
-	int n;
-	for (;;) {
-		buf->base = realloc(buf->base, buf->len + CHUNK_SIZE);
-		n = fread(buf->base + buf->len, 1, CHUNK_SIZE, fp);
-		if (n < CHUNK_SIZE) {
-			if (ferror(fp)) {
-				perror(filename);
-				fclose(fp);
-				return false;
-			}
-			assert(feof(fp));
-			assert(n >= 0);
-			fclose(fp);
-			buf->len += n;
-			break;
-		}
-		assert(n == CHUNK_SIZE);
-		buf->len += CHUNK_SIZE;
-	}
-	return true;
-}
-#endif // notdef

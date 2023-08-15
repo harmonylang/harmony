@@ -1,5 +1,8 @@
 // #undef NDEBUG
 
+// This file is included at the start of every C source.  It mostly deals with
+// architecture dependent stuff
+
 #ifdef _WIN32
 #define HEAP_ALLOC
 #ifndef __STDC_NO_ATOMICS__     // don't really seem to work yet

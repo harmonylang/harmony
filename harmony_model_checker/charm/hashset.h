@@ -1,3 +1,5 @@
+// TODO.  May be obsolete
+
 #ifndef SRC_HASHSET_H
 #define SRC_HASHSET_H
 

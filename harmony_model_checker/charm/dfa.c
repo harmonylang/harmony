@@ -1,3 +1,7 @@
+// Charm can input a DFA or ("Harmony Finite Automaton) to check if some
+// model has output behaviors that correspond to the output behaviors of
+// another model (usually corresponding to some specification).
+
 #include "head.h"
 
 #include <stdlib.h>
@@ -16,7 +20,7 @@ struct dfa_transition {
 
 struct dfa_state {
     struct dfa_state *next;      // linked list maintenance
-    unsigned int idx;                     // name of state
+    unsigned int idx;            // name of state
     bool final;                  // terminal state
     struct dfa_transition *transitions;     // transition map
 

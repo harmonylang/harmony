@@ -1,12 +1,14 @@
 #ifndef JSON_H
 #define JSON_H
 
+// A JSON "atom" is a list of characters which may or may not be quoted.
 typedef struct json_buf {
     char *base;
     unsigned int len;
     bool quoted;
 } json_buf_t;
 
+// A JSON "value" is either an atom, a map, or a list.
 struct json_value { 
 	enum { JV_ATOM, JV_MAP, JV_LIST } type;
 	union {

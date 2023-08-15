@@ -1,3 +1,5 @@
+// TODO.  May be obsolete
+
 #ifndef SRC_HASHTAB_H
 #define SRC_HASHTAB_H
 
