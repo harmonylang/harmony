@@ -174,16 +174,19 @@ hvalue_t value_put_context(struct engine *engine, struct context *ctx){
     }
 }
 
-int value_cmp_bool(hvalue_t v1, hvalue_t v2){
+// Helper function for value_cmp.  False < True, for arbitrary reasons.
+static int value_cmp_bool(hvalue_t v1, hvalue_t v2){
     assert(v1 != v2);
     return v1 == 0 ? -1 : 1;
 }
 
-int value_cmp_int(hvalue_t v1, hvalue_t v2){
+// Helper function for value_cmp
+static int value_cmp_int(hvalue_t v1, hvalue_t v2){
     return (int64_t) v1 < (int64_t) v2 ? -1 : 1;
 }
 
-int value_cmp_atom(hvalue_t v1, hvalue_t v2){
+// Helper function for value_cmp
+static int value_cmp_atom(hvalue_t v1, hvalue_t v2){
     unsigned int size1, size2;
     char *s1 = value_get(v1, &size1);
     char *s2 = value_get(v2, &size2);
@@ -195,11 +198,15 @@ int value_cmp_atom(hvalue_t v1, hvalue_t v2){
     return size1 < size2 ? -1 : 1;
 }
 
-int value_cmp_pc(hvalue_t v1, hvalue_t v2){
+// Helper function for value_cmp
+static int value_cmp_pc(hvalue_t v1, hvalue_t v2){
     return v1 < v2 ? -1 : 1;
 }
 
-int value_cmp_dict(hvalue_t v1, hvalue_t v2){
+// Helper function for value_cmp.  Dictionaries are lexicographically ordered
+// by first sorting the key/value pairs by key.  Fortunately, that's exactly
+// how we store dictionaries
+static int value_cmp_dict(hvalue_t v1, hvalue_t v2){
     if (v1 == 0) {
         return v2 == 0 ? 0 : -1;
     }
@@ -222,7 +229,9 @@ int value_cmp_dict(hvalue_t v1, hvalue_t v2){
     return size1 < size2 ? -1 : 1;
 }
 
-int value_cmp_set(hvalue_t v1, hvalue_t v2){
+// Helper function for value_cmp.  Sets are first sorted and then lexicographically
+// compared.  Fortunately, we keep sets as ordered lists.
+static int value_cmp_set(hvalue_t v1, hvalue_t v2){
     if (v1 == 0) {
         return v2 == 0 ? 0 : -1;
     }
@@ -245,7 +254,8 @@ int value_cmp_set(hvalue_t v1, hvalue_t v2){
     return size1 < size2 ? -1 : 1;
 }
 
-int value_cmp_list(hvalue_t v1, hvalue_t v2){
+// Helper function for value_cmp.  List are lexicographically compared.
+static int value_cmp_list(hvalue_t v1, hvalue_t v2){
     if (v1 == 0) {
         return v2 == 0 ? 0 : -1;
     }
@@ -268,7 +278,11 @@ int value_cmp_list(hvalue_t v1, hvalue_t v2){
     return size1 < size2 ? -1 : 1;
 }
 
-int value_cmp_address(hvalue_t v1, hvalue_t v2){
+// Helper function for value_cmp.  Addresses are "thunks" that are represented
+// as a list of values, the first of which is a function and the remaining values
+// are arguments.  We simply compare the list lexicographically.  By the way,
+// None is represented as the empty list, and so is the lowest address.
+static int value_cmp_address(hvalue_t v1, hvalue_t v2){
     if (v1 == 0) {
         return v2 == 0 ? 0 : -1;
     }
@@ -291,8 +305,9 @@ int value_cmp_address(hvalue_t v1, hvalue_t v2){
     return size1 < size2 ? -1 : 1;
 }
 
-// TODO.  Maybe should compare name tag, pc, ...
-int value_cmp_context(hvalue_t v1, hvalue_t v2){
+// Contexts are kind of compared arbitrarily using memcmp.
+// TODO.  Maybe should compare pc, ... to get some sensible order?
+static int value_cmp_context(hvalue_t v1, hvalue_t v2){
     void *p1 = (void *) v1, *p2 = (void *) v2;
     unsigned int size1, size2;
     char *s1 = dict_retrieve(p1, &size1);
@@ -305,6 +320,10 @@ int value_cmp_context(hvalue_t v1, hvalue_t v2){
     return size1 < size2 ? -1 : 1;
 }
 
+// This function compares two values v1 and v2, and returns a negative value if
+// v1 < v2, 0 if  v1 == v2, and a positive value if v1 > v2.  Values are first
+// compared by type (i.e., bools go before integer go before ...) and then are
+// compared within their type.
 int value_cmp(hvalue_t v1, hvalue_t v2){
     if (v1 == v2) {
         return 0;
@@ -340,6 +359,7 @@ int value_cmp(hvalue_t v1, hvalue_t v2){
     }
 }
 
+// Helper function for value_string
 static void value_string_bool(struct strbuf *sb, hvalue_t v) {
     v >>= VALUE_BITS;
     if (v != 0 && v != 1) {
@@ -350,6 +370,7 @@ static void value_string_bool(struct strbuf *sb, hvalue_t v) {
     strbuf_printf(sb, v == 0 ? "False" : "True");
 }
 
+// Helper function for value_json
 static void value_json_bool(struct strbuf *sb, hvalue_t v) {
     v >>= VALUE_BITS;
     if (v != 0 && v != 1) {
@@ -360,16 +381,19 @@ static void value_json_bool(struct strbuf *sb, hvalue_t v) {
     strbuf_printf(sb, "{ \"type\": \"bool\", \"value\": \"%s\" }", v == 0 ? "False" : "True");
 }
 
+// Helper function for value_string
 static void value_string_int(struct strbuf *sb, hvalue_t v) {
     int64_t w = VALUE_FROM_INT(v);
     strbuf_printf(sb, "%"PRId64"", w);
 }
 
+// Helper function for value_json
 static void value_json_int(struct strbuf *sb, hvalue_t v) {
     int64_t w = (int64_t) VALUE_FROM_INT(v);
     strbuf_printf(sb, "{ \"type\": \"int\", \"value\": \"%"PRId64"\" }", (int64_t) w);
 }
 
+// Helper function for value_string
 static void value_string_atom(struct strbuf *sb, hvalue_t v) {
     unsigned int size;
     char *s = value_get(v, &size);
@@ -398,24 +422,30 @@ static void value_string_atom(struct strbuf *sb, hvalue_t v) {
     strbuf_append(sb, "\"", 1);
 }
 
+// Helper function for value_json
 static void value_json_atom(struct strbuf *sb, hvalue_t v) {
     unsigned int size;
     char *s = value_get(v, &size);
+    // TODO.  There should probably be a json_escape function that prints to
+    //        a strbuf.  This is easy but inefficient.
     char *esc = json_escape(s, size);
 
     strbuf_printf(sb, "{ \"type\": \"atom\", \"value\": \"%s\" }", esc);
     free(esc);
 }
 
+// Helper function for value_string
 static void value_string_pc(struct strbuf *sb, hvalue_t v) {
     assert(VALUE_FROM_PC(v) < 10000);      // debug
     strbuf_printf(sb, "PC(%u)", (unsigned int) VALUE_FROM_PC(v));
 }
 
+// Helper function for value_json
 static void value_json_pc(struct strbuf *sb, hvalue_t v) {
     strbuf_printf(sb, "{ \"type\": \"pc\", \"value\": \"%d\" }", (int) VALUE_FROM_PC(v));
 }
 
+// Helper function for value_string
 static void value_string_dict(struct strbuf *sb, hvalue_t v) {
     if (v == 0) {
         strbuf_printf(sb, "{:}");
@@ -438,6 +468,7 @@ static void value_string_dict(struct strbuf *sb, hvalue_t v) {
     strbuf_printf(sb, " }");
 }
 
+// Helper function for value_json
 static void value_json_dict(struct strbuf *sb, hvalue_t v, struct global *global) {
     if (v == 0) {
         strbuf_printf(sb, "{ \"type\": \"dict\", \"value\": [] }");
@@ -463,6 +494,7 @@ static void value_json_dict(struct strbuf *sb, hvalue_t v, struct global *global
     strbuf_printf(sb, " ] }");
 }
 
+// Helper function for value_string
 static void value_string_list(struct strbuf *sb, hvalue_t v) {
     if (v == 0) {
         strbuf_printf(sb, "[]");
@@ -484,6 +516,7 @@ static void value_string_list(struct strbuf *sb, hvalue_t v) {
     strbuf_printf(sb, "]");
 }
 
+// Helper function for value_string
 static void value_string_set(struct strbuf *sb, hvalue_t v) {
     if (v == 0) {
         strbuf_printf(sb, "{}");
@@ -505,6 +538,7 @@ static void value_string_set(struct strbuf *sb, hvalue_t v) {
     strbuf_printf(sb, " }");
 }
 
+// Helper function for value_json
 static void value_json_list(struct strbuf *sb, hvalue_t v, struct global *global) {
     if (v == 0) {
         strbuf_printf(sb, "{ \"type\": \"list\", \"value\": [] }");
@@ -526,6 +560,7 @@ static void value_json_list(struct strbuf *sb, hvalue_t v, struct global *global
     strbuf_printf(sb, " ] }");
 }
 
+// Helper function for value_json
 static void value_json_set(struct strbuf *sb, hvalue_t v, struct global *global) {
     if (v == 0) {
         strbuf_printf(sb, "{ \"type\": \"set\", \"value\": [] }");
@@ -547,6 +582,7 @@ static void value_json_set(struct strbuf *sb, hvalue_t v, struct global *global)
     strbuf_printf(sb, " ] }");
 }
 
+// Helper function for value_string
 static void strbuf_indices_string(struct strbuf *sb, const hvalue_t *vec, int size) {
     if (size == 0) {
         strbuf_printf(sb, "None");
@@ -583,6 +619,8 @@ static void strbuf_indices_string(struct strbuf *sb, const hvalue_t *vec, int si
     }
 }
 
+// This function takes a list of values representing an address or, more accurately,
+// a "thunk".  The first value is a function, and the remaining values are arguments.
 // TODO.  Rename to "address_string" or something like that
 char *indices_string(const hvalue_t *vec, int size) {
     struct strbuf sb;
@@ -592,6 +630,7 @@ char *indices_string(const hvalue_t *vec, int size) {
     return strbuf_convert(&sb);
 }
 
+// Helper function for value_string
 static void value_string_address(struct strbuf *sb, hvalue_t v) {
     if (v == 0) {
         strbuf_printf(sb, "None");
@@ -606,6 +645,7 @@ static void value_string_address(struct strbuf *sb, hvalue_t v) {
     strbuf_indices_string(sb, indices, size);
 }
 
+// Helper function for value_json
 static void value_json_address(struct strbuf *sb, hvalue_t v, struct global *global) {
     if (v == 0) {
         strbuf_printf(sb, "{ \"type\": \"address\" }");
@@ -630,6 +670,7 @@ static void value_json_address(struct strbuf *sb, hvalue_t v, struct global *glo
     strbuf_printf(sb, " ] }");
 }
 
+// Helper function for value_string
 static void value_string_context(struct strbuf *sb, hvalue_t v) {
     struct context *ctx = value_get(v, NULL);
     strbuf_printf(sb, "CONTEXT(");
@@ -683,7 +724,8 @@ static void value_string_context(struct strbuf *sb, hvalue_t v) {
 #endif
 }
 
-void strbuf_print_vars(struct global *global, struct strbuf *sb, hvalue_t v){
+// Helper function for print_vars
+static void strbuf_print_vars(struct global *global, struct strbuf *sb, hvalue_t v){
     if (VALUE_TYPE(v) == VALUE_DICT) {
         unsigned int size;
         hvalue_t *vars = value_get(v, &size);
@@ -707,6 +749,9 @@ void strbuf_print_vars(struct global *global, struct strbuf *sb, hvalue_t v){
     }
 }
 
+// v would typically represent a dictionary that maps variable names to values.
+// Instead of printing it as a regular dictionary, the output is stylized to
+// represent a set of variables and their respective values.
 void print_vars(struct global *global, FILE *file, hvalue_t v){
     struct strbuf sb;
     strbuf_init(&sb);
