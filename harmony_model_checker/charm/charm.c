@@ -114,9 +114,9 @@ struct worker {
     unsigned int vproc;          // virtual processor for pinning
 
     // The worker thread loop through three phases:
-    //  1: model check part of the state space (parallel)
-    //  2: allocate larger tables if needed (mostly sequential)
-    //  3: copy from old to new hash tables (parallel)
+    //  1: model check part of the state space
+    //  2: fix forward edges and allocate larger tables if needed
+    //  3: copy from old to new hash table
     // The barriers are to synchronize these three phases.
     barrier_t *start_barrier, *middle_barrier, *end_barrier;
 
@@ -418,7 +418,7 @@ unsigned int check_finals(struct global *global, struct node *node, struct step 
 
 // This function is called when a new edge has been generated, possibly to
 // a new state with an uninitialized node.
-static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock, struct node **results) {
+static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock) {
     struct node *node = edge->src, *next = edge->dst;
 
     // mutex_acquire(lock);    ==> this lock is already acquired
@@ -439,8 +439,8 @@ static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock, str
 
         next->index = -1;       // for Tarjan
 
-        next->u.ph1.next = *results;
-        *results = next;
+        next->u.ph1.next = w->results;
+        w->results = next;
         w->count++;
         w->enqueued++;
     }
@@ -455,6 +455,9 @@ static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock, str
     edge->fwdnext = *pe;
     *pe = edge;
 #else
+    // We see if we can get the lock on the old node without contention.  If
+    // so, we add the edge now.  Otherwise we'll wait to do it later when we
+    // we can process a batch in parallel.
     if (mutex_try_acquire(node->u.ph1.lock)) {
         edge->fwdnext = node->fwd;
         node->fwd = edge;
@@ -467,54 +470,37 @@ static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock, str
     }
 #endif
 
+    // If this is a good and normal (non-choosing) edge, check all the invariants.
     if (!edge->failed && !edge->choosing) {
-        // Check invariants
         if (w->global->ninvs != 0) {
             unsigned int inv = 0;
             if (!initialized) {      // try self-loop if a new node
                 inv = check_invariants(w->global, next, next, &w->inv_step);
             }
-            if (inv == 0) { // try new edge
+            if (inv == 0 && next != node) { // try new edge
                 inv = check_invariants(w->global, next, node, &w->inv_step);
             }
             if (inv != 0) {
                 struct failure *f = new_alloc(struct failure);
                 f->type = FAIL_INVARIANT;
                 f->edge = edge;
-                f->next = w->failures;
                 f->address = VALUE_TO_PC(inv);
+                f->next = w->failures;
                 w->failures = f;
             }
         }
- 
-#ifdef notdef       // TODO  Should be elsewhere
-        // Check final state if there are no non-eternal contexts
-        if (!initialized && w->global->nfinals != 0) {
-            hvalue_t *ctxs = state_contexts(state);
-            bool all_eternal = true;
-            for (unsigned int i = 0; i < state->bagsize; i++) {
-                assert(VALUE_TYPE(ctxs[i]) == VALUE_CONTEXT);
-                if (!(ctxs[i] & VALUE_CONTEXT_ETERNAL)) {
-                    all_eternal = false;
-                    break;
-                }
-            }
-            if (all_eternal) {
-                unsigned int fin = check_finals(w->global, next, &w->inv_step);
-                if (fin != 0) {
-                    struct failure *f = new_alloc(struct failure);
-                    f->type = FAIL_FINALLY;
-                    f->edge = edge;
-                    f->next = w->failures;
-                    f->address = VALUE_TO_PC(fin);
-                    w->failures = f;
-                }
-            }
-        }
-#endif
     }
 }
 
+// This is the main workhorse function of model checking: explore a state and
+// a thread executing in this state.  One tricky thing here is an optimization
+// in how atomic sections are implemented.  Sometimes, often in assertions,
+// there is an atomic section that does not access shared variables.  It would
+// be inefficient to "break" in that case, as it would needlessly reduce the
+// amount of partial order reduction we can do.  And we do not want to discourage
+// programmers from using assertions.  Thus, to execute an atomic section, we
+// save the state at the beginning and rollback in case it turns out that we do
+// need to break.
 static bool onestep(
     struct worker *w,       // thread info
     struct node *node,      // starting node
@@ -524,8 +510,7 @@ static bool onestep(
     hvalue_t choice,        // if about to make a choice, which choice?
     bool interrupt,         // start with invoking interrupt handler
     bool infloop_detect,    // try to detect infloop from the start
-    int multiplicity,       // #contexts that are in the current state
-    struct node **results   // where to place the resulting new states
+    int multiplicity       // #contexts that are in the current state
 ) {
     assert(state_size(sc) == state_size(node_state(node)));
 
@@ -535,7 +520,7 @@ static bool onestep(
 
     struct global *global = w->global;
 
-    // See if we should also try an interrupt.
+    // See if we should first try an interrupt.
     if (interrupt) {
         assert(step->ctx->extended);
 		assert(ctx_trap_pc(step->ctx) != 0);
@@ -543,11 +528,17 @@ static bool onestep(
     }
 
     // Copy the choice
+    //
+    // TODO.  Not clear if this is necessary.
     hvalue_t choice_copy = choice;
 
     bool choosing = false;
     struct dict *infloop = NULL;        // infinite loop detector
-    unsigned int instrcnt = 0;
+    unsigned int instrcnt = 0;          // keeps track of #instruction executed
+
+    // We *may* need to keep a copy of various parts of the state here in case we
+    // enter an atomic section.
+    // TODO:  can we remove the repeated allocation of state here?
 #ifdef HEAP_ALLOC
     char *as_state = malloc(sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1));
 #else
@@ -555,12 +546,15 @@ static bool onestep(
 #endif
     hvalue_t as_context = 0;
     unsigned int as_instrcnt = 0;
+
     bool rollback = false, stopped = false;
     bool terminated = false, infinite_loop = false;
     for (;;) {
         int pc = step->ctx->pc;
 
-        // If I'm pthread 0 and it's time, print some stats
+        // Worker 0 periodically (every second) prints some stats for long runs.
+        // To avoid calling gettime() very often, which may involve an expensive
+        // system call, worker 0 only checks every 100 instructions.
         if (w->index == 0 && w->timecnt-- == 0) {
             double now = gettime();
             if (now - global->lasttime > 1) {
@@ -609,28 +603,47 @@ static bool onestep(
             w->timecnt = 100;
         }
 
-        w->profile[pc]++;       // for profiling
+        // Each worker keeps track of how many times each instruction is executed.
+        w->profile[pc]++;
+
+        // See what kind of instruction is next
         struct instr *instrs = global->code.instrs;
         struct op_info *oi = instrs[pc].oi;
         // printf("--> %u %s %u %u\n", pc, oi->name, step->ctx->sp, instrcnt);
+
+        // If it's a Choose instruction, replace the top of the stack (which
+        // contains the set of choices) with the choice.
         if (instrs[pc].choose) {
             assert(step->ctx->sp > 0);
             assert(choice != 0);
             ctx_stack(step->ctx)[step->ctx->sp - 1] = choice;
             step->ctx->pc++;
         }
+
+
+        // See if it's an AtomicInc instruction.
         else if (instrs[pc].atomicinc) {
+            // If it's the very first instruction, set the atomicFlag in the context
             if (instrcnt == 0) {
                 step->ctx->atomicFlag = true;
             }
+
+            // If not, but the context was not in atomic mode, save the current
+            // state to restore to in case we have to "break".
+            // TODO.  We do not really need to store the context in
+            //        the hashtable here.  We could just copy it like the state.
             else if (step->ctx->atomic == 0) {
-                // Save the current state in case it needs restoring
                 memcpy(as_state, sc, state_size(sc));
                 as_context = value_put_context(&step->engine, step->ctx);
                 as_instrcnt = instrcnt;
             }
+            
+            // Execute the AtomicInc instruction.
             (*oi->op)(instrs[pc].env, sc, step, global);
         }
+
+        // If we're no longer in an atomic section after executing the instruction,
+        // we can clear the saved state.
         else if (instrs[pc].atomicdec) {
             (*oi->op)(instrs[pc].env, sc, step, global);
             if (step->ctx->atomic == 0) {
@@ -638,6 +651,8 @@ static bool onestep(
                 as_instrcnt = 0;
             }
         }
+
+        // Otherwise just execute the operation.
         else {
             (*oi->op)(instrs[pc].env, sc, step, global);
         }
@@ -647,20 +662,27 @@ static bool onestep(
 
         instrcnt++;
 
+        // If the last instruction terminated the context, break out of the loop.
         if (step->ctx->terminated) {
             terminated = true;
             break;
         }
+
+        // Same if the context has failed.
         if (step->ctx->failed) {
             // printf("FAILED AFTER %d steps\n", (int) instrcnt);
             break;
         }
+
+        // Same if the context has stopped.
         if (step->ctx->stopped) {
             stopped = true;
             break;
         }
 
-        // TODO: Not sure what to do about this
+        // TODO: Not sure what to do when a thread appears to be creating
+        //       an unending stream of new states.  For now we print warnings
+        //       and then give up.
         if (instrcnt >= 100000000) {
             printf("fatal: giving up on thread\n");
             exit(1);
@@ -669,12 +691,19 @@ static bool onestep(
             printf("warning: thread seems to be in infinite loop (%u)\n", instrcnt);
         }
 
+        // If infloop_detect is on, that means that in the previous attempt to
+        // evaluated onestep() we suspected an infinite loop.  If it's off, we
+        // start trying to detect it after 1000 instructions.
+        // TODO.  1000 seems rather arbitrary.  Is it a good choice?  See below.
         if (infloop_detect || instrcnt > 1000) {
             if (infloop == NULL) {
                 infloop = dict_new("infloop1", sizeof(unsigned int),
                                                 0, 0, false);
             }
 
+            // We need to save the global state *and *the state of the current
+            // thread (because the context bag in the global state is not
+            // updated each time the thread changes its state, aka context).
             int ctxsize = ctx_size(step->ctx);
             int combosize = ctxsize + state_size(sc);
             char *combo = calloc(1, combosize);
@@ -683,10 +712,18 @@ static bool onestep(
             bool new;
             unsigned int *loc = dict_insert(infloop, NULL, combo, combosize, &new);
             free(combo);
+
+            // If we have not seen this state before, keep track of when we
+            // saw this state.
+            // TODO.  This may be obsolete.
             if (new) {
                 *loc = instrcnt;
             }
+
+            // We have seen this state before.
             else {
+                // If we reran onestep() because we suspected an infinite loop,
+                // report it.
                 if (infloop_detect) {
                     // if (*loc != 0) {
                     //     instrcnt = *loc;
@@ -695,13 +732,15 @@ static bool onestep(
                     infinite_loop = true;
                     break;
                 }
+
+                // Otherwise start over to create the shortest counterexample.
                 else {
-                    // start over, as twostep does not have instrcnt optimization
                     return false;
                 }
             }
         }
 
+        // This should never happen.
         if (step->ctx->pc == pc) {
             fprintf(stderr, ">>> %s\n", oi->name);
         }
@@ -709,28 +748,39 @@ static bool onestep(
 		assert(step->ctx->pc >= 0);
 		assert(step->ctx->pc < global->code.len);
 
+        // If we're not in atomic mode, we limit the number of steps to MAX_STEPS.
+        // TODO.  Not sure why.
         if (step->ctx->atomic == 0 && instrcnt > MAX_STEPS) {
             break;
         }
 
-        /* Peek at the next instruction.
+        /* Peek at the next instruction.  We may have to break out of the loop
+         * because of it.
          */
         struct instr *next_instr = &global->code.instrs[step->ctx->pc];
+
+        // If the next instruction is Choose, we should break.
         if (next_instr->choose) {
             assert(step->ctx->sp > 0);
-#ifdef TODO
+
+#ifdef TODO         // not sure why ifdef'd out
             if (0 && step->ctx->readonly > 0) {    // TODO
                 value_ctx_failure(step->ctx, &step->engine, "can't choose in assertion or invariant");
                 instrcnt++;
                 break;
             }
 #endif
+
+            // Check that the top of the stack contains a set.
             hvalue_t s = ctx_stack(step->ctx)[step->ctx->sp - 1];
             if (VALUE_TYPE(s) != VALUE_SET) {
                 value_ctx_failure(step->ctx, &step->engine, "choose operation requires a set");
                 instrcnt++;
                 break;
             }
+
+            // Check that the set contains at least one element.
+            // TODO.  We should just be able to check s == VALUE_SET
             unsigned int size;
 #ifdef OBSOLETE
             hvalue_t *vals =
@@ -742,6 +792,9 @@ static bool onestep(
                 instrcnt++;
                 break;
             }
+            
+            // If we were lazily executing an atomic section in the hopes of
+            // not having to break, we need to restore the state.
             if (step->ctx->atomic > 0 && !step->ctx->atomicFlag) {
                 rollback = true;
             }
@@ -793,13 +846,14 @@ static bool onestep(
             if (step->ctx->extended && ctx_trap_pc(step->ctx) != 0 &&
                                 !step->ctx->interruptlevel) {
                 // If this is a thread exit, break so we can invoke the
-                // interrupt handler one more time
+                // interrupt handler one more time (just before its exit)
                 if (next_instr->retop && step->ctx->sp == 1) {
                     breakable = true;
                 }
 
                 // If this is a setintlevel(True), should try interrupt
-                // For simplicity, always try when setintlevel
+                // For simplicity, always try when SetIntLevel is about to
+                // be executed.
                 else if (next_instr->setintlevel) {
                     breakable = true;
                 }
@@ -817,13 +871,17 @@ static bool onestep(
         }
     }
 
+    // No longer need this.  It was wasted effort.
+    // TODO.  Perhaps this suggests a way to automatically determine the
+    //        number of instructions to run before trying to detect an
+    //        infinite loop, which is currently hardwired at 1000.
     if (infloop != NULL) {
         dict_delete(infloop);
     }
 
+    // See if we need to roll back to the start of an atomic section.
     hvalue_t after;
     if (rollback) {
-        // printf("ROLLBACK\n");
         struct state *state = (struct state *) as_state;
         memcpy(sc, state, state_size(state));
         after = as_context;
@@ -843,6 +901,15 @@ static bool onestep(
 
     // If choosing, save in state.  If some invariant uses "pre", then
     // also keep track of "pre" state.
+    //
+    // The issue here is subtle.  Invariants are only checked when entering
+    // a normal state, not a choosing state, because choosing states can be
+    // in the middle of an atomic section.  So, we either need to keep track
+    // of the pre-state (as we do) or we need a much more complicated way of
+    // checking invariants with "pre" variables.  But always storing the
+    // pre-state in an old state can result in significant state explosion.
+    // So we only do it in case there are such invariant, and then only for
+    // choosing states.
     if (choosing) {
         sc->choosing = after;
         sc->pre = global->inv_pre ? node_state(node)->pre : sc->vars;
@@ -851,7 +918,7 @@ static bool onestep(
         sc->pre = sc->vars;
     }
 
-    // Add new context to state unless it's terminated or stopped
+    // Add new context to state unless it's terminated or stopped.
     if (stopped) {
         sc->stopbag = value_bag_add(&step->engine, sc->stopbag, after, 1);
     }
@@ -859,7 +926,7 @@ static bool onestep(
         context_add(sc, after);
     }
 
-    // Allocate edge now
+    // Allocate and initialize edge now.
     struct edge *edge = walloc(w, sizeof(struct edge) + step->nlog * sizeof(hvalue_t), false, false);
     edge->src = node;
     edge->ctx = ctx;
@@ -874,6 +941,7 @@ static bool onestep(
     edge->choosing = choosing;
     edge->failed = step->ctx->failed;
 
+    // If a failure has occurred, keep track of that too.
     if (step->ctx->failed) {
         struct failure *f = new_alloc(struct failure);
         f->type = infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
@@ -882,7 +950,10 @@ static bool onestep(
         w->failures = f;
     }
 
-    // See if this state has been computed before
+    // See if this state has been computed before by looking up the node,
+    // or allocate if not.  Sets a lock on that node.
+    // TODO.  It seems that perhaps the node does not need to be locked
+    //        if it's not new.  After all, we don't change it in that case.
     unsigned int size = state_size(sc);
     mutex_t *lock;
     bool new;
@@ -890,12 +961,12 @@ static bool onestep(
                 sc, size, &new, &lock);
     edge->dst = (struct node *) &hn[1];
 
-#ifdef NO_PROCESSING
+#ifdef NO_PROCESSING   // I use this sometime for profiling
     if (new) {
         edge->dst->state = (struct state *) &edge->dst[1];
         assert(VALUE_TYPE(edge->dst->state->vars) == VALUE_DICT);
-        edge->dst->next = *results;
-        *results = edge->dst;
+        edge->dst->next = w->results;
+        w->results = edge->dst;
         w->count++;
         w->enqueued++;
         if (!edge->choosing) {
@@ -904,26 +975,52 @@ static bool onestep(
         }
     }
 #else
-    process_edge(w, edge, lock, results);
+    process_edge(w, edge, lock);
 #endif
 
     return true;
 }
 
+// This function considers a state (pointed to by node) and a thread to run with
+// state ctx. If it is a "choosing state" (the thread is about to execute a
+// Choose instruction), then choice contains that choice to be tried.  Since
+// threads are anonymous and multiple threads can be in the same state,
+// multiplicity gives the number of threads that can make this step.  Any
+// resulting states should be buffered in w->results.
+//
+// The hard work of makestep is accomplished by function onestep().  makestep()
+// may invoke onestep() multiple times.  One reason is to explore interrupts
+// (which can only happen in non-choosing states).  Another reason is based on
+// how infinite loops are detected.  The easy way would be to maintain a set
+// of all states that are computed after every machine instruction, and to
+// check if a state re-occurs.  But that would be very expensive in the
+// presumably normal case where there are no infinite loops in the code.
+// So, an optimization that has been made is to explore a certain number
+// of instructions without doing this check (currently 1000).  After that
+// we start trying to detect an infinite loop.  If we detect one, we restart
+// the whole thing to produce a shorter couter example.
+//
+// So, in total, make_step may call onestep up to four times:
+//  1) to explore an interrupt
+//  2) restarting 1) if an infinite loop is detected
+//  3) explore a normal transition
+//  4) restarting 3) if an infinite loop is detected.
 static void make_step(
     struct worker *w,
     struct node *node,
     hvalue_t ctx,
     hvalue_t choice,       // if about to make a choice, which choice?
-    int multiplicity,      // #contexts that are in the current state
-    struct node **results  // where to place the resulting new states
+    int multiplicity       // #contexts that are in the current state
 ) {
     struct step step;
     memset(&step, 0, sizeof(step));
     step.engine.allocator = &w->allocator;
     step.engine.values = w->global->values;
 
-    // Make a copy of the state
+    // Make a copy of the state.
+    //
+    // TODO. Would it not be more efficient to have a fixed state variable
+    //       in the worker structure, similar to what we do for contexts (w->ctx)?
     unsigned int statesz = state_size(node_state(node));
     // Room to grown in copy for op_Spawn
 #ifdef HEAP_ALLOC
@@ -946,32 +1043,37 @@ static void make_step(
     step.ctx = &w->ctx;
 
     // See if we need to interrupt
+    // TODO.  Should probably also check that the context is not in atomic mode.
+    //        This could possibly happen if the thread was stopped in an atomic
+    //        section and is then later restarted.
     if (sc->choosing == 0 && cc->extended && ctx_trap_pc(cc) != 0 && !cc->interruptlevel) {
-        bool succ = onestep(w, node, sc, ctx, &step, choice, true, false, multiplicity, results);
+        bool succ = onestep(w, node, sc, ctx, &step, choice, true, false, multiplicity);
         assert(step.engine.allocator == &w->allocator);
         if (!succ) {        // ran into an infinite loop
             step.nlog = 0;
             memcpy(sc, node_state(node), statesz);
             memcpy(&w->ctx, cc, size);
             assert(step.engine.allocator == &w->allocator);
-            (void) onestep(w, node, sc, ctx, &step, choice, true, true, multiplicity, results);
+            (void) onestep(w, node, sc, ctx, &step, choice, true, true, multiplicity);
             assert(step.engine.allocator == &w->allocator);
         }
 
+        // Restore the state
         memcpy(sc, node_state(node), statesz);
         memcpy(&w->ctx, cc, size);
         assert(step.engine.allocator == &w->allocator);
     }
 
+    // Explore the state normally (not as an interrupt).
     sc->choosing = 0;
-    bool succ = onestep(w, node, sc, ctx, &step, choice, false, false, multiplicity, results);
+    bool succ = onestep(w, node, sc, ctx, &step, choice, false, false, multiplicity);
     assert(step.engine.allocator == &w->allocator);
     if (!succ) {        // ran into an infinite loop
         step.nlog = 0;
         memcpy(sc, node_state(node), statesz);
         memcpy(&w->ctx, cc, size);
         assert(step.engine.allocator == &w->allocator);
-        (void) onestep(w, node, sc, ctx, &step, choice, false, true, multiplicity, results);
+        (void) onestep(w, node, sc, ctx, &step, choice, false, true, multiplicity);
         assert(step.engine.allocator == &w->allocator);
     }
 
@@ -1192,8 +1294,9 @@ static void make_microstep(
     macro->microsteps[macro->nmicrosteps++] = micro;
 }
 
-// similar to onestep.  Used to recompute a faulty execution
-void twostep(
+// Similar to onestep.  Used to recompute a faulty execution, that is, to
+// generate the detailed execution of a counter-examples.
+static void twostep(
     struct global *global,
     struct state *sc,
     hvalue_t ctx,
@@ -2132,6 +2235,7 @@ static int node_cmp(void *n1, void *n2){
 }
 #endif
 
+// TODO.  Get rid of minheaps.
 static int fail_cmp(void *f1, void *f2){
 #ifdef notdef
     struct failure *fail1 = f1, *fail2 = f2;
@@ -2142,14 +2246,25 @@ static int fail_cmp(void *f1, void *f2){
 #endif
 }
 
-void do_work1(struct worker *w, struct node *node, unsigned int level){
+// This function evaluates a node just taken from the todo list by the worker.
+// Any new nodes that are found are kept in w->workers and not yet added to
+// the todo list or the graph.
+void do_work1(struct worker *w, struct node *node){
+    // If the node is the result of a failed transition, don't explore it
     if (node->failed) {
         return;
     }
+
+    // See what type of state it is.  There are two kinds of states: choosing
+    // states and non-choosing states.  In case of choosing states, we explore
+    // the possible choices for the thread that is executing.  For a non-choosing
+    // state, we explore all the different threads that can make a step.
     struct state *state = node_state(node);
     if (state->choosing != 0) {
         assert(VALUE_TYPE(state->choosing) == VALUE_CONTEXT);
 
+        // state->choosing is the context of the thread that is making a choice.
+        // The actual set of choices is on top of its stack
         struct context *cc = value_get(state->choosing, NULL);
         assert(cc != NULL);
         assert(cc->sp > 0);
@@ -2159,18 +2274,20 @@ void do_work1(struct worker *w, struct node *node, unsigned int level){
         hvalue_t *vals = value_get(s, &size);
         size /= sizeof(hvalue_t);
         assert(size > 0);
+
+        // Explore each choice.
         for (unsigned int i = 0; i < size; i++) {
             make_step(
                 w,
                 node,
                 state->choosing,
                 vals[i],
-                1,
-                &w->results
+                1
             );
         }
     }
     else {
+        // Explore each thread that can make a step.
         for (unsigned int i = 0; i < state->bagsize; i++) {
             assert(VALUE_TYPE(state_contexts(state)[i]) == VALUE_CONTEXT);
             make_step(
@@ -2178,18 +2295,32 @@ void do_work1(struct worker *w, struct node *node, unsigned int level){
                 node,
                 state_contexts(state)[i],
                 0,
-                multiplicities(state)[i],
-                &w->results
+                multiplicities(state)[i]
             );
         }
     }
 }
 
+// A worker thread executes this in "phase 1" of the worker loop, when all
+// workers are evaluating states and their transitions.  The states are
+// stored in global->graph as an array.  global->graph.size contains the
+// number of nodes that have been inserted into the graph.  global->todo,
+// or global->atodo (depending on whether atomics are used or not) points
+// into this array.  All the nodes before todo have been explored, while the
+// ones after todo should be explored.  In other words, the "todo list" starts
+// at global->graph.nodes[global->todo] and ends at graph.nodes[graph.size];
+// However, there is also a global->goal that indexes into global->graph.nodes.
+// Workers move on to phase 2 when the goal is reached, to give charm an
+// opportunity to grow the hash tables which might otherwise become inefficient.
 static void do_work(struct worker *w){
     struct global *global = w->global;
-    unsigned int todo_count = 5;
+    unsigned int todo_count = 5;        // TODO probably should just be a constant
 
     for (;;) {
+        // Grab one or a few states to evaluate.  When not using atomics, we
+        // do a few to avoid the overhead of contention on the lock.  Note that
+        // it is possible that as a result todo or atodo ends up being larger
+        // than graph.size.
 #ifdef USE_ATOMIC
         unsigned int next = atomic_fetch_add(&global->atodo, todo_count);
 #else // USE_ATOMIC
@@ -2199,26 +2330,32 @@ static void do_work(struct worker *w){
         mutex_release(&global->todo_lock);
 #endif // USE_ATOMIC
 
+        // Call do_work1() for each node we picked off the todo list.  It explores
+        // the node and adds new nodes that are found to w->results.
         for (unsigned int i = 0; i < todo_count; i++, next++) {
             // printf("W%d %d %d\n", w->index, next, global->graph.size);
+            // TODO: why not check for reaching the goal here instead of below?
             if (next >= global->graph.size) {
                 return;
             }
             w->dequeued++;
-            do_work1(w, global->graph.nodes[next], 0);
+            do_work1(w, global->graph.nodes[next]);
         }
 
+        // Stop if the goal has been reached.
         if (next >= global->goal) {
             break;
         }
     }
 }
 
-void process_results(struct global *global, struct worker *w){
+// Copy all the failures that the individuals worker threads discovered
+// into the global failures list.
+static void collect_failures(struct global *global, struct worker *w){
     struct failure *f;
     while ((f = w->failures) != NULL) {
         w->failures = f->next;
-        minheap_insert(global->failures, f);
+        minheap_insert(global->failures, f);    // TODO.  No need to keep in minheap
     }
 }
 
@@ -2521,11 +2658,23 @@ void vproc_tree_alloc(struct vproc_tree *vt, struct worker *workers, unsigned in
     }
 }
 
+// This is a main worker thread for the model checking phase.  arg points to
+// the struct worker record for this worker.
+//
+// The graph is kept in an array of nodes in global->graph.nodes.  It also acts
+// as the todo list, as global->todo (or global->atodo if atomics are used) points
+// to the first unexplored node.  Workers then compete to take nodes of the todo
+// list.  They buffer new nodes that find in their w->results list.  When the todo
+// list has been exhausted, a "layer" of the Kripke structure (all nodes up to a
+// certain distance or depth from the initial node) has been completed.  At that
+// point the buffered nodes are all added to the graph and the next layer is
+// explored.
 static void worker(void *arg){
     struct worker *w = arg;
     struct global *global = w->global;
     bool done = false;
 
+    // Pin the thread to its virtual processor.
 #ifdef __linux__
     if (w->index == 0) {
         printf("pinning cores\n");
@@ -2533,48 +2682,35 @@ static void worker(void *arg){
     // Pin worker to a core
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
-#ifdef OBSOLETE
-    if (getNumCores() == 64 && global->nworkers <= 32) {
-        // Try to schedule on the same chip
-        if (global->numa) {
-            CPU_SET(2 * w->index, &cpuset);
-        }
-        else {
-            CPU_SET(2 * w->index + 1, &cpuset);
-        }
-    }
-    else {
-        CPU_SET(w->index, &cpuset);
-    }
-#else // OBSOLETE
     CPU_SET(w->vproc, &cpuset);
-#endif // OBSOLETE
     sched_setaffinity(0, sizeof(cpuset), &cpuset);
 #endif
 
-    // printf("PIN %d to %d\n", w->index, w->vproc);
-
-    for (/* int epoch = 0;; epoch++ */;;) {
+    // The worker now goes into a loop.  Each iteration consists of three phases.
+    // Only worker 0 ever breaks out of this loop.
+    for (;;) {
+        // Wait for the first barrier (and keep stats)
         double before = gettime();
         barrier_wait(w->start_barrier);
         double after = gettime();
         w->start_wait += after - before;
         w->start_count++;
 
-        // Worker 0 may need to move on.
+        // Worker 0 needs to break out of the loop when the Kripke structure
+        // if finished (or when failures have been detected) so that it can
+        // go on with analysis and so on.
         if (done) {
             break;
         }
 
-        // (first) parallel phase starts now
-		// printf("WORKER %d starting epoch %d\n", w->index, epoch);
+        // First phase starts now.  Call do_work() to do that actual work.
+        // Also keep stats.
         before = after;
 		do_work(w);
         after = gettime();
         w->phase1 += after - before;
 
-        // wait for others to finish
-		// printf("WORKER %d finished epoch %d %u %u\n", w->index, epoch, w->count, w->node_id);
+        // Wait for others to finish, and keep stats
         before = gettime();
         barrier_wait(w->middle_barrier);
         after = gettime();
@@ -2582,7 +2718,8 @@ static void worker(void *arg){
         w->middle_count++;
         before = after;
 
-        // Fix the forward edges
+        // Insert the forward edges.  Each worker is responsible for a subset
+        // of the nodes, so this can be done in parallel.
         for (unsigned i = 0; i < w->nworkers; i++) {
             struct edge **pe = &w->workers[i].edges[w->index], *e;
             while ((e = *pe) != NULL) {
@@ -2594,13 +2731,15 @@ static void worker(void *arg){
             }
         }
 
+        // Keep more stats
         after = gettime();
         w->phase2a += after - before;
         before = after;
 
         // Prepare the grow the hash tables (but the actual work of
         // rehashing is distributed among the threads in the next phase
-        // double before_postproc = gettime();
+        // The only parallelism here is that workers 1 and 2 grow different
+        // hash tables, while worker 0 deals with the graph table
         if (w->index == 1 % global->nworkers) {
             dict_grow_prepare(w->visited);
         }
@@ -2608,9 +2747,11 @@ static void worker(void *arg){
             dict_grow_prepare(global->values);
         }
 
-        // Only the coordinator (worker 0) does this
-        if (w->index == 0 % global->nworkers) {
-            // End of a layer in the Kripke structure?
+        // Only the coordinator (worker 0) does the following
+        if (w->index == 0 /* % global->nworkers */) {
+            // See where todo (or atodo) is at.  Because of how it's incremented
+            // by the workers, it may have exceeded the size of the array of
+            // nodes.  If so, we set it back here.
 #ifdef USE_ATOMIC
             unsigned int todo = atomic_load(&global->atodo);
 #else
@@ -2625,12 +2766,20 @@ static void worker(void *arg){
                 todo = global->graph.size;
             }
             // printf("SEQ: todo=%u size=%u\n", todo, global->graph.size);
+
+            // If todo has reached the end of the array of nodes, then we're
+            // done with this layer and the nodes that the workers discovered
+            // and buffered in w->results must be appended to the graph.
             global->layer_done = todo == global->graph.size;
             if (global->layer_done) {
                 global->diameter++;
                 // printf("Diameter %d\n", global->diameter);
 
-                // Grow the graph table.
+                // Grow the graph table.  Figure out by how much by adding up
+                // the buffer sizes of each worker.  Also, assign to each worker
+                // 'node_id', which points to the part of the node identifier
+                // space they can use to assign node identifiers to their
+                // buffered nodes.
                 unsigned int total = 0;
                 for (unsigned int i = 0; i < global->nworkers; i++) {
                     struct worker *w2 = &w->workers[i];
@@ -2638,15 +2787,19 @@ static void worker(void *arg){
                     total += w2->count;
                 }
 
-                // The threads completed producing the next layer of nodes in the graph.
+                // Grow the graph table (but do not yet copy the buffered
+                // nodes into it.  The workers themselves do that in the
+                // next phase.
                 graph_add_multiple(&global->graph, total);
                 assert(global->graph.size <= global->graph.alloc_size);
 
                 // Collect the failures of all the workers
                 for (unsigned int i = 0; i < global->nworkers; i++) {
-                    process_results(global, &w->workers[i]);
+                    collect_failures(global, &w->workers[i]);
                 }
 
+                // If there are any failures, pretend we're done by setting
+                // todo (or atodo) to the end of the list of nodes.
                 if (!minheap_empty(global->failures)) {
                     // Pretend we're done
 #ifdef USE_ATOMIC
@@ -2656,13 +2809,18 @@ static void worker(void *arg){
 #endif
                 }
 
-                // Worker 0 is the coordinator and may need to go do
-                // other stuff
+                // This is still worker 0. If there are no more nodes to process
+                // worker 0 should break out of this loop.
                 if (total == 0) {
                     done = true;
                 }
             }
 
+            // We check here if more than 10000 nodes are on tbe todo list.  If
+            // so, we explore only 10000 for now to give us a chance to grow
+            // hash tables if needed for efficiency.
+            //
+            // TODO.  Why 10000?
             if (global->graph.size - todo > 10000) {
                 global->goal = todo + 10000;
             }
@@ -2670,26 +2828,28 @@ static void worker(void *arg){
                 global->goal = global->graph.size;
             }
 
-            // Compute how much table space is in use
+            // Compute how much table space is in use (reported in stats)
             global->allocated = global->graph.size * sizeof(struct node *) +
                 dict_allocated(w->visited) + dict_allocated(global->values);
         }
 
+        // Start the final phase (and keep stats).
         after = gettime();
         w->phase2b += after - before;
-
         before = after;
         barrier_wait(w->end_barrier);
         after = gettime();
         w->end_wait += after - before;
         w->end_count++;
-
         before = after;
 
-		// printf("WORKER %d make stable %d %u %u\n", w->index, epoch, w->count, w->node_id);
+        // In parallel, the workers copy the old hash table entries into the
+        // new buckets.
         dict_make_stable(global->values, w->index);
         dict_make_stable(w->visited, w->index);
 
+        // If a layer was completed, move the buffered nodes into the graph.
+        // Worker w can assign node identifiers starting from w->node_id.
         if (global->layer_done) {
             // Fill the graph table
             while (w->count != 0) {
@@ -2703,6 +2863,7 @@ static void worker(void *arg){
             assert(w->results == NULL);
         }
 
+        // Update stats
         after = gettime();
         w->phase3 += after - before;
     }
@@ -3047,11 +3208,26 @@ static void inthandler(int sig){
 }
 #endif
 
+// Error in arguments.  Print a "usage" message and exit
 static void usage(char *prog){
     fprintf(stderr, "Usage: %s [-c] [-t<maxtime>] [-B<dfafile>] -o<outfile> file.json\n", prog);
     exit(1);
 }
 
+// This is the main function.  The general form is
+//          charm [arguments] source.hvm
+// where source.hvm is a JSON file generated by the compiler containing the code
+// to be model checked.  The following arguments are supported:
+//
+//    -c: suppress looking for busy wait
+//    -d: direct execute (no model checking).  Experimental feature at this time
+//    -D: dump files "charm.gv" and "charm.dump" for debugging
+//    -R: suppress looking for data races
+//    -t<time>: maximum time to model check
+//    -B<file.hfa>: input "hfa" file for output behavior checking
+//    -o<file.hco>: specify the output file (no checking if none given)
+//    -w<workers>: specifies what and how many workers to use (see below)
+//
 int exec_model_checker(int argc, char **argv){
     bool cflag = false, dflag = false, Dflag = false, Rflag = false;
     int i, maxtime = 300000000 /* about 10 years */;
@@ -3089,9 +3265,6 @@ int exec_model_checker(int argc, char **argv){
         case 'w':
             worker_flag = &argv[i][2];
             break;
-        case 'x':
-            printf("Charm model checker working\n");
-            return 0;
         default:
             usage(argv[0]);
         }
@@ -3114,7 +3287,7 @@ int exec_model_checker(int argc, char **argv){
     // here (yet).
     struct global *global = new_alloc(struct global);
 
-    // Get info about virtual processors
+    // Get info about virtual processors (cores or hyperthreads)
     vproc_info_create();
 
     // The -w flag allows specifying which "virtual processors"
@@ -3158,8 +3331,7 @@ int exec_model_checker(int argc, char **argv){
     // Here n is the maximum number of threads to use, and a
     // pattern identifies a path in the tree.  If no patterns
     // are specified, all virtual processors are considered.
-    // Adding a '/' prints the list of virtual processors along
-    // with their paths.
+    // Adding a '/' prints the virtual processors.
     //
     // For example, suppose we have a server as described above
     // (two sockets, two hyperthreads per CPU, 16 cores per server
@@ -3192,8 +3364,8 @@ int exec_model_checker(int argc, char **argv){
     //            1 worker on core 2 of socket 1, and 16 workers
     //            on the second hyperthreads of socket 0, for
     //            a total of 17 workers
-
-    // From the -w flag, figure out how many workers we need.
+    //
+    // If -w is not specified, simply use all virtual processors.
     if (worker_flag == NULL) {
         global->nworkers = n_vproc_info;
         for (unsigned int i = 0; i < n_vproc_info; i++) {
@@ -3201,6 +3373,7 @@ int exec_model_checker(int argc, char **argv){
         }
     }
     else {
+        // -w/... causes virtual processors to be printed.
         if (*worker_flag == '/') {
             vproc_info_dump();
             worker_flag++;
@@ -3216,9 +3389,9 @@ int exec_model_checker(int argc, char **argv){
 
         // See if the workers are specified.
         if (*worker_flag == '\0') {
-	    if (global->nworkers == 0) {
-		global->nworkers = n_vproc_info;
-	    }
+            if (global->nworkers == 0) {
+                global->nworkers = n_vproc_info;
+            }
             for (unsigned int i = 0; i < n_vproc_info; i++) {
                 vproc_info[i].selected = true;
             }
@@ -3278,10 +3451,8 @@ int exec_model_checker(int argc, char **argv){
 
     // Determine how many worker threads to use
 	printf("* Phase 2: run the model checker (nworkers = %d)\n", global->nworkers);
-#ifdef OBSOLETE
-    global->numa = ((unsigned int) (gettime() * 1000) % 2) == 0;
-#endif
 
+    // Initialize barriers for the three phases (see struct worker definition)
     barrier_t start_barrier, middle_barrier, end_barrier;
     barrier_init(&start_barrier, global->nworkers);
     barrier_init(&middle_barrier, global->nworkers);

@@ -104,7 +104,6 @@ struct global {
     struct json_value *pretty;      // for output
     bool run_direct;                // non-model-checked mode
     unsigned long allocated;        // allocated table space
-    // bool numa;                   // for distribution across chips
     unsigned int oldpid;            // for thread id computation
 
     // Reconstructed error trace stored here
