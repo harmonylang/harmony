@@ -1482,6 +1482,11 @@ void path_serialize(
     global->macrosteps[global->nmacrosteps++] = macro;
 }
 
+// Retrieve the starting context of an edge
+static hvalue_t get_context(struct edge *e){
+    return state_contexts(node_state(e->src))[e->ctx_index];
+}
+
 void path_recompute(struct global *global){
     struct node *node = global->graph.nodes[0];
     struct state *sc = calloc(1,
@@ -1496,8 +1501,7 @@ void path_recompute(struct global *global){
         /* Find the starting context in the list of processes.  Prefer
          * sticking with the same pid if possible.
          */
-        struct state *state = node_state(e->src);
-        hvalue_t ctx = state_contexts(state)[e->ctx_index];
+        hvalue_t ctx = get_context(e);
         unsigned int pid;
         if (global->processes[global->oldpid] == ctx) {
             pid = global->oldpid;
@@ -1715,11 +1719,6 @@ static void path_output_microstep(struct global *global, FILE *file,
     fprintf(file, "        }");
 }
 
-// Retrieve the starting context of an edge
-static hvalue_t get_context(struct edge *e){
-    return state_contexts(node_state(e->src))[e->ctx_index];
-}
-
 static void path_output_macrostep(struct global *global, FILE *file, struct macrostep *macro, struct state *oldstate){
     fprintf(file, "    {\n");
     fprintf(file, "      \"id\": \"%d\",\n", macro->edge->dst->id);
@@ -1765,7 +1764,6 @@ static void path_output_macrostep(struct global *global, FILE *file, struct macr
     }
 
     fprintf(file, "      \"microsteps\": [");
-    // struct context *oldctx = value_get(state_contexts(oldstate)[macro->edge->ctx_index], NULL);
     struct context *oldctx = value_get(get_context(macro->edge), NULL);
     struct callstack *oldcs = NULL;
     for (unsigned int i = 0; i < macro->nmicrosteps; i++) {
@@ -1796,17 +1794,28 @@ static void path_output_macrostep(struct global *global, FILE *file, struct macr
     fprintf(file, "\n      },\n");
 
     fprintf(file, "      \"contexts\": [\n");
-#ifdef notdef
     for (unsigned int i = 0; i < macro->nprocesses; i++) {
         fprintf(file, "        {\n");
-        print_context(global, file, macro->processes[i], macro->callstacks[i], i, macro->edge->dst, "          ");
+
+        // Find the "context index"
+        int ctx_index;
+        for (ctx_index = 0; ctx_index < state->bagsize; ctx_index++) {
+            if (state_contexts(state)[ctx_index] == macro->processes[i]) {
+                break;
+            }
+        }
+        assert(ctx_index < state->bagsize);
+        if (ctx_index >= state->bagsize) {
+            panic("bad ctx_index");
+        }
+
+        print_context(global, file, ctx_index, macro->callstacks[i], i, macro->edge->dst, "          ");
         fprintf(file, "        }");
         if (i < macro->nprocesses - 1) {
             fprintf(file, ",");
         }
         fprintf(file, "\n");
     }
-#endif
     fprintf(file, "      ]\n");
 
     fprintf(file, "    }");
