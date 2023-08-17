@@ -48,8 +48,8 @@ struct access_info {
 // TODO: various space saving options by replacing contexts with indices
 struct edge {
     struct edge *fwdnext;    // forward linked list maintenance
-    hvalue_t ctx;            // TODO. could be index into state's context bag
-    hvalue_t choice;         // ctx that made the microstep, choice if any
+    hvalue_t ctx;            // TODO. could be index into src state's context bag
+    hvalue_t choice;         // choice if any (TODO, put in log[0] to save space)
     struct node *src;        // source node
     struct node *dst;        // destination node
     hvalue_t after;          // resulting context (TODO. index in dst context bag)
@@ -58,7 +58,6 @@ struct edge {
     uint16_t multiplicity;   // multiplicity of context (TODO. also in state)
     bool interrupt : 1;      // set if state change is an interrupt
     // TODO.  Is choosing == (choice != 0)?
-    //        Also, edge->src->choosing is probably the same
     bool choosing : 1;       // destination state is choosing
     bool failed : 1;         // context failed
     uint16_t nlog : 12;      // size of print history

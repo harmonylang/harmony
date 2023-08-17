@@ -978,8 +978,7 @@ static bool onestep(
 // state ctx. If it is a "choosing state" (the thread is about to execute a
 // Choose instruction), then choice contains that choice to be tried.  Since
 // threads are anonymous and multiple threads can be in the same state,
-// multiplicity gives the number of threads that can make this step.  Any
-// resulting states should be buffered in w->results.
+// Any resulting states should be buffered in w->results.
 //
 // The hard work of makestep is accomplished by function onestep().  makestep()
 // may invoke onestep() multiple times.  One reason is to explore interrupts
@@ -1000,21 +999,25 @@ static bool onestep(
 //  4) restarting 3) if an infinite loop is detected.
 static void make_step(
     struct worker *w,
-    struct node *node,
-    hvalue_t ctx,
-    hvalue_t choice,       // if about to make a choice, which choice?
-    int multiplicity       // #contexts that are in the current state
+    struct node *node,    // source node (and state)
+    int ctx_index,        // index into context bag
+    hvalue_t choice       // if about to make a choice, which choice?
 ) {
     struct step step;
     memset(&step, 0, sizeof(step));
     step.engine.allocator = &w->allocator;
     step.engine.values = w->global->values;
 
+    // Get the state, the context, and its multiplicity
+    struct state *state = node_state(node);
+    hvalue_t ctx = state_contexts(state)[ctx_index];
+    int multiplicity = multiplicities(state)[ctx_index];
+
     // Make a copy of the state.
     //
     // TODO. Would it not be more efficient to have a fixed state variable
     //       in the worker structure, similar to what we do for contexts (w->ctx)?
-    unsigned int statesz = state_size(node_state(node));
+    unsigned int statesz = state_size(state);
     // Room to grown in copy for op_Spawn
 #ifdef HEAP_ALLOC
     char *copy = malloc(statesz + 64*sizeof(hvalue_t));
@@ -1022,7 +1025,7 @@ static void make_step(
     char copy[statesz + 64*sizeof(hvalue_t)];
 #endif
     struct state *sc = (struct state *) copy;
-    memcpy(sc, node_state(node), statesz);
+    memcpy(sc, state, statesz);
     assert(step.engine.allocator == &w->allocator);
 
     // Make a copy of the context
@@ -1044,7 +1047,7 @@ static void make_step(
         assert(step.engine.allocator == &w->allocator);
         if (!succ) {        // ran into an infinite loop
             step.nlog = 0;
-            memcpy(sc, node_state(node), statesz);
+            memcpy(sc, state, statesz);
             memcpy(&w->ctx, cc, size);
             assert(step.engine.allocator == &w->allocator);
             (void) onestep(w, node, sc, ctx, &step, choice, true, true, multiplicity);
@@ -1052,7 +1055,7 @@ static void make_step(
         }
 
         // Restore the state
-        memcpy(sc, node_state(node), statesz);
+        memcpy(sc, state, statesz);
         memcpy(&w->ctx, cc, size);
         assert(step.engine.allocator == &w->allocator);
     }
@@ -1063,7 +1066,7 @@ static void make_step(
     assert(step.engine.allocator == &w->allocator);
     if (!succ) {        // ran into an infinite loop
         step.nlog = 0;
-        memcpy(sc, node_state(node), statesz);
+        memcpy(sc, state, statesz);
         memcpy(&w->ctx, cc, size);
         assert(step.engine.allocator == &w->allocator);
         (void) onestep(w, node, sc, ctx, &step, choice, false, true, multiplicity);
@@ -2250,26 +2253,14 @@ void do_work1(struct worker *w, struct node *node){
 
         // Explore each choice.
         for (unsigned int i = 0; i < size; i++) {
-            make_step(
-                w,
-                node,
-                chooser,
-                vals[i],
-                1
-            );
+            make_step(w, node, state->chooser, vals[i]);
         }
     }
     else {
         // Explore each thread that can make a step.
         for (unsigned int i = 0; i < state->bagsize; i++) {
             assert(VALUE_TYPE(state_contexts(state)[i]) == VALUE_CONTEXT);
-            make_step(
-                w,
-                node,
-                state_contexts(state)[i],
-                0,
-                multiplicities(state)[i]
-            );
+            make_step(w, node, i, 0);
         }
     }
 }
