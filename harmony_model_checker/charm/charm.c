@@ -429,16 +429,6 @@ static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock) {
         next->reachable = true;
         next->failed = edge->failed;
         next->u.ph1.lock = lock;
-
-        // TODOTODO
-        next->to_parent = edge;
-#ifdef notdef
-        next->len = node->len + 1;
-        next->steps = node->steps + edge->nsteps;
-#endif
-
-        next->index = -1;       // for Tarjan
-
         next->u.ph1.next = w->results;
         w->results = next;
         w->count++;
@@ -1087,7 +1077,7 @@ char *ctx_status(struct node *node, hvalue_t ctx) {
         return "choosing";
     }
     while (node_state(node)->choosing != 0) {
-        node = node->to_parent->src;
+        node = node->u.ph2.u.to_parent->src;
     }
     struct edge *edge;
     for (edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
@@ -1467,8 +1457,8 @@ void path_serialize(
 ) {
     // First recurse to the previous step
     struct node *parent = e->src;
-    if (parent->to_parent != NULL) {
-        path_serialize(global, parent->to_parent);
+    if (parent->u.ph2.u.to_parent != NULL) {
+        path_serialize(global, parent->u.ph2.u.to_parent);
     }
 
     struct macrostep *macro = calloc(sizeof(*macro), 1);
@@ -2210,41 +2200,21 @@ static enum busywait is_stuck(
     return result;
 }
 
-static void detect_busywait(struct minheap *failures, struct node *node){
+void add_failure(struct failure **failures, struct failure *f) {
+    f->next = *failures;
+    *failures = f;
+}
+
+static void detect_busywait(struct global *global, struct node *node){
 	for (unsigned int i = 0; i < node_state(node)->bagsize; i++) {
 		if (is_stuck(node, node, state_contexts(node_state(node))[i], false) == BW_RETURN) {
 			struct failure *f = new_alloc(struct failure);
 			f->type = FAIL_BUSYWAIT;
-			f->edge = node->to_parent;
-			minheap_insert(failures, f);
+			f->edge = node->u.ph2.u.to_parent;
+			add_failure(&global->failures, f);
 			// break;
 		}
 	}
-}
-
-#ifdef notdef
-static int node_cmp(void *n1, void *n2){
-    struct node *node1 = n1, *node2 = n2;
-
-    if (node1->len != node2->len) {
-        return node1->len - node2->len;
-    }
-    if (node1->steps != node2->steps) {
-        return node1->steps - node2->steps;
-    }
-    return node1->id - node2->id;
-}
-#endif
-
-// TODO.  Get rid of minheaps.
-static int fail_cmp(void *f1, void *f2){
-#ifdef notdef
-    struct failure *fail1 = f1, *fail2 = f2;
-
-    return node_cmp(fail1->edge->dst, fail2->edge->dst);
-#else
-    return 0;
-#endif
 }
 
 // This function evaluates a node just taken from the todo list by the worker.
@@ -2356,7 +2326,7 @@ static void collect_failures(struct global *global, struct worker *w){
     struct failure *f;
     while ((f = w->failures) != NULL) {
         w->failures = f->next;
-        minheap_insert(global->failures, f);    // TODO.  No need to keep in minheap
+        add_failure(&global->failures, f);
     }
 }
 
@@ -2801,7 +2771,7 @@ static void worker(void *arg){
 
                 // If there are any failures, pretend we're done by setting
                 // todo (or atodo) to the end of the list of nodes.
-                if (!minheap_empty(global->failures)) {
+                if (global->failures != NULL) {
                     // Pretend we're done
 #ifdef USE_ATOMIC
                     atomic_store(&global->atodo, global->graph.size);
@@ -2937,39 +2907,78 @@ static inline bool stack_empty(struct stack *s) {
     return s->prev == NULL && s->sp == 0;
 }
 
+// Compute shortest path to initial state using DFS.
+//
+// TODO.  Either clean up the stack afterwards or re-use it for tarjan?
+static void shortest_path(struct global *global){
+    // Initialize the nodes
+    for (unsigned int v = 0; v < global->graph.size; v++) {
+        struct node *n = global->graph.nodes[v];
+        n->u.ph2.u.to_parent = NULL;
+    }
+    struct stack *stack = calloc(1, sizeof(*stack));
+    stack_push(&stack, global->graph.nodes[0], NULL);
+    global->graph.nodes[0]->u.ph2.len = 0;
+    while (!stack_empty(stack)) {
+        struct node *src = stack_pop(&stack, NULL);
+        for (struct edge *e = src->fwd; e != NULL; e = e->fwdnext) {
+            struct node *dst = e->dst;
+            if (dst->u.ph2.u.to_parent == NULL) {
+                if (dst != global->graph.nodes[0]) {
+                    dst->u.ph2.u.to_parent = e;
+                    dst->u.ph2.len = src->u.ph2.len + 1;
+                    stack_push(&stack, dst, NULL);
+                }
+            }
+            else {
+                if (dst->u.ph2.len > src->u.ph2.len + 1) {
+                    dst->u.ph2.u.to_parent = e;
+                    dst->u.ph2.len = src->u.ph2.len;
+                }
+            }
+        }
+    }
+}
+
 // Tarjan SCC algorithm
 static void tarjan(struct global *global){
+    // Initialize the nodes
+    for (unsigned int v = 0; v < global->graph.size; v++) {
+        struct node *n = global->graph.nodes[v];
+        n->u.ph2.u.tarjan.index = -1;
+    }
+
     unsigned int i = 0, comp_id = 0;
     struct stack *stack = calloc(1, sizeof(*stack));
     struct stack *call_stack = calloc(1, sizeof(*call_stack));
     for (unsigned int v = 0; v < 1 /*global->graph.size*/; v++) {
         struct node *n = global->graph.nodes[v];
-        if (n->index == -1) {
+        if (n->u.ph2.u.tarjan.index == -1) {
             stack_push(&call_stack, n, NULL);
             while (!stack_empty(call_stack)) {
                 struct edge *e;
                 n = stack_pop(&call_stack, &e);
                 if (e == NULL) {
-                    n->index = i;
-                    n->u.ph2.lowlink = i;
+                    n->u.ph2.u.tarjan.index = i;
+                    n->u.ph2.u.tarjan.lowlink = i;
                     i++;
                     stack_push(&stack, n, NULL);
                     n->on_stack = true;
                     e = n->fwd;
                 }
                 else {
-                    if (e->dst->u.ph2.lowlink < n->u.ph2.lowlink) {
-                        n->u.ph2.lowlink = e->dst->u.ph2.lowlink;
+                    if (e->dst->u.ph2.u.tarjan.lowlink < n->u.ph2.u.tarjan.lowlink) {
+                        n->u.ph2.u.tarjan.lowlink = e->dst->u.ph2.u.tarjan.lowlink;
                     }
                     e = e->fwdnext;
                 }
                 while (e != NULL) {
                     struct node *w = e->dst;
-                    if (w->index < 0) {
+                    if (w->u.ph2.u.tarjan.index < 0) {
                         break;
                     }
-                    if (w->on_stack && w->index < n->u.ph2.lowlink) {
-                        n->u.ph2.lowlink = w->index;
+                    if (w->on_stack && w->u.ph2.u.tarjan.index < n->u.ph2.u.tarjan.lowlink) {
+                        n->u.ph2.u.tarjan.lowlink = w->u.ph2.u.tarjan.index;
                     }
                     e = e->fwdnext;
                 }
@@ -2977,7 +2986,7 @@ static void tarjan(struct global *global){
                     stack_push(&call_stack, n, e);
                     stack_push(&call_stack, e->dst, NULL);
                 }
-                else if (n->u.ph2.lowlink == n->index) {
+                else if (n->u.ph2.u.tarjan.lowlink == n->u.ph2.u.tarjan.index) {
                     for (;;) {
                         struct node *n2;
                         n2 = stack_pop(&stack, NULL);
@@ -3478,7 +3487,7 @@ int exec_model_checker(int argc, char **argv){
     ops_init(global, &engine);
 
     graph_init(&global->graph, 1 << 20);
-    global->failures = minheap_create(fail_cmp);
+    global->failures = NULL;
     global->seqs = VALUE_SET;
 
     // First read and parse the DFA if any
@@ -3636,7 +3645,6 @@ int exec_model_checker(int argc, char **argv){
     node->u.ph1.lock = lock;
     mutex_release(lock);
     node->reachable = true;
-    node->index = -1;
     graph_add(&global->graph, node);
 
     // Compute how much table space is allocated
@@ -3709,7 +3717,7 @@ int exec_model_checker(int argc, char **argv){
 
     // If no failures were detected (yet), determine strongly connected components
     // and look for non-terminating states.
-    if (minheap_empty(global->failures)) {
+    if (global->failures == NULL) {
         if (global->graph.size > 10000) {
             printf("* Phase 3b: strongly connected components\n");
             fflush(stdout);
@@ -3717,6 +3725,9 @@ int exec_model_checker(int argc, char **argv){
         double now = gettime();
         tarjan(global);
         global->phase2 = true;
+
+        // Compute shortest path to initial state for each node.
+        shortest_path(global);
 
         printf("    * %u components (%.2lf seconds)\n", global->ncomponents, gettime() - now);
 
@@ -3824,8 +3835,8 @@ int exec_model_checker(int argc, char **argv){
 						!dfa_is_final(global->dfa, node_state(node)->dfa_state)) {
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_BEHAVIOR;
-                    f->edge = node->to_parent;
-                    minheap_insert(global->failures, f);
+                    f->edge = node->u.ph2.u.to_parent;
+                    add_failure(&global->failures, f);
                     // break;
                 }
 
@@ -3834,16 +3845,16 @@ int exec_model_checker(int argc, char **argv){
                 if (fin != 0) {
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_FINALLY;
-                    f->edge = node->to_parent;
+                    f->edge = node->u.ph2.u.to_parent;
                     f->address = VALUE_TO_PC(fin);
-                    minheap_insert(global->failures, f);
+                    add_failure(&global->failures, f);
                 }
             }
         }
 
         // If we haven't found any failures yet, look for states in bad components.
         // If there are none, look for busy waiting states.
-        if (minheap_empty(global->failures)) {
+        if (global->failures == NULL) {
             // Report the states in bad components as non-terminating.
             int nbad = 0;
             for (unsigned int i = 0; i < global->graph.size; i++) {
@@ -3856,9 +3867,9 @@ int exec_model_checker(int argc, char **argv){
                         f->edge = node->fwd;
                     }
                     else {
-                        f->edge = node->to_parent;
+                        f->edge = node->u.ph2.u.to_parent;
                     }
-                    minheap_insert(global->failures, f);
+                    add_failure(&global->failures, f);
                     // TODO.  Can we be done here?
                     // break;
                 }
@@ -3874,11 +3885,15 @@ int exec_model_checker(int argc, char **argv){
                 for (unsigned int i = 0; i < global->graph.size; i++) {
                     struct node *node = global->graph.nodes[i];
                     if (components[node->u.ph2.component].size > 1) {
-                        detect_busywait(global->failures, node);
+                        detect_busywait(global, node);
                     }
                 }
             }
         }
+    }
+    else {
+        // Compute shortest path to initial state for each node.
+        shortest_path(global);
     }
 
     // The -D flag is used to dump debug files
@@ -3906,13 +3921,13 @@ int exec_model_checker(int argc, char **argv){
                     if (edge->failed) {
                         fprintf(df, " s%u -> s%u [style=%s label=\"F %u\"]\n",
                             node->id, edge->dst->id,
-                            edge->dst->to_parent == edge ? "solid" : "dashed",
+                            edge->dst->u.ph2.u.to_parent == edge ? "solid" : "dashed",
                             multiplicities(state)[j]);
                     }
                     else {
                         fprintf(df, " s%u -> s%u [style=%s label=\"%u\"]\n",
                             node->id, edge->dst->id,
-                            edge->dst->to_parent == edge ? "solid" : "dashed",
+                            edge->dst->u.ph2.u.to_parent == edge ? "solid" : "dashed",
                             multiplicities(state)[j]);
                     }
                 }
@@ -3932,11 +3947,11 @@ int exec_model_checker(int argc, char **argv){
                 assert(node->id == i);
                 fprintf(df, "\nNode %d:\n", node->id);
                 fprintf(df, "    component: %d\n", node->u.ph2.component);
-                if (node->to_parent != NULL) {
+                if (node->u.ph2.u.to_parent != NULL) {
                     fprintf(df, "    ancestors:");
-                    for (struct node *n = node->to_parent->src;; n = n->to_parent->src) {
+                    for (struct node *n = node->u.ph2.u.to_parent->src;; n = n->u.ph2.u.to_parent->src) {
                         fprintf(df, " %u", n->id);
-                        if (n->to_parent == NULL) {
+                        if (n->u.ph2.u.to_parent == NULL) {
                             break;
                         }
                     }
@@ -3991,22 +4006,18 @@ int exec_model_checker(int argc, char **argv){
     }
 
     // Look for data races
-    // TODO.  Can easily be parallelized
-	// TODO.  Don't need failures/warnings distinction any more
-    struct minheap *warnings = minheap_create(fail_cmp);
-    if (!Rflag && minheap_empty(global->failures)) {
+    if (!Rflag && global->failures == NULL) {
         printf("    * Check for data races\n");
         for (unsigned int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
-            graph_check_for_data_race(node, warnings, &engine);
-            if (!minheap_empty(warnings)) {
+            graph_check_for_data_race(&global->failures, node, &engine);
+            if (global->failures != NULL) {
                 break;
             }
         }
     }
 
-    bool no_issues = minheap_empty(global->failures) && minheap_empty(warnings);
-    if (no_issues) {
+    if (global->failures == NULL) {
         printf("    * **No issues found**\n");
     }
 
@@ -4024,7 +4035,7 @@ int exec_model_checker(int argc, char **argv){
 
     // In case no issues were found, we output a summary of the Kripke structure
     // with the 'print' outputs.
-    if (no_issues) {
+    if (global->failures == NULL) {
         printf("* Phase 4: write results to %s\n", outfile);
         fflush(stdout);
 
@@ -4109,11 +4120,10 @@ int exec_model_checker(int argc, char **argv){
         // necessarily give us the best path, as the distance is not measured by
         // the number of steps but by the number of context switches.
         struct failure *bad = NULL;
-        if (minheap_empty(global->failures)) {
-            bad = minheap_getmin(warnings);
-        }
-        else {
-            bad = minheap_getmin(global->failures);
+        for (struct failure *f = global->failures; f != NULL; f = f->next) {
+            if (bad == NULL || bad->edge->dst->u.ph2.len < f->edge->dst->u.ph2.len) {
+                bad = f;
+            }
         }
 
         // printf("BAD: %d %"PRIx64" %"PRIx64"\n", bad->edge->dst->id,

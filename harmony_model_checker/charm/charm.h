@@ -1,7 +1,6 @@
 #ifndef SRC_CHARM_H
 #define SRC_CHARM_H
 
-#include "minheap.h"
 #include "code.h"
 #include "graph.h"
 #include "json.h"
@@ -75,7 +74,8 @@ struct global {
     unsigned int nfinals;           // #finally predicates
     unsigned int *finals;           // program counters of finally preds
 
-    struct graph graph;             // the Kripke structure
+    struct graph graph;             // the Kripke structure but also the todo list
+
 #ifdef USE_ATOMIC
     hAtomic(unsigned int) atodo;
 #else
@@ -91,7 +91,7 @@ struct global {
     unsigned int nworkers;          // total number of threads
     unsigned int scc_nwaiting;      // # workers waiting for SCC work
     unsigned int ncomponents;       // to generate component identifiers
-    struct minheap *failures;       // queue of "struct failure"  (TODO: make part of struct node "issues")
+    struct failure *failures;       // queue of "struct failure"  (TODO: make part of struct node "issues")
     hvalue_t *processes;            // array of contexts of processes
     struct callstack **callstacks;  // array of callstacks of processes
     unsigned int nprocesses;        // the number of processes in the list
@@ -110,5 +110,7 @@ struct global {
     unsigned int nmacrosteps, alloc_macrosteps;
     struct macrostep **macrosteps;
 };
+
+void add_failure(struct failure **failures, struct failure *f);
 
 #endif //SRC_CHARM_H

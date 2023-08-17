@@ -3,7 +3,6 @@
 
 #include <stdint.h>
 #include "value.h"
-#include "minheap.h"
 #include "thread.h"
 #include "hashtab.h"
 
@@ -79,24 +78,28 @@ enum fail_type {
 // This is information about a node in the Kripke structure.  The Harmony state
 // corresponding to this node is stored directly behind this node.
 struct node {
+    // Carefully packed data...
     union {
         // Data we only need while creating the Kripke structure
         struct {
             struct node *next;		// for linked list
-            ht_lock_t *lock;        // lock for forward edges
+            ht_lock_t *lock;        // points to lock for forward edges
         } ph1;
         // Data we only need when analyzing the Kripke structure
         struct {
-            int32_t lowlink;        // for Tarjan SCC algorithm
             uint32_t component;     // strongly connected component id
+            uint32_t len;           // length of shortest path to initial state
+            union {
+                struct {
+                    int32_t index, lowlink; // only needed for Tarjan
+                } tarjan;
+                struct edge *to_parent; // path to initial state
+            } u;
         } ph2;
     } u;
 
     struct edge *fwd;       // forward edges
-    struct edge *to_parent; // a path to initial state
     uint32_t id;            // nodes are numbered starting from 0
-    int32_t index;          // for Tarjan algorithm
-
     bool on_stack : 1;      // for Tarjan
     bool initialized : 1;   // this node structure has been initialized
     bool failed : 1;        // a thread has failed
@@ -128,17 +131,9 @@ struct graph {
 };
 
 void graph_init(struct graph *graph, unsigned int initial_size);
-
-bool graph_edge_conflict(
-    struct minheap *warnings,
-    struct engine *engine,
-    struct node *node,
-    struct edge *edge,
-    struct edge *edge2
-);
 void graph_check_for_data_race(
+    struct failure **failures,
     struct node *node,
-    struct minheap *warnings,
     struct engine *engine
 );
 void graph_add(struct graph *graph, struct node *node);

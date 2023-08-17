@@ -40,8 +40,8 @@ unsigned int graph_add_multiple(struct graph *graph, unsigned int n) {
     return node_id;
 }
 
-bool graph_edge_conflict(
-    struct minheap *warnings,
+static bool graph_edge_conflict(
+    struct failure **failures,
     struct engine *engine,
     struct node *node,
     struct edge *edge,
@@ -54,14 +54,12 @@ bool graph_edge_conflict(
                     int min = ai->n < ai2->n ? ai->n : ai2->n;
                     assert(min > 0);
                     if (memcmp(ai->indices, ai2->indices,
-                               min * sizeof(hvalue_t)) == 0) {
-                        if (warnings != NULL) {
-                            struct failure *f = new_alloc(struct failure);
-                            f->type = FAIL_RACE;
-                            f->edge = node->to_parent;
-                            f->address = value_put_address(engine, ai->indices, min * sizeof(hvalue_t));
-                            minheap_insert(warnings, f);
-                        }
+                                   min * sizeof(hvalue_t)) == 0) {
+                        struct failure *f = new_alloc(struct failure);
+                        f->type = FAIL_RACE;
+                        f->edge = node->u.ph2.u.to_parent;
+                        f->address = value_put_address(engine, ai->indices, min * sizeof(hvalue_t));
+                        add_failure(failures, f);
                         return true;
                     }
                 }
@@ -72,8 +70,8 @@ bool graph_edge_conflict(
 }
 
 void graph_check_for_data_race(
+    struct failure **failures,
     struct node *node,
-    struct minheap *warnings,
     struct engine *engine
 ) {
     // First check whether any edges conflict with themselves.  That could
@@ -86,9 +84,9 @@ void graph_check_for_data_race(
                 if (edge->multiplicity > 1 && !ai->load && !ai->atomic) {
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_RACE;
-                    f->edge = node->to_parent;
+                    f->edge = node->u.ph2.u.to_parent;
                     f->address = value_put_address(engine, ai->indices, ai->n * sizeof(hvalue_t));
-                    minheap_insert(warnings, f);
+                    add_failure(failures, f);
                 }
             }
         }
@@ -97,7 +95,7 @@ void graph_check_for_data_race(
     // TODO.  We're checking both if x and y conflict and y and x conflict for any two x and y, which is redundant
     for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
         for (struct edge *edge2 = edge->fwdnext; edge2 != NULL; edge2 = edge2->fwdnext) {
-            if (graph_edge_conflict(warnings, engine, node, edge, edge2)) {
+            if (graph_edge_conflict(failures, engine, node, edge, edge2)) {
                 break;
             }
         }
