@@ -48,14 +48,13 @@ struct access_info {
 // TODO: various space saving options by replacing contexts with indices
 struct edge {
     struct edge *fwdnext;    // forward linked list maintenance
-    hvalue_t ctx;            // TODO. could be index into src state's context bag
     hvalue_t choice;         // choice if any (TODO, put in log[0] to save space)
     struct node *src;        // source node
     struct node *dst;        // destination node
     hvalue_t after;          // resulting context (TODO. index in dst context bag)
     struct access_info *ai;  // to detect data races
     uint16_t nsteps;         // # microsteps
-    uint16_t multiplicity;   // multiplicity of context (TODO. also in state)
+    uint8_t ctx_index;       // index of context in src state context bag
     bool interrupt : 1;      // set if state change is an interrupt
     // TODO.  Is choosing == (choice != 0)?
     bool choosing : 1;       // destination state is choosing

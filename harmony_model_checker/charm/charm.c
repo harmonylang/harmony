@@ -495,15 +495,13 @@ static bool onestep(
     struct worker *w,       // thread info
     struct node *node,      // starting node
     struct state *sc,       // actual state
-    hvalue_t ctx,           // context identifier
+    int ctx_index,          // indexes into state's context bag
     struct step *step,      // step info
     hvalue_t choice,        // if about to make a choice, which choice?
     bool interrupt,         // start with invoking interrupt handler
-    bool infloop_detect,    // try to detect infloop from the start
-    int multiplicity       // #contexts that are in the current state
+    bool infloop_detect     // try to detect infloop from the start
 ) {
     assert(state_size(sc) == state_size(node_state(node)));
-
     assert(!step->ctx->terminated);
     assert(!step->ctx->failed);
     assert(step->engine.allocator == &w->allocator);
@@ -887,7 +885,7 @@ static bool onestep(
 #endif
 
     // Remove old context from the bag
-    context_remove(sc, ctx);
+    context_remove_by_index(sc, ctx_index);
 
     // Add new context to state unless it's terminated or stopped.
     int index;
@@ -922,10 +920,9 @@ static bool onestep(
     // Allocate and initialize edge now.
     struct edge *edge = walloc(w, sizeof(struct edge) + step->nlog * sizeof(hvalue_t), false, false);
     edge->src = node;
-    edge->ctx = ctx;
+    edge->ctx_index = ctx_index;
     edge->choice = choice_copy;
     edge->interrupt = interrupt;
-    edge->multiplicity = multiplicity;
     edge->after = after;
     edge->ai = step->ai;     step->ai = NULL;
     memcpy(edge_log(edge), step->log, step->nlog * sizeof(hvalue_t));
@@ -1008,10 +1005,9 @@ static void make_step(
     step.engine.allocator = &w->allocator;
     step.engine.values = w->global->values;
 
-    // Get the state, the context, and its multiplicity
+    // Get the state and the context
     struct state *state = node_state(node);
     hvalue_t ctx = state_contexts(state)[ctx_index];
-    int multiplicity = multiplicities(state)[ctx_index];
 
     // Make a copy of the state.
     //
@@ -1043,14 +1039,14 @@ static void make_step(
     //        This could possibly happen if the thread was stopped in an atomic
     //        section and is then later restarted.
     if (sc->chooser < 0 && cc->extended && ctx_trap_pc(cc) != 0 && !cc->interruptlevel) {
-        bool succ = onestep(w, node, sc, ctx, &step, choice, true, false, multiplicity);
+        bool succ = onestep(w, node, sc, ctx_index, &step, choice, true, false);
         assert(step.engine.allocator == &w->allocator);
         if (!succ) {        // ran into an infinite loop
             step.nlog = 0;
             memcpy(sc, state, statesz);
             memcpy(&w->ctx, cc, size);
             assert(step.engine.allocator == &w->allocator);
-            (void) onestep(w, node, sc, ctx, &step, choice, true, true, multiplicity);
+            (void) onestep(w, node, sc, ctx_index, &step, choice, true, true);
             assert(step.engine.allocator == &w->allocator);
         }
 
@@ -1062,14 +1058,14 @@ static void make_step(
 
     // Explore the state normally (not as an interrupt).
     sc->chooser = -1;
-    bool succ = onestep(w, node, sc, ctx, &step, choice, false, false, multiplicity);
+    bool succ = onestep(w, node, sc, ctx_index, &step, choice, false, false);
     assert(step.engine.allocator == &w->allocator);
     if (!succ) {        // ran into an infinite loop
         step.nlog = 0;
         memcpy(sc, state, statesz);
         memcpy(&w->ctx, cc, size);
         assert(step.engine.allocator == &w->allocator);
-        (void) onestep(w, node, sc, ctx, &step, choice, false, true, multiplicity);
+        (void) onestep(w, node, sc, ctx_index, &step, choice, false, true);
         assert(step.engine.allocator == &w->allocator);
     }
 
@@ -1078,9 +1074,10 @@ static void make_step(
 #endif
 }
 
-char *ctx_status(struct node *node, hvalue_t ctx) {
+// TODO.  I can't recall how this works...
+char *ctx_status(struct node *node, int ctx_index) {
     struct state *state = node_state(node);
-    if (state->chooser >= 0 && state_contexts(state)[state->chooser] == ctx) {
+    if (state->chooser >= 0 && state->chooser == ctx_index) {
         return "choosing";
     }
     while (node_state(node)->chooser >= 0) {
@@ -1088,7 +1085,7 @@ char *ctx_status(struct node *node, hvalue_t ctx) {
     }
     struct edge *edge;
     for (edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
-        if (edge->ctx == ctx) {
+        if (edge->ctx_index == ctx_index) {
             break;
         }
     }
@@ -1101,13 +1098,16 @@ char *ctx_status(struct node *node, hvalue_t ctx) {
 void print_context(
     struct global *global,
     FILE *file,
-    hvalue_t ctx,
+    int ctx_index,
     struct callstack *cs,
     int tid,
     struct node *node,
     char *prefix
 ) {
     fprintf(file, "%s\"tid\": \"%d\",\n", prefix, tid);
+
+    struct state *state = node_state(node);
+    hvalue_t ctx = state_contexts(state)[ctx_index];
     fprintf(file, "%s\"hvalue\": \"%"PRI_HVAL"\",\n", prefix, ctx);
 
     unsigned int size;
@@ -1222,7 +1222,7 @@ void print_context(
             fprintf(file, "%s\"mode\": \"stopped\"", prefix);
         }
         else {
-            fprintf(file, "%s\"mode\": \"%s\"", prefix, ctx_status(node, ctx));
+            fprintf(file, "%s\"mode\": \"%s\"", prefix, ctx_status(node, ctx_index));
         }
     }
     fprintf(file, "\n");
@@ -1496,7 +1496,8 @@ void path_recompute(struct global *global){
         /* Find the starting context in the list of processes.  Prefer
          * sticking with the same pid if possible.
          */
-        hvalue_t ctx = e->ctx;
+        struct state *state = node_state(e->src);
+        hvalue_t ctx = state_contexts(state)[e->ctx_index];
         unsigned int pid;
         if (global->processes[global->oldpid] == ctx) {
             pid = global->oldpid;
@@ -1749,7 +1750,7 @@ static void path_output_macrostep(struct global *global, FILE *file, struct macr
     free(c);
 
     fprintf(file, "      \"context\": {\n");
-    print_context(global, file, macro->edge->ctx, macro->cs, macro->tid, macro->edge->dst, "        ");
+    print_context(global, file, macro->edge->ctx_index, macro->cs, macro->tid, macro->edge->dst, "        ");
     fprintf(file, "      },\n");
 
     if (macro->trim != NULL && macro->value != 0) {
@@ -1759,7 +1760,7 @@ static void path_output_macrostep(struct global *global, FILE *file, struct macr
     }
 
     fprintf(file, "      \"microsteps\": [");
-    struct context *oldctx = value_get(macro->edge->ctx, NULL);
+    struct context *oldctx = value_get(state_contexts(oldstate)[macro->edge->ctx_index], NULL);
     struct callstack *oldcs = NULL;
     for (unsigned int i = 0; i < macro->nmicrosteps; i++) {
         struct microstep *micro = macro->microsteps[i];
@@ -1828,6 +1829,11 @@ bool path_edge_conflict(
     return false;
 }
 
+// Retrieve the starting context of an edge
+static hvalue_t get_context(struct edge *e){
+    return state_contexts(node_state(e->src))[e->ctx_index];
+}
+
 // Optimize the path by reordering macrosteps. One cannot reorder macrosteps
 // that conflict.  Macrosteps conflict if they are by the same thread or
 // if they print something or if they read/write conflicting variables.
@@ -1868,19 +1874,19 @@ again:
 #endif
 
     cbs = calloc(1, sizeof(*cbs));
-    cbs->before = global->macrosteps[0]->edge->ctx;
+    cbs->before = get_context(global->macrosteps[0]->edge);
     ncbs = 0;
     current = global->macrosteps[0]->edge->after;
 
     // Figure out where the actual context switches are.  Each context
     // block is a sequence of edges executed by the same thread
     for (unsigned int i = 1; i < global->nmacrosteps; i++) {
-        if (global->macrosteps[i]->edge->ctx != current) {
+        if (get_context(global->macrosteps[i]->edge) != current) {
             cbs[ncbs].after = current;
             cbs[ncbs++].end = i;
             cbs = realloc(cbs, (ncbs + 1) * sizeof(*cbs));
             cbs[ncbs].start = i;
-            cbs[ncbs].before = global->macrosteps[i]->edge->ctx;
+            cbs[ncbs].before = get_context(global->macrosteps[i]->edge);
         }
         current = global->macrosteps[i]->edge->after;
     }
@@ -1948,12 +1954,12 @@ again:
     for (unsigned int i = 0; i < global->nmacrosteps; i++) {
         // printf("--> %u/%u\n", i, global->nmacrosteps);
         // Find the edge
-        hvalue_t ctx = global->macrosteps[i]->edge->ctx;
+        hvalue_t ctx = get_context(global->macrosteps[i]->edge);
         hvalue_t choice = global->macrosteps[i]->edge->choice;
         bool interrupt = global->macrosteps[i]->edge->interrupt;
         struct edge *e;
         for (e = node->fwd; e != NULL; e = e->fwdnext) {
-            if (e->ctx == ctx && e->choice == choice && (bool) e->interrupt == interrupt) {
+            if (get_context(e) == ctx && e->choice == choice && (bool) e->interrupt == interrupt) {
                 global->macrosteps[i]->edge = e;
                 break;
             }
@@ -2007,7 +2013,7 @@ static void path_trim(struct global *global, struct engine *engine){
 
         // Look up the last microstep of this thread, which wasn't the
         // last one to take a step overall
-        struct context *cc = value_get(macro->edge->ctx, NULL);
+        struct context *cc = value_get(get_context(macro->edge), NULL);
         struct microstep *ls = macro->microsteps[macro->nmicrosteps - 1];
         struct instr *fi = &instrs[cc->pc];
         struct instr *li = &instrs[ls->ctx->pc];
@@ -2174,7 +2180,7 @@ static enum busywait is_stuck(
 	node->visited = true;
 	enum busywait result = BW_ESCAPE;
     for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
-        if (edge->ctx == ctx) {
+        if (get_context(edge) == ctx) {
 			if (edge->dst == node) {
 				node->visited = false;
 				return BW_ESCAPE;
@@ -3892,7 +3898,7 @@ int exec_model_checker(int argc, char **argv){
                     struct state *state = node_state(node);
                     unsigned int j;
                     for (j = 0; j < state->bagsize; j++) {
-                        if (state_contexts(state)[j] == edge->ctx) {
+                        if (state_contexts(state)[j] == get_context(edge)) {
                             break;
                         }
                     }
@@ -3945,9 +3951,9 @@ int exec_model_checker(int argc, char **argv){
                 int eno = 0;
                 for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext, eno++) {
                     fprintf(df, "        %d:\n", eno);
-                    struct context *ctx = value_get(edge->ctx, NULL);
+                    struct context *ctx = value_get(get_context(edge), NULL);
                     fprintf(df, "            node: %d (%d)\n", edge->dst->id, edge->dst->u.ph2.component);
-                    fprintf(df, "            context before: %"PRIx64" pc=%d\n", edge->ctx, ctx->pc);
+                    fprintf(df, "            context before: %"PRIx64" pc=%d\n", get_context(edge), ctx->pc);
                     ctx = value_get(edge->after, NULL);
                     fprintf(df, "            context after:  %"PRIx64" pc=%d\n", edge->after, ctx->pc);
                     if (edge->failed != 0) {
@@ -4161,6 +4167,7 @@ int exec_model_checker(int argc, char **argv){
         // If it was an invariant failure, add one more macrostep
         // to replay the invariant code.
         struct edge *edge;
+#ifdef notdef
         if (bad->type == FAIL_INVARIANT) {
             struct context *inv_ctx = calloc(1, sizeof(struct context) +
                                 MAX_CONTEXT_STACK * sizeof(hvalue_t));
@@ -4234,8 +4241,11 @@ int exec_model_checker(int argc, char **argv){
             global->nprocesses++;
         }
         else {
+#endif
             edge = bad->edge;
+#ifdef notdef
         }
+#endif
 
         // printf("LEN=%u, STEPS=%u\n", bad->edge->dst->len, bad->edge->dst->steps);
 

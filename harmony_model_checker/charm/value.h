@@ -141,6 +141,7 @@ void value_ctx_extend(struct context *ctx);
 hvalue_t value_ctx_failure(struct context *ctx, struct engine *engine, char *fmt, ...);
 bool value_ctx_all_eternal(hvalue_t ctxbag);
 bool value_state_all_eternal(struct state *state);
+void context_remove_by_index(struct state *state, int ctx_index);
 void context_remove(struct state *state, hvalue_t ctx);
 int context_add(struct state *state, hvalue_t ctx);
 char *json_escape_value(hvalue_t v);

@@ -74,6 +74,8 @@ void graph_check_for_data_race(
     struct node *node,
     struct engine *engine
 ) {
+    struct state *state = node_state(node);
+
     // First check whether any edges conflict with themselves.  That could
     // happen if more than one thread is in the same state and (all) write
     // the same variable
@@ -81,7 +83,7 @@ void graph_check_for_data_race(
         for (struct access_info *ai = edge->ai; ai != NULL; ai = ai->next) {
             if (ai->indices != NULL) {
                 assert(ai->n > 0);
-                if (edge->multiplicity > 1 && !ai->load && !ai->atomic) {
+                if (multiplicities(state)[edge->ctx_index] > 1 && !ai->load && !ai->atomic) {
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_RACE;
                     f->edge = node->u.ph2.u.to_parent;
