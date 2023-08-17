@@ -2043,6 +2043,7 @@ static void path_trim(struct global *global, struct engine *engine){
     }
 }
 
+// Function to add escapes to a string so it can be used in JSON output.
 static char *json_string_encode(char *s, int len){
     char *result = malloc(4 * len + 1), *p = result;
 
@@ -3517,7 +3518,7 @@ int exec_model_checker(int argc, char **argv){
     assert(jc->type == JV_LIST);
     global->code = code_init_parse(&engine, jc);
 
-    // Create an initial state
+    // Create an initial state.  Start with the initial context.
     struct context *init_ctx = calloc(1, sizeof(struct context) + MAX_CONTEXT_STACK * sizeof(hvalue_t));
     init_ctx->vars = VALUE_DICT;
     init_ctx->atomic = 1;
@@ -3525,6 +3526,7 @@ int exec_model_checker(int argc, char **argv){
     init_ctx->atomicFlag = true;
     value_ctx_push(init_ctx, VALUE_LIST);
 
+    // Now create the state
     struct state *state = calloc(1, sizeof(struct state) + sizeof(hvalue_t) + 1);
     state->vars = VALUE_DICT;
     hvalue_t ictx = value_put_context(&engine, init_ctx);
@@ -3545,7 +3547,7 @@ int exec_model_checker(int argc, char **argv){
     *global->callstacks = cs;
     global->nprocesses = 1;
 
-    // Run direct
+    // This is an experimental feature: run code directly (don't model check)
     if (dflag) {
         global->run_direct = true;
         mutex_init(&run_mutex);
@@ -3612,6 +3614,10 @@ int exec_model_checker(int argc, char **argv){
     unsigned int worker_index = 0;
     vproc_tree_alloc(vproc_root, workers, &worker_index, global->nworkers);
 
+    // Prefer to allocate memory at the memory bank attached to the first worker.
+    // The main advantage of this is that if the entire Kripke structure is stored
+    // there, the Tarjan SCC algorithm (executed by worker 0) will run significantly
+    // faster.
 #ifdef __linux__
     numa_available();
     numa_set_preferred(vproc_info[workers[0].vproc].ids[0]);
@@ -3637,14 +3643,14 @@ int exec_model_checker(int argc, char **argv){
     global->allocated = global->graph.size * sizeof(struct node *) +
         dict_allocated(visited) + dict_allocated(global->values);
 
-    // Start all but one of the workers, who'll wait on the start barrier
+    // Start all but one of the workers. All will wait on the start barrier
     for (unsigned int i = 1; i < global->nworkers; i++) {
         thread_create(worker, &workers[i]);
     }
 
     double before = gettime();
 
-    // Run the last worker.
+    // Run the last worker.  When it terminates the model checking is done.
     worker(&workers[0]);
 
     // Compute how much memory was used, approximately
@@ -3695,10 +3701,14 @@ int exec_model_checker(int argc, char **argv){
         exit(0);
     }
 
+    // Put the hashtables into "sequential mode" to avoid locking overhead.
     dict_set_sequential(global->values);
     dict_set_sequential(visited);
 
     printf("* Phase 3: analysis\n");
+
+    // If no failures were detected (yet), determine strongly connected components
+    // and look for non-terminating states.
     if (minheap_empty(global->failures)) {
         if (global->graph.size > 10000) {
             printf("* Phase 3b: strongly connected components\n");
@@ -3725,12 +3735,24 @@ int exec_model_checker(int argc, char **argv){
         printf("}\n");
 #endif
 
-        // mark the components that are "good" because they have a way out
+        // The search for non-terminating states starts with marking the
+        // non-sink components as "good".  They cannot contain non-terminating
+        // states.  This loop, for each state, looks at what component it is
+        // in.  As part of this loop we also determine how many states are in
+        // each component, and assign a "representative" state to the component.
+        // We also determine a boolean value 'all_same'.  It is true iff all
+        // states in the component have the same variable assignment, but also
+        // all remaining contexts must be 'eternal' (i.e., all normal threads
+        // must have terminated in each state).
         struct component *components = calloc(global->ncomponents, sizeof(*components));
         for (unsigned int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
 			assert(node->u.ph2.component < global->ncomponents);
             struct component *comp = &components[node->u.ph2.component];
+
+            // See if this is the first state that we are looking at for
+            // this component, make this state the 'representative' for
+            // this component.
             if (comp->size == 0) {
                 comp->rep = node;
                 comp->all_same = value_state_all_eternal(node_state(node))
@@ -3742,10 +3764,14 @@ int exec_model_checker(int argc, char **argv){
                 comp->all_same = false;
             }
             comp->size++;
+
+            // If we already determined that this component has a way out,
+            // we're done.
             if (comp->good) {
                 continue;
             }
-            // if this component has a way out, it is good
+
+            // If this component has a way out, it is good
             for (struct edge *edge = node->fwd;
                             edge != NULL && !comp->good; edge = edge->fwdnext) {
                 if (edge->dst->u.ph2.component != node->u.ph2.component) {
@@ -3755,8 +3781,10 @@ int exec_model_checker(int argc, char **argv){
             }
         }
 
-        // components that have only one shared state and only eternal
-        // threads are good because it means all its threads are blocked
+        // Components that have only states in which the variables are the same
+        // and have only eternal threads are good because it means all its
+        // eternal threads are blocked and all other threads have terminated.
+        // It also means that these are final states.
         for (unsigned int i = 0; i < global->ncomponents; i++) {
             struct component *comp = &components[i];
             assert(comp->size > 0);
@@ -3766,7 +3794,11 @@ int exec_model_checker(int argc, char **argv){
             }
         }
 
-        // Create a context for evaluating finally clauses
+        // Next we'll determine for all 'final' states if they satisfy the
+        // 'finally' clauses.  Also, if an input dfa was specified, we check
+        // that that dfa is in the final state as welll.
+
+        // First, create a context for evaluating finally clauses
         struct step fin_step;
         memset(&fin_step, 0, sizeof(fin_step));
         fin_step.ctx = calloc(1, sizeof(struct context) +
@@ -3785,6 +3817,9 @@ int exec_model_checker(int argc, char **argv){
             struct component *comp = &components[node->u.ph2.component];
             if (comp->final) {
                 node->final = true;
+
+                // If an input dfa was specified, it should also be in the
+                // final state.
                 if (global->dfa != NULL &&
 						!dfa_is_final(global->dfa, node_state(node)->dfa_state)) {
                     struct failure *f = new_alloc(struct failure);
@@ -3806,8 +3841,10 @@ int exec_model_checker(int argc, char **argv){
             }
         }
 
+        // If we haven't found any failures yet, look for states in bad components.
+        // If there are none, look for busy waiting states.
         if (minheap_empty(global->failures)) {
-            // now count the nodes that are in bad components
+            // Report the states in bad components as non-terminating.
             int nbad = 0;
             for (unsigned int i = 0; i < global->graph.size; i++) {
                 struct node *node = global->graph.nodes[i];
@@ -3822,11 +3859,15 @@ int exec_model_checker(int argc, char **argv){
                         f->edge = node->to_parent;
                     }
                     minheap_insert(global->failures, f);
+                    // TODO.  Can we be done here?
                     // break;
                 }
             }
 
+            // If there are no non-terminating states, look for busy-waiting
+            // states.
             if (nbad == 0 && !cflag) {
+                // TODO.  Why are we clearing the visited flags??
                 for (unsigned int i = 0; i < global->graph.size; i++) {
                     global->graph.nodes[i]->visited = false;
                 }
@@ -3840,6 +3881,7 @@ int exec_model_checker(int argc, char **argv){
         }
     }
 
+    // The -D flag is used to dump debug files
     if (Dflag) {
         FILE *df = fopen("charm.gv", "w");
         if (df == NULL) {
@@ -3968,6 +4010,7 @@ int exec_model_checker(int argc, char **argv){
         printf("    * **No issues found**\n");
     }
 
+    // Start creating the output (.hco) file.
     FILE *out = fopen(outfile, "w");
     if (out == NULL) {
         fprintf(stderr, "charm: can't create %s\n", outfile);
@@ -3979,6 +4022,8 @@ int exec_model_checker(int argc, char **argv){
 
     fprintf(out, "{\n");
 
+    // In case no issues were found, we output a summary of the Kripke structure
+    // with the 'print' outputs.
     if (no_issues) {
         printf("* Phase 4: write results to %s\n", outfile);
         fflush(stdout);
@@ -4056,8 +4101,13 @@ int exec_model_checker(int argc, char **argv){
         fprintf(out, "\n");
         fprintf(out, "  ]\n");
     }
+
+    // Some error was detected.  Report the (approximately) shortest counter example.
     else {
-        // Find shortest "bad" path
+        // Select some "bad path".  Here we do our first approximation, by picking
+        // a state with the minimal distance to the initial state.  That does not
+        // necessarily give us the best path, as the distance is not measured by
+        // the number of steps but by the number of context switches.
         struct failure *bad = NULL;
         if (minheap_empty(global->failures)) {
             bad = minheap_getmin(warnings);
@@ -4200,13 +4250,31 @@ int exec_model_checker(int argc, char **argv){
 
         // printf("LEN=%u, STEPS=%u\n", bad->edge->dst->len, bad->edge->dst->steps);
 
+        // This is where we actually output a path (shortest counter example).
+        // Finding the shortest counter example is non-trivial and could be very
+        // expensive.  Here we use a trick that seems to work well and is very
+        // efficient.  Basically, we take any path
+
         fprintf(out, "  \"macrosteps\": [");
+
+        // First copy the path to the bad state into an array for easier sorting
         path_serialize(global, edge);
+
+        // The optimal path minimizes the number of context switches.  Here we
+        // reorder steps in the path to do so.
         path_optimize(global);
+
+        // During model checking much information is removed for memory efficiency.
+        // Here we recompute the path to reconstruct that information.
         path_recompute(global);
+
+        // If this was a safety failure, we remove any unneeded steps to further
+        // reduce the length of the counter-example.
         if (bad->type == FAIL_INVARIANT || bad->type == FAIL_SAFETY) {
             path_trim(global, &engine);
         }
+
+        // Finally, we output the path.
         path_output(global, out);
 
         fprintf(out, "\n");
