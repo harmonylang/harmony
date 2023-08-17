@@ -1076,6 +1076,9 @@ static void make_step(
 
 // TODO.  I can't recall how this works...
 char *ctx_status(struct node *node, int ctx_index) {
+    if (ctx_index < 0) {
+        return "terminated";
+    }
     struct state *state = node_state(node);
     if (state->chooser >= 0 && state->chooser == ctx_index) {
         return "choosing";
@@ -1098,6 +1101,7 @@ char *ctx_status(struct node *node, int ctx_index) {
 void print_context(
     struct global *global,
     FILE *file,
+    hvalue_t ctx,
     int ctx_index,
     struct callstack *cs,
     int tid,
@@ -1105,9 +1109,6 @@ void print_context(
     char *prefix
 ) {
     fprintf(file, "%s\"tid\": \"%d\",\n", prefix, tid);
-
-    struct state *state = node_state(node);
-    hvalue_t ctx = state_contexts(state)[ctx_index];
     fprintf(file, "%s\"hvalue\": \"%"PRI_HVAL"\",\n", prefix, ctx);
 
     unsigned int size;
@@ -1754,7 +1755,7 @@ static void path_output_macrostep(struct global *global, FILE *file, struct macr
     free(c);
 
     fprintf(file, "      \"context\": {\n");
-    print_context(global, file, macro->edge->ctx_index, macro->cs, macro->tid, macro->edge->dst, "        ");
+    print_context(global, file, get_context(macro->edge), macro->edge->ctx_index, macro->cs, macro->tid, macro->edge->dst, "        ");
     fprintf(file, "      },\n");
 
     if (macro->trim != NULL && macro->value != 0) {
@@ -1797,19 +1798,18 @@ static void path_output_macrostep(struct global *global, FILE *file, struct macr
     for (unsigned int i = 0; i < macro->nprocesses; i++) {
         fprintf(file, "        {\n");
 
-        // Find the "context index"
+        // Find the "context index".  May not be there as thread may have terminated
         int ctx_index;
         for (ctx_index = 0; ctx_index < state->bagsize; ctx_index++) {
             if (state_contexts(state)[ctx_index] == macro->processes[i]) {
                 break;
             }
         }
-        assert(ctx_index < state->bagsize);
         if (ctx_index >= state->bagsize) {
-            panic("bad ctx_index");
+            ctx_index = -1;
         }
 
-        print_context(global, file, ctx_index, macro->callstacks[i], i, macro->edge->dst, "          ");
+        print_context(global, file, macro->processes[i], ctx_index, macro->callstacks[i], i, macro->edge->dst, "          ");
         fprintf(file, "        }");
         if (i < macro->nprocesses - 1) {
             fprintf(file, ",");
@@ -3712,6 +3712,8 @@ int exec_model_checker(int argc, char **argv){
 
     printf("* Phase 3: analysis\n");
 
+    bool scc = false;
+
     // If no failures were detected (yet), determine strongly connected components
     // and look for non-terminating states.
     if (global->failures == NULL) {
@@ -3721,7 +3723,7 @@ int exec_model_checker(int argc, char **argv){
         }
         double now = gettime();
         tarjan(global);
-        global->phase2 = true;
+        scc = true;
 
         // Compute shortest path to initial state for each node.
         shortest_path(global);
@@ -3943,7 +3945,9 @@ int exec_model_checker(int argc, char **argv){
                 struct node *node = global->graph.nodes[i];
                 assert(node->id == i);
                 fprintf(df, "\nNode %d:\n", node->id);
-                fprintf(df, "    component: %d\n", node->u.ph2.component);
+                if (scc) {
+                    fprintf(df, "    component: %d\n", node->u.ph2.component);
+                }
                 if (node->u.ph2.u.to_parent != NULL) {
                     fprintf(df, "    ancestors:");
                     for (struct node *n = node->u.ph2.u.to_parent->src;; n = n->u.ph2.u.to_parent->src) {
