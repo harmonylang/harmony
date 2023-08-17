@@ -1715,6 +1715,11 @@ static void path_output_microstep(struct global *global, FILE *file,
     fprintf(file, "        }");
 }
 
+// Retrieve the starting context of an edge
+static hvalue_t get_context(struct edge *e){
+    return state_contexts(node_state(e->src))[e->ctx_index];
+}
+
 static void path_output_macrostep(struct global *global, FILE *file, struct macrostep *macro, struct state *oldstate){
     fprintf(file, "    {\n");
     fprintf(file, "      \"id\": \"%d\",\n", macro->edge->dst->id);
@@ -1760,7 +1765,8 @@ static void path_output_macrostep(struct global *global, FILE *file, struct macr
     }
 
     fprintf(file, "      \"microsteps\": [");
-    struct context *oldctx = value_get(state_contexts(oldstate)[macro->edge->ctx_index], NULL);
+    // struct context *oldctx = value_get(state_contexts(oldstate)[macro->edge->ctx_index], NULL);
+    struct context *oldctx = value_get(get_context(macro->edge), NULL);
     struct callstack *oldcs = NULL;
     for (unsigned int i = 0; i < macro->nmicrosteps; i++) {
         struct microstep *micro = macro->microsteps[i];
@@ -1790,6 +1796,7 @@ static void path_output_macrostep(struct global *global, FILE *file, struct macr
     fprintf(file, "\n      },\n");
 
     fprintf(file, "      \"contexts\": [\n");
+#ifdef notdef
     for (unsigned int i = 0; i < macro->nprocesses; i++) {
         fprintf(file, "        {\n");
         print_context(global, file, macro->processes[i], macro->callstacks[i], i, macro->edge->dst, "          ");
@@ -1799,6 +1806,7 @@ static void path_output_macrostep(struct global *global, FILE *file, struct macr
         }
         fprintf(file, "\n");
     }
+#endif
     fprintf(file, "      ]\n");
 
     fprintf(file, "    }");
@@ -1827,11 +1835,6 @@ bool path_edge_conflict(
         }
     }
     return false;
-}
-
-// Retrieve the starting context of an edge
-static hvalue_t get_context(struct edge *e){
-    return state_contexts(node_state(e->src))[e->ctx_index];
 }
 
 // Optimize the path by reordering macrosteps. One cannot reorder macrosteps
