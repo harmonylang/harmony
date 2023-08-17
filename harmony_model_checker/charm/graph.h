@@ -44,15 +44,18 @@ struct access_info {
 // but, for memory efficiency, not the details of the microsteps themselves.  If
 // a failure is found, that information is recovered by re-executing the path to
 // the faulty state.
+//
+// TODO: various space saving options by replacing contexts with indices
 struct edge {
     struct edge *fwdnext;    // forward linked list maintenance
-    hvalue_t ctx, choice;    // ctx that made the microstep, choice if any
+    hvalue_t ctx;            // TODO. could be index into state's context bag
+    hvalue_t choice;         // ctx that made the microstep, choice if any
     struct node *src;        // source node
     struct node *dst;        // destination node
-    hvalue_t after;          // resulting context
+    hvalue_t after;          // resulting context (TODO. index in dst context bag)
     struct access_info *ai;  // to detect data races
     uint16_t nsteps;         // # microsteps
-    uint16_t multiplicity;   // multiplicity of context
+    uint16_t multiplicity;   // multiplicity of context (TODO. also in state)
     bool interrupt : 1;      // set if state change is an interrupt
     // TODO.  Is choosing == (choice != 0)?
     //        Also, edge->src->choosing is probably the same

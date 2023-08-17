@@ -1752,14 +1752,15 @@ void context_remove(struct state *state, hvalue_t ctx){
     }
 }
 
-// Add context 'ctx' to the state's context bag.  May fail if there are too
-// many different contexts (i.e., >= MAX_CONTEXT_BAG).
-bool context_add(struct state *state, hvalue_t ctx){
-    unsigned int i;
+// Add context 'ctx' to the state's context bag.  Return the index into the
+// context bag.  Return -1 if there are too  many different contexts
+// (i.e., >= MAX_CONTEXT_BAG).
+int context_add(struct state *state, hvalue_t ctx){
+    int i;
     for (i = 0; i < state->bagsize; i++) {
         if (state_contexts(state)[i] == ctx) {
             multiplicities(state)[i]++;
-            return true;
+            return i;
         }
         if (state_contexts(state)[i] > ctx) {
             break;
@@ -1767,7 +1768,7 @@ bool context_add(struct state *state, hvalue_t ctx){
     }
 
     if (state->bagsize >= MAX_CONTEXT_BAG) {
-        return false;
+        return -1;
     }
  
     // Move the last multiplicities
@@ -1782,5 +1783,5 @@ bool context_add(struct state *state, hvalue_t ctx){
     state->bagsize++;
     state_contexts(state)[i] = ctx;
     multiplicities(state)[i] = 1;
-    return true;
+    return i;
 }

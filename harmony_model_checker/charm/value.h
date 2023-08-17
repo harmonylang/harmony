@@ -7,26 +7,25 @@
 #include "charm.h"
 
 #define MAX_CONTEXT_STACK   250        // maximum size of context stack
-#define MAX_CONTEXT_BAG       32        // maximum number of distinct contexts
+#define MAX_CONTEXT_BAG      32        // maximum number of distinct contexts
 
 // This contains the state in a Harmony execution.
 //
 // TODO.  State can be reduced in size in various ways;
 //  - pre and stopbag are not always used
-//  - choosing could be an index into the context bag
 //  - the entire thing could be replaced with a collision-resistant hash
 typedef struct state {
     hvalue_t vars;        // shared variables
     hvalue_t pre;         // "pre" state (same as vars in non-choosing states)
-    hvalue_t choosing;    // context that is choosing if non-zero
     hvalue_t stopbag;     // bag of stopped contexts (to detect deadlock)
     uint32_t dfa_state;   // state of input dfa
     uint16_t tid_gen;     // thread id generator
+    int8_t chooser;       // -1 if not a choosing state, otherwise indexes into contexts
 
     // The state includes a variable-size bag of contexts.  This is represented
     // by an array of contexts of type hvalue_t, which is followed by an array
     // of multiplicities (of type uint8_t) with the same number of elements.
-    uint16_t bagsize;
+    uint8_t bagsize;
     // hvalue_t contexts[VAR_SIZE];   // context/multiplicity pairs
 } state;
 #define state_contexts(s)   ((hvalue_t *) ((s) + 1))
@@ -143,7 +142,7 @@ hvalue_t value_ctx_failure(struct context *ctx, struct engine *engine, char *fmt
 bool value_ctx_all_eternal(hvalue_t ctxbag);
 bool value_state_all_eternal(struct state *state);
 void context_remove(struct state *state, hvalue_t ctx);
-bool context_add(struct state *state, hvalue_t ctx);
+int context_add(struct state *state, hvalue_t ctx);
 char *json_escape_value(hvalue_t v);
 void value_trace(struct global *global, FILE *file, struct callstack *cs, unsigned int pc, hvalue_t vars, char *prefix);
 void print_vars(struct global *global, FILE *file, hvalue_t v);

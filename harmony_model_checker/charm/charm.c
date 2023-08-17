@@ -889,6 +889,16 @@ static bool onestep(
     // Remove old context from the bag
     context_remove(sc, ctx);
 
+    // Add new context to state unless it's terminated or stopped.
+    int index;
+    if (stopped) {
+        sc->stopbag = value_bag_add(&step->engine, sc->stopbag, after, 1);
+        index = -1;
+    }
+    else if (!terminated) {
+        index = context_add(sc, after);
+    }
+
     // If choosing, save in state.  If some invariant uses "pre", then
     // also keep track of "pre" state.
     //
@@ -901,19 +911,12 @@ static bool onestep(
     // So we only do it in case there are such invariant, and then only for
     // choosing states.
     if (choosing) {
-        sc->choosing = after;
+        assert(index >= 0);
+        sc->chooser = index;
         sc->pre = global->inv_pre ? node_state(node)->pre : sc->vars;
     }
     else {
         sc->pre = sc->vars;
-    }
-
-    // Add new context to state unless it's terminated or stopped.
-    if (stopped) {
-        sc->stopbag = value_bag_add(&step->engine, sc->stopbag, after, 1);
-    }
-    else if (!terminated) {
-        context_add(sc, after);
     }
 
     // Allocate and initialize edge now.
@@ -1036,7 +1039,7 @@ static void make_step(
     // TODO.  Should probably also check that the context is not in atomic mode.
     //        This could possibly happen if the thread was stopped in an atomic
     //        section and is then later restarted.
-    if (sc->choosing == 0 && cc->extended && ctx_trap_pc(cc) != 0 && !cc->interruptlevel) {
+    if (sc->chooser < 0 && cc->extended && ctx_trap_pc(cc) != 0 && !cc->interruptlevel) {
         bool succ = onestep(w, node, sc, ctx, &step, choice, true, false, multiplicity);
         assert(step.engine.allocator == &w->allocator);
         if (!succ) {        // ran into an infinite loop
@@ -1055,7 +1058,7 @@ static void make_step(
     }
 
     // Explore the state normally (not as an interrupt).
-    sc->choosing = 0;
+    sc->chooser = -1;
     bool succ = onestep(w, node, sc, ctx, &step, choice, false, false, multiplicity);
     assert(step.engine.allocator == &w->allocator);
     if (!succ) {        // ran into an infinite loop
@@ -1073,10 +1076,11 @@ static void make_step(
 }
 
 char *ctx_status(struct node *node, hvalue_t ctx) {
-    if (node_state(node)->choosing == ctx) {
+    struct state *state = node_state(node);
+    if (state->chooser >= 0 && state_contexts(state)[state->chooser] == ctx) {
         return "choosing";
     }
-    while (node_state(node)->choosing != 0) {
+    while (node_state(node)->chooser >= 0) {
         node = node->u.ph2.u.to_parent->src;
     }
     struct edge *edge;
@@ -1297,7 +1301,7 @@ static void twostep(
     unsigned int pid,
     struct macrostep *macro
 ){
-    sc->choosing = 0;
+    sc->chooser = -1;
 
     struct step step;
     memset(&step, 0, sizeof(step));
@@ -1433,7 +1437,7 @@ static void twostep(
         sc->stopbag = value_bag_add(&step.engine, sc->stopbag, after, 1);
     }
     else if (!step.ctx->terminated) {
-        context_add(sc, after);
+        (void) context_add(sc, after);
     }
 
     free(step.ctx);
@@ -2231,12 +2235,10 @@ void do_work1(struct worker *w, struct node *node){
     // the possible choices for the thread that is executing.  For a non-choosing
     // state, we explore all the different threads that can make a step.
     struct state *state = node_state(node);
-    if (state->choosing != 0) {
-        assert(VALUE_TYPE(state->choosing) == VALUE_CONTEXT);
-
-        // state->choosing is the context of the thread that is making a choice.
-        // The actual set of choices is on top of its stack
-        struct context *cc = value_get(state->choosing, NULL);
+    if (state->chooser >= 0) {      // choosing state
+        hvalue_t chooser = state_contexts(state)[state->chooser];
+        // The actual set of choices is on top of the stack
+        struct context *cc = value_get(chooser, NULL);
         assert(cc != NULL);
         assert(cc->sp > 0);
         hvalue_t s = ctx_stack(cc)[cc->sp - 1];
@@ -2251,7 +2253,7 @@ void do_work1(struct worker *w, struct node *node){
             make_step(
                 w,
                 node,
-                state->choosing,
+                chooser,
                 vals[i],
                 1
             );
@@ -3004,21 +3006,6 @@ static void tarjan(struct global *global){
     global->ncomponents = comp_id;
 }
 
-char *state_string(struct state *state){
-    struct strbuf sb;
-    strbuf_init(&sb);
-
-    char *v;
-    strbuf_printf(&sb, "{");
-    v = value_string(state->vars);
-    strbuf_printf(&sb, "%s", v); free(v);
-    v = value_string(state->choosing);
-    strbuf_printf(&sb, ",%s", v); free(v);
-    v = value_string(state->stopbag);
-    strbuf_printf(&sb, ",%s}", v); free(v);
-    return strbuf_convert(&sb);
-}
-
 // This routine removes all nodes that have a single incoming edge and it's
 // an "epsilon" edge (empty print log).  These are essentially useless nodes.
 static void destutter1(struct global *global){
@@ -3538,6 +3525,7 @@ int exec_model_checker(int argc, char **argv){
     // Now create the state
     struct state *state = calloc(1, sizeof(struct state) + sizeof(hvalue_t) + 1);
     state->vars = VALUE_DICT;
+    state->chooser = -1;
     hvalue_t ictx = value_put_context(&engine, init_ctx);
     state->bagsize = 1;
     state_contexts(state)[0] = ictx;
