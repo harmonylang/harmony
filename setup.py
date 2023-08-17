@@ -105,7 +105,7 @@ CHARM_PKG_PATH = pathlib.Path(PROJECT_DIR_NAME) / "charm"
 def get_c_extension_src():
     sources = []
     base_dir = CHARM_PKG_PATH
-    D = [base_dir, base_dir / "iface", base_dir / "python_ext"]
+    D = [base_dir, base_dir / "python_ext"]
     for d in D:
         sources.extend([str(f) for f in d.glob('*.c')])
     return sources
@@ -113,7 +113,6 @@ def get_c_extension_src():
 def get_c_extension_include_dirs():
     return [
         str(CHARM_PKG_PATH),
-        str(CHARM_PKG_PATH / 'iface'),
         str(CHARM_PKG_PATH / 'python_ext'),
     ]
 
@@ -152,17 +151,13 @@ setuptools.setup(
             "charm/*.h",
             "charm/*.c",
             "charm/python_ext/ext.c",
-            "charm/ipi/ipi.c",
-            "charm/iface/*.h",
-            "charm/iface/*.c",
             "harmony/charm.js",
             "harmony/charm.css",
         ]
     },
     entry_points={
         'console_scripts': [
-            'harmony=harmony_model_checker.main:main',
-            'iface=harmony_model_checker.iface:main'
+            'harmony=harmony_model_checker.main:main'
         ]
     },
     python_requires=">=3.6",
