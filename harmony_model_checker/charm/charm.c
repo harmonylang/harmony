@@ -314,8 +314,8 @@ void spawn_thread(struct global *global, struct state *state, struct context *ct
 }
 
 // This function evaluates a predicate.  The predicate is evaluated in
-// every state as if by some thread.  sc contains the state, while
-// step keeps track of the state of the thread specifically.
+// every state as if by some thread.  sc contains the state (which is
+// read-only), while step keeps track of the state of the thread specifically.
 //
 // The code of a predicate ends in an Assert HVM instruction that
 // checks the value of the predicate.  The predicate may thus fail, but
@@ -340,27 +340,25 @@ bool predicate_check(struct global *global, struct state *sc, struct step *step)
 
 // Check all the invariants that the program specified.
 // Returns 0 if there are no issues, or the pc of some invariant that failed.
-unsigned int check_invariants(struct global *global, struct node *node,
-                        struct node *before, struct step *step){
-    struct state *state = node_state(node);
-    assert(state != NULL);
-
+unsigned int check_invariants(struct global *global, struct state *sc,
+                        struct node *before, struct step *step, bool self_loop){
     assert(step->ctx->sp == 0);
 
-    // pre == 0 means it is a non-initialized state.
+    // before->pre == 0 means it started from a non-initialized state (i.e.,
+    // a state that was created before the initial thread finished.
     hvalue_t args[2];   // (pre, post)
     if (node_state(before)->pre == 0) {
-        args[0] = state->vars;
+        args[0] = sc->vars;
     }
     else {
         args[0] = node_state(before)->pre;
     }
-    args[1] = state->vars;
+    args[1] = sc->vars;
 
     // Check each invariant
     for (unsigned int i = 0; i < global->ninvs; i++) {
         // No need to check edges other than self-loops
-        if (!global->invs[i].pre && node != before) {
+        if (!global->invs[i].pre && !self_loop) {
             continue;
         }
 
@@ -372,7 +370,7 @@ unsigned int check_invariants(struct global *global, struct node *node,
         value_ctx_push(step->ctx, value_put_list(&step->engine, args, sizeof(args)));
 
         assert(strcmp(global->code.instrs[step->ctx->pc].oi->name, "Frame") == 0);
-        bool b = predicate_check(global, state, step);
+        bool b = predicate_check(global, sc, step);
         if (step->ctx->failed) {
             // printf("Invariant evaluation failed: %s\n", value_string(ctx_failure(step->ctx)));
             b = false;
@@ -416,26 +414,9 @@ unsigned int check_finals(struct global *global, struct node *node, struct step 
     return 0;
 }
 
-// This function is called when a new edge has been generated, possibly to
-// a new state with an uninitialized node.
-static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock) {
-    struct node *node = edge->src, *next = edge->dst;
-
-    // mutex_acquire(lock);    ==> this lock is already acquired
-
-    bool initialized = next->initialized;
-    if (!initialized) {
-        next->initialized = true;
-        next->reachable = true;
-        next->failed = edge->failed;
-        next->u.ph1.lock = lock;
-        next->u.ph1.next = w->results;
-        w->results = next;
-        w->count++;
-        w->enqueued++;
-    }
-
-    mutex_release(lock);
+// This function is called when a new edge has been generated.
+static void process_edge(struct worker *w, struct edge *edge) {
+    struct node *node = edge->src;
 
 #ifdef DELAY_INSERT
     // Don't do the forward edge at this time as that would involve locking
@@ -459,27 +440,6 @@ static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock) {
         *pe = edge;
     }
 #endif
-
-    // If this is a good and normal (non-choosing) edge, check all the invariants.
-    if (!edge->failed && !edge->choosing) {
-        if (w->global->ninvs != 0) {
-            unsigned int inv = 0;
-            if (!initialized) {      // try self-loop if a new node
-                inv = check_invariants(w->global, next, next, &w->inv_step);
-            }
-            if (inv == 0 && next != node) { // try new edge
-                inv = check_invariants(w->global, next, node, &w->inv_step);
-            }
-            if (inv != 0) {
-                struct failure *f = new_alloc(struct failure);
-                f->type = FAIL_INVARIANT;
-                f->edge = edge;
-                f->address = VALUE_TO_PC(inv);
-                f->next = w->failures;
-                w->failures = f;
-            }
-        }
-    }
 }
 
 // This is the main workhorse function of model checking: explore a state and
@@ -917,6 +877,61 @@ static bool onestep(
         sc->pre = sc->vars;
     }
 
+    // See if this state has been computed before by looking up the node,
+    // or allocate if not.  Sets a lock on that node.
+    // TODO.  It seems that perhaps the node does not need to be locked
+    //        if it's not new.  After all, we don't change it in that case.
+    unsigned int size = state_size(sc);
+    mutex_t *lock;
+    bool new;
+    struct dict_assoc *hn = dict_find_lock(w->visited, &w->allocator,
+                sc, size, &new, &lock);
+    struct node *next = (struct node *) &hn[1];
+    if (new) {
+        assert(!next->initialized);
+        next->initialized = true;       // TODO.  Do we still need this?
+        next->reachable = true;         // TODO.  Should this be done here?
+        next->failed = step->ctx->failed;
+        next->u.ph1.lock = lock;
+    }
+    else {
+        assert(next->initialized);
+    }
+    mutex_release(lock);
+
+    // If this is a good and normal transition thus far, check all the invariants.
+    unsigned int inv = 0;
+    if (!step->ctx->failed && !choosing && w->global->ninvs != 0) {
+        if (new) {      // try self-loop if a new node
+            inv = check_invariants(w->global, sc, node, step, true);
+        }
+        if (inv == 0 && next != node) { // try new edge
+            inv = check_invariants(w->global, sc, node, step, false);
+        }
+
+        // If an invariant failed, we have to look up the state again.
+        assert(state_size(sc) == size);
+        hn = dict_find_lock(w->visited, &w->allocator, sc, size, &new, &lock);
+        next = (struct node *) &hn[1];
+        if (new) {
+            assert(!next->initialized);
+            next->initialized = true;       // TODO.  Do we still need this?
+            next->reachable = true;         // TODO.  Should this be done here?
+            next->failed = step->ctx->failed;
+            next->u.ph1.lock = lock;
+        }
+        else {
+            assert(next->initialized);
+        }
+        mutex_release(lock);
+    }
+
+    // Add the new node to the list of results.
+    next->u.ph1.next = w->results;
+    w->results = next;
+    w->count++;
+    w->enqueued++;
+
     // Allocate and initialize edge now.
     struct edge *edge = walloc(w, sizeof(struct edge) + step->nlog * sizeof(hvalue_t), false, false);
     edge->src = node;
@@ -934,21 +949,17 @@ static bool onestep(
     // If a failure has occurred, keep track of that too.
     if (step->ctx->failed) {
         struct failure *f = new_alloc(struct failure);
-        f->type = infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
+        if (inv != 0) {
+            f->type = FAIL_INVARIANT;
+            f->address = VALUE_TO_PC(inv);
+        }
+        else {
+            f->type = infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
+        }
         f->edge = edge;
         f->next = w->failures;
         w->failures = f;
     }
-
-    // See if this state has been computed before by looking up the node,
-    // or allocate if not.  Sets a lock on that node.
-    // TODO.  It seems that perhaps the node does not need to be locked
-    //        if it's not new.  After all, we don't change it in that case.
-    unsigned int size = state_size(sc);
-    mutex_t *lock;
-    bool new;
-    struct dict_assoc *hn = dict_find_lock(w->visited, &w->allocator,
-                sc, size, &new, &lock);
     edge->dst = (struct node *) &hn[1];
 
 #ifdef NO_PROCESSING   // I use this sometime for profiling
@@ -965,7 +976,7 @@ static bool onestep(
         }
     }
 #else
-    process_edge(w, edge, lock);
+    process_edge(w, edge);
 #endif
 
     return true;
@@ -4199,6 +4210,8 @@ int exec_model_checker(int argc, char **argv){
             value_ctx_push(inv_ctx, value_put_list(&engine, args, sizeof(args)));
 
             hvalue_t inv_context = value_put_context(&engine, inv_ctx);
+
+            // TODO.  Need to add inv_ctx to the context bag of the state
 
             edge = calloc(1, sizeof(struct edge));
             edge->src = edge->dst = bad->edge->dst;

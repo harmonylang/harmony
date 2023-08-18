@@ -1608,7 +1608,7 @@ hvalue_t value_bag_add(struct engine *engine, hvalue_t bag, hvalue_t v, int mult
         return value_dict_store(engine, bag, v, count);
     }
     else {
-        return value_dict_store(engine, bag, v, VALUE_TO_INT(1));
+        return value_dict_store(engine, bag, v, VALUE_TO_INT(multiplicity));
     }
 }
 

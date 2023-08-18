@@ -951,7 +951,7 @@ class ReturnOp(Op):
         (lexeme, file, line, column) = self.result
         if self.default is None:
             return "ReturnOp(%s)"%lexeme
-        return "ReturnOp(%s. %s)"%(lexeme, strValue(self.default))
+        return "ReturnOp(%s, %s)"%(lexeme, strValue(self.default))
 
     def jdump(self):
         if self.result is None:
