@@ -45,7 +45,8 @@ struct access_info {
 // a failure is found, that information is recovered by re-executing the path to
 // the faulty state.
 //
-// TODO: various space saving options by replacing contexts with indices
+// TODO: various space saving options by replacing contexts with indices.  Also
+//       inv could be an invariant identifier rather than its pc.
 struct edge {
     struct edge *fwdnext;    // forward linked list maintenance
     hvalue_t choice;         // choice if any (TODO, put in log[0] to save space)
@@ -53,6 +54,7 @@ struct edge {
     struct node *dst;        // destination node
     hvalue_t after;          // resulting context (TODO. index in dst context bag)
     struct access_info *ai;  // to detect data races
+    uint16_t inv;            // pc of invariant
     uint16_t nsteps;         // # microsteps
     uint8_t ctx_index;       // index of context in src state context bag
     bool interrupt : 1;      // set if state change is an interrupt

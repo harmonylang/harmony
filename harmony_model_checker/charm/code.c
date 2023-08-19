@@ -27,6 +27,7 @@ static struct instr code_instr_parse(struct engine *engine, struct json_value *j
     i.load = strcmp(oi->name, "Load") == 0;
     i.store = strcmp(oi->name, "Store") == 0;
     i.del = strcmp(oi->name, "Del") == 0;
+    i.pause = strcmp(oi->name, "Pause") == 0;
     i.print = strcmp(oi->name, "Print") == 0;
     i.retop = strcmp(oi->name, "Return") == 0;
     i.atomicinc = strcmp(oi->name, "AtomicInc") == 0;

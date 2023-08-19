@@ -184,6 +184,13 @@ struct worker {
     // followed by its stack of Harmony values.
     struct context ctx;
     hvalue_t stack[MAX_CONTEXT_STACK];
+
+    // The state and context are saved here when entering an atomic section.
+    // This has to do with an optimization that prevents "breaks" in atomic
+    // sections that do not have 'breakable' operations like load and store.
+    char as_state[sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1)];
+    struct context as_ctx;
+    hvalue_t as_stack[MAX_CONTEXT_STACK];
 };
 
 #ifdef CACHE_LINE_ALIGNED
@@ -325,16 +332,15 @@ void spawn_thread(struct global *global, struct state *state, struct context *ct
 // This function returns true iff the predicate evaluated to true.
 bool predicate_check(struct global *global, struct state *sc, struct step *step){
     assert(!step->ctx->failed);
-    assert(step->ctx->sp == 1);     // just the argument
-    while (!step->ctx->terminated) {
+    unsigned int old_sp = step->ctx->sp;
+
+    while (step->ctx->sp >= old_sp) {
         struct op_info *oi = global->code.instrs[step->ctx->pc].oi;
         (*oi->op)(global->code.instrs[step->ctx->pc].env, sc, step, global);
         if (step->ctx->failed) {
-            step->ctx->sp = 0;
             return false;
         }
     }
-    step->ctx->sp = 0;
     return true;
 }
 
@@ -342,7 +348,10 @@ bool predicate_check(struct global *global, struct state *sc, struct step *step)
 // Returns 0 if there are no issues, or the pc of some invariant that failed.
 unsigned int check_invariants(struct global *global, struct state *sc,
                         struct node *before, struct step *step, bool self_loop){
-    assert(step->ctx->sp == 0);
+    // assert(step->ctx->sp == 0);
+    assert(!step->ctx->failed);
+    unsigned int saved_sp = step->ctx->sp;      // TODO DEBUG
+    unsigned int saved_pc = step->ctx->pc;      // TODO DEBUG
 
     // before->pre == 0 means it started from a non-initialized state (i.e.,
     // a state that was created before the initial thread finished.
@@ -362,23 +371,37 @@ unsigned int check_invariants(struct global *global, struct state *sc,
             continue;
         }
 
-        assert(step->ctx->sp == 0);
-        step->ctx->terminated = step->ctx->failed = false;
-        ctx_failure(step->ctx) = 0;
-        step->ctx->pc = global->invs[i].pc;
-        step->ctx->vars = VALUE_DICT;
+        // assert(step->ctx->sp == 0);
+        // step->ctx->terminated = false;
+        // ctx_failure(step->ctx) = 0;
+        value_ctx_push(step->ctx, VALUE_LIST);
+        value_ctx_push(step->ctx, VALUE_TO_INT((step->ctx->pc << CALLTYPE_BITS) | CALLTYPE_NORMAL));
         value_ctx_push(step->ctx, value_put_list(&step->engine, args, sizeof(args)));
 
+        step->ctx->pc = global->invs[i].pc;
+        step->ctx->vars = VALUE_DICT;
         assert(strcmp(global->code.instrs[step->ctx->pc].oi->name, "Frame") == 0);
         bool b = predicate_check(global, sc, step);
         if (step->ctx->failed) {
             // printf("Invariant evaluation failed: %s\n", value_string(ctx_failure(step->ctx)));
             b = false;
         }
+        else {
+            (void) value_ctx_pop(step->ctx);   // return value
+            step->ctx->pc--;
+            if (step->ctx->pc != saved_pc) {
+                printf("X1 %u %u\n", step->ctx->pc, saved_pc);
+                panic("X1");
+            }
+        }
         if (!b) {
             // printf("INV %u %u failed\n", i, global->invs[i].pc);
             return global->invs[i].pc;
         }
+    }
+
+    if (step->ctx->pc != saved_pc) {
+        panic("X2");
     }
 
     return 0;
@@ -394,8 +417,9 @@ unsigned int check_finals(struct global *global, struct node *node, struct step 
     // Check each finally predicate
     for (unsigned int i = 0; i < global->nfinals; i++) {
         assert(step->ctx->sp == 0);
-        step->ctx->terminated = step->ctx->failed = false;
-        ctx_failure(step->ctx) = 0;
+        assert(!step->ctx->failed);
+        // step->ctx->terminated = false;
+        // ctx_failure(step->ctx) = 0;
         step->ctx->pc = global->finals[i];
         step->ctx->vars = VALUE_DICT;
         value_ctx_push(step->ctx, VALUE_LIST);
@@ -480,20 +504,11 @@ static bool onestep(
     // TODO.  Not clear if this is necessary.
     hvalue_t choice_copy = choice;
 
-    bool choosing = false;
+    hvalue_t ctx = state_contexts(sc)[ctx_index];
+    bool choosing = false, pausing = false;
     struct dict *infloop = NULL;        // infinite loop detector
     unsigned int instrcnt = 0;          // keeps track of #instruction executed
-
-    // We *may* need to keep a copy of various parts of the state here in case we
-    // enter an atomic section.
-    // TODO:  can we remove the repeated allocation of state here?
-#ifdef HEAP_ALLOC
-    char *as_state = malloc(sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1));
-#else
-    char as_state[sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1)];
-#endif
-    hvalue_t as_context = 0;
-    unsigned int as_instrcnt = 0;
+    unsigned int as_instrcnt = 0;       // optimization for atomic sections
 
     bool rollback = false, stopped = false;
     bool terminated = false, infinite_loop = false;
@@ -578,11 +593,9 @@ static bool onestep(
 
             // If not, but the context was not in atomic mode, save the current
             // state to restore to in case we have to "break".
-            // TODO.  We do not really need to store the context in
-            //        the hashtable here.  We could just copy it like the state.
             else if (step->ctx->atomic == 0) {
-                memcpy(as_state, sc, state_size(sc));
-                as_context = value_put_context(&step->engine, step->ctx);
+                memcpy(w->as_state, sc, state_size(sc));
+                memcpy(&w->as_ctx, step->ctx, ctx_size(step->ctx));
                 as_instrcnt = instrcnt;
             }
             
@@ -595,7 +608,6 @@ static bool onestep(
         else if (instrs[pc].atomicdec) {
             (*oi->op)(instrs[pc].env, sc, step, global);
             if (step->ctx->atomic == 0) {
-                as_context = 0;
                 as_instrcnt = 0;
             }
         }
@@ -752,6 +764,11 @@ static bool onestep(
             break;
         }
 
+        else if (next_instr->pause) {
+            pausing = true;
+            break;
+        }
+
         // See if we need to break out of this step.  If the atomicFlag is
         // set, then definitely not.  If it is not set, then it gets
         // complicated.  If the atomic count > 0, then we may have delayed
@@ -819,7 +836,7 @@ static bool onestep(
         }
     }
 
-    // No longer need this.  It was wasted effort.
+    // No longer need the infloop set.
     // TODO.  Perhaps this suggests a way to automatically determine the
     //        number of instructions to run before trying to detect an
     //        infinite loop, which is currently hardwired at 1000.
@@ -830,22 +847,35 @@ static bool onestep(
     // See if we need to roll back to the start of an atomic section.
     hvalue_t after;
     if (rollback) {
-        struct state *state = (struct state *) as_state;
+        struct state *state = (struct state *) w->as_state;
         memcpy(sc, state, state_size(state));
-        after = as_context;
+        memcpy(step->ctx, &w->as_ctx, ctx_size(&w->as_ctx));
         instrcnt = as_instrcnt;
     }
-    else {
-        // Store new context in value directory.  Must be immutable now.
-        after = value_put_context(&step->engine, step->ctx);
+
+    unsigned int inv = 0;
+    if (w->global->ninvs != 0) {
+        // Check invariants when executing Pause
+        // TODO.  Also check finally clauses
+        if (pausing) {
+            printf("Check invariants\n");
+            inv = check_invariants(w->global, sc, node, step, true);
+        }
+        // If this is a good and normal transition thus far, check all the invariants
+        // that have 'pre' in them.
+        //
+        // TODO.  If this is a self-loop (state is unchanged), we don't have to check.
+        else if (!step->ctx->failed && !stopped && !choosing) {
+            inv = check_invariants(w->global, sc, node, step, false);
+        }
     }
 
-#ifdef HEAP_ALLOC
-    free(as_state);
-#endif
+    // Store new context in value directory.  Must be immutable now.
+    after = value_put_context(&step->engine, step->ctx);
+    printf("AFTER %p %d\n", (void *) after, ctx_index);
 
     // Remove old context from the bag
-    context_remove_by_index(sc, ctx_index);
+    context_remove_by_index(sc, ctx);
 
     // Add new context to state unless it's terminated or stopped.
     int index;
@@ -855,6 +885,10 @@ static bool onestep(
     }
     else if (!terminated) {
         index = context_add(sc, after);
+        assert(index >= 0);
+    }
+    else {
+        index = -1;
     }
 
     // If choosing, save in state.  If some invariant uses "pre", then
@@ -888,49 +922,21 @@ static bool onestep(
                 sc, size, &new, &lock);
     struct node *next = (struct node *) &hn[1];
     if (new) {
+printf("INS %p\n", next);
         assert(!next->initialized);
         next->initialized = true;       // TODO.  Do we still need this?
         next->reachable = true;         // TODO.  Should this be done here?
         next->failed = step->ctx->failed;
         next->u.ph1.lock = lock;
+        next->u.ph1.next = w->results;
+        w->results = next;
+        w->count++;
+        w->enqueued++;
     }
     else {
         assert(next->initialized);
     }
     mutex_release(lock);
-
-    // If this is a good and normal transition thus far, check all the invariants.
-    unsigned int inv = 0;
-    if (!step->ctx->failed && !choosing && w->global->ninvs != 0) {
-        if (new) {      // try self-loop if a new node
-            inv = check_invariants(w->global, sc, node, step, true);
-        }
-        if (inv == 0 && next != node) { // try new edge
-            inv = check_invariants(w->global, sc, node, step, false);
-        }
-
-        // If an invariant failed, we have to look up the state again.
-        assert(state_size(sc) == size);
-        hn = dict_find_lock(w->visited, &w->allocator, sc, size, &new, &lock);
-        next = (struct node *) &hn[1];
-        if (new) {
-            assert(!next->initialized);
-            next->initialized = true;       // TODO.  Do we still need this?
-            next->reachable = true;         // TODO.  Should this be done here?
-            next->failed = step->ctx->failed;
-            next->u.ph1.lock = lock;
-        }
-        else {
-            assert(next->initialized);
-        }
-        mutex_release(lock);
-    }
-
-    // Add the new node to the list of results.
-    next->u.ph1.next = w->results;
-    w->results = next;
-    w->count++;
-    w->enqueued++;
 
     // Allocate and initialize edge now.
     struct edge *edge = walloc(w, sizeof(struct edge) + step->nlog * sizeof(hvalue_t), false, false);
@@ -945,6 +951,7 @@ static bool onestep(
     edge->nsteps = instrcnt;
     edge->choosing = choosing;
     edge->failed = step->ctx->failed;
+    edge->inv = inv;
 
     // If a failure has occurred, keep track of that too.
     if (step->ctx->failed) {
@@ -1305,6 +1312,8 @@ static void make_microstep(
 
 // Similar to onestep.  Used to recompute a faulty execution, that is, to
 // generate the detailed execution of a counter-examples.
+//
+// TODO.  Eventually should probably have onestep() and twostep() be the same
 static void twostep(
     struct global *global,
     struct state *sc,
@@ -1313,9 +1322,12 @@ static void twostep(
     hvalue_t choice,
     bool interrupt,
     unsigned int nsteps,
+    int inv,
     unsigned int pid,
     struct macrostep *macro
 ){
+    hvalue_t before = sc->pre;
+
     sc->chooser = -1;
 
     struct step step;
@@ -1442,6 +1454,42 @@ static void twostep(
         }
     }
 
+    // See if an invariant needs to be checked (because it should fail).
+    if (inv != 0) {
+        hvalue_t args[2];   // (pre, post)
+        if (before == 0) {
+            args[0] = sc->vars;
+        }
+        else {
+            args[0] = before;
+        }
+        args[1] = sc->vars;
+        assert(!step.ctx->failed);
+        // step.ctx->terminated = false;
+        // ctx_failure(step.ctx) = 0;
+
+        value_ctx_push(step.ctx, VALUE_LIST);
+        value_ctx_push(step.ctx, VALUE_TO_INT((step.ctx->pc << CALLTYPE_BITS) | CALLTYPE_NORMAL));
+        value_ctx_push(step.ctx, value_put_list(&step.engine, args, sizeof(args)));
+
+        step.ctx->pc = inv;
+        step.ctx->vars = VALUE_DICT;
+
+        assert(strcmp(global->code.instrs[step.ctx->pc].oi->name, "Frame") == 0);
+
+        unsigned int old_sp = step.ctx->sp;
+        while (step.ctx->sp >= old_sp) {
+            int pc = step.ctx->pc;
+            struct instr *instrs = global->code.instrs;
+            struct op_info *oi = instrs[pc].oi;
+            (*oi->op)(instrs[pc].env, sc, &step, global);
+            make_microstep(sc, step.ctx, step.callstack, false, instrs[pc].choose, choice, false, &step, macro);
+            if (step.ctx->failed) {
+                break;
+            }
+        }
+    }
+
     // Remove old context from the bag
     context_remove(sc, ctx);
 
@@ -1536,6 +1584,8 @@ void path_recompute(struct global *global){
         macro->cs = global->callstacks[pid];
 
         // Recreate the steps
+        //
+        // TODO.  Why not just pass it e?
         twostep(
             global,
             sc,
@@ -1544,6 +1594,7 @@ void path_recompute(struct global *global){
             e->choice,
             e->interrupt,
             e->nsteps,
+            e->inv,
             pid,
             macro
         );
@@ -3539,6 +3590,7 @@ int exec_model_checker(int argc, char **argv){
     init_ctx->vars = VALUE_DICT;
     init_ctx->atomic = 1;
     init_ctx->initial = true;
+    init_ctx->eternal = true;
     init_ctx->atomicFlag = true;
     value_ctx_push(init_ctx, VALUE_LIST);
 
@@ -3606,6 +3658,7 @@ int exec_model_checker(int argc, char **argv){
         w->profile = calloc(global->code.len, sizeof(*w->profile));
 
         // Create a context for evaluating invariants
+        // TODO.  May be obsolete soon
         w->inv_step.ctx = calloc(1, sizeof(struct context) +
                                 MAX_CONTEXT_STACK * sizeof(hvalue_t));
         // w->inv_step.ctx->name = value_put_atom(&engine, "__invariant__", 13);
@@ -3969,7 +4022,19 @@ int exec_model_checker(int argc, char **argv){
                     }
                     fprintf(df, "\n");
                 }
-                fprintf(df, "    vars: %s\n", value_string(node_state(node)->vars));
+                struct state *state = node_state(node);
+                if (state->pre == 0) {
+                    fprintf(df, "    pre: uninitializeds\n");
+                }
+                else if (state->pre != state->vars) {
+                    fprintf(df, "    pre: %s\n", value_string(state->pre));
+                }
+                fprintf(df, "    vars: %s\n", value_string(state->vars));
+                fprintf(df, "    contexts:\n");
+                for (unsigned int i = 0; i < state->bagsize; i++) {
+                    fprintf(df, "      %"PRI_HVAL": %u\n",
+                        state_contexts(state)[i], multiplicities(state)[i]);
+                }
                 // fprintf(df, "    len: %u %u\n", node->len, node->steps);
                 if (node->failed) {
                     fprintf(df, "    failed\n");
@@ -4205,7 +4270,7 @@ int exec_model_checker(int argc, char **argv){
             inv_ctx->readonly = 1;
 
             hvalue_t args[2];
-            args[0] = node_state(bad->edge->src)->vars;
+            args[0] = node_state(bad->edge->src)->vars;     // TODO.  Seems wrong
             args[1] = node_state(bad->edge->dst)->vars;
             value_ctx_push(inv_ctx, value_put_list(&engine, args, sizeof(args)));
 

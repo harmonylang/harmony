@@ -668,6 +668,23 @@ class ContinueOp(Op):
     def eval(self, state, context):
         context.pc += 1
 
+# TODO. Maybe can be the same as ContinueOp
+class PauseOp(Op):
+    def __repr__(self):
+        return "Pause"
+
+    def explain(self):
+        return "yield to another thread"
+
+    def jdump(self):
+        return '{ "op": "Pause" }'
+
+    def tladump(self):
+        return 'OpPause(self)'
+
+    def eval(self, state, context):
+        context.pc += 1
+
 class StoreVarOp(Op):
     def __init__(self, v, lvar=None, reason=None):
         self.v = v

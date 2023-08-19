@@ -729,6 +729,11 @@ void op_Continue(const void *env, struct state *state, struct step *step, struct
     step->ctx->pc++;
 }
 
+// TODO.  Make the same as Continue?
+void op_Pause(const void *env, struct state *state, struct step *step, struct global *global){
+    step->ctx->pc++;
+}
+
 // This is helper fumction to execute the return of a method call. Usually
 // this would be when a Return instruction is executed, but Charm also
 // supports built-in methods that need to return the same way.  We also
@@ -2555,6 +2560,7 @@ void *init_Choose(struct dict *map, struct engine *engine){ return NULL; }
 void *init_Continue(struct dict *map, struct engine *engine){ return NULL; }
 void *init_Dup(struct dict *map, struct engine *engine){ return NULL; }
 void *init_Go(struct dict *map, struct engine *engine){ return NULL; }
+void *init_Pause(struct dict *map, struct engine *engine){ return NULL; }
 void *init_Print(struct dict *map, struct engine *engine){ return NULL; }
 void *init_Pop(struct dict *map, struct engine *engine){ return NULL; }
 void *init_ReadonlyDec(struct dict *map, struct engine *engine){ return NULL; }
@@ -4452,6 +4458,7 @@ struct op_info op_table[] = {
 	{ "Nary", init_Nary, op_Nary },
 	{ "Pop", init_Pop, op_Pop },
 	{ "Print", init_Print, op_Print, next_Print },
+	{ "Pause", init_Pause, op_Pause },
 	{ "Push", init_Push, op_Push },
 	{ "ReadonlyDec", init_ReadonlyDec, op_ReadonlyDec },
 	{ "ReadonlyInc", init_ReadonlyInc, op_ReadonlyInc },
