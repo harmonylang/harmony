@@ -1731,32 +1731,30 @@ char *json_escape_value(hvalue_t v){
     return r;
 }
 
-// Remove the context at position ctx_index.  The multiset of contexts in a state
-// is represented as a bag.
-void context_remove_by_index(struct state *state, int ctx_index){
-    if (multiplicities(state)[ctx_index] > 1) {
-        multiplicities(state)[ctx_index]--;
-    }
-    else {
-        state->bagsize--;
-        memmove(&state_contexts(state)[ctx_index], &state_contexts(state)[ctx_index+1],
-                (state->bagsize - ctx_index) * sizeof(hvalue_t) + ctx_index);
-        memmove((char *) &state_contexts(state)[state->bagsize] + ctx_index,
-                (char *) &state_contexts(state)[state->bagsize + 1] + ctx_index + 1,
-                state->bagsize - ctx_index);
-    }
-}
-
 // Remove context 'ctx' from the state.  The multiset of contexts in a state
 // is represented as a bag.
 void context_remove(struct state *state, hvalue_t ctx){
     for (unsigned int i = 0; i < state->bagsize; i++) {
         if (state_contexts(state)[i] == ctx) {
-            context_remove_by_index(state, i);
-            break;
+            if (multiplicities(state)[i] > 1) {
+                multiplicities(state)[i]--;
+            }
+            else {
+                state->bagsize--;
+                memmove(
+                    &state_contexts(state)[i],
+                    &state_contexts(state)[i+1],
+                    (state->bagsize - i) * sizeof(hvalue_t) + i);
+                memmove(
+                    (char *) &state_contexts(state)[state->bagsize] + i,
+                    (char *) &state_contexts(state)[state->bagsize + 1] + i + 1,
+                    state->bagsize - i);
+            }
+            return;
         }
     }
-    // TODO   panic("context_remove: no such context");
+    printf("--> %p\n", (void *) ctx);
+    panic("context_remove: no such context");
 }
 
 // Add context 'ctx' to the state's context bag.  Return the index into the

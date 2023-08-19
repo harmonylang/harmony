@@ -410,8 +410,7 @@ unsigned int check_invariants(struct global *global, struct state *sc,
 // Same as check_invariants but for "finally" predicates that are only
 // checked in final states.
 // Returns 0 if there are no issues, or the pc of the finally predicate if it failed.
-unsigned int check_finals(struct global *global, struct node *node, struct step *step){
-    struct state *state = node_state(node);
+unsigned int check_finals(struct global *global, struct state *state, struct step *step){
     assert(state != NULL);
 
     // Check each finally predicate
@@ -420,15 +419,21 @@ unsigned int check_finals(struct global *global, struct node *node, struct step 
         assert(!step->ctx->failed);
         // step->ctx->terminated = false;
         // ctx_failure(step->ctx) = 0;
+        value_ctx_push(step->ctx, VALUE_LIST);
+        value_ctx_push(step->ctx, VALUE_TO_INT((step->ctx->pc << CALLTYPE_BITS) | CALLTYPE_NORMAL));
+        value_ctx_push(step->ctx, VALUE_LIST);
         step->ctx->pc = global->finals[i];
         step->ctx->vars = VALUE_DICT;
-        value_ctx_push(step->ctx, VALUE_LIST);
 
         assert(strcmp(global->code.instrs[step->ctx->pc].oi->name, "Frame") == 0);
         bool b = predicate_check(global, state, step);
         if (step->ctx->failed) {
             // printf("Finally evaluation failed: %s\n", value_string(ctx_failure(step->ctx)));
             b = false;
+        }
+        else {
+            (void) value_ctx_pop(step->ctx);   // return value
+            step->ctx->pc--;
         }
         if (!b) {
             // printf("FIN %u %u failed\n", i, global->finals[i]);
@@ -853,29 +858,32 @@ static bool onestep(
         instrcnt = as_instrcnt;
     }
 
+    // Remove old context from the bag
+    context_remove(sc, ctx);
+
     unsigned int inv = 0;
-    if (w->global->ninvs != 0) {
+    if (w->global->ninvs != 0 && !step->ctx->failed) {
         // Check invariants when executing Pause
         // TODO.  Also check finally clauses
         if (pausing) {
-            printf("Check invariants\n");
             inv = check_invariants(w->global, sc, node, step, true);
         }
         // If this is a good and normal transition thus far, check all the invariants
         // that have 'pre' in them.
         //
         // TODO.  If this is a self-loop (state is unchanged), we don't have to check.
-        else if (!step->ctx->failed && !stopped && !choosing) {
+        else if (!stopped && !choosing) {
             inv = check_invariants(w->global, sc, node, step, false);
         }
+    }
+    if (w->global->nfinals != 0 && !step->ctx->failed && inv == 0 && pausing &&
+            value_state_all_eternal(sc) && value_ctx_all_eternal(sc->stopbag)) {
+        // Use negative value to distinguish from normal invariant
+        inv = -check_finals(global, sc, step);
     }
 
     // Store new context in value directory.  Must be immutable now.
     after = value_put_context(&step->engine, step->ctx);
-    printf("AFTER %p %d\n", (void *) after, ctx_index);
-
-    // Remove old context from the bag
-    context_remove(sc, ctx);
 
     // Add new context to state unless it's terminated or stopped.
     int index;
@@ -922,7 +930,6 @@ static bool onestep(
                 sc, size, &new, &lock);
     struct node *next = (struct node *) &hn[1];
     if (new) {
-printf("INS %p\n", next);
         assert(!next->initialized);
         next->initialized = true;       // TODO.  Do we still need this?
         next->reachable = true;         // TODO.  Should this be done here?
@@ -1456,25 +1463,30 @@ static void twostep(
 
     // See if an invariant needs to be checked (because it should fail).
     if (inv != 0) {
-        hvalue_t args[2];   // (pre, post)
-        if (before == 0) {
-            args[0] = sc->vars;
-        }
-        else {
-            args[0] = before;
-        }
-        args[1] = sc->vars;
         assert(!step.ctx->failed);
         // step.ctx->terminated = false;
         // ctx_failure(step.ctx) = 0;
-
         value_ctx_push(step.ctx, VALUE_LIST);
         value_ctx_push(step.ctx, VALUE_TO_INT((step.ctx->pc << CALLTYPE_BITS) | CALLTYPE_NORMAL));
-        value_ctx_push(step.ctx, value_put_list(&step.engine, args, sizeof(args)));
 
-        step.ctx->pc = inv;
+        if (inv > 0) {      // invariant
+            hvalue_t args[2];   // (pre, post)
+            if (before == 0) {
+                args[0] = sc->vars;
+            }
+            else {
+                args[0] = before;
+            }
+            args[1] = sc->vars;
+            value_ctx_push(step.ctx, value_put_list(&step.engine, args, sizeof(args)));
+            step.ctx->pc = inv;
+        }
+        else {              // finally
+            value_ctx_push(step.ctx, VALUE_LIST);
+            step.ctx->pc = -inv;
+        }
+
         step.ctx->vars = VALUE_DICT;
-
         assert(strcmp(global->code.instrs[step.ctx->pc].oi->name, "Frame") == 0);
 
         unsigned int old_sp = step.ctx->sp;
@@ -3902,9 +3914,9 @@ int exec_model_checker(int argc, char **argv){
                     add_failure(&global->failures, f);
                     // break;
                 }
-
+#ifdef notdef
                 // Check "finally" clauses
-                unsigned int fin = check_finals(global, node, &fin_step);
+                unsigned int fin = check_finals(global, node_state(node), &fin_step);
                 if (fin != 0) {
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_FINALLY;
@@ -3912,6 +3924,7 @@ int exec_model_checker(int argc, char **argv){
                     f->address = VALUE_TO_PC(fin);
                     add_failure(&global->failures, f);
                 }
+#endif
             }
         }
 
