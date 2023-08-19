@@ -54,7 +54,7 @@ struct edge {
     struct node *dst;        // destination node
     hvalue_t after;          // resulting context (TODO. index in dst context bag)
     struct access_info *ai;  // to detect data races
-    uint16_t inv;            // pc of invariant
+    int16_t inv;             // pc of invariant (negative if finally clause)
     uint16_t nsteps;         // # microsteps
     uint8_t ctx_index;       // index of context in src state context bag
     bool interrupt : 1;      // set if state change is an interrupt

@@ -415,7 +415,6 @@ unsigned int check_finals(struct global *global, struct state *state, struct ste
 
     // Check each finally predicate
     for (unsigned int i = 0; i < global->nfinals; i++) {
-        assert(step->ctx->sp == 0);
         assert(!step->ctx->failed);
         // step->ctx->terminated = false;
         // ctx_failure(step->ctx) = 0;
