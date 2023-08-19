@@ -875,7 +875,7 @@ static bool onestep(
     printf("AFTER %p %d\n", (void *) after, ctx_index);
 
     // Remove old context from the bag
-    context_remove_by_index(sc, ctx);
+    context_remove(sc, ctx);
 
     // Add new context to state unless it's terminated or stopped.
     int index;
