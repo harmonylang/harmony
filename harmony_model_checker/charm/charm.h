@@ -6,13 +6,6 @@
 #include "json.h"
 #include "hashtab.h"
 
-#ifdef OBSOLETE
-struct scc {        // Strongly Connected Component
-    struct scc *next;
-    unsigned int start, finish;
-};
-#endif
-
 // Invariants are compiled into Harmony code (terminated by an Assert instruction)
 // Invariants are allowed to pairs of states (pre and post).  Since this comes at
 // a cost that we do not want to level against all invariants, we keep track of
@@ -89,7 +82,6 @@ struct global {
     mutex_t todo_enter;             // entry semaphore for SCC tasks
     mutex_t todo_wait;              // wait semaphore for SCC tasks
     unsigned int nworkers;          // total number of threads
-    unsigned int scc_nwaiting;      // # workers waiting for SCC work
     unsigned int ncomponents;       // to generate component identifiers
     struct failure *failures;       // queue of "struct failure"  (TODO: make part of struct node "issues")
     hvalue_t *processes;            // array of contexts of processes
@@ -99,8 +91,6 @@ struct global {
     unsigned int last_nstates;      // to measure #states / second
     struct dfa *dfa;                // for tracking correct behaviors
     unsigned int diameter;          // graph diameter
-    bool phase2;                    // when model checking is done and graph analysis starts
-    struct scc *scc_todo;           // SCC search
     struct json_value *pretty;      // for output
     bool run_direct;                // non-model-checked mode
     unsigned long allocated;        // allocated table space
