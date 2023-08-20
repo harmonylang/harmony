@@ -3531,6 +3531,7 @@ int exec_model_checker(int argc, char **argv){
     struct state *state = calloc(1, sizeof(struct state) + sizeof(hvalue_t) + 1);
     state->vars = VALUE_DICT;
     hvalue_t ictx = value_put_context(&engine, init_ctx);
+    state->chooser = -1;
     state->bagsize = 1;
     state_contexts(state)[0] = ictx;
     multiplicities(state)[0] = 1;
