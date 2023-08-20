@@ -184,6 +184,11 @@ struct worker {
     // followed by its stack of Harmony values.
     struct context ctx;
     hvalue_t stack[MAX_CONTEXT_STACK];
+
+    // We also keep space for an optimization for atomic sections
+    char as_state[sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1)];
+    struct context as_ctx;
+    hvalue_t as_stack[MAX_CONTEXT_STACK];
 };
 
 #ifdef CACHE_LINE_ALIGNED
@@ -527,17 +532,7 @@ static bool onestep(
     bool choosing = false;
     struct dict *infloop = NULL;        // infinite loop detector
     unsigned int instrcnt = 0;          // keeps track of #instruction executed
-
-    // We *may* need to keep a copy of various parts of the state here in case we
-    // enter an atomic section.
-    // TODO:  can we remove the repeated allocation of state here?
-#ifdef HEAP_ALLOC
-    char *as_state = malloc(sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1));
-#else
-    char as_state[sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1)];
-#endif
-    hvalue_t as_context = 0;
-    unsigned int as_instrcnt = 0;
+    unsigned int as_instrcnt = 0;       // for rollback
 
     bool rollback = false, stopped = false;
     bool terminated = false, infinite_loop = false;
@@ -625,8 +620,8 @@ static bool onestep(
             // TODO.  We do not really need to store the context in
             //        the hashtable here.  We could just copy it like the state.
             else if (step->ctx->atomic == 0) {
-                memcpy(as_state, sc, state_size(sc));
-                as_context = value_put_context(&step->engine, step->ctx);
+                memcpy(w->as_state, sc, state_size(sc));
+                memcpy(&w->as_ctx, step->ctx, ctx_size(step->ctx));
                 as_instrcnt = instrcnt;
             }
             
@@ -639,7 +634,6 @@ static bool onestep(
         else if (instrs[pc].atomicdec) {
             (*oi->op)(instrs[pc].env, sc, step, global);
             if (step->ctx->atomic == 0) {
-                as_context = 0;
                 as_instrcnt = 0;
             }
         }
@@ -874,19 +868,14 @@ static bool onestep(
     // See if we need to roll back to the start of an atomic section.
     hvalue_t after;
     if (rollback) {
-        struct state *state = (struct state *) as_state;
+        struct state *state = (struct state *) w->as_state;
         memcpy(sc, state, state_size(state));
-        after = as_context;
+        memcpy(step->ctx, &w->as_ctx, ctx_size(&w->as_ctx));
         instrcnt = as_instrcnt;
     }
-    else {
-        // Store new context in value directory.  Must be immutable now.
-        after = value_put_context(&step->engine, step->ctx);
-    }
 
-#ifdef HEAP_ALLOC
-    free(as_state);
-#endif
+    // Store new context in value directory.  Must be immutable now.
+    after = value_put_context(&step->engine, step->ctx);
 
     // Remove old context from the bag
     context_remove(sc, ctx);
