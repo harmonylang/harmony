@@ -44,21 +44,18 @@ struct access_info {
 // but, for memory efficiency, not the details of the microsteps themselves.  If
 // a failure is found, that information is recovered by re-executing the path to
 // the faulty state.
-//
-// TODO: various space saving options by replacing contexts with indices.  Also
-//       inv could be an invariant identifier rather than its pc.
 struct edge {
     struct edge *fwdnext;    // forward linked list maintenance
-    hvalue_t choice;         // choice if any (TODO, put in log[0] to save space)
+    hvalue_t ctx, choice;    // ctx that made the microstep, choice if any
     struct node *src;        // source node
     struct node *dst;        // destination node
-    hvalue_t after;          // resulting context (TODO. index in dst context bag)
+    hvalue_t after;          // resulting context
     struct access_info *ai;  // to detect data races
-    int16_t inv;             // pc of invariant (negative if finally clause)
     uint16_t nsteps;         // # microsteps
-    uint8_t ctx_index;       // index of context in src state context bag
+    uint16_t multiplicity;   // multiplicity of context
     bool interrupt : 1;      // set if state change is an interrupt
     // TODO.  Is choosing == (choice != 0)?
+    //        Also, edge->src->choosing is probably the same
     bool choosing : 1;       // destination state is choosing
     bool failed : 1;         // context failed
     uint16_t nlog : 12;      // size of print history

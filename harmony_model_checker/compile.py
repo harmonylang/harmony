@@ -5,8 +5,8 @@ from harmony_model_checker.harmony.ast import AST, BlockAST
 
 import harmony_model_checker.harmony.harmony as legacy_harmony
 from harmony_model_checker.harmony.harmony import Scope, Code, State
-from harmony_model_checker.harmony.ops import FrameOp, ReturnOp, PauseOp, JumpOp
-from harmony_model_checker.harmony.value import AddressValue, ContextValue, LabelValue
+from harmony_model_checker.harmony.ops import FrameOp, ReturnOp
+from harmony_model_checker.harmony.value import AddressValue, ContextValue
 from harmony_model_checker.parser.antlr_rule_visitor import HarmonyVisitorImpl
 from harmony_model_checker.parser.HarmonyParser import HarmonyParser
 from harmony_model_checker.parser.HarmonyErrorListener import HarmonyLexerErrorListener, HarmonyParserErrorListener
@@ -117,10 +117,6 @@ def _load_file(filename: str, scope: Scope, code: Code, init: bool):
     ast.compile(scope, code, None)
     if init:
         _, file, line, column = ast.token
-        invlabel = LabelValue(None, "invariant")
-        code.nextLabel(invlabel)
-        code.append(PauseOp(), ast.token, ast.endtoken, stmt=(line1, column1, line2, column2))
-        code.append(JumpOp(invlabel, reason="check invariants again"), ast.token, ast.token, stmt=(line1, column1, line2, column2))
         code.append(ReturnOp(("result", file, line, column), AddressValue(None, [])), ast.token, ast.endtoken, stmt=(line1, column1, line2, column2))  # to terminate "__init__" process
     legacy_harmony.namestack.pop()
 

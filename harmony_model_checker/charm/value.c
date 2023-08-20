@@ -1608,7 +1608,7 @@ hvalue_t value_bag_add(struct engine *engine, hvalue_t bag, hvalue_t v, int mult
         return value_dict_store(engine, bag, v, count);
     }
     else {
-        return value_dict_store(engine, bag, v, VALUE_TO_INT(multiplicity));
+        return value_dict_store(engine, bag, v, VALUE_TO_INT(1));
     }
 }
 
@@ -1741,31 +1741,25 @@ void context_remove(struct state *state, hvalue_t ctx){
             }
             else {
                 state->bagsize--;
-                memmove(
-                    &state_contexts(state)[i],
-                    &state_contexts(state)[i+1],
-                    (state->bagsize - i) * sizeof(hvalue_t) + i);
-                memmove(
-                    (char *) &state_contexts(state)[state->bagsize] + i,
-                    (char *) &state_contexts(state)[state->bagsize + 1] + i + 1,
-                    state->bagsize - i);
+                memmove(&state_contexts(state)[i], &state_contexts(state)[i+1],
+                        (state->bagsize - i) * sizeof(hvalue_t) + i);
+                memmove((char *) &state_contexts(state)[state->bagsize] + i,
+                        (char *) &state_contexts(state)[state->bagsize + 1] + i + 1,
+                        state->bagsize - i);
             }
-            return;
+            break;
         }
     }
-    printf("--> %p\n", (void *) ctx);
-    panic("context_remove: no such context");
 }
 
-// Add context 'ctx' to the state's context bag.  Return the index into the
-// context bag.  Return -1 if there are too  many different contexts
-// (i.e., >= MAX_CONTEXT_BAG).
-int context_add(struct state *state, hvalue_t ctx){
-    int i;
+// Add context 'ctx' to the state's context bag.  May fail if there are too
+// many different contexts (i.e., >= MAX_CONTEXT_BAG).
+bool context_add(struct state *state, hvalue_t ctx){
+    unsigned int i;
     for (i = 0; i < state->bagsize; i++) {
         if (state_contexts(state)[i] == ctx) {
             multiplicities(state)[i]++;
-            return i;
+            return true;
         }
         if (state_contexts(state)[i] > ctx) {
             break;
@@ -1773,7 +1767,7 @@ int context_add(struct state *state, hvalue_t ctx){
     }
 
     if (state->bagsize >= MAX_CONTEXT_BAG) {
-        return -1;
+        return false;
     }
  
     // Move the last multiplicities
@@ -1788,5 +1782,5 @@ int context_add(struct state *state, hvalue_t ctx){
     state->bagsize++;
     state_contexts(state)[i] = ctx;
     multiplicities(state)[i] = 1;
-    return i;
+    return true;
 }

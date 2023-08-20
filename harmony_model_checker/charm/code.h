@@ -15,13 +15,12 @@ struct instr {
     //  store:       a Store instruction
     //  del:         a Del instruction
     //  retop:       a Return instruction
-    //  pause:       a Pause instruction
     //  print:       a Print instruction
     //  atomicinc:   an AtomicInc instruction
     //  atomicdec:   an AtomicDec instruction
     //  setintlevel: a SetIntlevel instruction
     //  breakable:   a Load, Store, Del, or AtomicInc instruction
-    bool choose, load, store, del, retop, print, pause;
+    bool choose, load, store, del, retop, print;
     bool atomicinc, atomicdec, setintlevel, breakable;
 };
 

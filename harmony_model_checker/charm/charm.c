@@ -184,13 +184,6 @@ struct worker {
     // followed by its stack of Harmony values.
     struct context ctx;
     hvalue_t stack[MAX_CONTEXT_STACK];
-
-    // The state and context are saved here when entering an atomic section.
-    // This has to do with an optimization that prevents "breaks" in atomic
-    // sections that do not have 'breakable' operations like load and store.
-    char as_state[sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1)];
-    struct context as_ctx;
-    hvalue_t as_stack[MAX_CONTEXT_STACK];
 };
 
 #ifdef CACHE_LINE_ALIGNED
@@ -321,8 +314,8 @@ void spawn_thread(struct global *global, struct state *state, struct context *ct
 }
 
 // This function evaluates a predicate.  The predicate is evaluated in
-// every state as if by some thread.  sc contains the state (which is
-// read-only), while step keeps track of the state of the thread specifically.
+// every state as if by some thread.  sc contains the state, while
+// step keeps track of the state of the thread specifically.
 //
 // The code of a predicate ends in an Assert HVM instruction that
 // checks the value of the predicate.  The predicate may thus fail, but
@@ -332,76 +325,62 @@ void spawn_thread(struct global *global, struct state *state, struct context *ct
 // This function returns true iff the predicate evaluated to true.
 bool predicate_check(struct global *global, struct state *sc, struct step *step){
     assert(!step->ctx->failed);
-    unsigned int old_sp = step->ctx->sp;
-
-    while (step->ctx->sp >= old_sp) {
+    assert(step->ctx->sp == 1);     // just the argument
+    while (!step->ctx->terminated) {
         struct op_info *oi = global->code.instrs[step->ctx->pc].oi;
         (*oi->op)(global->code.instrs[step->ctx->pc].env, sc, step, global);
         if (step->ctx->failed) {
+            step->ctx->sp = 0;
             return false;
         }
     }
+    step->ctx->sp = 0;
     return true;
 }
 
 // Check all the invariants that the program specified.
 // Returns 0 if there are no issues, or the pc of some invariant that failed.
-unsigned int check_invariants(struct global *global, struct state *sc,
-                        struct node *before, struct step *step, bool self_loop){
-    // assert(step->ctx->sp == 0);
-    assert(!step->ctx->failed);
-    unsigned int saved_sp = step->ctx->sp;      // TODO DEBUG
-    unsigned int saved_pc = step->ctx->pc;      // TODO DEBUG
+unsigned int check_invariants(struct global *global, struct node *node,
+                        struct node *before, struct step *step){
+    struct state *state = node_state(node);
+    assert(state != NULL);
 
-    // before->pre == 0 means it started from a non-initialized state (i.e.,
-    // a state that was created before the initial thread finished.
+    assert(step->ctx->sp == 0);
+
+    // pre == 0 means it is a non-initialized state.
     hvalue_t args[2];   // (pre, post)
     if (node_state(before)->pre == 0) {
-        args[0] = sc->vars;
+        args[0] = state->vars;
     }
     else {
         args[0] = node_state(before)->pre;
     }
-    args[1] = sc->vars;
+    args[1] = state->vars;
 
     // Check each invariant
     for (unsigned int i = 0; i < global->ninvs; i++) {
         // No need to check edges other than self-loops
-        if (!global->invs[i].pre && !self_loop) {
+        if (!global->invs[i].pre && node != before) {
             continue;
         }
 
-        // assert(step->ctx->sp == 0);
-        // step->ctx->terminated = false;
-        // ctx_failure(step->ctx) = 0;
-        value_ctx_push(step->ctx, VALUE_LIST);
-        value_ctx_push(step->ctx, VALUE_TO_INT((step->ctx->pc << CALLTYPE_BITS) | CALLTYPE_NORMAL));
-        value_ctx_push(step->ctx, value_put_list(&step->engine, args, sizeof(args)));
-
+        assert(step->ctx->sp == 0);
+        step->ctx->terminated = step->ctx->failed = false;
+        ctx_failure(step->ctx) = 0;
         step->ctx->pc = global->invs[i].pc;
         step->ctx->vars = VALUE_DICT;
+        value_ctx_push(step->ctx, value_put_list(&step->engine, args, sizeof(args)));
+
         assert(strcmp(global->code.instrs[step->ctx->pc].oi->name, "Frame") == 0);
-        bool b = predicate_check(global, sc, step);
+        bool b = predicate_check(global, state, step);
         if (step->ctx->failed) {
             // printf("Invariant evaluation failed: %s\n", value_string(ctx_failure(step->ctx)));
             b = false;
-        }
-        else {
-            (void) value_ctx_pop(step->ctx);   // return value
-            step->ctx->pc--;
-            if (step->ctx->pc != saved_pc) {
-                printf("X1 %u %u\n", step->ctx->pc, saved_pc);
-                panic("X1");
-            }
         }
         if (!b) {
             // printf("INV %u %u failed\n", i, global->invs[i].pc);
             return global->invs[i].pc;
         }
-    }
-
-    if (step->ctx->pc != saved_pc) {
-        panic("X2");
     }
 
     return 0;
@@ -410,29 +389,24 @@ unsigned int check_invariants(struct global *global, struct state *sc,
 // Same as check_invariants but for "finally" predicates that are only
 // checked in final states.
 // Returns 0 if there are no issues, or the pc of the finally predicate if it failed.
-unsigned int check_finals(struct global *global, struct state *state, struct step *step){
+unsigned int check_finals(struct global *global, struct node *node, struct step *step){
+    struct state *state = node_state(node);
     assert(state != NULL);
 
     // Check each finally predicate
     for (unsigned int i = 0; i < global->nfinals; i++) {
-        assert(!step->ctx->failed);
-        // step->ctx->terminated = false;
-        // ctx_failure(step->ctx) = 0;
-        value_ctx_push(step->ctx, VALUE_LIST);
-        value_ctx_push(step->ctx, VALUE_TO_INT((step->ctx->pc << CALLTYPE_BITS) | CALLTYPE_NORMAL));
-        value_ctx_push(step->ctx, VALUE_LIST);
+        assert(step->ctx->sp == 0);
+        step->ctx->terminated = step->ctx->failed = false;
+        ctx_failure(step->ctx) = 0;
         step->ctx->pc = global->finals[i];
         step->ctx->vars = VALUE_DICT;
+        value_ctx_push(step->ctx, VALUE_LIST);
 
         assert(strcmp(global->code.instrs[step->ctx->pc].oi->name, "Frame") == 0);
         bool b = predicate_check(global, state, step);
         if (step->ctx->failed) {
             // printf("Finally evaluation failed: %s\n", value_string(ctx_failure(step->ctx)));
             b = false;
-        }
-        else {
-            (void) value_ctx_pop(step->ctx);   // return value
-            step->ctx->pc--;
         }
         if (!b) {
             // printf("FIN %u %u failed\n", i, global->finals[i]);
@@ -442,9 +416,26 @@ unsigned int check_finals(struct global *global, struct state *state, struct ste
     return 0;
 }
 
-// This function is called when a new edge has been generated.
-static void process_edge(struct worker *w, struct edge *edge) {
-    struct node *node = edge->src;
+// This function is called when a new edge has been generated, possibly to
+// a new state with an uninitialized node.
+static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock) {
+    struct node *node = edge->src, *next = edge->dst;
+
+    // mutex_acquire(lock);    ==> this lock is already acquired
+
+    bool initialized = next->initialized;
+    if (!initialized) {
+        next->initialized = true;
+        next->reachable = true;
+        next->failed = edge->failed;
+        next->u.ph1.lock = lock;
+        next->u.ph1.next = w->results;
+        w->results = next;
+        w->count++;
+        w->enqueued++;
+    }
+
+    mutex_release(lock);
 
 #ifdef DELAY_INSERT
     // Don't do the forward edge at this time as that would involve locking
@@ -468,6 +459,27 @@ static void process_edge(struct worker *w, struct edge *edge) {
         *pe = edge;
     }
 #endif
+
+    // If this is a good and normal (non-choosing) edge, check all the invariants.
+    if (!edge->failed && !edge->choosing) {
+        if (w->global->ninvs != 0) {
+            unsigned int inv = 0;
+            if (!initialized) {      // try self-loop if a new node
+                inv = check_invariants(w->global, next, next, &w->inv_step);
+            }
+            if (inv == 0 && next != node) { // try new edge
+                inv = check_invariants(w->global, next, node, &w->inv_step);
+            }
+            if (inv != 0) {
+                struct failure *f = new_alloc(struct failure);
+                f->type = FAIL_INVARIANT;
+                f->edge = edge;
+                f->address = VALUE_TO_PC(inv);
+                f->next = w->failures;
+                w->failures = f;
+            }
+        }
+    }
 }
 
 // This is the main workhorse function of model checking: explore a state and
@@ -483,13 +495,15 @@ static bool onestep(
     struct worker *w,       // thread info
     struct node *node,      // starting node
     struct state *sc,       // actual state
-    int ctx_index,          // indexes into state's context bag
+    hvalue_t ctx,           // context identifier
     struct step *step,      // step info
     hvalue_t choice,        // if about to make a choice, which choice?
     bool interrupt,         // start with invoking interrupt handler
-    bool infloop_detect     // try to detect infloop from the start
+    bool infloop_detect,    // try to detect infloop from the start
+    int multiplicity       // #contexts that are in the current state
 ) {
     assert(state_size(sc) == state_size(node_state(node)));
+
     assert(!step->ctx->terminated);
     assert(!step->ctx->failed);
     assert(step->engine.allocator == &w->allocator);
@@ -508,11 +522,20 @@ static bool onestep(
     // TODO.  Not clear if this is necessary.
     hvalue_t choice_copy = choice;
 
-    hvalue_t ctx = state_contexts(sc)[ctx_index];
-    bool choosing = false, pausing = false;
+    bool choosing = false;
     struct dict *infloop = NULL;        // infinite loop detector
     unsigned int instrcnt = 0;          // keeps track of #instruction executed
-    unsigned int as_instrcnt = 0;       // optimization for atomic sections
+
+    // We *may* need to keep a copy of various parts of the state here in case we
+    // enter an atomic section.
+    // TODO:  can we remove the repeated allocation of state here?
+#ifdef HEAP_ALLOC
+    char *as_state = malloc(sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1));
+#else
+    char as_state[sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1)];
+#endif
+    hvalue_t as_context = 0;
+    unsigned int as_instrcnt = 0;
 
     bool rollback = false, stopped = false;
     bool terminated = false, infinite_loop = false;
@@ -597,9 +620,11 @@ static bool onestep(
 
             // If not, but the context was not in atomic mode, save the current
             // state to restore to in case we have to "break".
+            // TODO.  We do not really need to store the context in
+            //        the hashtable here.  We could just copy it like the state.
             else if (step->ctx->atomic == 0) {
-                memcpy(w->as_state, sc, state_size(sc));
-                memcpy(&w->as_ctx, step->ctx, ctx_size(step->ctx));
+                memcpy(as_state, sc, state_size(sc));
+                as_context = value_put_context(&step->engine, step->ctx);
                 as_instrcnt = instrcnt;
             }
             
@@ -612,6 +637,7 @@ static bool onestep(
         else if (instrs[pc].atomicdec) {
             (*oi->op)(instrs[pc].env, sc, step, global);
             if (step->ctx->atomic == 0) {
+                as_context = 0;
                 as_instrcnt = 0;
             }
         }
@@ -768,11 +794,6 @@ static bool onestep(
             break;
         }
 
-        else if (next_instr->pause) {
-            pausing = true;
-            break;
-        }
-
         // See if we need to break out of this step.  If the atomicFlag is
         // set, then definitely not.  If it is not set, then it gets
         // complicated.  If the atomic count > 0, then we may have delayed
@@ -840,7 +861,7 @@ static bool onestep(
         }
     }
 
-    // No longer need the infloop set.
+    // No longer need this.  It was wasted effort.
     // TODO.  Perhaps this suggests a way to automatically determine the
     //        number of instructions to run before trying to detect an
     //        infinite loop, which is currently hardwired at 1000.
@@ -851,52 +872,22 @@ static bool onestep(
     // See if we need to roll back to the start of an atomic section.
     hvalue_t after;
     if (rollback) {
-        struct state *state = (struct state *) w->as_state;
+        struct state *state = (struct state *) as_state;
         memcpy(sc, state, state_size(state));
-        memcpy(step->ctx, &w->as_ctx, ctx_size(&w->as_ctx));
+        after = as_context;
         instrcnt = as_instrcnt;
     }
+    else {
+        // Store new context in value directory.  Must be immutable now.
+        after = value_put_context(&step->engine, step->ctx);
+    }
+
+#ifdef HEAP_ALLOC
+    free(as_state);
+#endif
 
     // Remove old context from the bag
     context_remove(sc, ctx);
-
-    unsigned int inv = 0;
-    if (w->global->ninvs != 0 && !step->ctx->failed) {
-        // Check invariants when executing Pause
-        // TODO.  Also check finally clauses
-        if (pausing) {
-            inv = check_invariants(w->global, sc, node, step, true);
-        }
-        // If this is a good and normal transition thus far, check all the invariants
-        // that have 'pre' in them.
-        //
-        // TODO.  If this is a self-loop (state is unchanged), we don't have to check.
-        else if (!stopped && !choosing) {
-            inv = check_invariants(w->global, sc, node, step, false);
-        }
-    }
-    if (w->global->nfinals != 0 && !step->ctx->failed && inv == 0 && pausing &&
-            value_state_all_eternal(sc) && value_ctx_all_eternal(sc->stopbag)) {
-        // Use negative value to distinguish from normal invariant
-        inv = -check_finals(global, sc, step);
-    }
-
-    // Store new context in value directory.  Must be immutable now.
-    after = value_put_context(&step->engine, step->ctx);
-
-    // Add new context to state unless it's terminated or stopped.
-    int index;
-    if (stopped) {
-        sc->stopbag = value_bag_add(&step->engine, sc->stopbag, after, 1);
-        index = -1;
-    }
-    else if (!terminated) {
-        index = context_add(sc, after);
-        assert(index >= 0);
-    }
-    else {
-        index = -1;
-    }
 
     // If choosing, save in state.  If some invariant uses "pre", then
     // also keep track of "pre" state.
@@ -910,12 +901,43 @@ static bool onestep(
     // So we only do it in case there are such invariant, and then only for
     // choosing states.
     if (choosing) {
-        assert(index >= 0);
-        sc->chooser = index;
+        sc->choosing = after;
         sc->pre = global->inv_pre ? node_state(node)->pre : sc->vars;
     }
     else {
         sc->pre = sc->vars;
+    }
+
+    // Add new context to state unless it's terminated or stopped.
+    if (stopped) {
+        sc->stopbag = value_bag_add(&step->engine, sc->stopbag, after, 1);
+    }
+    else if (!terminated) {
+        context_add(sc, after);
+    }
+
+    // Allocate and initialize edge now.
+    struct edge *edge = walloc(w, sizeof(struct edge) + step->nlog * sizeof(hvalue_t), false, false);
+    edge->src = node;
+    edge->ctx = ctx;
+    edge->choice = choice_copy;
+    edge->interrupt = interrupt;
+    edge->multiplicity = multiplicity;
+    edge->after = after;
+    edge->ai = step->ai;     step->ai = NULL;
+    memcpy(edge_log(edge), step->log, step->nlog * sizeof(hvalue_t));
+    edge->nlog = step->nlog; step->nlog = 0;
+    edge->nsteps = instrcnt;
+    edge->choosing = choosing;
+    edge->failed = step->ctx->failed;
+
+    // If a failure has occurred, keep track of that too.
+    if (step->ctx->failed) {
+        struct failure *f = new_alloc(struct failure);
+        f->type = infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
+        f->edge = edge;
+        f->next = w->failures;
+        w->failures = f;
     }
 
     // See if this state has been computed before by looking up the node,
@@ -927,52 +949,6 @@ static bool onestep(
     bool new;
     struct dict_assoc *hn = dict_find_lock(w->visited, &w->allocator,
                 sc, size, &new, &lock);
-    struct node *next = (struct node *) &hn[1];
-    if (new) {
-        assert(!next->initialized);
-        next->initialized = true;       // TODO.  Do we still need this?
-        next->reachable = true;         // TODO.  Should this be done here?
-        next->failed = step->ctx->failed;
-        next->u.ph1.lock = lock;
-        next->u.ph1.next = w->results;
-        w->results = next;
-        w->count++;
-        w->enqueued++;
-    }
-    else {
-        assert(next->initialized);
-    }
-    mutex_release(lock);
-
-    // Allocate and initialize edge now.
-    struct edge *edge = walloc(w, sizeof(struct edge) + step->nlog * sizeof(hvalue_t), false, false);
-    edge->src = node;
-    edge->ctx_index = ctx_index;
-    edge->choice = choice_copy;
-    edge->interrupt = interrupt;
-    edge->after = after;
-    edge->ai = step->ai;     step->ai = NULL;
-    memcpy(edge_log(edge), step->log, step->nlog * sizeof(hvalue_t));
-    edge->nlog = step->nlog; step->nlog = 0;
-    edge->nsteps = instrcnt;
-    edge->choosing = choosing;
-    edge->failed = step->ctx->failed;
-    edge->inv = inv;
-
-    // If a failure has occurred, keep track of that too.
-    if (step->ctx->failed) {
-        struct failure *f = new_alloc(struct failure);
-        if (inv != 0) {
-            f->type = FAIL_INVARIANT;
-            f->address = VALUE_TO_PC(inv);
-        }
-        else {
-            f->type = infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
-        }
-        f->edge = edge;
-        f->next = w->failures;
-        w->failures = f;
-    }
     edge->dst = (struct node *) &hn[1];
 
 #ifdef NO_PROCESSING   // I use this sometime for profiling
@@ -989,7 +965,7 @@ static bool onestep(
         }
     }
 #else
-    process_edge(w, edge);
+    process_edge(w, edge, lock);
 #endif
 
     return true;
@@ -999,7 +975,8 @@ static bool onestep(
 // state ctx. If it is a "choosing state" (the thread is about to execute a
 // Choose instruction), then choice contains that choice to be tried.  Since
 // threads are anonymous and multiple threads can be in the same state,
-// Any resulting states should be buffered in w->results.
+// multiplicity gives the number of threads that can make this step.  Any
+// resulting states should be buffered in w->results.
 //
 // The hard work of makestep is accomplished by function onestep().  makestep()
 // may invoke onestep() multiple times.  One reason is to explore interrupts
@@ -1020,24 +997,21 @@ static bool onestep(
 //  4) restarting 3) if an infinite loop is detected.
 static void make_step(
     struct worker *w,
-    struct node *node,    // source node (and state)
-    int ctx_index,        // index into context bag
-    hvalue_t choice       // if about to make a choice, which choice?
+    struct node *node,
+    hvalue_t ctx,
+    hvalue_t choice,       // if about to make a choice, which choice?
+    int multiplicity       // #contexts that are in the current state
 ) {
     struct step step;
     memset(&step, 0, sizeof(step));
     step.engine.allocator = &w->allocator;
     step.engine.values = w->global->values;
 
-    // Get the state and the context
-    struct state *state = node_state(node);
-    hvalue_t ctx = state_contexts(state)[ctx_index];
-
     // Make a copy of the state.
     //
     // TODO. Would it not be more efficient to have a fixed state variable
     //       in the worker structure, similar to what we do for contexts (w->ctx)?
-    unsigned int statesz = state_size(state);
+    unsigned int statesz = state_size(node_state(node));
     // Room to grown in copy for op_Spawn
 #ifdef HEAP_ALLOC
     char *copy = malloc(statesz + 64*sizeof(hvalue_t));
@@ -1045,7 +1019,7 @@ static void make_step(
     char copy[statesz + 64*sizeof(hvalue_t)];
 #endif
     struct state *sc = (struct state *) copy;
-    memcpy(sc, state, statesz);
+    memcpy(sc, node_state(node), statesz);
     assert(step.engine.allocator == &w->allocator);
 
     // Make a copy of the context
@@ -1062,34 +1036,34 @@ static void make_step(
     // TODO.  Should probably also check that the context is not in atomic mode.
     //        This could possibly happen if the thread was stopped in an atomic
     //        section and is then later restarted.
-    if (sc->chooser < 0 && cc->extended && ctx_trap_pc(cc) != 0 && !cc->interruptlevel) {
-        bool succ = onestep(w, node, sc, ctx_index, &step, choice, true, false);
+    if (sc->choosing == 0 && cc->extended && ctx_trap_pc(cc) != 0 && !cc->interruptlevel) {
+        bool succ = onestep(w, node, sc, ctx, &step, choice, true, false, multiplicity);
         assert(step.engine.allocator == &w->allocator);
         if (!succ) {        // ran into an infinite loop
             step.nlog = 0;
-            memcpy(sc, state, statesz);
+            memcpy(sc, node_state(node), statesz);
             memcpy(&w->ctx, cc, size);
             assert(step.engine.allocator == &w->allocator);
-            (void) onestep(w, node, sc, ctx_index, &step, choice, true, true);
+            (void) onestep(w, node, sc, ctx, &step, choice, true, true, multiplicity);
             assert(step.engine.allocator == &w->allocator);
         }
 
         // Restore the state
-        memcpy(sc, state, statesz);
+        memcpy(sc, node_state(node), statesz);
         memcpy(&w->ctx, cc, size);
         assert(step.engine.allocator == &w->allocator);
     }
 
     // Explore the state normally (not as an interrupt).
-    sc->chooser = -1;
-    bool succ = onestep(w, node, sc, ctx_index, &step, choice, false, false);
+    sc->choosing = 0;
+    bool succ = onestep(w, node, sc, ctx, &step, choice, false, false, multiplicity);
     assert(step.engine.allocator == &w->allocator);
     if (!succ) {        // ran into an infinite loop
         step.nlog = 0;
-        memcpy(sc, state, statesz);
+        memcpy(sc, node_state(node), statesz);
         memcpy(&w->ctx, cc, size);
         assert(step.engine.allocator == &w->allocator);
-        (void) onestep(w, node, sc, ctx_index, &step, choice, false, true);
+        (void) onestep(w, node, sc, ctx, &step, choice, false, true, multiplicity);
         assert(step.engine.allocator == &w->allocator);
     }
 
@@ -1098,21 +1072,16 @@ static void make_step(
 #endif
 }
 
-// TODO.  I can't recall how this works...
-char *ctx_status(struct node *node, int ctx_index) {
-    if (ctx_index < 0) {
-        return "terminated";
-    }
-    struct state *state = node_state(node);
-    if (state->chooser >= 0 && state->chooser == ctx_index) {
+char *ctx_status(struct node *node, hvalue_t ctx) {
+    if (node_state(node)->choosing == ctx) {
         return "choosing";
     }
-    while (node_state(node)->chooser >= 0) {
+    while (node_state(node)->choosing != 0) {
         node = node->u.ph2.u.to_parent->src;
     }
     struct edge *edge;
     for (edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
-        if (edge->ctx_index == ctx_index) {
+        if (edge->ctx == ctx) {
             break;
         }
     }
@@ -1126,7 +1095,6 @@ void print_context(
     struct global *global,
     FILE *file,
     hvalue_t ctx,
-    int ctx_index,
     struct callstack *cs,
     int tid,
     struct node *node,
@@ -1247,7 +1215,7 @@ void print_context(
             fprintf(file, "%s\"mode\": \"stopped\"", prefix);
         }
         else {
-            fprintf(file, "%s\"mode\": \"%s\"", prefix, ctx_status(node, ctx_index));
+            fprintf(file, "%s\"mode\": \"%s\"", prefix, ctx_status(node, ctx));
         }
     }
     fprintf(file, "\n");
@@ -1318,8 +1286,6 @@ static void make_microstep(
 
 // Similar to onestep.  Used to recompute a faulty execution, that is, to
 // generate the detailed execution of a counter-examples.
-//
-// TODO.  Eventually should probably have onestep() and twostep() be the same
 static void twostep(
     struct global *global,
     struct state *sc,
@@ -1328,13 +1294,10 @@ static void twostep(
     hvalue_t choice,
     bool interrupt,
     unsigned int nsteps,
-    int inv,
     unsigned int pid,
     struct macrostep *macro
 ){
-    hvalue_t before = sc->pre;
-
-    sc->chooser = -1;
+    sc->choosing = 0;
 
     struct step step;
     memset(&step, 0, sizeof(step));
@@ -1460,47 +1423,6 @@ static void twostep(
         }
     }
 
-    // See if an invariant needs to be checked (because it should fail).
-    if (inv != 0) {
-        assert(!step.ctx->failed);
-        // step.ctx->terminated = false;
-        // ctx_failure(step.ctx) = 0;
-        value_ctx_push(step.ctx, VALUE_LIST);
-        value_ctx_push(step.ctx, VALUE_TO_INT((step.ctx->pc << CALLTYPE_BITS) | CALLTYPE_NORMAL));
-
-        if (inv > 0) {      // invariant
-            hvalue_t args[2];   // (pre, post)
-            if (before == 0) {
-                args[0] = sc->vars;
-            }
-            else {
-                args[0] = before;
-            }
-            args[1] = sc->vars;
-            value_ctx_push(step.ctx, value_put_list(&step.engine, args, sizeof(args)));
-            step.ctx->pc = inv;
-        }
-        else {              // finally
-            value_ctx_push(step.ctx, VALUE_LIST);
-            step.ctx->pc = -inv;
-        }
-
-        step.ctx->vars = VALUE_DICT;
-        assert(strcmp(global->code.instrs[step.ctx->pc].oi->name, "Frame") == 0);
-
-        unsigned int old_sp = step.ctx->sp;
-        while (step.ctx->sp >= old_sp) {
-            int pc = step.ctx->pc;
-            struct instr *instrs = global->code.instrs;
-            struct op_info *oi = instrs[pc].oi;
-            (*oi->op)(instrs[pc].env, sc, &step, global);
-            make_microstep(sc, step.ctx, step.callstack, false, instrs[pc].choose, choice, false, &step, macro);
-            if (step.ctx->failed) {
-                break;
-            }
-        }
-    }
-
     // Remove old context from the bag
     context_remove(sc, ctx);
 
@@ -1511,7 +1433,7 @@ static void twostep(
         sc->stopbag = value_bag_add(&step.engine, sc->stopbag, after, 1);
     }
     else if (!step.ctx->terminated) {
-        (void) context_add(sc, after);
+        context_add(sc, after);
     }
 
     free(step.ctx);
@@ -1553,11 +1475,6 @@ void path_serialize(
     global->macrosteps[global->nmacrosteps++] = macro;
 }
 
-// Retrieve the starting context of an edge
-static hvalue_t get_context(struct edge *e){
-    return state_contexts(node_state(e->src))[e->ctx_index];
-}
-
 void path_recompute(struct global *global){
     struct node *node = global->graph.nodes[0];
     struct state *sc = calloc(1,
@@ -1572,7 +1489,7 @@ void path_recompute(struct global *global){
         /* Find the starting context in the list of processes.  Prefer
          * sticking with the same pid if possible.
          */
-        hvalue_t ctx = get_context(e);
+        hvalue_t ctx = e->ctx;
         unsigned int pid;
         if (global->processes[global->oldpid] == ctx) {
             pid = global->oldpid;
@@ -1595,8 +1512,6 @@ void path_recompute(struct global *global){
         macro->cs = global->callstacks[pid];
 
         // Recreate the steps
-        //
-        // TODO.  Why not just pass it e?
         twostep(
             global,
             sc,
@@ -1605,7 +1520,6 @@ void path_recompute(struct global *global){
             e->choice,
             e->interrupt,
             e->nsteps,
-            e->inv,
             pid,
             macro
         );
@@ -1828,7 +1742,7 @@ static void path_output_macrostep(struct global *global, FILE *file, struct macr
     free(c);
 
     fprintf(file, "      \"context\": {\n");
-    print_context(global, file, get_context(macro->edge), macro->edge->ctx_index, macro->cs, macro->tid, macro->edge->dst, "        ");
+    print_context(global, file, macro->edge->ctx, macro->cs, macro->tid, macro->edge->dst, "        ");
     fprintf(file, "      },\n");
 
     if (macro->trim != NULL && macro->value != 0) {
@@ -1838,7 +1752,7 @@ static void path_output_macrostep(struct global *global, FILE *file, struct macr
     }
 
     fprintf(file, "      \"microsteps\": [");
-    struct context *oldctx = value_get(get_context(macro->edge), NULL);
+    struct context *oldctx = value_get(macro->edge->ctx, NULL);
     struct callstack *oldcs = NULL;
     for (unsigned int i = 0; i < macro->nmicrosteps; i++) {
         struct microstep *micro = macro->microsteps[i];
@@ -1870,19 +1784,7 @@ static void path_output_macrostep(struct global *global, FILE *file, struct macr
     fprintf(file, "      \"contexts\": [\n");
     for (unsigned int i = 0; i < macro->nprocesses; i++) {
         fprintf(file, "        {\n");
-
-        // Find the "context index".  May not be there as thread may have terminated
-        int ctx_index;
-        for (ctx_index = 0; ctx_index < state->bagsize; ctx_index++) {
-            if (state_contexts(state)[ctx_index] == macro->processes[i]) {
-                break;
-            }
-        }
-        if (ctx_index >= state->bagsize) {
-            ctx_index = -1;
-        }
-
-        print_context(global, file, macro->processes[i], ctx_index, macro->callstacks[i], i, macro->edge->dst, "          ");
+        print_context(global, file, macro->processes[i], macro->callstacks[i], i, macro->edge->dst, "          ");
         fprintf(file, "        }");
         if (i < macro->nprocesses - 1) {
             fprintf(file, ",");
@@ -1959,19 +1861,19 @@ again:
 #endif
 
     cbs = calloc(1, sizeof(*cbs));
-    cbs->before = get_context(global->macrosteps[0]->edge);
+    cbs->before = global->macrosteps[0]->edge->ctx;
     ncbs = 0;
     current = global->macrosteps[0]->edge->after;
 
     // Figure out where the actual context switches are.  Each context
     // block is a sequence of edges executed by the same thread
     for (unsigned int i = 1; i < global->nmacrosteps; i++) {
-        if (get_context(global->macrosteps[i]->edge) != current) {
+        if (global->macrosteps[i]->edge->ctx != current) {
             cbs[ncbs].after = current;
             cbs[ncbs++].end = i;
             cbs = realloc(cbs, (ncbs + 1) * sizeof(*cbs));
             cbs[ncbs].start = i;
-            cbs[ncbs].before = get_context(global->macrosteps[i]->edge);
+            cbs[ncbs].before = global->macrosteps[i]->edge->ctx;
         }
         current = global->macrosteps[i]->edge->after;
     }
@@ -2039,12 +1941,12 @@ again:
     for (unsigned int i = 0; i < global->nmacrosteps; i++) {
         // printf("--> %u/%u\n", i, global->nmacrosteps);
         // Find the edge
-        hvalue_t ctx = get_context(global->macrosteps[i]->edge);
+        hvalue_t ctx = global->macrosteps[i]->edge->ctx;
         hvalue_t choice = global->macrosteps[i]->edge->choice;
         bool interrupt = global->macrosteps[i]->edge->interrupt;
         struct edge *e;
         for (e = node->fwd; e != NULL; e = e->fwdnext) {
-            if (get_context(e) == ctx && e->choice == choice && (bool) e->interrupt == interrupt) {
+            if (e->ctx == ctx && e->choice == choice && (bool) e->interrupt == interrupt) {
                 global->macrosteps[i]->edge = e;
                 break;
             }
@@ -2098,7 +2000,7 @@ static void path_trim(struct global *global, struct engine *engine){
 
         // Look up the last microstep of this thread, which wasn't the
         // last one to take a step overall
-        struct context *cc = value_get(get_context(macro->edge), NULL);
+        struct context *cc = value_get(macro->edge->ctx, NULL);
         struct microstep *ls = macro->microsteps[macro->nmicrosteps - 1];
         struct instr *fi = &instrs[cc->pc];
         struct instr *li = &instrs[ls->ctx->pc];
@@ -2265,7 +2167,7 @@ static enum busywait is_stuck(
 	node->visited = true;
 	enum busywait result = BW_ESCAPE;
     for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
-        if (get_context(edge) == ctx) {
+        if (edge->ctx == ctx) {
 			if (edge->dst == node) {
 				node->visited = false;
 				return BW_ESCAPE;
@@ -2329,10 +2231,12 @@ void do_work1(struct worker *w, struct node *node){
     // the possible choices for the thread that is executing.  For a non-choosing
     // state, we explore all the different threads that can make a step.
     struct state *state = node_state(node);
-    if (state->chooser >= 0) {      // choosing state
-        hvalue_t chooser = state_contexts(state)[state->chooser];
-        // The actual set of choices is on top of the stack
-        struct context *cc = value_get(chooser, NULL);
+    if (state->choosing != 0) {
+        assert(VALUE_TYPE(state->choosing) == VALUE_CONTEXT);
+
+        // state->choosing is the context of the thread that is making a choice.
+        // The actual set of choices is on top of its stack
+        struct context *cc = value_get(state->choosing, NULL);
         assert(cc != NULL);
         assert(cc->sp > 0);
         hvalue_t s = ctx_stack(cc)[cc->sp - 1];
@@ -2344,14 +2248,26 @@ void do_work1(struct worker *w, struct node *node){
 
         // Explore each choice.
         for (unsigned int i = 0; i < size; i++) {
-            make_step(w, node, state->chooser, vals[i]);
+            make_step(
+                w,
+                node,
+                state->choosing,
+                vals[i],
+                1
+            );
         }
     }
     else {
         // Explore each thread that can make a step.
         for (unsigned int i = 0; i < state->bagsize; i++) {
             assert(VALUE_TYPE(state_contexts(state)[i]) == VALUE_CONTEXT);
-            make_step(w, node, i, 0);
+            make_step(
+                w,
+                node,
+                state_contexts(state)[i],
+                0,
+                multiplicities(state)[i]
+            );
         }
     }
 }
@@ -3088,6 +3004,21 @@ static void tarjan(struct global *global){
     global->ncomponents = comp_id;
 }
 
+char *state_string(struct state *state){
+    struct strbuf sb;
+    strbuf_init(&sb);
+
+    char *v;
+    strbuf_printf(&sb, "{");
+    v = value_string(state->vars);
+    strbuf_printf(&sb, "%s", v); free(v);
+    v = value_string(state->choosing);
+    strbuf_printf(&sb, ",%s", v); free(v);
+    v = value_string(state->stopbag);
+    strbuf_printf(&sb, ",%s}", v); free(v);
+    return strbuf_convert(&sb);
+}
+
 // This routine removes all nodes that have a single incoming edge and it's
 // an "epsilon" edge (empty print log).  These are essentially useless nodes.
 static void destutter1(struct global *global){
@@ -3601,14 +3532,12 @@ int exec_model_checker(int argc, char **argv){
     init_ctx->vars = VALUE_DICT;
     init_ctx->atomic = 1;
     init_ctx->initial = true;
-    init_ctx->eternal = true;
     init_ctx->atomicFlag = true;
     value_ctx_push(init_ctx, VALUE_LIST);
 
     // Now create the state
     struct state *state = calloc(1, sizeof(struct state) + sizeof(hvalue_t) + 1);
     state->vars = VALUE_DICT;
-    state->chooser = -1;
     hvalue_t ictx = value_put_context(&engine, init_ctx);
     state->bagsize = 1;
     state_contexts(state)[0] = ictx;
@@ -3669,7 +3598,6 @@ int exec_model_checker(int argc, char **argv){
         w->profile = calloc(global->code.len, sizeof(*w->profile));
 
         // Create a context for evaluating invariants
-        // TODO.  May be obsolete soon
         w->inv_step.ctx = calloc(1, sizeof(struct context) +
                                 MAX_CONTEXT_STACK * sizeof(hvalue_t));
         // w->inv_step.ctx->name = value_put_atom(&engine, "__invariant__", 13);
@@ -3787,8 +3715,6 @@ int exec_model_checker(int argc, char **argv){
 
     printf("* Phase 3: analysis\n");
 
-    bool scc = false;
-
     // If no failures were detected (yet), determine strongly connected components
     // and look for non-terminating states.
     if (global->failures == NULL) {
@@ -3798,7 +3724,7 @@ int exec_model_checker(int argc, char **argv){
         }
         double now = gettime();
         tarjan(global);
-        scc = true;
+        global->phase2 = true;
 
         // Compute shortest path to initial state for each node.
         shortest_path(global);
@@ -3913,9 +3839,9 @@ int exec_model_checker(int argc, char **argv){
                     add_failure(&global->failures, f);
                     // break;
                 }
-#ifdef notdef
+
                 // Check "finally" clauses
-                unsigned int fin = check_finals(global, node_state(node), &fin_step);
+                unsigned int fin = check_finals(global, node, &fin_step);
                 if (fin != 0) {
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_FINALLY;
@@ -3923,7 +3849,6 @@ int exec_model_checker(int argc, char **argv){
                     f->address = VALUE_TO_PC(fin);
                     add_failure(&global->failures, f);
                 }
-#endif
             }
         }
 
@@ -3988,7 +3913,7 @@ int exec_model_checker(int argc, char **argv){
                     struct state *state = node_state(node);
                     unsigned int j;
                     for (j = 0; j < state->bagsize; j++) {
-                        if (state_contexts(state)[j] == get_context(edge)) {
+                        if (state_contexts(state)[j] == edge->ctx) {
                             break;
                         }
                     }
@@ -4021,9 +3946,7 @@ int exec_model_checker(int argc, char **argv){
                 struct node *node = global->graph.nodes[i];
                 assert(node->id == i);
                 fprintf(df, "\nNode %d:\n", node->id);
-                if (scc) {
-                    fprintf(df, "    component: %d\n", node->u.ph2.component);
-                }
+                fprintf(df, "    component: %d\n", node->u.ph2.component);
                 if (node->u.ph2.u.to_parent != NULL) {
                     fprintf(df, "    ancestors:");
                     for (struct node *n = node->u.ph2.u.to_parent->src;; n = n->u.ph2.u.to_parent->src) {
@@ -4034,19 +3957,7 @@ int exec_model_checker(int argc, char **argv){
                     }
                     fprintf(df, "\n");
                 }
-                struct state *state = node_state(node);
-                if (state->pre == 0) {
-                    fprintf(df, "    pre: uninitializeds\n");
-                }
-                else if (state->pre != state->vars) {
-                    fprintf(df, "    pre: %s\n", value_string(state->pre));
-                }
-                fprintf(df, "    vars: %s\n", value_string(state->vars));
-                fprintf(df, "    contexts:\n");
-                for (unsigned int i = 0; i < state->bagsize; i++) {
-                    fprintf(df, "      %"PRI_HVAL": %u\n",
-                        state_contexts(state)[i], multiplicities(state)[i]);
-                }
+                fprintf(df, "    vars: %s\n", value_string(node_state(node)->vars));
                 // fprintf(df, "    len: %u %u\n", node->len, node->steps);
                 if (node->failed) {
                     fprintf(df, "    failed\n");
@@ -4055,9 +3966,9 @@ int exec_model_checker(int argc, char **argv){
                 int eno = 0;
                 for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext, eno++) {
                     fprintf(df, "        %d:\n", eno);
-                    struct context *ctx = value_get(get_context(edge), NULL);
+                    struct context *ctx = value_get(edge->ctx, NULL);
                     fprintf(df, "            node: %d (%d)\n", edge->dst->id, edge->dst->u.ph2.component);
-                    fprintf(df, "            context before: %"PRIx64" pc=%d\n", get_context(edge), ctx->pc);
+                    fprintf(df, "            context before: %"PRIx64" pc=%d\n", edge->ctx, ctx->pc);
                     ctx = value_get(edge->after, NULL);
                     fprintf(df, "            context after:  %"PRIx64" pc=%d\n", edge->after, ctx->pc);
                     if (edge->failed != 0) {
@@ -4271,7 +4182,6 @@ int exec_model_checker(int argc, char **argv){
         // If it was an invariant failure, add one more macrostep
         // to replay the invariant code.
         struct edge *edge;
-#ifdef notdef
         if (bad->type == FAIL_INVARIANT) {
             struct context *inv_ctx = calloc(1, sizeof(struct context) +
                                 MAX_CONTEXT_STACK * sizeof(hvalue_t));
@@ -4282,13 +4192,11 @@ int exec_model_checker(int argc, char **argv){
             inv_ctx->readonly = 1;
 
             hvalue_t args[2];
-            args[0] = node_state(bad->edge->src)->vars;     // TODO.  Seems wrong
+            args[0] = node_state(bad->edge->src)->vars;
             args[1] = node_state(bad->edge->dst)->vars;
             value_ctx_push(inv_ctx, value_put_list(&engine, args, sizeof(args)));
 
             hvalue_t inv_context = value_put_context(&engine, inv_ctx);
-
-            // TODO.  Need to add inv_ctx to the context bag of the state
 
             edge = calloc(1, sizeof(struct edge));
             edge->src = edge->dst = bad->edge->dst;
@@ -4347,11 +4255,8 @@ int exec_model_checker(int argc, char **argv){
             global->nprocesses++;
         }
         else {
-#endif
             edge = bad->edge;
-#ifdef notdef
         }
-#endif
 
         // printf("LEN=%u, STEPS=%u\n", bad->edge->dst->len, bad->edge->dst->steps);
 
