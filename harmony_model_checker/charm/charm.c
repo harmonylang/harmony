@@ -10,7 +10,9 @@
 
 #ifdef __linux__
 #include <sched.h>   //cpu_set_t, CPU_SET
+#ifdef NUMA
 #include <numa.h>
+#endif
 #endif
 
 #include <stdint.h>
@@ -3610,8 +3612,10 @@ int exec_model_checker(int argc, char **argv){
     // there, the Tarjan SCC algorithm (executed by worker 0) will run significantly
     // faster.
 #ifdef __linux__
+#ifdef NUMA
     numa_available();
     numa_set_preferred(vproc_info[workers[0].vproc].ids[0]);
+#endif
 #endif
 
     // Put the state and value dictionaries in concurrent mode
