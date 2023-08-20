@@ -44,6 +44,11 @@ struct access_info {
 // but, for memory efficiency, not the details of the microsteps themselves.  If
 // a failure is found, that information is recovered by re-executing the path to
 // the faulty state.
+//
+// TODO.  Can replace ctx with ctx_index into src->state, but should also
+//        support, say, -1 for inv_context.  after could be replaced with
+//        an index into dst->state.  choice could be the first entry in log
+//        Doing all three could save around 20 bytes per edge.
 struct edge {
     struct edge *fwdnext;    // forward linked list maintenance
     hvalue_t ctx, choice;    // ctx that made the microstep, choice if any
