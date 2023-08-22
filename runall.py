@@ -17,7 +17,7 @@ tests = [
     { "args": "code/naiveTurn.hny", "issue": "Non-terminating state", "nstates": 28 },
     { "args": "code/Peterson.hny", "issue": "No issues", "nstates": 104 },
     { "args": "code/PetersonBroken.hny", "issue": "Safety violation", "nstates": 126 },
-    { "args": "code/PetersonInductive.hny", "issue": "Safety violation", "nstates": 4 },
+    { "args": "code/PetersonInductive.hny", "issue": "No Issues", "nstates": 4 },
     { "args": "code/csonebit.hny", "issue": "Active busy waiting", "nstates": 73 },
     { "args": "code/PetersonMethod.hny", "issue": "No issues", "nstates": 104 },
     { "args": "code/hanoi.hny", "issue": "Safety violation", "nstates": 28 },
