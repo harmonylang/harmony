@@ -4017,6 +4017,7 @@ int exec_model_checker(int argc, char **argv){
     assert(global->pretty->type == JV_LIST);
 
     fprintf(out, "{\n");
+    fprintf(out, "  \"nstates\": %d,\n", global->graph.size);
 
     // In case no issues were found, we output a summary of the Kripke structure
     // with the 'print' outputs.

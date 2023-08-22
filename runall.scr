@@ -397,4 +397,3 @@ $HARMONY --noweb -mstack=stack1 code/stacktest.hny
 $HARMONY --noweb -mstack=stack2 code/stacktest.hny
 $HARMONY --noweb -mstack=stack3 code/stacktest.hny
 $HARMONY --noweb -mstack=stack4 code/stacktest.hny
-
