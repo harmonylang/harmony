@@ -1374,6 +1374,7 @@ void op_Go(
     struct context *copy = (struct context *) buffer;
     ctx_push(copy, result);
     copy->stopped = false;
+    // TODO.  Check success of context_add
     context_add(state, value_put_context(&step->engine, copy));
 #ifdef HEAP_ALLOC
     free(buffer);
@@ -2136,7 +2137,7 @@ void op_Spawn(
     }
     else {
         hvalue_t context = value_put_context(&step->engine, ctx);
-        if (!context_add(state, context)) {
+        if (context_add(state, context) < 0) {
             value_ctx_failure(step->ctx, &step->engine, "spawn: too many threads");
             return;
         }
