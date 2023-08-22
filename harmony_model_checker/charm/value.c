@@ -1747,9 +1747,11 @@ void context_remove(struct state *state, hvalue_t ctx){
                         (char *) &state_contexts(state)[state->bagsize + 1] + i + 1,
                         state->bagsize - i);
             }
-            break;
+            return;
         }
     }
+    // TODO. this can happen with invariant contexts
+    // panic("context_remove: can't find context");
 }
 
 // Add context 'ctx' to the state's context bag.  May fail if there are too

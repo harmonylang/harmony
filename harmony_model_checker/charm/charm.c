@@ -1497,7 +1497,9 @@ void path_recompute(struct global *global){
             pid = global->oldpid;
         }
         else {
+            // printf("Search for %p\n", (void *) ctx);
             for (pid = 0; pid < global->nprocesses; pid++) {
+                // printf("%d: %p\n", pid, (void *) global->processes[pid]);
                 if (global->processes[pid] == ctx) {
                     break;
                 }
@@ -1507,6 +1509,9 @@ void path_recompute(struct global *global){
         if (pid >= global->nprocesses) {
             printf("PID %p %u %u\n", (void *) ctx, pid, global->nprocesses);
             panic("bad pid");
+        }
+        else {
+            // printf("Found %d\n", pid);
         }
         assert(pid < global->nprocesses);
 
@@ -1526,6 +1531,8 @@ void path_recompute(struct global *global){
             macro
         );
         assert(global->processes[pid] == e->after || e->after == 0);
+
+        // printf("Set %d to %p\n", pid, (void *) e->after);
 
         // Copy thread state
         macro->nprocesses = global->nprocesses;
@@ -3701,6 +3708,8 @@ int exec_model_checker(int argc, char **argv){
 
     printf("* Phase 3: analysis\n");
 
+    bool computed_components = false;
+
     // If no failures were detected (yet), determine strongly connected components
     // and look for non-terminating states.
     if (global->failures == NULL) {
@@ -3710,6 +3719,7 @@ int exec_model_checker(int argc, char **argv){
         }
         double now = gettime();
         tarjan(global);
+        computed_components = true;
 
         // Compute shortest path to initial state for each node.
         shortest_path(global);
@@ -3931,7 +3941,10 @@ int exec_model_checker(int argc, char **argv){
                 struct node *node = global->graph.nodes[i];
                 assert(node->id == i);
                 fprintf(df, "\nNode %d:\n", node->id);
-                fprintf(df, "    component: %d\n", node->u.ph2.component);
+                if (computed_components) {
+                    fprintf(df, "    component: %d\n", node->u.ph2.component);
+                }
+                fprintf(df, "    len to parent: %d\n", node->u.ph2.len);
                 if (node->u.ph2.u.to_parent != NULL) {
                     fprintf(df, "    ancestors:");
                     for (struct node *n = node->u.ph2.u.to_parent->src;; n = n->u.ph2.u.to_parent->src) {
@@ -3942,7 +3955,21 @@ int exec_model_checker(int argc, char **argv){
                     }
                     fprintf(df, "\n");
                 }
-                fprintf(df, "    vars: %s\n", value_string(node_state(node)->vars));
+                struct state *state = node_state(node);
+                fprintf(df, "    vars: %s\n", value_string(state->vars));
+                fprintf(df, "    contexts:\n");
+                for (unsigned int i = 0; i < state->bagsize; i++) {
+                    fprintf(df, "      %"PRI_HVAL": %u\n", state_contexts(state)[i], multiplicities(state)[i]);
+                }
+                if (state->stopbag != VALUE_DICT) {
+                    fprintf(df, "    stopbag:\n");
+                    unsigned int size;
+                    hvalue_t *vals = value_get(state->stopbag, &size);
+                    size /= 2 * sizeof(hvalue_t);
+                    for (unsigned int i = 0; i < size; i++) {
+                        fprintf(df, "      %"PRI_HVAL": %d\n", vals[2*i], (int) VALUE_FROM_INT(vals[2*i+1]));;
+                    }
+                }
                 // fprintf(df, "    len: %u %u\n", node->len, node->steps);
                 if (node->failed) {
                     fprintf(df, "    failed\n");
@@ -4058,7 +4085,9 @@ int exec_model_checker(int argc, char **argv){
                 }
                 fprintf(out, "    {\n");
                 fprintf(out, "      \"idx\": %d,\n", node->id);
-                fprintf(out, "      \"component\": %d,\n", node->u.ph2.component);
+                if (computed_components) {
+                    fprintf(out, "      \"component\": %d,\n", node->u.ph2.component);
+                }
 #ifdef notdef
                 if (node->parent != NULL) {
                     fprintf(out, "      \"parent\": %d,\n", node->parent->id);

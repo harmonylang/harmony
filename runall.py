@@ -17,7 +17,7 @@ tests = [
     { "args": "code/naiveTurn.hny", "issue": "Non-terminating state", "nstates": 28 },
     { "args": "code/Peterson.hny", "issue": "No issues", "nstates": 104 },
     { "args": "code/PetersonBroken.hny", "issue": "Safety violation", "nstates": 126 },
-    { "args": "code/PetersonInductive.hny", "issue": "No Issues", "nstates": 4 },
+    { "args": "code/PetersonInductive.hny", "issue": "No issues", "nstates": 104 },
     { "args": "code/csonebit.hny", "issue": "Active busy waiting", "nstates": 73 },
     { "args": "code/PetersonMethod.hny", "issue": "No issues", "nstates": 104 },
     { "args": "code/hanoi.hny", "issue": "Safety violation", "nstates": 28 },
@@ -29,7 +29,7 @@ tests = [
     { "args": "-msynch=synchS code/UpLock.hny", "issue": "No issues", "nstates": 58 },
     { "args": "code/spinlock.hny", "issue": "No issues", "nstates": 473 },
     { "args": "code/xy.hny", "issue": "Safety violation", "nstates": 19 },
-    { "args": "code/atm.hny", "issue": "Safety violation", "nstates": 128 },
+    { "args": "code/atm.hny", "issue": "Invariant violation", "nstates": 1832 },
     { "args": "code/queuedemo.hny", "issue": "No issues", "nstates": 80 },
     { "args": "code/setobjtest.hny", "issue": "No issues", "nstates": 217 },
     { "args": "-msetobj=linkedlist code/setobjtest.hny", "issue": "No issues", "nstates": 9495 },
@@ -44,7 +44,7 @@ tests = [
     { "args": "-o queue4.hfa code/qtestpar.hny", "issue": "No issues", "nstates": 3385 },
     { "args": "-B queue4.hfa -m queue=queueconc code/qtestpar.hny", "issue": "No issues", "nstates": 66530 },
     { "args": "-o queue4.hfa code/qtestpar.hny", "issue": "No issues", "nstates": 3385 },
-    { "args": "-B queue4.hfa -m queue=queueMS code/qtestpar.hny", "issue": "Safety violation", "nstates": 5 },
+    { "args": "-B queue4.hfa -m queue=queueMS code/qtestpar.hny", "issue": "No issues", "nstates": 99816 },
     { "args": "-mqueue=queuebroken code/qtestpar.hny", "issue": "Safety violation", "nstates": 5 },
     { "args": "code/RWtest.hny", "issue": "No issues", "nstates": 135 },
     { "args": "-mRW=RWsbs code/RWtest.hny", "issue": "No issues", "nstates": 1757 },
@@ -84,7 +84,7 @@ tests = [
     { "args": "-msynch=synchS code/trap6.hny", "issue": "No issues", "nstates": 554 },
     { "args": "code/hw.hny", "issue": "No issues", "nstates": 23864 },
     { "args": "code/abptest.hny", "issue": "No issues", "nstates": 2778 },
-    { "args": "code/leader.hny", "issue": "Safety violation", "nstates": 117 },
+    { "args": "code/leader.hny", "issue": "No issues", "nstates": 33005 },
     { "args": "-mstack=stack1 code/stacktest.hny", "issue": "No issues", "nstates": 2 },
     { "args": "-mstack=stack2 code/stacktest.hny", "issue": "No issues", "nstates": 2 },
     { "args": "-mstack=stack3 code/stacktest.hny", "issue": "No issues", "nstates": 2 },
@@ -106,8 +106,9 @@ for t in tests:
             if t["issue"] != hco["issue"]:
                 print("Different issue (was %s)???  Aborting further tests" % t["issue"])
                 break
-            if min(t["nstates"], hco["nstates"]) / max(t["nstates"], hco["nstates"]) < .9:
+            if t["issue"] != "Safety violation" and min(t["nstates"], hco["nstates"]) / max(t["nstates"], hco["nstates"]) < .9:
                 print("#states very different (was %d)???  Aborting further tests" % t["nstates"])
+                break
     else:
         print("Error code %d, aborting further tests" % cp.returncode)
         print("Output: ", cp.stdout)

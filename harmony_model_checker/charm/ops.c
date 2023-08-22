@@ -1375,11 +1375,26 @@ void op_Go(
     ctx_push(copy, result);
     copy->stopped = false;
     // TODO.  Check success of context_add
-    context_add(state, value_put_context(&step->engine, copy));
+    hvalue_t context = value_put_context(&step->engine, copy);
+    context_add(state, context);
 #ifdef HEAP_ALLOC
     free(buffer);
 #endif
     step->ctx->pc++;
+
+    if (step->keep_callstack) {
+        // Find the process
+        unsigned int pid;
+        for (pid = 0; pid < global->nprocesses; pid++) {
+            if (global->processes[pid] == ctx) {
+                global->processes[pid] = context;
+                break;
+            }
+        }
+        if (pid >= global->nprocesses) {
+            panic("op_Go: can't find process");
+        }
+    }
 }
 
 void op_Finally(const void *env, struct state *state, struct step *step, struct global *global){
@@ -2147,6 +2162,7 @@ void op_Spawn(
             global->processes = realloc(global->processes, (global->nprocesses + 1) * sizeof(hvalue_t));
             global->callstacks = realloc(global->callstacks, (global->nprocesses + 1) * sizeof(struct callstack *));
             global->processes[global->nprocesses] = context;
+            // printf("Add %d %p\n", global->nprocesses, (void *) context);
             struct callstack *cs = new_alloc(struct callstack);
             cs->pc = pc;
             cs->arg = arg;
