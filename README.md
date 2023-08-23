@@ -14,7 +14,7 @@ Harmony is a programming language designed for testing and experimenting with co
   - [Updating Harmony](#updating-harmony)
   - [Troubleshooting](#troubleshooting)
     - [Modifying your PATH variable](#modifying-your-path-variable)
-  - [Reading the Source Code](#reading-source)
+  - [Reading the Source Code](#reading-the-source-code)
 
 For more information, please visit the official page https://harmony.cs.cornell.edu.
 
