@@ -63,7 +63,7 @@ upload-test: dist upload-env
 	source .upload_env testing && twine upload --non-interactive --verbose -r testpypi dist/*
 
 install-test:
-	pip install -i https://test.pypi.org/simple/ harmony
+	pip install --index-url https://test.pypi.org/simple --extra-index-url https://pypi.python.org/simple harmony
 
 upload: dist upload-env
 	source .upload_env release && twine upload --non-interactive --verbose -r pypi dist/*

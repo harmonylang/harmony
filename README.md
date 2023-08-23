@@ -14,6 +14,7 @@ Harmony is a programming language designed for testing and experimenting with co
   - [Updating Harmony](#updating-harmony)
   - [Troubleshooting](#troubleshooting)
     - [Modifying your PATH variable](#modifying-your-path-variable)
+  - [Reading the Source Code](#reading-source)
 
 For more information, please visit the official page https://harmony.cs.cornell.edu.
 
@@ -196,3 +197,7 @@ export PATH=$PATH:/path/to/add/
 Save the file.
 
 You will have to restart Terminal (and VSCode if you are using the extension) to have the changes take effect.
+
+## Reading the Source Code
+
+The compose.pdf file is the beginning of a document explaining how Harmony works.
