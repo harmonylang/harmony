@@ -304,22 +304,24 @@ class Summarize:
         for k in sorted(ak & bk):
             self.deepcmp(path + [k], before[k], after[k], loc, f)
 
+    def print_about(self, f):
+        for ctx in self.contexts:
+            if ctx["tid"] == self.tid:
+                if ctx["mode"] == "terminated":
+                    print("    * **Thread terminated**", file=f)
+                elif ctx["mode"] != "failed":
+                    mode = get_mode(ctx)
+                    # if mode != "runnable":
+                    #     print("    Mode = %s"%mode, file=f)
+                    print("    * Preempted in ", end="", file=f)
+                    verbose_print_trace(f, ctx["trace"])
+                    if "next" in ctx:
+                        self.about(ctx, "      ", f)
+
     def print_macrostep(self, f, mas):
         mis = mas["microsteps"]
         if mas["tid"] != self.tid:
-            for ctx in self.contexts:
-                if ctx["tid"] == self.tid:
-                    if ctx["mode"] == "terminated":
-                        print("    * **Thread terminated**", file=f)
-                    else:
-                        mode = get_mode(ctx)
-                        # if mode != "runnable":
-                        #     print("    Mode = %s"%mode, file=f)
-                        print("    * Preempted in ", end="", file=f)
-                        verbose_print_trace(f, ctx["trace"])
-                        if "next" in ctx:
-                            self.about(ctx, "      ", f)
-
+            self.print_about(f)
             self.tid = mas["tid"]
             # print(file=f)
             # print("================================================", file=f)
@@ -438,6 +440,7 @@ class Summarize:
                 self.locations = self.hvm["locs"]
                 for mes in top["macrosteps"]:
                     self.print_macrostep(output, mes)
+                self.print_about(output)
 
                 if top["issue"] == "Non-terminating state":
                     print(file=output)
