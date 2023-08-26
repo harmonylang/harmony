@@ -3368,8 +3368,6 @@ hvalue_t f_intersection(
         }
     }
 
-    // TODO.  This should intersect the dictionaries, not concatenate them ??????
-
     // If all are empty dictionaries, we're done.
     if (total == 0) {
 #ifdef HEAP_ALLOC
