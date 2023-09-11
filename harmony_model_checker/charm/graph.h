@@ -51,20 +51,21 @@ struct access_info {
 //        Doing all three could save around 20 bytes per edge.
 struct edge {
     struct edge *fwdnext;    // forward linked list maintenance
-    hvalue_t ctx, choice;    // ctx that made the microstep, choice if any
+    hvalue_t ctx;            //< ctx that made the microstep
+    hvalue_t choice;         //< choice if any (-1 indicates interrupt)
     struct node *src;        // source node
     struct node *dst;        // destination node
-    hvalue_t after;          // resulting context
-    struct access_info *ai;  // to detect data races
-    uint16_t nsteps;         // # microsteps
+    hvalue_t after;          //> resulting context
+    struct access_info *ai;  //> to detect data races
+    uint16_t nsteps;         //> # microsteps
     uint16_t multiplicity;   // multiplicity of context
-    bool interrupt : 1;      // set if state change is an interrupt
+    // bool interrupt : 1;      //< set if state change is an interrupt
     // TODO.  Is choosing == (choice != 0)?
     //        Also, edge->src->choosing is probably the same
-    bool choosing : 1;       // destination state is choosing
-    bool failed : 1;         // context failed
-    uint16_t nlog : 12;      // size of print history
-    // hvalue_t log[];       // print history (immediately follows edge)
+    bool choosing : 1;       //> destination state is choosing
+    bool failed : 1;         //> context failed
+    uint16_t nlog : 12;      //> size of print history
+    // hvalue_t log[];       //> print history (immediately follows edge)
 };
 #define edge_log(x)     ((hvalue_t *) ((x) + 1))
 

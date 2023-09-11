@@ -105,6 +105,26 @@ struct vproc_tree {
     struct vproc_map *children;
 } *vproc_root;
 
+#define STATE_EXTRACT
+
+#ifdef STATE_EXTRACT
+
+// Codomain of onestep()
+struct state_extract {
+    hvalue_t vars;
+    hvalue_t choice;
+    hvalue_t ctx;
+};
+
+// Result of onestep()
+struct effect {
+    hvalue_t vars;
+    hvalue_t ctx;
+};
+
+struct dict *extract;
+#endif // STATE_EXTRACT
+
 // One of these per worker thread
 struct worker {
     struct global *global;       // global state shared by all workers
@@ -114,6 +134,10 @@ struct worker {
     struct worker *workers;      // points to array of workers
     unsigned int nworkers;       // total number of workers
     unsigned int vproc;          // virtual processor for pinning
+
+#ifdef STATE_EXTRACT
+    unsigned int se_total, se_hits;
+#endif
 
     // The worker thread loop through three phases:
     //  1: model check part of the state space
@@ -519,6 +543,14 @@ static bool onestep(
 
     struct global *global = w->global;
 
+#ifdef STATE_EXTRACT
+    struct state_extract se = {
+        .vars = sc->vars,
+        .choice = choice,
+        .ctx = ctx
+    };
+#endif
+
     // See if we should first try an interrupt.
     if (interrupt) {
         assert(step->ctx->extended);
@@ -916,8 +948,7 @@ static bool onestep(
     struct edge *edge = walloc(w, sizeof(struct edge) + step->nlog * sizeof(hvalue_t), false, false);
     edge->src = node;
     edge->ctx = ctx;
-    edge->choice = choice_copy;
-    edge->interrupt = interrupt;
+    edge->choice = interrupt ? (hvalue_t) -1 : choice_copy;
     edge->multiplicity = multiplicity;
     edge->after = after;
     edge->ai = step->ai;     step->ai = NULL;
@@ -935,6 +966,18 @@ static bool onestep(
         f->next = w->failures;
         w->failures = f;
     }
+
+#ifdef STATE_EXTRACT
+    bool se_new;
+    mutex_t *se_lock;
+    (void) dict_find_lock(extract, &w->allocator,
+                &se, sizeof(se), &se_new, &se_lock);
+    mutex_release(se_lock);
+    if (!se_new) {
+        w->se_hits++;
+    }
+    w->se_total++;
+#endif
 
     // See if this state has been computed before by looking up the node,
     // or allocate if not.  Sets a lock on that node.
@@ -1293,7 +1336,6 @@ static void twostep(
     hvalue_t ctx,
     struct callstack *cs,
     hvalue_t choice,
-    bool interrupt,
     unsigned int nsteps,
     unsigned int pid,
     struct macrostep *macro
@@ -1316,7 +1358,8 @@ static void twostep(
         panic("twostep: already terminated???");
     }
 
-    if (interrupt) {
+    if (choice == (hvalue_t) -1) {
+        choice = 0;
         assert(step.ctx->extended);
 		assert(ctx_trap_pc(step.ctx) != 0);
         interrupt_invoke(&step);
@@ -1525,7 +1568,6 @@ void path_recompute(struct global *global){
             ctx,
             global->callstacks[pid],
             e->choice,
-            e->interrupt,
             e->nsteps,
             pid,
             macro
@@ -1744,11 +1786,14 @@ static void path_output_macrostep(struct global *global, FILE *file, struct macr
     free(name);
     free(arg);
 
-    char *c = macro->edge->choice == 0 ? NULL : value_json(macro->edge->choice, global);
-    if (c != NULL) {
-        fprintf(file, "      \"choice\": %s,\n", c);
+    if (macro->edge->choice == (hvalue_t) -1) {
+        fprintf(file, "      \"interrupt\": 1,\n");
     }
-    free(c);
+    else if (macro->edge->choice != 0) {
+        char *c = value_json(macro->edge->choice, global);
+        fprintf(file, "      \"choice\": %s,\n", c);
+        free(c);
+    }
 
     fprintf(file, "      \"context\": {\n");
     print_context(global, file, macro->edge->ctx, macro->cs, macro->tid, macro->edge->dst, "        ");
@@ -1952,10 +1997,9 @@ again:
         // Find the edge
         hvalue_t ctx = global->macrosteps[i]->edge->ctx;
         hvalue_t choice = global->macrosteps[i]->edge->choice;
-        bool interrupt = global->macrosteps[i]->edge->interrupt;
         struct edge *e;
         for (e = node->fwd; e != NULL; e = e->fwdnext) {
-            if (e->ctx == ctx && e->choice == choice && (bool) e->interrupt == interrupt) {
+            if (e->ctx == ctx && e->choice == choice) {
                 global->macrosteps[i]->edge = e;
                 break;
             }
@@ -2722,6 +2766,11 @@ static void worker(void *arg){
         if (w->index == 2 % global->nworkers) {
             dict_grow_prepare(global->values);
         }
+#ifdef STATE_EXTRACT
+        if (w->index == 3 % global->nworkers) {
+            dict_grow_prepare(extract);
+        }
+#endif
 
         // Only the coordinator (worker 0) does the following
         if (w->index == 0 /* % global->nworkers */) {
@@ -2823,6 +2872,9 @@ static void worker(void *arg){
         // new buckets.
         dict_make_stable(global->values, w->index);
         dict_make_stable(w->visited, w->index);
+#ifdef STATE_EXTRACT
+        dict_make_stable(extract, w->index);
+#endif
 
         // If a layer was completed, move the buffered nodes into the graph.
         // Worker w can assign node identifiers starting from w->node_id.
@@ -3572,6 +3624,10 @@ int exec_model_checker(int argc, char **argv){
     // Create the hash table that maps states to nodes
     struct dict *visited = dict_new("visited", sizeof(struct node), 0, global->nworkers, false);
 
+#ifdef STATE_EXTRACT
+    extract = dict_new("extract", sizeof(struct effect), 0, global->nworkers, false);
+#endif
+
     // Allocate space for worker info
     struct worker *workers = calloc(global->nworkers, sizeof(*workers));
     for (unsigned int i = 0; i < global->nworkers; i++) {
@@ -3659,8 +3715,15 @@ int exec_model_checker(int argc, char **argv){
 #ifdef REPORT_WORKERS
     double phase1 = 0, phase2a = 0, phase2b = 0, phase3 = 0, start_wait = 0, middle_wait = 0, end_wait = 0;
     unsigned int fix_edge = 0;
+#ifdef STATE_EXTRACT
+    unsigned int se_hits = 0, se_total = 0;
+#endif
     for (unsigned int i = 0; i < global->nworkers; i++) {
         struct worker *w = &workers[i];
+#ifdef STATE_EXTRACT
+        se_hits += w->se_hits;
+        se_total += w->se_total;
+#endif
         allocated += w->allocated;
         phase1 += w->phase1;
         phase2a += w->phase2a;
@@ -3696,7 +3759,16 @@ int exec_model_checker(int argc, char **argv){
         end_wait / global->nworkers);
 #endif
 
-    printf("    * %d states (time %.2lfs, mem=%.3lfGB)\n", global->graph.size, gettime() - before, (double) allocated / (1L << 30));
+    printf("    * %u states (time %.2lfs, mem=%.3lfGB)\n", global->graph.size, gettime() - before, (double) allocated / (1L << 30));
+#ifdef STATE_EXTRACT
+    unsigned int se_hits = 0, se_total = 0;
+    for (unsigned int i = 0; i < global->nworkers; i++) {
+        struct worker *w = &workers[i];
+        se_hits += w->se_hits;
+        se_total += w->se_total;
+    }
+    printf("    * %u/%u hits\n", se_hits, se_total);
+#endif
 
     if (outfile == NULL) {
         exit(0);
@@ -4217,7 +4289,6 @@ int exec_model_checker(int argc, char **argv){
             edge->src = edge->dst = bad->edge->dst;
             edge->ctx = inv_context;
             edge->choice = 0;
-            edge->interrupt = false;
             edge->after = 0;
             edge->ai = NULL;
             edge->nlog = 0;
@@ -4252,7 +4323,6 @@ int exec_model_checker(int argc, char **argv){
             edge->src = edge->dst = bad->edge->dst;
             edge->ctx = inv_context;
             edge->choice = 0;
-            edge->interrupt = false;
             edge->after = 0;
             edge->ai = NULL;
             edge->nlog = 0;
