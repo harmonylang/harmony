@@ -68,6 +68,8 @@ unsigned int run_count;  // counter of #threads
 mutex_t run_mutex;       // to protect count
 mutex_t run_waiting;     // for main thread to wait on
 
+extern bool has_countLabel;     // TODO.  Hack for backward compatibility
+
 // Info about virtual processors (cores or hyperthreads).  Virtual
 // processors are thought of a organized in a tree, for example based
 // on cache affinity.  Each processor is therefore uniquely identified
@@ -649,29 +651,32 @@ static bool onestep(
     }
     else {
         w->si_hits++;
-        if (stc->type == SC_IN_PROGRESS) {
-            struct node_list *nl;
-            if ((nl = w->nl_free) == NULL) {
-                nl = walloc(w, sizeof(struct node_list), false, false);
+        if (!has_countLabel) {
+            if (stc->type == SC_IN_PROGRESS) {
+                struct node_list *nl;
+                if ((nl = w->nl_free) == NULL) {
+                    nl = walloc(w, sizeof(struct node_list), false, false);
+                }
+                else {
+                    w->nl_free = nl->next;
+                }
+                nl->node = node;
+                nl->multiplicity = multiplicity;
+                nl->next = stc->u.in_progress;
+                stc->u.in_progress = nl;
+                mutex_release(si_lock);
+                return true;
             }
-            else {
-                w->nl_free = nl->next;
-            }
-            nl->node = node;
-            nl->multiplicity = multiplicity;
-            nl->next = stc->u.in_progress;
-            stc->u.in_progress = nl;
-            mutex_release(si_lock);
-            return true;
+            assert(stc->type == SC_COMPLETED);
         }
-        assert(stc->type == SC_COMPLETED);
     }
     mutex_release(si_lock);
 #endif
 
     // If this is a new step, perform it
     struct node_list *nl = NULL;
-    if (si_new) {
+    struct step_output *so;
+    if (has_countLabel || si_new) {
         // See if we should first try an interrupt.
         if (interrupt) {
             assert(step->ctx->extended);
@@ -1043,21 +1048,27 @@ static bool onestep(
         memcpy(step_spawned(nso), step->spawned, step->nspawned * sizeof(hvalue_t));
         nso->nspawned = step->nspawned; step->nspawned = 0;
 
-        mutex_acquire(si_lock);
-        assert(stc->type == SC_IN_PROGRESS);
-        nl = stc->u.in_progress;
-        stc->type = SC_COMPLETED;
-        stc->u.completed = nso;
-        mutex_release(si_lock);
+        if (!has_countLabel) {
+            mutex_acquire(si_lock);
+            assert(stc->type == SC_IN_PROGRESS);
+            nl = stc->u.in_progress;
+            stc->type = SC_COMPLETED;
+            stc->u.completed = nso;
+            mutex_release(si_lock);
+        }
+        so = nso;
+    }
+    else {
+        assert(stc->type == SC_COMPLETED);
+        so = stc->u.completed;
     }
 
-    assert(stc->type == SC_COMPLETED);
-    process_step(w, &si, stc->u.completed, node, multiplicity, sc, infinite_loop);
+    process_step(w, &si, so, node, multiplicity, sc, infinite_loop);
     while (nl != NULL) {
         struct state *state = (struct state *) &nl->node[1];
         unsigned int statesz = state_size(state);
         memcpy(sc, state, statesz);
-        process_step(w, &si, stc->u.completed, nl->node, nl->multiplicity, sc, infinite_loop);
+        process_step(w, &si, so, nl->node, nl->multiplicity, sc, infinite_loop);
         struct node_list *next = nl->next;
         nl->next = w->nl_free;
         w->nl_free = nl;
@@ -3622,6 +3633,10 @@ int exec_model_checker(int argc, char **argv){
     struct json_value *jc = dict_lookup(jv->u.map, "code", 4);
     assert(jc->type == JV_LIST);
     global->code = code_init_parse(&engine, jc);
+
+    if (has_countLabel) {
+        printf("    * compability with countLabel\n");
+    }
 
     // Create an initial state.  Start with the initial context.
     struct context *init_ctx = calloc(1, sizeof(struct context) + MAX_CONTEXT_STACK * sizeof(hvalue_t));

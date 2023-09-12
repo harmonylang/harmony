@@ -97,6 +97,8 @@ static hvalue_t alloc_pool_atom, alloc_next_atom;
 static hvalue_t type_bool, type_int, type_str, type_pc, type_list;
 static hvalue_t type_dict, type_set, type_address, type_context;
 
+bool has_countLabel;            // TODO.  Hack for backward compatibility
+
 // Helper function for vt_string()
 static void vt_string_recurse(struct strbuf *sb, const struct var_tree *vt){
     switch (vt->type) {
@@ -2734,6 +2736,11 @@ void *init_Nary(struct dict *map, struct engine *engine){
         exit(1);
     }
     env->fi = fi;
+
+    // TODO.  Hack for backward compatibility
+    if (strcmp(fi->name, "countLabel") == 0) {
+        has_countLabel = true;
+    }
 
     return env;
 }
