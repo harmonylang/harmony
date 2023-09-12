@@ -1,4 +1,4 @@
-// #undef NDEBUG
+#undef NDEBUG
 
 // This file is included at the start of every C source.  It mostly deals with
 // architecture dependent stuff

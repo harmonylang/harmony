@@ -48,12 +48,34 @@ struct step_output {
     hvalue_t after;          // context at end
     struct access_info *ai;  // to detect data races
     uint16_t nsteps;         // # microsteps
+
+    // TODO.  The following 4 can be capture in 2 bits, I think
     bool choosing : 1;       // destination state is choosing
+    bool terminated : 1;     // thread has terminated
+    bool stopped : 1;        // thread has stopped
     bool failed : 1;         // context failed
-    uint16_t nlog : 12;      // size of print history
-    // hvalue_t log[];       // print history (immediately follows edge)
+
+    uint16_t nlog : 6;       // size of print history
+    uint16_t nspawned : 6;   // size of print history
+    // hvalue_t log[];       // print history (immediately follows this structure)
+    // hvalue_t spawned[];   // spawn history (immediately follows log)
 };
 #define step_log(x)          ((hvalue_t *) ((x) + 1))
+#define step_spawned(x)      ((hvalue_t *) ((x) + 1) + (x)->nlog)
+
+struct node_list {
+    struct node_list *next;
+    struct node *node;
+    unsigned int multiplicity;
+};
+
+struct step_condition {
+    enum { SC_IN_PROGRESS, SC_COMPLETED } type;
+    union {
+        struct node_list *in_progress;
+        struct step_output *completed;
+    } u;
+};
 
 // For each (directed) edge in the Kripke structure (a graph of states), we maintain
 // information of how a program can get from the source state to the destination

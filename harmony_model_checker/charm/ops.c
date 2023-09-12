@@ -1345,21 +1345,6 @@ void op_Go(
         value_ctx_failure(step->ctx, &step->engine, "Go: not a context");
         return;
     }
-
-    // Remove from stopbag if it's there
-    hvalue_t count;
-    if (value_tryload(&step->engine, state->stopbag, ctx, &count)) {
-        assert(VALUE_TYPE(count) == VALUE_INT);
-        assert(count != VALUE_INT);
-        count -= 1 << VALUE_BITS;
-        if (count != VALUE_INT) {
-            state->stopbag = value_dict_store(&step->engine, state->stopbag, ctx, count);
-        }
-        else {
-            state->stopbag = value_dict_remove(&step->engine, state->stopbag, ctx);
-        }
-    }
-
     hvalue_t result = ctx_pop(step->ctx);
 
     // Copy the context and reserve an extra hvalue_t
@@ -1374,9 +1359,10 @@ void op_Go(
     struct context *copy = (struct context *) buffer;
     ctx_push(copy, result);
     copy->stopped = false;
-    // TODO.  Check success of context_add
     hvalue_t context = value_put_context(&step->engine, copy);
-    context_add(state, context);
+    if (context_add(state, context) < 0) {
+        panic("op_Go: context_add");
+    }
 #ifdef HEAP_ALLOC
     free(buffer);
 #endif
@@ -1394,6 +1380,12 @@ void op_Go(
         if (pid >= global->nprocesses) {
             panic("op_Go: can't find process");
         }
+    }
+    else {
+        if (step->nspawned == MAX_SPAWN) {
+            value_ctx_failure(step->ctx, &step->engine, "Maximum #threads resumed exceeded");
+        }
+        step->spawned[step->nspawned++] = context;
     }
 }
 
@@ -2085,6 +2077,10 @@ void op_Spawn(
         value_ctx_failure(step->ctx, &step->engine, "Can't spawn in read-only mode");
         return;
     }
+    if (step->nspawned == MAX_SPAWN) {
+        value_ctx_failure(step->ctx, &step->engine, "Maximum #threads spawned exceeded");
+        return;
+    }
 
     hvalue_t thisval = ctx_pop(step->ctx);
     hvalue_t closure = ctx_pop(step->ctx);
@@ -2152,12 +2148,11 @@ void op_Spawn(
     }
     else {
         hvalue_t context = value_put_context(&step->engine, ctx);
-        if (context_add(state, context) < 0) {
-            value_ctx_failure(step->ctx, &step->engine, "spawn: too many threads");
-            return;
-        }
-
         if (step->keep_callstack) {
+            if (context_add(state, context) < 0) {
+                value_ctx_failure(step->ctx, &step->engine, "spawn: too many threads");
+                return;
+            }
             // Called in second phase, so sequential
             global->processes = realloc(global->processes, (global->nprocesses + 1) * sizeof(hvalue_t));
             global->callstacks = realloc(global->callstacks, (global->nprocesses + 1) * sizeof(struct callstack *));
@@ -2171,6 +2166,9 @@ void op_Spawn(
             cs->return_address = (step->ctx->pc << CALLTYPE_BITS) | CALLTYPE_PROCESS;
             global->callstacks[global->nprocesses] = cs;
             global->nprocesses++;
+        }
+        else {
+            step->spawned[step->nspawned++] = context;
         }
     }
 
@@ -3124,7 +3122,7 @@ hvalue_t f_get_ident(struct state *state, struct step *step, hvalue_t *args, uns
         return VALUE_TO_INT(0);
     }
     if (step->ctx->id == 0) {
-        step->ctx->id = ++state->tid_gen;
+        return value_ctx_failure(step->ctx, &step->engine, "get_ident() not implemented currently");
     }
     return VALUE_TO_INT(step->ctx->id);
 }

@@ -8,6 +8,7 @@
 #include "global.h"
 
 #define MAX_PRINT       64
+#define MAX_SPAWN       64
 #define MAX_ARGS         8
 
 void ops_init(struct global *global, struct engine *engine);
@@ -33,6 +34,8 @@ struct step {
     struct callstack *callstack;        // call stack (method invocations)
     unsigned int nlog;                  // output values that are printed
     hvalue_t log[MAX_PRINT];            // #output values
+    unsigned int nspawned;              // #threads spawned
+    hvalue_t spawned[MAX_SPAWN];        // #output values
 };
 
 // Information about a Harmony instruction.  For each there are three methods:
