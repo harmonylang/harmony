@@ -4360,6 +4360,7 @@ int exec_model_checker(int argc, char **argv){
             hvalue_t inv_context = value_put_context(&engine, inv_ctx);
 
             edge = calloc(1, sizeof(struct edge));
+            edge->so = calloc(1, sizeof(struct step_output));
             edge->src = edge->dst = bad->edge->dst;
             edge->ctx = inv_context;
             edge->choice = 0;
@@ -4394,6 +4395,7 @@ int exec_model_checker(int argc, char **argv){
             hvalue_t inv_context = value_put_context(&engine, inv_ctx);
 
             edge = calloc(1, sizeof(struct edge));
+            edge->so = calloc(1, sizeof(struct step_output));
             edge->src = edge->dst = bad->edge->dst;
             edge->ctx = inv_context;
             edge->choice = 0;
