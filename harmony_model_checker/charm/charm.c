@@ -108,20 +108,6 @@ struct vproc_tree {
 #define STATE_EXTRACT
 
 #ifdef STATE_EXTRACT
-
-// Codomain of onestep()
-struct state_extract {
-    hvalue_t vars;
-    hvalue_t choice;
-    hvalue_t ctx;
-};
-
-// Result of onestep()
-struct effect {
-    hvalue_t vars;
-    hvalue_t ctx;
-};
-
 struct dict *extract;
 #endif // STATE_EXTRACT
 
@@ -136,7 +122,7 @@ struct worker {
     unsigned int vproc;          // virtual processor for pinning
 
 #ifdef STATE_EXTRACT
-    unsigned int se_total, se_hits;
+    unsigned int si_total, si_hits;
 #endif
 
     // The worker thread loop through three phases:
@@ -460,7 +446,7 @@ static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock) {
     if (!initialized) {
         next->initialized = true;
         next->reachable = true;
-        next->failed = edge->failed;
+        next->failed = edge->so->failed;
         next->u.ph1.lock = lock;
         next->u.ph1.next = w->results;
         w->results = next;
@@ -494,7 +480,7 @@ static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock) {
 #endif
 
     // If this is a good and normal (non-choosing) edge, check all the invariants.
-    if (!edge->failed && !edge->choosing) {
+    if (!edge->so->failed && !edge->so->choosing) {
         if (w->global->ninvs != 0) {
             unsigned int inv = 0;
             if (!initialized) {      // try self-loop if a new node
@@ -544,7 +530,7 @@ static bool onestep(
     struct global *global = w->global;
 
 #ifdef STATE_EXTRACT
-    struct state_extract se = {
+    struct step_input si = {
         .vars = sc->vars,
         .choice = choice,
         .ctx = ctx
@@ -944,19 +930,35 @@ static bool onestep(
         sc->pre = sc->vars;
     }
 
+#ifdef STATE_EXTRACT
+    bool si_new;
+    mutex_t *si_lock;
+    (void) dict_find_lock(extract, &w->allocator,
+                &si, sizeof(si), &si_new, &si_lock);
+    mutex_release(si_lock);
+    if (!si_new) {
+        w->si_hits++;
+    }
+    w->si_total++;
+#endif
+
+    // Capture the result of executing this step
+    struct step_output *so = walloc(w, sizeof(struct step_output) + step->nlog * sizeof(hvalue_t), false, false);
+    so->after = after;
+    so->ai = step->ai;     step->ai = NULL;
+    memcpy(step_log(so), step->log, step->nlog * sizeof(hvalue_t));
+    so->nlog = step->nlog; step->nlog = 0;
+    so->nsteps = instrcnt;
+    so->choosing = choosing;
+    so->failed = step->ctx->failed;
+
     // Allocate and initialize edge now.
     struct edge *edge = walloc(w, sizeof(struct edge) + step->nlog * sizeof(hvalue_t), false, false);
     edge->src = node;
     edge->ctx = ctx;
     edge->choice = interrupt ? (hvalue_t) -1 : choice_copy;
     edge->multiplicity = multiplicity;
-    edge->after = after;
-    edge->ai = step->ai;     step->ai = NULL;
-    memcpy(edge_log(edge), step->log, step->nlog * sizeof(hvalue_t));
-    edge->nlog = step->nlog; step->nlog = 0;
-    edge->nsteps = instrcnt;
-    edge->choosing = choosing;
-    edge->failed = step->ctx->failed;
+    edge->so = so;
 
     // If a failure has occurred, keep track of that too.
     if (step->ctx->failed) {
@@ -966,18 +968,6 @@ static bool onestep(
         f->next = w->failures;
         w->failures = f;
     }
-
-#ifdef STATE_EXTRACT
-    bool se_new;
-    mutex_t *se_lock;
-    (void) dict_find_lock(extract, &w->allocator,
-                &se, sizeof(se), &se_new, &se_lock);
-    mutex_release(se_lock);
-    if (!se_new) {
-        w->se_hits++;
-    }
-    w->se_total++;
-#endif
 
     // See if this state has been computed before by looking up the node,
     // or allocate if not.  Sets a lock on that node.
@@ -998,7 +988,7 @@ static bool onestep(
         w->results = edge->dst;
         w->count++;
         w->enqueued++;
-        if (!edge->choosing) {
+        if (!edge->so->choosing) {
             check_invariants(w->global, edge->dst, edge->dst, &w->inv_step);
             assert(VALUE_TYPE(edge->dst->state->vars) == VALUE_DICT);
         }
@@ -1529,7 +1519,7 @@ void path_recompute(struct global *global){
     for (unsigned int i = 0; i < global->nmacrosteps; i++) {
         struct macrostep *macro = global->macrosteps[i];
         struct edge *e = macro->edge;
-        // printf("REC %u/%u src=%u dst=%u bef=%p aft=%p\n", i, global->nmacrosteps, e->src->id, e->dst->id, (void *) e->ctx, (void *) e->after);
+        // printf("REC %u/%u src=%u dst=%u bef=%p aft=%p\n", i, global->nmacrosteps, e->src->id, e->dst->id, (void *) e->ctx, (void *) e->so->after);
 
         /* Find the starting context in the list of processes.  Prefer
          * sticking with the same pid if possible.
@@ -1568,13 +1558,13 @@ void path_recompute(struct global *global){
             ctx,
             global->callstacks[pid],
             e->choice,
-            e->nsteps,
+            e->so->nsteps,
             pid,
             macro
         );
-        assert(global->processes[pid] == e->after || e->after == 0);
+        assert(global->processes[pid] == e->so->after || e->so->after == 0);
 
-        // printf("Set %d to %p\n", pid, (void *) e->after);
+        // printf("Set %d to %p\n", pid, (void *) e->so->after);
 
         // Copy thread state
         macro->nprocesses = global->nprocesses;
@@ -1858,9 +1848,9 @@ bool path_edge_conflict(
     struct edge *edge,
     struct edge *edge2
 ) {
-    for (struct access_info *ai = edge->ai; ai != NULL; ai = ai->next) {
+    for (struct access_info *ai = edge->so->ai; ai != NULL; ai = ai->next) {
         if (ai->indices != NULL) {
-            for (struct access_info *ai2 = edge2->ai; ai2 != NULL; ai2 = ai2->next) {
+            for (struct access_info *ai2 = edge2->so->ai; ai2 != NULL; ai2 = ai2->next) {
                 if (ai2->indices != NULL && !(ai->load && ai2->load)) {
                     int min = ai->n < ai2->n ? ai->n : ai2->n;
                     assert(min > 0);
@@ -1909,7 +1899,7 @@ again:
             free(p);
         }
         printf(" ]");
-        current = e->after;
+        current = e->so->after;
     }
     printf(" %u\n", global->macrosteps[global->nmacrosteps - 1]->edge->dst->id);
 #endif
@@ -1917,7 +1907,7 @@ again:
     cbs = calloc(1, sizeof(*cbs));
     cbs->before = global->macrosteps[0]->edge->ctx;
     ncbs = 0;
-    current = global->macrosteps[0]->edge->after;
+    current = global->macrosteps[0]->edge->so->after;
 
     // Figure out where the actual context switches are.  Each context
     // block is a sequence of edges executed by the same thread
@@ -1929,7 +1919,7 @@ again:
             cbs[ncbs].start = i;
             cbs[ncbs].before = global->macrosteps[i]->edge->ctx;
         }
-        current = global->macrosteps[i]->edge->after;
+        current = global->macrosteps[i]->edge->so->after;
     }
     cbs[ncbs].after = current;
     cbs[ncbs++].end = global->nmacrosteps;
@@ -1974,8 +1964,8 @@ again:
             bool conflict = false;
             for (unsigned int x = cbs[i].start; !conflict && x < cbs[i].end; x++) {
                 for (unsigned int y = cbs[j].start; !conflict && y < cbs[j].end; y++) {
-                    if ((global->macrosteps[x]->edge->nlog > 0 &&
-                                    global->macrosteps[y]->edge->nlog > 0) ||
+                    if ((global->macrosteps[x]->edge->so->nlog > 0 &&
+                                    global->macrosteps[y]->edge->so->nlog > 0) ||
                             path_edge_conflict(
                                     global->macrosteps[x]->edge,
                                     global->macrosteps[y]->edge)) {
@@ -2063,7 +2053,7 @@ static void path_trim(struct global *global, struct engine *engine){
 
             macro->trim = fi;
             if (fi->store) {
-                struct access_info *ai = macro->edge->ai;
+                struct access_info *ai = macro->edge->so->ai;
                 assert(ai != NULL);
                 assert(ai->next == NULL);
                 assert(!ai->load);
@@ -2071,8 +2061,8 @@ static void path_trim(struct global *global, struct engine *engine){
                 macro->value = value_put_address(engine, ai->indices, ai->n * sizeof(hvalue_t));
             }
             else if (fi->print) {
-                assert(macro->edge->nlog == 1);
-                hvalue_t *log = edge_log(macro->edge);
+                assert(macro->edge->so->nlog == 1);
+                hvalue_t *log = step_log(macro->edge->so);
                 macro->value = log[0];
             }
 
@@ -2233,7 +2223,7 @@ static enum busywait is_stuck(
 				result = BW_RETURN;
 			}
 			else {
-				enum busywait bw = is_stuck(start, edge->dst, edge->after, change);
+				enum busywait bw = is_stuck(start, edge->dst, edge->so->after, change);
 				switch (bw) {
 				case BW_ESCAPE:
 					node->visited = false;
@@ -3082,7 +3072,7 @@ static void destutter1(struct global *global){
         struct edge **pe, *e;
         for (pe = &parent->fwd; (e = *pe) != NULL;) {
             struct node *n = e->dst;
-            if (e->nlog == 0) {     // epsilon edge (no prints)
+            if (e->so->nlog == 0) {     // epsilon edge (no prints)
                 assert(n->bwd != NULL);
                 if (n->bwd->bwdnext == NULL) {
                     assert(n->bwd == e);
@@ -3132,9 +3122,9 @@ static struct dict *collect_symbols(struct graph *graph){
             continue;
         }
         for (struct edge *e = n->fwd; e != NULL; e = e->fwdnext) {
-            for (unsigned int j = 0; j < e->nlog; j++) {
+            for (unsigned int j = 0; j < e->so->nlog; j++) {
                 bool new;
-                unsigned int *p = dict_insert(symbols, NULL, &edge_log(e)[j], sizeof(hvalue_t), &new);
+                unsigned int *p = dict_insert(symbols, NULL, &step_log(e->so)[j], sizeof(hvalue_t), &new);
                 if (new) {
                     *p = ++symbol_id;
                 }
@@ -3204,7 +3194,7 @@ static void print_transitions(FILE *out, struct dict *symbols, struct edge *edge
     fprintf(out, "      \"transitions\": [\n");
     for (struct edge *e = edges; e != NULL; e = e->fwdnext) {
         bool new;
-        struct strbuf *sb = dict_insert(d, NULL, edge_log(e), e->nlog * sizeof(hvalue_t), &new);
+        struct strbuf *sb = dict_insert(d, NULL, step_log(e->so), e->so->nlog * sizeof(hvalue_t), &new);
         if (new) {
             strbuf_init(sb);
             strbuf_printf(sb, "%d", e->dst->id);
@@ -3625,7 +3615,7 @@ int exec_model_checker(int argc, char **argv){
     struct dict *visited = dict_new("visited", sizeof(struct node), 0, global->nworkers, false);
 
 #ifdef STATE_EXTRACT
-    extract = dict_new("extract", sizeof(struct effect), 0, global->nworkers, false);
+    extract = dict_new("extract", sizeof(struct step_output), 0, global->nworkers, false);
 #endif
 
     // Allocate space for worker info
@@ -3716,13 +3706,13 @@ int exec_model_checker(int argc, char **argv){
     double phase1 = 0, phase2a = 0, phase2b = 0, phase3 = 0, start_wait = 0, middle_wait = 0, end_wait = 0;
     unsigned int fix_edge = 0;
 #ifdef STATE_EXTRACT
-    unsigned int se_hits = 0, se_total = 0;
+    unsigned int si_hits = 0, si_total = 0;
 #endif
     for (unsigned int i = 0; i < global->nworkers; i++) {
         struct worker *w = &workers[i];
 #ifdef STATE_EXTRACT
-        se_hits += w->se_hits;
-        se_total += w->se_total;
+        si_hits += w->si_hits;
+        si_total += w->si_total;
 #endif
         allocated += w->allocated;
         phase1 += w->phase1;
@@ -3761,13 +3751,13 @@ int exec_model_checker(int argc, char **argv){
 
     printf("    * %u states (time %.2lfs, mem=%.3lfGB)\n", global->graph.size, gettime() - before, (double) allocated / (1L << 30));
 #ifdef STATE_EXTRACT
-    unsigned int se_hits = 0, se_total = 0;
+    unsigned int si_hits = 0, si_total = 0;
     for (unsigned int i = 0; i < global->nworkers; i++) {
         struct worker *w = &workers[i];
-        se_hits += w->se_hits;
-        se_total += w->se_total;
+        si_hits += w->si_hits;
+        si_total += w->si_total;
     }
-    printf("    * %u/%u hits\n", se_hits, se_total);
+    printf("    * %u/%u hits\n", si_hits, si_total);
 #endif
 
     if (outfile == NULL) {
@@ -3985,7 +3975,7 @@ int exec_model_checker(int argc, char **argv){
                         }
                     }
                     assert(j < state->bagsize);
-                    if (edge->failed) {
+                    if (edge->so->failed) {
                         fprintf(df, " s%u -> s%u [style=%s label=\"F %u\"]\n",
                             node->id, edge->dst->id,
                             edge->dst->u.ph2.u.to_parent == edge ? "solid" : "dashed",
@@ -4053,26 +4043,26 @@ int exec_model_checker(int argc, char **argv){
                     struct context *ctx = value_get(edge->ctx, NULL);
                     fprintf(df, "            node: %d (%d)\n", edge->dst->id, edge->dst->u.ph2.component);
                     fprintf(df, "            context before: %"PRIx64" pc=%d\n", edge->ctx, ctx->pc);
-                    ctx = value_get(edge->after, NULL);
-                    fprintf(df, "            context after:  %"PRIx64" pc=%d\n", edge->after, ctx->pc);
-                    if (edge->failed != 0) {
+                    ctx = value_get(edge->so->after, NULL);
+                    fprintf(df, "            context after:  %"PRIx64" pc=%d\n", edge->so->after, ctx->pc);
+                    if (edge->so->failed != 0) {
                         fprintf(df, "            failed\n");
                     }
                     if (edge->choice != 0) {
                         fprintf(df, "            choice: %s\n", value_string(edge->choice));
                     }
-                    if (edge->nlog > 0) {
+                    if (edge->so->nlog > 0) {
                         fprintf(df, "            log:");
-                        for (unsigned int j = 0; j < edge->nlog; j++) {
-                            char *p = value_string(edge_log(edge)[j]);
+                        for (unsigned int j = 0; j < edge->so->nlog; j++) {
+                            char *p = value_string(step_log(edge->so)[j]);
                             fprintf(df, " %s", p);
                             free(p);
                         }
                         fprintf(df, "\n");
                     }
-                    if (edge->ai != NULL) {
+                    if (edge->so->ai != NULL) {
                         fprintf(df, "            ai:\n");
-                        for (struct access_info *ai = edge->ai; ai != NULL; ai = ai->next) {
+                        for (struct access_info *ai = edge->so->ai; ai != NULL; ai = ai->next) {
                             char *p = indices_string(ai->indices, ai->n);
                             if (ai->load) {
                                 fprintf(df, "              load %s\n", p);
@@ -4214,7 +4204,7 @@ int exec_model_checker(int argc, char **argv){
         }
 
         // printf("BAD: %d %"PRIx64" %"PRIx64"\n", bad->edge->dst->id,
-        //                    bad->edge->ctx, bad->edge->after);
+        //                    bad->edge->ctx, bad->edge->so->after);
 
         switch (bad->type) {
         case FAIL_SAFETY:
@@ -4289,10 +4279,10 @@ int exec_model_checker(int argc, char **argv){
             edge->src = edge->dst = bad->edge->dst;
             edge->ctx = inv_context;
             edge->choice = 0;
-            edge->after = 0;
-            edge->ai = NULL;
-            edge->nlog = 0;
-            edge->nsteps = 65000;
+            edge->so->after = 0;
+            edge->so->ai = NULL;
+            edge->so->nlog = 0;
+            edge->so->nsteps = 65000;
 
             global->processes = realloc(global->processes, (global->nprocesses + 1) * sizeof(hvalue_t));
             global->callstacks = realloc(global->callstacks, (global->nprocesses + 1) * sizeof(struct callstack *));
@@ -4323,10 +4313,10 @@ int exec_model_checker(int argc, char **argv){
             edge->src = edge->dst = bad->edge->dst;
             edge->ctx = inv_context;
             edge->choice = 0;
-            edge->after = 0;
-            edge->ai = NULL;
-            edge->nlog = 0;
-            edge->nsteps = 65000;
+            edge->so->after = 0;
+            edge->so->ai = NULL;
+            edge->so->nlog = 0;
+            edge->so->nsteps = 65000;
 
             global->processes = realloc(global->processes, (global->nprocesses + 1) * sizeof(hvalue_t));
             global->callstacks = realloc(global->callstacks, (global->nprocesses + 1) * sizeof(struct callstack *));

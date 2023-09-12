@@ -35,6 +35,26 @@ struct access_info {
     bool load : 1;                   // store or del if false
 };
 
+// Codomain of onestep()
+struct step_input {
+    hvalue_t vars;           // initial shared variables
+    hvalue_t choice;         // choice (-1 for interrupt)
+    hvalue_t ctx;            // context at start
+};
+
+// Result of onestep()
+struct step_output {
+    hvalue_t vars;           // updated shared variables
+    hvalue_t after;          // context at end
+    struct access_info *ai;  // to detect data races
+    uint16_t nsteps;         // # microsteps
+    bool choosing : 1;       // destination state is choosing
+    bool failed : 1;         // context failed
+    uint16_t nlog : 12;      // size of print history
+    // hvalue_t log[];       // print history (immediately follows edge)
+};
+#define step_log(x)          ((hvalue_t *) ((x) + 1))
+
 // For each (directed) edge in the Kripke structure (a graph of states), we maintain
 // information of how a program can get from the source state to the destination
 // state.  This structure is directly followed by an array of Harmony values that
@@ -50,24 +70,17 @@ struct access_info {
 //        an index into dst->state.  choice could be the first entry in log
 //        Doing all three could save around 20 bytes per edge.
 struct edge {
-    struct edge *fwdnext;    // forward linked list maintenance
-    hvalue_t ctx;            //< ctx that made the microstep
-    hvalue_t choice;         //< choice if any (-1 indicates interrupt)
-    struct node *src;        // source node
-    struct node *dst;        // destination node
-    hvalue_t after;          //> resulting context
-    struct access_info *ai;  //> to detect data races
-    uint16_t nsteps;         //> # microsteps
-    uint16_t multiplicity;   // multiplicity of context
-    // bool interrupt : 1;      //< set if state change is an interrupt
+    struct edge *fwdnext;        // forward linked list maintenance
+    hvalue_t ctx;                //< ctx that made the microstep
+    hvalue_t choice;             //< choice if any (-1 indicates interrupt)
+    struct node *src;            // source node
+    struct node *dst;            // destination node
+    struct step_output *so;      // result of onestep()
+    unsigned int multiplicity;   // multiplicity of context
+    // bool interrupt : 1;       //< set if state change is an interrupt
     // TODO.  Is choosing == (choice != 0)?
     //        Also, edge->src->choosing is probably the same
-    bool choosing : 1;       //> destination state is choosing
-    bool failed : 1;         //> context failed
-    uint16_t nlog : 12;      //> size of print history
-    // hvalue_t log[];       //> print history (immediately follows edge)
 };
-#define edge_log(x)     ((hvalue_t *) ((x) + 1))
 
 // Charm can detect a variety of failure types:
 enum fail_type {
