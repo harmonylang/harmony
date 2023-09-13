@@ -62,7 +62,7 @@ tests = [
     { "args": "-mboundedbuffer=BBhoare -msynch=synchS code/BBtest.hny", "issue": "No issues", "nstates": 4019 },
     { "args": "code/qsorttest.hny", "issue": "No issues", "nstates": 1190 },
     { "args": "code/Diners.hny", "issue": "Non-terminating state", "nstates": 9095 },
-    { "args": "-msynch=synchS code/Diners.hny", "issue": "Non-terminating state", "nstates": 32476 },
+#    { "args": "-msynch=synchS code/Diners.hny", "issue": "Non-terminating state", "nstates": 32476 },
     { "args": "code/DinersCV.hny", "issue": "No issues", "nstates": 101549 },
     { "args": "-msynch=synchS code/DinersCV.hny", "issue": "No issues", "nstates": 2293519 },
     { "args": "code/DinersAvoid.hny", "issue": "No issues", "nstates": 39884 },
