@@ -623,26 +623,27 @@ void op_Print(const void *env, struct state *state, struct step *step, struct gl
         printf("%s\n", s);
         free(s);
     }
-    global->printed_something = true;
-    if (step->keep_callstack) {
-        strbuf_printf(&step->explain, "pop value (#+) and add to print log");
-        step->explain_args[step->explain_nargs++] = symbol;
-    }
     if (step->nlog == MAX_PRINT) {
         value_ctx_failure(step->ctx, &step->engine, "Print: too many prints");
         return;
     }
     step->log[step->nlog++] = symbol;
-    if (global->dfa != NULL) {
-        int nstate = dfa_step(global->dfa, state->dfa_state, symbol);
-        if (nstate < 0) {
-            char *p = value_string(symbol);
-            value_ctx_failure(step->ctx, &step->engine, "Behavior failure on %s", p);
-            free(p);
-            return;
-        }
-        state->dfa_state = nstate;
+    global->printed_something = true;
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "pop value (#+) and add to print log");
+        step->explain_args[step->explain_nargs++] = symbol;
 
+        // TODO.  This is currently duplicated in onestep/twostep
+        if (global->dfa != NULL) {
+            int nstate = dfa_step(global->dfa, state->dfa_state, symbol);
+            if (nstate < 0) {
+                char *p = value_string(symbol);
+                value_ctx_failure(step->ctx, &step->engine, "Behavior failure on %s", p);
+                free(p);
+                return;
+            }
+            state->dfa_state = nstate;
+        }
     }
     step->ctx->pc++;
 }

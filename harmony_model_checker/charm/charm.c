@@ -517,8 +517,29 @@ static void process_step(
 
     sc->vars = so->vars;
 
+    if (global->dfa != NULL) {
+        for (unsigned int i = 0; i < so->nlog; i++) {
+            int nstate = dfa_step(global->dfa, sc->dfa_state, step_log(so)[i]);
+            if (nstate < 0) {
+                panic("TODO process_step behavior failure");
+                // char *p = value_string(step_log(so)[i]);
+                // value_ctx_failure(step->ctx, &step->engine, "Behavior failure on %s", p);
+                // free(p);
+                // return;
+            }
+            sc->dfa_state = nstate;
+        }
+    }
+
     // Remove old context from the bag
     context_remove(sc, si->ctx);
+
+    // Update state with spawned and resumed threads.
+    for (unsigned int i = 0; i < so->nspawned; i++) {
+        if (context_add(sc, step_spawned(so)[i]) < 0) {
+            panic("too many threads 1");
+        }
+    }
 
     // Add new context to state unless it's terminated or stopped.
     int new_index = -1;
@@ -547,13 +568,6 @@ static void process_step(
     else {
         sc->chooser = -1;
         sc->pre = sc->vars;
-    }
-
-    // Update state with spawned and resumed threads.
-    for (unsigned int i = 0; i < so->nspawned; i++) {
-        if (context_add(sc, step_spawned(so)[i]) < 0) {
-            panic("too many threads 1");
-        }
     }
 
     // Allocate and initialize edge now.
@@ -618,7 +632,6 @@ static bool onestep(
     hvalue_t ctx,           // context identifier
     struct step *step,      // step info
     hvalue_t choice,        // if about to make a choice, which choice?
-    bool interrupt,         // start with invoking interrupt handler
     bool infloop_detect,    // try to detect infloop from the start
     int multiplicity       // #contexts that are in the current state
 ) {
@@ -678,7 +691,8 @@ static bool onestep(
     struct step_output *so;
     if (has_countLabel || si_new) {
         // See if we should first try an interrupt.
-        if (interrupt) {
+        if (choice == (hvalue_t) -1) {
+            choice = 0;
             assert(step->ctx->extended);
             assert(ctx_trap_pc(step->ctx) != 0);
             interrupt_invoke(step);
@@ -1146,14 +1160,14 @@ static void make_step(
     //        This could possibly happen if the thread was stopped in an atomic
     //        section and is then later restarted.
     if (sc->chooser < 0 && cc->extended && ctx_trap_pc(cc) != 0 && !cc->interruptlevel) {
-        bool succ = onestep(w, node, sc, ctx, &step, choice, true, false, multiplicities(state)[ctx_index]);
+        bool succ = onestep(w, node, sc, ctx, &step, (hvalue_t) -1, false, multiplicities(state)[ctx_index]);
         assert(step.engine.allocator == &w->allocator);
         if (!succ) {        // ran into an infinite loop
             step.nlog = 0;
             memcpy(sc, state, statesz);
             memcpy(&w->ctx, cc, size);
             assert(step.engine.allocator == &w->allocator);
-            (void) onestep(w, node, sc, ctx, &step, choice, true, true, multiplicities(state)[ctx_index]);
+            (void) onestep(w, node, sc, ctx, &step, (hvalue_t) -1, true, multiplicities(state)[ctx_index]);
             assert(step.engine.allocator == &w->allocator);
         }
 
@@ -1165,14 +1179,14 @@ static void make_step(
 
     // Explore the state normally (not as an interrupt).
     sc->chooser = -1;
-    bool succ = onestep(w, node, sc, ctx, &step, choice, false, false, multiplicities(state)[ctx_index]);
+    bool succ = onestep(w, node, sc, ctx, &step, choice, false, multiplicities(state)[ctx_index]);
     assert(step.engine.allocator == &w->allocator);
     if (!succ) {        // ran into an infinite loop
         step.nlog = 0;
         memcpy(sc, state, statesz);
         memcpy(&w->ctx, cc, size);
         assert(step.engine.allocator == &w->allocator);
-        (void) onestep(w, node, sc, ctx, &step, choice, false, true, multiplicities(state)[ctx_index]);
+        (void) onestep(w, node, sc, ctx, &step, choice, true, multiplicities(state)[ctx_index]);
         assert(step.engine.allocator == &w->allocator);
     }
 
