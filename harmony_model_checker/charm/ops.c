@@ -1363,15 +1363,16 @@ void op_Go(
     ctx_push(copy, result);
     copy->stopped = false;
     hvalue_t context = value_put_context(&step->engine, copy);
-    if (context_add(state, context) < 0) {
-        panic("op_Go: context_add");
-    }
 #ifdef HEAP_ALLOC
     free(buffer);
 #endif
     step->ctx->pc++;
 
     if (step->keep_callstack) {
+        if (context_add(state, context) < 0) {
+            panic("op_Go: context_add");
+        }
+
         // Find the process
         unsigned int pid;
         for (pid = 0; pid < global->nprocesses; pid++) {
