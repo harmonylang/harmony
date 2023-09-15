@@ -819,6 +819,11 @@ static void do_return(struct state *state, struct step *step, struct global *glo
 // To find data races, we track for each step which variables are read and
 // written.  This also turns out to be useful for optimizing counterexamples.
 static void ai_add(struct global *global, struct step *step, hvalue_t *indices, unsigned int n, bool load){
+    // Assertions and invariants do not conflict with normal ops.
+    if (step->ctx->readonly) {
+        return;
+    }
+
     struct allocator *al = step->engine.allocator;
     if (al != NULL) {
         // Find the end of the list

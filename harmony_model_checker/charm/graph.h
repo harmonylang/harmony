@@ -86,22 +86,20 @@ struct step_condition {
 // but, for memory efficiency, not the details of the microsteps themselves.  If
 // a failure is found, that information is recovered by re-executing the path to
 // the faulty state.
-//
-// TODO.  Can replace ctx with ctx_index into src->state, but should also
-//        support, say, -1 for inv_context.  after could be replaced with
-//        an index into dst->state.  choice could be the first entry in log
-//        Doing all three could save around 20 bytes per edge.
 struct edge {
     struct edge *fwdnext;        // forward linked list maintenance
+
+    // TODO. The following three can be struct dict_assoc *
     hvalue_t ctx;                //< ctx that made the microstep
     hvalue_t choice;             //< choice if any (-1 indicates interrupt)
-    struct node *src;            // source node
-    struct node *dst;            // destination node
     struct step_output *so;      // result of onestep()
-    unsigned int multiplicity;   // multiplicity of context
-    // bool interrupt : 1;       //< set if state change is an interrupt
-    // TODO.  Is choosing == (choice != 0)?
-    //        Also, edge->src->choosing is probably the same
+
+    struct node *src;            // source node (TODO. Do we need this?)
+    struct node *dst;            // destination node
+
+    // TODO.  The multiplicity can be looked up in the source state
+    unsigned short multiplicity; // multiplicity of context
+    bool failed : 1;             // transition failed.
 };
 
 // Charm can detect a variety of failure types:

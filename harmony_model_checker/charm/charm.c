@@ -449,7 +449,7 @@ static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock) {
     if (!initialized) {
         next->initialized = true;
         next->reachable = true;
-        next->failed = edge->so->failed;
+        next->failed = edge->failed;
         next->u.ph1.lock = lock;
         next->u.ph1.next = w->results;
         w->results = next;
@@ -483,7 +483,7 @@ static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock) {
 #endif
 
     // If this is a good and normal (non-choosing) edge, check all the invariants.
-    if (!edge->so->failed && !edge->so->choosing) {
+    if (!edge->failed && !edge->so->choosing) {
         if (w->global->ninvs != 0) {
             unsigned int inv = 0;
             if (!initialized) {      // try self-loop if a new node
@@ -516,20 +516,6 @@ static void process_step(
     struct global *global = w->global;
 
     sc->vars = so->vars;
-
-    if (global->dfa != NULL) {
-        for (unsigned int i = 0; i < so->nlog; i++) {
-            int nstate = dfa_step(global->dfa, sc->dfa_state, step_log(so)[i]);
-            if (nstate < 0) {
-                panic("TODO process_step behavior failure");
-                // char *p = value_string(step_log(so)[i]);
-                // value_ctx_failure(step->ctx, &step->engine, "Behavior failure on %s", p);
-                // free(p);
-                // return;
-            }
-            sc->dfa_state = nstate;
-        }
-    }
 
     // Remove old context from the bag
     context_remove(sc, si->ctx);
@@ -577,9 +563,25 @@ static void process_step(
     edge->choice = si->choice;
     edge->multiplicity = multiplicity;
     edge->so = so;
+    edge->failed = so->failed;
+
+    if (global->dfa != NULL) {
+        for (unsigned int i = 0; i < so->nlog; i++) {
+            int nstate = dfa_step(global->dfa, sc->dfa_state, step_log(so)[i]);
+            if (nstate < 0) {
+                struct failure *f = new_alloc(struct failure);
+                f->type = FAIL_BEHAVIOR;
+                f->edge = edge;
+                edge->failed = true;
+                add_failure(&global->failures, f);
+                break;
+            }
+            sc->dfa_state = nstate;
+        }
+    }
 
     // If a failure has occurred, keep track of that too.
-    if (so->failed) {
+    if (edge->failed) {
         struct failure *f = new_alloc(struct failure);
         f->type = infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
         f->edge = edge;
@@ -4071,7 +4073,7 @@ int exec_model_checker(int argc, char **argv){
                         }
                     }
                     assert(j < state->bagsize);
-                    if (edge->so->failed) {
+                    if (edge->failed) {
                         fprintf(df, " s%u -> s%u [style=%s label=\"F %u\"]\n",
                             node->id, edge->dst->id,
                             edge->dst->u.ph2.u.to_parent == edge ? "solid" : "dashed",
@@ -4143,7 +4145,7 @@ int exec_model_checker(int argc, char **argv){
                     fprintf(df, "            context before: %"PRIx64" pc=%d\n", edge->ctx, ctx->pc);
                     ctx = value_get(edge->so->after, NULL);
                     fprintf(df, "            context after:  %"PRIx64" pc=%d\n", edge->so->after, ctx->pc);
-                    if (edge->so->failed != 0) {
+                    if (edge->failed != 0) {
                         fprintf(df, "            failed\n");
                     }
                     if (edge->choice != 0) {
