@@ -506,6 +506,7 @@ static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock) {
 
 static void process_step(
     struct worker *w,
+    struct engine *engine,
     struct step_input *si,
     struct step_output *so,
     struct node *node,
@@ -526,10 +527,29 @@ static void process_step(
             panic("too many threads 1");
         }
     }
+    for (unsigned int i = 0; i < so->nunstopped; i++) {
+        hvalue_t ctx = step_unstopped(so)[i];
+        // TODO.  Write function (same code in op_Go)
+        hvalue_t count;
+        if (value_tryload(engine, sc->stopbag, ctx, &count)) {
+            assert(VALUE_TYPE(count) == VALUE_INT);
+            assert(count != VALUE_INT);
+            count -= 1 << VALUE_BITS;
+            if (count != VALUE_INT) {
+                sc->stopbag = value_dict_store(engine, sc->stopbag, ctx, count);
+            }
+            else {
+                sc->stopbag = value_dict_remove(engine, sc->stopbag, ctx);
+            }
+        }
+    }
 
-    // Add new context to state unless it's terminated or stopped.
+    // Add new context to state unless it's terminated.
     int new_index = -1;
-    if (!so->terminated && !so->stopped) {
+    if (so->stopped) {
+        sc->stopbag = value_bag_add(engine, sc->stopbag, so->after, 1);
+    }
+    else if (!so->terminated) {
         new_index = context_add(sc, so->after);
         if (new_index < 0) {
             panic("too many threads 0");
@@ -1047,7 +1067,8 @@ static bool onestep(
 
         // Capture the result of executing this step
         struct step_output *nso = walloc(w, sizeof(struct step_output) +
-                (step->nlog + step->nspawned) * sizeof(hvalue_t), false, false);
+                (step->nlog + step->nspawned + step->nunstopped) * sizeof(hvalue_t),
+                false, false);
         nso->vars = sc->vars;
         nso->after = value_put_context(&step->engine, step->ctx);
         nso->ai = step->ai;     step->ai = NULL;
@@ -1059,10 +1080,13 @@ static bool onestep(
         nso->stopped = stopped;
         nso->failed = step->ctx->failed;
 
+        // Copy the logs
         memcpy(step_log(nso), step->log, step->nlog * sizeof(hvalue_t));
         nso->nlog = step->nlog; step->nlog = 0;
         memcpy(step_spawned(nso), step->spawned, step->nspawned * sizeof(hvalue_t));
         nso->nspawned = step->nspawned; step->nspawned = 0;
+        memcpy(step_unstopped(nso), step->unstopped, step->nunstopped * sizeof(hvalue_t));
+        nso->nunstopped = step->nunstopped; step->nunstopped = 0;
 
         if (!has_countLabel) {
             mutex_acquire(si_lock);
@@ -1079,12 +1103,12 @@ static bool onestep(
         so = stc->u.completed;
     }
 
-    process_step(w, &si, so, node, multiplicity, sc, infinite_loop);
+    process_step(w, &step->engine, &si, so, node, multiplicity, sc, infinite_loop);
     while (nl != NULL) {
         struct state *state = (struct state *) &nl->node[1];
         unsigned int statesz = state_size(state);
         memcpy(sc, state, statesz);
-        process_step(w, &si, so, nl->node, nl->multiplicity, sc, infinite_loop);
+        process_step(w, &step->engine, &si, so, nl->node, nl->multiplicity, sc, infinite_loop);
         struct node_list *next = nl->next;
         nl->next = w->nl_free;
         w->nl_free = nl;
@@ -1557,7 +1581,10 @@ static void twostep(
     hvalue_t after = value_put_context(&step.engine, step.ctx);
 
     // Add new context to state unless it's terminated or stopped
-    if (!step.ctx->terminated && !step.ctx->stopped) {
+    if (step.ctx->stopped) {
+        sc->stopbag = value_bag_add(&step.engine, sc->stopbag, after, 1);
+    }
+    else if (!step.ctx->terminated) {
         // TODO.  Check failure of context_add
         (void) context_add(sc, after);
     }
@@ -3670,6 +3697,7 @@ int exec_model_checker(int argc, char **argv){
     state->bagsize = 1;
     state_contexts(state)[0] = ictx;
     multiplicities(state)[0] = 1;
+    state->stopbag = VALUE_DICT;
     state->dfa_state = global->dfa == NULL ? 0 : dfa_initial(global->dfa);
 
     // Needed for second phase
@@ -3920,13 +3948,11 @@ int exec_model_checker(int argc, char **argv){
             if (comp->size == 0) {
                 comp->rep = node;
                 comp->all_same = value_state_all_eternal(node_state(node))
-                    // TODO && value_ctx_all_eternal(node_state(node)->stopbag);
-                    ;
+                    && value_ctx_all_eternal(node_state(node)->stopbag);
             }
-            else if (node_state(node)->vars != node_state(comp->rep)->vars ||
-                        !value_state_all_eternal(node_state(node))
-                        // TODO || !value_ctx_all_eternal(node_state(node)->stopbag)) {
-                        ){
+            else if (node_state(node)->vars != node_state(comp->rep)->vars
+                        || !value_state_all_eternal(node_state(node))
+                        || !value_ctx_all_eternal(node_state(node)->stopbag)) {
                 comp->all_same = false;
             }
             comp->size++;
@@ -4121,7 +4147,6 @@ int exec_model_checker(int argc, char **argv){
                 for (unsigned int i = 0; i < state->bagsize; i++) {
                     fprintf(df, "      %"PRI_HVAL": %u\n", state_contexts(state)[i], multiplicities(state)[i]);
                 }
-#ifdef TODO
                 if (state->stopbag != VALUE_DICT) {
                     fprintf(df, "    stopbag:\n");
                     unsigned int size;
@@ -4131,7 +4156,6 @@ int exec_model_checker(int argc, char **argv){
                         fprintf(df, "      %"PRI_HVAL": %d\n", vals[2*i], (int) VALUE_FROM_INT(vals[2*i+1]));;
                     }
                 }
-#endif
                 // fprintf(df, "    len: %u %u\n", node->len, node->steps);
                 if (node->failed) {
                     fprintf(df, "    failed\n");

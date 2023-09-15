@@ -34,8 +34,10 @@ struct step {
     struct callstack *callstack;        // call stack (method invocations)
     unsigned int nlog;                  // output values that are printed
     hvalue_t log[MAX_PRINT];            // #output values
-    unsigned int nspawned;              // #threads spawned
-    hvalue_t spawned[MAX_SPAWN];        // #output values
+    unsigned int nspawned;              // #threads spawned or resumed
+    hvalue_t spawned[MAX_SPAWN];        // threads to add to context bag
+    unsigned int nunstopped;            // #threads removed from stopbag
+    hvalue_t unstopped[MAX_SPAWN];      // threads to remove from stopbag
 };
 
 // Information about a Harmony instruction.  For each there are three methods:

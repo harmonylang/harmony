@@ -55,13 +55,16 @@ struct step_output {
     bool stopped : 1;        // thread has stopped
     bool failed : 1;         // context failed
 
-    uint16_t nlog : 6;       // size of print history
-    uint16_t nspawned : 6;   // size of print history
+    uint16_t nlog : 3;       // # values printed
+    uint16_t nspawned : 6;   // # contexts started
+    uint16_t nunstopped : 3; // # contexts removed from stopbag
     // hvalue_t log[];       // print history (immediately follows this structure)
     // hvalue_t spawned[];   // spawn history (immediately follows log)
+    // hvalue_t unstopped[]; // unstop history (immediately follows spawn history)
 };
 #define step_log(x)          ((hvalue_t *) ((x) + 1))
 #define step_spawned(x)      ((hvalue_t *) ((x) + 1) + (x)->nlog)
+#define step_unstopped(x)    ((hvalue_t *) ((x) + 1) + (x)->nlog + (x)->nspawned)
 
 struct node_list {
     struct node_list *next;

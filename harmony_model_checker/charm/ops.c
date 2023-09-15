@@ -1374,6 +1374,21 @@ void op_Go(
     step->ctx->pc++;
 
     if (step->keep_callstack) {
+        // Remove old context from stopbag if it's there
+        hvalue_t count;
+        if (value_tryload(&step->engine, state->stopbag, ctx, &count)) {
+            assert(VALUE_TYPE(count) == VALUE_INT);
+            assert(count != VALUE_INT);
+            count -= 1 << VALUE_BITS;
+            if (count != VALUE_INT) {
+                state->stopbag = value_dict_store(&step->engine, state->stopbag, ctx, count);
+            }
+            else {
+                state->stopbag = value_dict_remove(&step->engine, state->stopbag, ctx);
+            }
+        }
+
+        // Add new context to context bag
         if (context_add(state, context) < 0) {
             panic("op_Go: context_add");
         }
@@ -1391,6 +1406,10 @@ void op_Go(
         }
     }
     else {
+        if (step->nunstopped == MAX_SPAWN) {
+            value_ctx_failure(step->ctx, &step->engine, "Maximum #threads unstopped exceeded");
+        }
+        step->unstopped[step->nunstopped++] = ctx;
         if (step->nspawned == MAX_SPAWN) {
             value_ctx_failure(step->ctx, &step->engine, "Maximum #threads resumed exceeded");
         }
