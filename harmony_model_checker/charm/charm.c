@@ -1659,12 +1659,27 @@ void path_recompute(struct global *global){
     for (unsigned int i = 0; i < global->nmacrosteps; i++) {
         struct macrostep *macro = global->macrosteps[i];
         struct edge *e = macro->edge;
-        // printf("REC %u/%u src=%u dst=%u bef=%p aft=%p\n", i, global->nmacrosteps, e->src->id, e->dst->id, (void *) e->ctx, (void *) e->so->after);
+        hvalue_t ctx = e->ctx;
+        // printf("REC %u/%u src=%u dst=%u bef=%p aft=%p\n", i, global->nmacrosteps, e->src->id, e->dst->id, (void *) ctx, (void *) e->so->after);
+
+        if (e->invariant_chk) {
+            global->processes = realloc(global->processes, (global->nprocesses + 1) * sizeof(hvalue_t));
+            global->callstacks = realloc(global->callstacks, (global->nprocesses + 1) * sizeof(struct callstack *));
+            global->processes[global->nprocesses] = ctx;
+            struct context *cc = value_get(ctx, NULL);
+            struct callstack *cs = new_alloc(struct callstack);
+            cs->pc = cc->pc;
+            cs->arg = VALUE_LIST;
+            cs->vars = VALUE_DICT;
+            // TODO next line
+            cs->return_address = (cc->pc << CALLTYPE_BITS) | CALLTYPE_PROCESS;
+            global->callstacks[global->nprocesses] = cs;
+            global->nprocesses++;
+        }
 
         /* Find the starting context in the list of processes.  Prefer
          * sticking with the same pid if possible.
          */
-        hvalue_t ctx = e->ctx;
         unsigned int pid;
         if (global->processes[global->oldpid] == ctx) {
             pid = global->oldpid;
@@ -1680,22 +1695,8 @@ void path_recompute(struct global *global){
             global->oldpid = pid;
         }
         if (pid >= global->nprocesses) {
-#ifdef OLD_INVARIANT
             printf("PID %p %u %u\n", (void *) ctx, pid, global->nprocesses);
             panic("bad pid");
-#else
-            global->processes = realloc(global->processes, (global->nprocesses + 1) * sizeof(hvalue_t));
-            global->callstacks = realloc(global->callstacks, (global->nprocesses + 1) * sizeof(struct callstack *));
-            global->processes[global->nprocesses] = ctx;
-            struct callstack *cs = new_alloc(struct callstack);
-            cs->pc = 0;                 // TODO
-            cs->arg = VALUE_LIST;
-            cs->vars = VALUE_DICT;
-            // TODO next line
-            cs->return_address = (0 << CALLTYPE_BITS) | CALLTYPE_PROCESS;
-            global->callstacks[global->nprocesses] = cs;
-            global->nprocesses++;
-#endif
         }
         assert(pid < global->nprocesses);
 
@@ -2451,8 +2452,10 @@ void do_work1(struct worker *w, struct node *node){
             make_step(w, node, i, 0);
         }
 
-        // Also check the invariants
-        chk_invs(w, node);
+        // Also check the invariants after initialization
+        if (state->pre != 0) {
+            chk_invs(w, node);
+        }
     }
 }
 
