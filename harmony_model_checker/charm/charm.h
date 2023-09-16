@@ -11,6 +11,7 @@
 // a cost that we do not want to level against all invariants, we keep track of
 // whether an invariant refers to the pre state of a transition.
 struct invariant {
+    hvalue_t context;
     unsigned int pc;                // location of invariant code
     // TODO.  May not need the following since we can get it from env
     bool pre;                       // uses "pre" or not

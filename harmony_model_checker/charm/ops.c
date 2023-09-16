@@ -1432,9 +1432,22 @@ void op_Finally(const void *env, struct state *state, struct step *step, struct 
 void op_Invariant(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_Invariant *ei = env;
 
+    // Create a context for the invariant
+    char context[sizeof(struct context) +
+                        (ctx_extent + 2) * sizeof(hvalue_t)];
+    struct context *ctx = (struct context *) context;
+    memset(ctx, 0, sizeof(*ctx));
+    ctx->pc = ei->pc;
+    ctx->vars = VALUE_DICT;
+    ctx->readonly = 1;
+    ctx->atomic = 1;
+    ctx->atomicFlag = true;
+    hvalue_t invctx = value_put_context(&step->engine, ctx);
+
     mutex_acquire(&global->inv_lock);
     global->invs = realloc(global->invs, (global->ninvs + 1) * sizeof(*global->invs));
     struct invariant *inv = &global->invs[global->ninvs++];
+    inv->context = invctx;
     inv->pc = ei->pc;
     inv->pre = ei->pre;
     if (ei->pre) {

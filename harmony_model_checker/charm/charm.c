@@ -107,11 +107,7 @@ struct vproc_tree {
     struct vproc_map *children;
 } *vproc_root;
 
-#define STATE_EXTRACT
-
-#ifdef STATE_EXTRACT
-struct dict *extract;
-#endif // STATE_EXTRACT
+struct dict *extract;            // TODO.  Rename
 
 // One of these per worker thread
 struct worker {
@@ -122,11 +118,8 @@ struct worker {
     struct worker *workers;      // points to array of workers
     unsigned int nworkers;       // total number of workers
     unsigned int vproc;          // virtual processor for pinning
-
-#ifdef STATE_EXTRACT
     unsigned int si_total, si_hits;
     struct node_list *nl_free;
-#endif
 
     // The worker thread loop through three phases:
     //  1: model check part of the state space
@@ -482,6 +475,7 @@ static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock) {
     }
 #endif
 
+#ifdef OLD_INVARIANTS
     // If this is a good and normal (non-choosing) edge, check all the invariants.
     if (!edge->failed && !edge->so->choosing) {
         if (w->global->ninvs != 0) {
@@ -502,6 +496,7 @@ static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock) {
             }
         }
     }
+#endif // OLD_INVARIANTS
 }
 
 static void process_step(
@@ -620,22 +615,7 @@ static void process_step(
                 sc, size, &new, &lock);
     edge->dst = (struct node *) &hn[1];
 
-#ifdef NO_PROCESSING   // I use this sometime for profiling
-    if (new) {
-        edge->dst->state = (struct state *) &edge->dst[1];
-        assert(VALUE_TYPE(edge->dst->state->vars) == VALUE_DICT);
-        edge->dst->next = w->results;
-        w->results = edge->dst;
-        w->count++;
-        w->enqueued++;
-        if (!edge->so->choosing) {
-            check_invariants(w->global, edge->dst, edge->dst, &w->inv_step);
-            assert(VALUE_TYPE(edge->dst->state->vars) == VALUE_DICT);
-        }
-    }
-#else
     process_edge(w, edge, lock);
-#endif
 }
 
 // This is the main workhorse function of model checking: explore a state and
@@ -666,7 +646,6 @@ static bool onestep(
     struct global *global = w->global;
     bool infinite_loop = false;
 
-#ifdef STATE_EXTRACT
     // See if we did this already
     struct step_input si = {
         .vars = sc->vars,
@@ -706,7 +685,6 @@ static bool onestep(
         }
     }
     mutex_release(si_lock);
-#endif
 
     // If this is a new step, perform it
     struct node_list *nl = NULL;
@@ -1118,6 +1096,64 @@ static bool onestep(
     return true;
 }
 
+// This will first attempt to run onestep() with delayed detection
+// of infinite loops (for efficiency).  If an infinite loop is detect,
+// if will run it again immediately looking for infinite loops to find
+// the shortest counterexample.
+static void trystep(
+    struct worker *w,       // thread info
+    struct node *node,      // starting node
+    struct state *state,    // actual state
+    hvalue_t ctx,           // context identifier
+    struct context *cc,     // value of context
+    struct step *step,      // step info
+    hvalue_t choice,        // if about to make a choice, which choice?
+    unsigned int multiplicity,
+    bool invariant
+) {
+    // Make a copy of the state.
+    //
+    // TODO. Would it not be more efficient to have a fixed state variable
+    //       in the worker structure, similar to what we do for contexts (w->ctx)?
+    //
+    // TODO. Don't need to copy if ctx in readonly mode
+    unsigned int statesz = state_size(state);
+    // Room to grown in copy for op_Spawn
+#ifdef HEAP_ALLOC
+    char *copy = malloc(statesz + 64*sizeof(hvalue_t));
+#else
+    char copy[statesz + 64*sizeof(hvalue_t)];
+#endif
+    struct state *sc = (struct state *) copy;
+    memcpy(sc, state, statesz);
+    sc->chooser = -1;
+
+    // Make a copy of the context
+    assert(!cc->terminated);
+    assert(!cc->failed);
+    memcpy(&w->ctx, cc, ctx_size(cc));
+    step->ctx = &w->ctx;
+
+    if (invariant) {
+        hvalue_t args[2];
+        args[0] = args[1] = sc->vars;
+        value_ctx_push(step->ctx, value_put_list(&step->engine, args, sizeof(args)));
+    }
+
+    bool succ = onestep(w, node, sc, ctx, step, choice, false, multiplicity);
+    if (!succ) {        // ran into an infinite loop
+        // TODO.  Need probably more cleanup of step, like ai
+        step->nlog = step->nspawned = step->nunstopped = 0;
+        memcpy(sc, state, statesz);
+        memcpy(&w->ctx, cc, ctx_size(cc));
+        (void) onestep(w, node, sc, ctx, step, choice, true, multiplicity);
+    }
+
+#ifdef HEAP_ALLOC
+    free(copy);
+#endif
+}
+
 // This function considers a state (pointed to by node) and a thread to run with
 // state ctx. If it is a "choosing state" (the thread is about to execute a
 // Choose instruction), then choice contains that choice to be tried.  Since
@@ -1144,9 +1180,9 @@ static bool onestep(
 //  4) restarting 3) if an infinite loop is detected.
 static void make_step(
     struct worker *w,
-    struct node *node,
-    unsigned int ctx_index,
-    hvalue_t choice       // if about to make a choice, which choice?
+    struct node *node,      // the state we're exploring
+    unsigned int ctx_index, // the context that we're running
+    hvalue_t choice         // if about to make a choice, which choice?
 ) {
     struct step step;
     memset(&step, 0, sizeof(step));
@@ -1156,69 +1192,45 @@ static void make_step(
     struct state *state = node_state(node);
     hvalue_t ctx = state_contexts(state)[ctx_index];
 
-    // Make a copy of the state.
-    //
-    // TODO. Would it not be more efficient to have a fixed state variable
-    //       in the worker structure, similar to what we do for contexts (w->ctx)?
-    unsigned int statesz = state_size(state);
-    // Room to grown in copy for op_Spawn
-#ifdef HEAP_ALLOC
-    char *copy = malloc(statesz + 64*sizeof(hvalue_t));
-#else
-    char copy[statesz + 64*sizeof(hvalue_t)];
-#endif
-    struct state *sc = (struct state *) copy;
-    memcpy(sc, state, statesz);
-    assert(step.engine.allocator == &w->allocator);
-
-    // Make a copy of the context
+    // Get the context
     unsigned int size;
     struct context *cc = value_get(ctx, &size);
     assert(ctx_size(cc) == size);
-    assert(!cc->terminated);
-    assert(!cc->failed);
-    memcpy(&w->ctx, cc, size);
-    assert(step.engine.allocator == &w->allocator);
-    step.ctx = &w->ctx;
 
     // See if we need to interrupt
     // TODO.  Should probably also check that the context is not in atomic mode.
     //        This could possibly happen if the thread was stopped in an atomic
     //        section and is then later restarted.
-    if (sc->chooser < 0 && cc->extended && ctx_trap_pc(cc) != 0 && !cc->interruptlevel) {
-        bool succ = onestep(w, node, sc, ctx, &step, (hvalue_t) -1, false, multiplicities(state)[ctx_index]);
-        assert(step.engine.allocator == &w->allocator);
-        if (!succ) {        // ran into an infinite loop
-            step.nlog = 0;
-            memcpy(sc, state, statesz);
-            memcpy(&w->ctx, cc, size);
-            assert(step.engine.allocator == &w->allocator);
-            (void) onestep(w, node, sc, ctx, &step, (hvalue_t) -1, true, multiplicities(state)[ctx_index]);
-            assert(step.engine.allocator == &w->allocator);
-        }
-
-        // Restore the state
-        memcpy(sc, state, statesz);
-        memcpy(&w->ctx, cc, size);
-        assert(step.engine.allocator == &w->allocator);
+    if (state->chooser < 0 && cc->extended && ctx_trap_pc(cc) != 0 && !cc->interruptlevel) {
+        trystep(w, node, state, ctx, cc, &step, (hvalue_t) -1, multiplicities(state)[ctx_index], false);
     }
 
     // Explore the state normally (not as an interrupt).
-    sc->chooser = -1;
-    bool succ = onestep(w, node, sc, ctx, &step, choice, false, multiplicities(state)[ctx_index]);
-    assert(step.engine.allocator == &w->allocator);
-    if (!succ) {        // ran into an infinite loop
-        step.nlog = 0;
-        memcpy(sc, state, statesz);
-        memcpy(&w->ctx, cc, size);
-        assert(step.engine.allocator == &w->allocator);
-        (void) onestep(w, node, sc, ctx, &step, choice, true, multiplicities(state)[ctx_index]);
-        assert(step.engine.allocator == &w->allocator);
-    }
+    trystep(w, node, state, ctx, cc, &step, choice, multiplicities(state)[ctx_index], false);
+}
 
-#ifdef HEAP_ALLOC
-    free(copy);
-#endif
+static void chk_invs(
+    struct worker *w,
+    struct node *node      // the state we're exploring
+) {
+    struct global *global = w->global;
+
+    struct step step;
+    memset(&step, 0, sizeof(step));
+    step.engine.allocator = &w->allocator;
+    step.engine.values = w->global->values;
+
+    struct state *state = node_state(node);
+
+    // Check each invariant
+    for (unsigned int i = 0; i < global->ninvs; i++) {
+        // Get the context
+        unsigned int size;
+        struct context *cc = value_get(global->invs[i].context, &size);
+        assert(ctx_size(cc) == size);
+        assert(strcmp(global->code.instrs[cc->pc].oi->name, "Frame") == 0);
+        trystep(w, node, state, global->invs[i].context, cc, &step, 0, 1, true);
+    }
 }
 
 char *ctx_status(struct node *node, hvalue_t ctx) {
@@ -1658,11 +1670,22 @@ void path_recompute(struct global *global){
             global->oldpid = pid;
         }
         if (pid >= global->nprocesses) {
+#ifdef OLD_INVARIANT
             printf("PID %p %u %u\n", (void *) ctx, pid, global->nprocesses);
             panic("bad pid");
-        }
-        else {
-            // printf("Found %d\n", pid);
+#else
+            global->processes = realloc(global->processes, (global->nprocesses + 1) * sizeof(hvalue_t));
+            global->callstacks = realloc(global->callstacks, (global->nprocesses + 1) * sizeof(struct callstack *));
+            global->processes[global->nprocesses] = ctx;
+            struct callstack *cs = new_alloc(struct callstack);
+            cs->pc = 0;                 // TODO
+            cs->arg = VALUE_LIST;
+            cs->vars = VALUE_DICT;
+            // TODO next line
+            cs->return_address = (0 << CALLTYPE_BITS) | CALLTYPE_PROCESS;
+            global->callstacks[global->nprocesses] = cs;
+            global->nprocesses++;
+#endif
         }
         assert(pid < global->nprocesses);
 
@@ -2407,25 +2430,18 @@ void do_work1(struct worker *w, struct node *node){
 
         // Explore each choice.
         for (unsigned int i = 0; i < size; i++) {
-            make_step(
-                w,
-                node,
-                state->chooser,
-                vals[i]
-            );
+            make_step(w, node, state->chooser, vals[i]);
         }
     }
     else {
         // Explore each thread that can make a step.
         for (unsigned int i = 0; i < state->bagsize; i++) {
             assert(VALUE_TYPE(state_contexts(state)[i]) == VALUE_CONTEXT);
-            make_step(
-                w,
-                node,
-                i,
-                0
-            );
+            make_step(w, node, i, 0);
         }
+
+        // Also check the invariants
+        chk_invs(w, node);
     }
 }
 
@@ -2874,11 +2890,9 @@ static void worker(void *arg){
         if (w->index == 2 % global->nworkers) {
             dict_grow_prepare(global->values);
         }
-#ifdef STATE_EXTRACT
         if (w->index == 3 % global->nworkers) {
             dict_grow_prepare(extract);
         }
-#endif
 
         // Only the coordinator (worker 0) does the following
         if (w->index == 0 /* % global->nworkers */) {
@@ -2980,9 +2994,7 @@ static void worker(void *arg){
         // new buckets.
         dict_make_stable(global->values, w->index);
         dict_make_stable(w->visited, w->index);
-#ifdef STATE_EXTRACT
         dict_make_stable(extract, w->index);
-#endif
 
         // If a layer was completed, move the buffered nodes into the graph.
         // Worker w can assign node identifiers starting from w->node_id.
@@ -3736,9 +3748,7 @@ int exec_model_checker(int argc, char **argv){
     // Create the hash table that maps states to nodes
     struct dict *visited = dict_new("visited", sizeof(struct node), 0, global->nworkers, false);
 
-#ifdef STATE_EXTRACT
     extract = dict_new("extract", sizeof(struct step_condition), 0, global->nworkers, false);
-#endif
 
     // Allocate space for worker info
     struct worker *workers = calloc(global->nworkers, sizeof(*workers));
@@ -3828,15 +3838,11 @@ int exec_model_checker(int argc, char **argv){
 #ifdef REPORT_WORKERS
     double phase1 = 0, phase2a = 0, phase2b = 0, phase3 = 0, start_wait = 0, middle_wait = 0, end_wait = 0;
     unsigned int fix_edge = 0;
-#ifdef STATE_EXTRACT
     unsigned int si_hits = 0, si_total = 0;
-#endif
     for (unsigned int i = 0; i < global->nworkers; i++) {
         struct worker *w = &workers[i];
-#ifdef STATE_EXTRACT
         si_hits += w->si_hits;
         si_total += w->si_total;
-#endif
         allocated += w->allocated;
         phase1 += w->phase1;
         phase2a += w->phase2a;
@@ -3873,7 +3879,6 @@ int exec_model_checker(int argc, char **argv){
 #endif
 
     printf("    * %u states (time %.2lfs, mem=%.3lfGB)\n", global->graph.size, gettime() - before, (double) allocated / (1L << 30));
-#ifdef STATE_EXTRACT
     unsigned int si_hits = 0, si_total = 0;
     for (unsigned int i = 0; i < global->nworkers; i++) {
         struct worker *w = &workers[i];
@@ -3881,7 +3886,6 @@ int exec_model_checker(int argc, char **argv){
         si_total += w->si_total;
     }
     printf("    * %u/%u hits\n", si_hits, si_total);
-#endif
 
     if (outfile == NULL) {
         exit(0);
@@ -4383,6 +4387,7 @@ int exec_model_checker(int argc, char **argv){
         // If it was an invariant failure, add one more macrostep
         // to replay the invariant code.
         struct edge *edge;
+#ifdef OLD_INVARIANT
         if (bad->type == FAIL_INVARIANT) {
             struct context *inv_ctx = calloc(1, sizeof(struct context) +
                                 MAX_CONTEXT_STACK * sizeof(hvalue_t));
@@ -4421,7 +4426,9 @@ int exec_model_checker(int argc, char **argv){
             global->nprocesses++;
         }
         // TODO: Should be able to reuse more from last case
-        else if (bad->type == FAIL_FINALLY) {
+        else
+#endif // OLD_INVARIANT
+        if (bad->type == FAIL_FINALLY) {
             struct context *inv_ctx = calloc(1, sizeof(struct context) +
                                 MAX_CONTEXT_STACK * sizeof(hvalue_t));
             inv_ctx->pc = VALUE_FROM_PC(bad->address);
