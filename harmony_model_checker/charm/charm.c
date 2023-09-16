@@ -1130,6 +1130,15 @@ static void trystep(
             so = onestep(w, node, sc, ctx, step, choice, true, multiplicity, invariant);
         }
 
+        if (!has_countLabel) {
+            mutex_acquire(si_lock);
+            assert(stc->type == SC_IN_PROGRESS);
+            nl = stc->u.in_progress;
+            stc->type = SC_COMPLETED;
+            stc->u.completed = so;
+            mutex_release(si_lock);
+        }
+
 #ifdef HEAP_ALLOC
         free(copy);
 #endif
@@ -1137,15 +1146,6 @@ static void trystep(
     else {
         assert(stc->type == SC_COMPLETED);
         so = stc->u.completed;
-    }
-
-    if (!has_countLabel) {
-        mutex_acquire(si_lock);
-        assert(stc->type == SC_IN_PROGRESS);
-        nl = stc->u.in_progress;
-        stc->type = SC_COMPLETED;
-        stc->u.completed = so;
-        mutex_release(si_lock);
     }
 
     process_step(w, &step->engine, &si, so, node, multiplicity, sc, invariant);
