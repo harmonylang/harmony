@@ -1442,6 +1442,7 @@ void op_Invariant(const void *env, struct state *state, struct step *step, struc
     ctx->readonly = 1;
     ctx->atomic = 1;
     ctx->atomicFlag = true;
+    ctx_push(ctx, VALUE_LIST);	// HACK
     hvalue_t invctx = value_put_context(&step->engine, ctx);
 
     mutex_acquire(&global->inv_lock);

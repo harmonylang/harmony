@@ -704,6 +704,7 @@ static bool onestep(
         if (invariant) {
             hvalue_t args[2];
             args[0] = args[1] = sc->vars;
+	    (void) value_ctx_pop(step->ctx); // HACK
             value_ctx_push(step->ctx, value_put_list(&step->engine, args, sizeof(args)));
         }
 
@@ -1493,6 +1494,7 @@ static void twostep(
     if (invariant) {
         hvalue_t args[2];
         args[0] = args[1] = sc->vars;
+        (void) value_ctx_pop(step.ctx); // HACK
         value_ctx_push(step.ctx, value_put_list(&step.engine, args, sizeof(args)));
     }
 
