@@ -49,14 +49,15 @@ struct step_output {
     struct access_info *ai;  // to detect data races
     uint16_t nsteps;         // # microsteps
 
-    // TODO.  The following 4 can be capture in 2 bits, I think
+    // TODO.  The following 4 can be capture in 3 bits, I think
     bool choosing : 1;       // destination state is choosing
     bool terminated : 1;     // thread has terminated
     bool stopped : 1;        // thread has stopped
     bool failed : 1;         // context failed
+    bool infinite_loop : 1;  // ran into an infinite loop
 
     uint16_t nlog : 3;       // # values printed
-    uint16_t nspawned : 6;   // # contexts started
+    uint16_t nspawned : 5;   // # contexts started
     uint16_t nunstopped : 3; // # contexts removed from stopbag
     // hvalue_t log[];       // print history (immediately follows this structure)
     // hvalue_t spawned[];   // spawn history (immediately follows log)
