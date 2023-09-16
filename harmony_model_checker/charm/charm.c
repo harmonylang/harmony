@@ -4069,6 +4069,7 @@ int exec_model_checker(int argc, char **argv){
                     }
                     else {
                         f->edge = node->u.ph2.u.to_parent;
+		        assert(f->edge != NULL);
                     }
                     add_failure(&global->failures, f);
                     // TODO.  Can we be done here?
