@@ -507,7 +507,8 @@ static void process_step(
     struct node *node,
     unsigned int multiplicity,
     struct state *sc,
-    bool infinite_loop
+    bool infinite_loop,
+    bool invariant
 ) {
     struct global *global = w->global;
 
@@ -579,6 +580,7 @@ static void process_step(
     edge->multiplicity = multiplicity;
     edge->so = so;
     edge->failed = so->failed;
+    edge->invariant_chk = invariant;
 
     if (global->dfa != NULL) {
         for (unsigned int i = 0; i < so->nlog; i++) {
@@ -635,7 +637,8 @@ static bool onestep(
     struct step *step,      // step info
     hvalue_t choice,        // if about to make a choice, which choice?
     bool infloop_detect,    // try to detect infloop from the start
-    int multiplicity       // #contexts that are in the current state
+    int multiplicity,       // #contexts that are in the current state
+    bool invariant
 ) {
     assert(state_size(sc) == state_size(node_state(node)));
 
@@ -696,6 +699,12 @@ static bool onestep(
             assert(step->ctx->extended);
             assert(ctx_trap_pc(step->ctx) != 0);
             interrupt_invoke(step);
+        }
+
+        if (invariant) {
+            hvalue_t args[2];
+            args[0] = args[1] = sc->vars;
+            value_ctx_push(step->ctx, value_put_list(&step->engine, args, sizeof(args)));
         }
 
         bool choosing = false;
@@ -1081,12 +1090,12 @@ static bool onestep(
         so = stc->u.completed;
     }
 
-    process_step(w, &step->engine, &si, so, node, multiplicity, sc, infinite_loop);
+    process_step(w, &step->engine, &si, so, node, multiplicity, sc, infinite_loop, invariant);
     while (nl != NULL) {
         struct state *state = (struct state *) &nl->node[1];
         unsigned int statesz = state_size(state);
         memcpy(sc, state, statesz);
-        process_step(w, &step->engine, &si, so, nl->node, nl->multiplicity, sc, infinite_loop);
+        process_step(w, &step->engine, &si, so, nl->node, nl->multiplicity, sc, infinite_loop, invariant);
         struct node_list *next = nl->next;
         nl->next = w->nl_free;
         w->nl_free = nl;
@@ -1134,19 +1143,13 @@ static void trystep(
     memcpy(&w->ctx, cc, ctx_size(cc));
     step->ctx = &w->ctx;
 
-    if (invariant) {
-        hvalue_t args[2];
-        args[0] = args[1] = sc->vars;
-        value_ctx_push(step->ctx, value_put_list(&step->engine, args, sizeof(args)));
-    }
-
-    bool succ = onestep(w, node, sc, ctx, step, choice, false, multiplicity);
+    bool succ = onestep(w, node, sc, ctx, step, choice, false, multiplicity, invariant);
     if (!succ) {        // ran into an infinite loop
         // TODO.  Need probably more cleanup of step, like ai
         step->nlog = step->nspawned = step->nunstopped = 0;
         memcpy(sc, state, statesz);
         memcpy(&w->ctx, cc, ctx_size(cc));
-        (void) onestep(w, node, sc, ctx, step, choice, true, multiplicity);
+        (void) onestep(w, node, sc, ctx, step, choice, true, multiplicity, invariant);
     }
 
 #ifdef HEAP_ALLOC
@@ -1456,6 +1459,7 @@ static void twostep(
     hvalue_t ctx,
     struct callstack *cs,
     hvalue_t choice,
+    bool invariant,
     unsigned int nsteps,
     unsigned int pid,
     struct macrostep *macro
@@ -1484,6 +1488,12 @@ static void twostep(
 		assert(ctx_trap_pc(step.ctx) != 0);
         interrupt_invoke(&step);
         make_microstep(sc, step.ctx, step.callstack, true, false, 0, 0, &step, macro);
+    }
+
+    if (invariant) {
+        hvalue_t args[2];
+        args[0] = args[1] = sc->vars;
+        value_ctx_push(step.ctx, value_put_list(&step.engine, args, sizeof(args)));
     }
 
     struct dict *infloop = NULL;        // infinite loop detector
@@ -1699,6 +1709,7 @@ void path_recompute(struct global *global){
             ctx,
             global->callstacks[pid],
             e->choice,
+            e->invariant_chk,
             e->so->nsteps,
             pid,
             macro

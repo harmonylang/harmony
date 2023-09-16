@@ -102,7 +102,8 @@ struct edge {
 
     // TODO.  The multiplicity can be looked up in the source state
     unsigned short multiplicity; // multiplicity of context
-    bool failed : 1;             // transition failed.
+    bool failed : 1;             // transition failed
+    bool invariant_chk : 1;      // this is an invariant check
 };
 
 // Charm can detect a variety of failure types:
