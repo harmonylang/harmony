@@ -96,7 +96,7 @@ struct edge {
     // TODO. The following three can be struct dict_assoc *
     hvalue_t ctx;                //< ctx that made the microstep
     hvalue_t choice;             //< choice if any (-1 indicates interrupt)
-    struct step_output *so;      // result of onestep()
+    struct step_condition *sc;
 
     struct node *src;            // source node (TODO. Do we need this?)
     struct node *dst;            // destination node
@@ -107,6 +107,8 @@ struct edge {
     // TODO.  We may not need this following bit
     bool invariant_chk : 1;      // this is an invariant check
 };
+#define edge_input(e)    ((struct step_input *) &(e)->sc[1])
+#define edge_output(e)   ((e)->sc->u.completed)
 
 // Charm can detect a variety of failure types:
 enum fail_type {
