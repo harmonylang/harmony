@@ -3922,6 +3922,11 @@ int exec_model_checker(int argc, char **argv){
                 w->middle_wait/w->middle_count,
                 w->end_wait/w->end_count);
     }
+#else
+    for (unsigned int i = 0; i < global->nworkers; i++) {
+        struct worker *w = &workers[i];
+        allocated += w->allocated;
+    }
 #endif // REPORT_WORKERS
 #ifdef notdef
     printf("computing: %lf %lf %lf %lf (%lf %lf %lf %lf %u); waiting: %lf %lf %lf\n",
