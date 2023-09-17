@@ -1420,10 +1420,22 @@ void op_Go(
 void op_Finally(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_Finally *ef = env;
 
+    // Create a context for the predicate
+    char context[sizeof(struct context) +
+                        (ctx_extent + 2) * sizeof(hvalue_t)];
+    struct context *ctx = (struct context *) context;
+    memset(ctx, 0, sizeof(*ctx));
+    ctx->pc = ef->pc;
+    ctx->vars = VALUE_DICT;
+    ctx->readonly = 1;
+    ctx->atomic = 1;
+    ctx->atomicFlag = true;
+    ctx_push(ctx, VALUE_LIST);
+    hvalue_t finctx = value_put_context(&step->engine, ctx);
+
     mutex_acquire(&global->inv_lock);
     global->finals = realloc(global->finals, (global->nfinals + 1) * sizeof(*global->finals));
-    unsigned int *fin = &global->finals[global->nfinals++];
-    *fin = ef->pc;
+    global->finals[global->nfinals++] = finctx;
     mutex_release(&global->inv_lock);
 
     step->ctx->pc += 1;

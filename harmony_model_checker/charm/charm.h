@@ -66,7 +66,7 @@ struct global {
     struct invariant *invs;         // list of invariants
     bool inv_pre;                   // some invariant uses "pre"
     unsigned int nfinals;           // #finally predicates
-    unsigned int *finals;           // program counters of finally preds
+    hvalue_t *finals;               // contexts of finally preds
 
     struct graph graph;             // the Kripke structure but also the todo list
 

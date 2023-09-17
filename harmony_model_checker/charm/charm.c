@@ -656,12 +656,14 @@ static struct step_output *onestep(
         interrupt_invoke(step);
     }
 
+#ifdef XYZ
     if (invariant) {
         hvalue_t args[2];
         args[0] = args[1] = sc->vars;
-    (void) value_ctx_pop(step->ctx); // HACK
+        (void) value_ctx_pop(step->ctx); // HACK
         value_ctx_push(step->ctx, value_put_list(&step->engine, args, sizeof(args)));
     }
+#endif
 
     bool choosing = false;
     struct dict *infloop = NULL;        // infinite loop detector
@@ -1218,7 +1220,8 @@ static void make_step(
 
 static void chk_invs(
     struct worker *w,
-    struct node *node      // the state we're exploring
+    struct node *node,     // the state we're exploring
+    bool finally           // check finally predicate
 ) {
     struct global *global = w->global;
 
@@ -1237,6 +1240,20 @@ static void chk_invs(
         assert(ctx_size(cc) == size);
         assert(strcmp(global->code.instrs[cc->pc].oi->name, "Frame") == 0);
         trystep(w, node, state, global->invs[i].context, cc, &step, 0, 1, true);
+    }
+
+    if (!finally) {
+        return;
+    }
+
+    // Check each "finally" predicate
+    for (unsigned int i = 0; i < global->nfinals; i++) {
+        // Get the context
+        unsigned int size;
+        struct context *cc = value_get(global->finals[i], &size);
+        assert(ctx_size(cc) == size);
+        assert(strcmp(global->code.instrs[cc->pc].oi->name, "Frame") == 0);
+        trystep(w, node, state, global->finals[i], cc, &step, 0, 1, true);
     }
 }
 
@@ -1494,12 +1511,14 @@ static void twostep(
         make_microstep(sc, step.ctx, step.callstack, true, false, 0, 0, &step, macro);
     }
 
+#ifdef XYZ
     if (invariant) {
         hvalue_t args[2];
         args[0] = args[1] = sc->vars;
         (void) value_ctx_pop(step.ctx); // HACK
         value_ctx_push(step.ctx, value_put_list(&step.engine, args, sizeof(args)));
     }
+#endif
 
     struct dict *infloop = NULL;        // infinite loop detector
     unsigned int instrcnt = 0;
@@ -2459,7 +2478,8 @@ void do_work1(struct worker *w, struct node *node){
 
         // Also check the invariants after initialization
         if (state->pre != 0) {
-            chk_invs(w, node);
+            chk_invs(w, node,
+                state->bagsize == 0 && state->stopbag == VALUE_DICT);
         }
     }
 }
