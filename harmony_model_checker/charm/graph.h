@@ -56,9 +56,9 @@ struct step_output {
     bool failed : 1;         // context failed
     bool infinite_loop : 1;  // ran into an infinite loop
 
-    uint16_t nlog : 3;       // # values printed
-    uint16_t nspawned : 5;   // # contexts started
-    uint16_t nunstopped : 3; // # contexts removed from stopbag
+    uint8_t nlog;            // # values printed
+    uint8_t nspawned;        // # contexts started
+    uint8_t nunstopped;      // # contexts removed from stopbag
     // hvalue_t log[];       // print history (immediately follows this structure)
     // hvalue_t spawned[];   // spawn history (immediately follows log)
     // hvalue_t unstopped[]; // unstop history (immediately follows spawn history)
@@ -104,6 +104,7 @@ struct edge {
     // TODO.  The multiplicity can be looked up in the source state
     unsigned short multiplicity; // multiplicity of context
     bool failed : 1;             // transition failed
+    // TODO.  We may not need this following bit
     bool invariant_chk : 1;      // this is an invariant check
 };
 
@@ -112,8 +113,8 @@ enum fail_type {
     FAIL_NONE,
     FAIL_SAFETY,            // assertion failure, divide by zero, etc.
     FAIL_BEHAVIOR,          // output behavior not allowed by input DFA
-    FAIL_INVARIANT,         // some invariant failed
-    FAIL_FINALLY,           // some "finally" predicate failed
+    // FAIL_INVARIANT,         // some invariant failed
+    // FAIL_FINALLY,           // some "finally" predicate failed
     FAIL_TERMINATION,       // a non-terminating state exists
     FAIL_BUSYWAIT,          // the program allows busy waiting
     FAIL_RACE               // the program has a race condition

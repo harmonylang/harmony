@@ -326,6 +326,8 @@ void spawn_thread(struct global *global, struct state *state, struct context *ct
     thread_create(wrap_thread, si);
 }
 
+#ifdef OLD_INVARIANTS
+
 // This function evaluates a predicate.  The predicate is evaluated in
 // every state as if by some thread.  sc contains the state, while
 // step keeps track of the state of the thread specifically.
@@ -430,6 +432,8 @@ unsigned int check_finals(struct global *global, struct node *node, struct step 
     }
     return 0;
 }
+
+#endif // OLD_INVARIANTS
 
 // This function is called when a new edge has been generated, possibly to
 // a new state with an uninitialized node.
@@ -2478,8 +2482,11 @@ void do_work1(struct worker *w, struct node *node){
 
         // Also check the invariants after initialization
         if (state->pre != 0) {
-            chk_invs(w, node,
-                state->bagsize == 0 && state->stopbag == VALUE_DICT);
+            struct state *state = node_state(node);
+            // TODO.  Make this check cheaper somehow
+            bool final = value_state_all_eternal(state)
+                    && value_ctx_all_eternal(state->stopbag);
+            chk_invs(w, node, final);
         }
     }
 }
@@ -4381,6 +4388,7 @@ int exec_model_checker(int argc, char **argv){
             printf("    * **Safety Violation**\n");
             fprintf(out, "  \"issue\": \"Safety violation\",\n");
             break;
+#ifdef notdef
         case FAIL_INVARIANT:
             printf("    * **Invariant Violation**\n");
             assert(VALUE_TYPE(bad->address) == VALUE_PC);
@@ -4393,6 +4401,7 @@ int exec_model_checker(int argc, char **argv){
             fprintf(out, "  \"issue\": \"Finally predicate violation\",\n");
             fprintf(out, "  \"finpc\": %d,\n", (int) VALUE_FROM_PC(bad->address));
             break;
+#endif
         case FAIL_BEHAVIOR:
             printf("    * **Behavior Violation**: terminal state not final\n");
             fprintf(out, "  \"issue\": \"Behavior violation: terminal state not final\",\n");
@@ -4469,7 +4478,6 @@ int exec_model_checker(int argc, char **argv){
         }
         // TODO: Should be able to reuse more from last case
         else
-#endif // OLD_INVARIANT
         if (bad->type == FAIL_FINALLY) {
             struct context *inv_ctx = calloc(1, sizeof(struct context) +
                                 MAX_CONTEXT_STACK * sizeof(hvalue_t));
@@ -4504,7 +4512,9 @@ int exec_model_checker(int argc, char **argv){
             global->callstacks[global->nprocesses] = cs;
             global->nprocesses++;
         }
-        else {
+        else
+#endif // OLD_INVARIANT
+        {
             edge = bad->edge;
         }
 
@@ -4530,7 +4540,7 @@ int exec_model_checker(int argc, char **argv){
 
         // If this was a safety failure, we remove any unneeded steps to further
         // reduce the length of the counter-example.
-        if (bad->type == FAIL_INVARIANT || bad->type == FAIL_SAFETY) {
+        if (/* bad->type == FAIL_INVARIANT || */ bad->type == FAIL_SAFETY) {
             path_trim(global, &engine);
         }
 
