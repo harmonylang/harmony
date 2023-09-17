@@ -1057,7 +1057,10 @@ static void trystep(
     unsigned int multiplicity,
     bool invariant
 ) {
-    // See if we did this already
+    struct step_condition *stc;
+    bool si_new;
+    mutex_t *si_lock;
+
     struct step_input si = {
         .vars = state->vars,
         .choice = choice,
@@ -1065,37 +1068,45 @@ static void trystep(
     };
 
     w->si_total++;
-    bool si_new;
-    mutex_t *si_lock;
-    struct dict_assoc *da = dict_find_lock(extract, &w->allocator,
-                &si, sizeof(si), &si_new, &si_lock);
-    struct step_condition *stc = (struct step_condition *) &da[1];
+    if (has_countLabel) {
+        struct step_comp *comp = walloc(w, sizeof(struct step_comp), false, false);
+        si_new = true;
+        stc = &comp->cond;
+	comp->input = si;
+    }
+    else {
+        // See if we did this already
+        struct dict_assoc *da = dict_find_lock(extract, &w->allocator,
+                    &si, sizeof(si), &si_new, &si_lock);
+        stc = (struct step_condition *) &da[1];
+    }
     if (si_new) {
         stc->type = SC_IN_PROGRESS;
         stc->u.in_progress = NULL;
     }
     else {
         w->si_hits++;
-        if (!has_countLabel) {
-            if (stc->type == SC_IN_PROGRESS) {
-                struct node_list *nl;
-                if ((nl = w->nl_free) == NULL) {
-                    nl = walloc(w, sizeof(struct node_list), false, false);
-                }
-                else {
-                    w->nl_free = nl->next;
-                }
-                nl->node = node;
-                nl->multiplicity = multiplicity;
-                nl->next = stc->u.in_progress;
-                stc->u.in_progress = nl;
-                mutex_release(si_lock);
-                return;
+        if (stc->type == SC_IN_PROGRESS) {
+            struct node_list *nl;
+            if ((nl = w->nl_free) == NULL) {
+                nl = walloc(w, sizeof(struct node_list), false, false);
             }
-            assert(stc->type == SC_COMPLETED);
+            else {
+                w->nl_free = nl->next;
+            }
+            nl->node = node;
+            nl->multiplicity = multiplicity;
+            nl->next = stc->u.in_progress;
+            stc->u.in_progress = nl;
+            mutex_release(si_lock);
+            return;
         }
+        assert(stc->type == SC_COMPLETED);
     }
-    mutex_release(si_lock);
+
+    if (!has_countLabel) {
+        mutex_release(si_lock);
+    }
 
     // Make a copy of the state.
     //
@@ -1116,7 +1127,7 @@ static void trystep(
 
     // If this is a new step, perform it
     struct node_list *nl = NULL;
-    if (has_countLabel || si_new) {
+    if (si_new) {
         // Make a copy of the context
         assert(!cc->terminated);
         assert(!cc->failed);
@@ -1134,7 +1145,14 @@ static void trystep(
             so = onestep(w, node, sc, ctx, step, choice, true, multiplicity, invariant);
         }
 
-        if (!has_countLabel) {
+        if (has_countLabel) {
+            assert(stc->type == SC_IN_PROGRESS);
+            assert(stc->u.in_progress == NULL);
+            nl = stc->u.in_progress;
+            stc->type = SC_COMPLETED;
+            stc->u.completed = so;
+        }
+        else {
             mutex_acquire(si_lock);
             assert(stc->type == SC_IN_PROGRESS);
             nl = stc->u.in_progress;
@@ -1739,7 +1757,7 @@ void path_recompute(struct global *global){
             pid,
             macro
         );
-        assert(global->processes[pid] == edge_output(e)->after || edge_output(e)->after == 0);
+        // assert(global->processes[pid] == edge_output(e)->after || edge_output(e)->after == 0);
 
         // printf("Set %d to %p\n", pid, (void *) edge_output(e)->after);
 

@@ -85,12 +85,18 @@ struct step_condition {
     } u;
 };
 
+// Mostly for backward compatibility with countlabel()
+struct step_comp {
+    struct step_condition cond;
+    struct step_input input;
+};
+
 // For each (directed) edge in the Kripke structure (a graph of states), we maintain
 // information of how a program can get from the source state to the destination
 // state.
 struct edge {
     struct edge *fwdnext;        // forward linked list maintenance
-    struct step_condition *sc;
+    struct step_condition *sc;	 // contains input and output of computation
     struct node *src;            // source node (TODO. Do we need this?)
     struct node *dst;            // destination node
 
