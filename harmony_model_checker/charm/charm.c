@@ -4064,6 +4064,7 @@ int exec_model_checker(int argc, char **argv){
                     // break;
                 }
 
+#ifdef XYZ
                 // Check "finally" clauses
                 unsigned int fin = check_finals(global, node, &fin_step);
                 if (fin != 0) {
@@ -4073,6 +4074,7 @@ int exec_model_checker(int argc, char **argv){
                     f->address = VALUE_TO_PC(fin);
                     add_failure(&global->failures, f);
                 }
+#endif
             }
         }
 

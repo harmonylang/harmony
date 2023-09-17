@@ -1404,7 +1404,8 @@ class InvariantAST(AST):
         code.append(JumpOp(endlabel, reason="jump over invariant definition"), self.token, self.token, stmt=stmt)
         code.nextLabel(startlabel)
         (_, file, line, column) = self.token
-        args = [ ("pre", file, line, column), ("post", file, line, column) ]
+        # args = [ ("pre", file, line, column), ("post", file, line, column) ]
+        args = []
         code.append(FrameOp(self.token, args), self.token, self.endtoken, stmt=stmt)
 
         ns = Scope(scope)
