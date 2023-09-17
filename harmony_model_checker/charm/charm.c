@@ -580,8 +580,6 @@ static void process_step(
     // Allocate and initialize edge now.
     struct edge *edge = walloc(w, sizeof(struct edge), false, false);
     edge->src = node;
-    edge->ctx = si->ctx;
-    edge->choice = si->choice;
     edge->multiplicity = multiplicity;
     edge->sc = stc;
     edge->failed = so->failed || so->infinite_loop;
@@ -1272,7 +1270,7 @@ char *ctx_status(struct node *node, hvalue_t ctx) {
     }
     struct edge *edge;
     for (edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
-        if (edge->ctx == ctx) {
+        if (edge_input(edge)->ctx == ctx) {
             break;
         }
     }
@@ -1686,7 +1684,7 @@ void path_recompute(struct global *global){
     for (unsigned int i = 0; i < global->nmacrosteps; i++) {
         struct macrostep *macro = global->macrosteps[i];
         struct edge *e = macro->edge;
-        hvalue_t ctx = e->ctx;
+        hvalue_t ctx = edge_input(e)->ctx;
 
         if (e->invariant_chk) {
             global->processes = realloc(global->processes, (global->nprocesses + 1) * sizeof(hvalue_t));
@@ -1735,7 +1733,7 @@ void path_recompute(struct global *global){
             sc,
             ctx,
             global->callstacks[pid],
-            e->choice,
+            edge_input(e)->choice,
             e->invariant_chk,
             edge_output(e)->nsteps,
             pid,
@@ -1955,17 +1953,17 @@ static void path_output_macrostep(struct global *global, FILE *file, struct macr
     free(name);
     free(arg);
 
-    if (macro->edge->choice == (hvalue_t) -1) {
+    if (edge_input(macro->edge)->choice == (hvalue_t) -1) {
         fprintf(file, "      \"interrupt\": 1,\n");
     }
-    else if (macro->edge->choice != 0) {
-        char *c = value_json(macro->edge->choice, global);
+    else if (edge_input(macro->edge)->choice != 0) {
+        char *c = value_json(edge_input(macro->edge)->choice, global);
         fprintf(file, "      \"choice\": %s,\n", c);
         free(c);
     }
 
     fprintf(file, "      \"context\": {\n");
-    print_context(global, file, macro->edge->ctx, macro->cs, macro->tid, macro->edge->dst, "        ");
+    print_context(global, file, edge_input(macro->edge)->ctx, macro->cs, macro->tid, macro->edge->dst, "        ");
     fprintf(file, "      },\n");
 
     if (macro->trim != NULL && macro->value != 0) {
@@ -1975,7 +1973,7 @@ static void path_output_macrostep(struct global *global, FILE *file, struct macr
     }
 
     fprintf(file, "      \"microsteps\": [");
-    struct context *oldctx = value_get(macro->edge->ctx, NULL);
+    struct context *oldctx = value_get(edge_input(macro->edge)->ctx, NULL);
     struct callstack *oldcs = NULL;
     for (unsigned int i = 0; i < macro->nmicrosteps; i++) {
         struct microstep *micro = macro->microsteps[i];
@@ -2063,7 +2061,7 @@ again:
     printf("Path:");
     for (unsigned int i = 0; i < global->nmacrosteps; i++) {
         struct edge *e = global->macrosteps[i]->edge;
-        if (e->ctx != current) {
+        if (edge_input(e)->ctx != current) {
             printf("\n");
         }
         printf(" %u [", e->src->id);
@@ -2084,19 +2082,19 @@ again:
 #endif
 
     cbs = calloc(1, sizeof(*cbs));
-    cbs->before = global->macrosteps[0]->edge->ctx;
+    cbs->before = edge_input(global->macrosteps[0]->edge)->ctx;
     ncbs = 0;
     current = edge_output(global->macrosteps[0]->edge)->after;
 
     // Figure out where the actual context switches are.  Each context
     // block is a sequence of edges executed by the same thread
     for (unsigned int i = 1; i < global->nmacrosteps; i++) {
-        if (global->macrosteps[i]->edge->ctx != current) {
+        if (edge_input(global->macrosteps[i]->edge)->ctx != current) {
             cbs[ncbs].after = current;
             cbs[ncbs++].end = i;
             cbs = realloc(cbs, (ncbs + 1) * sizeof(*cbs));
             cbs[ncbs].start = i;
-            cbs[ncbs].before = global->macrosteps[i]->edge->ctx;
+            cbs[ncbs].before = edge_input(global->macrosteps[i]->edge)->ctx;
         }
         current = edge_output(global->macrosteps[i]->edge)->after;
     }
@@ -2164,11 +2162,11 @@ again:
     for (unsigned int i = 0; i < global->nmacrosteps; i++) {
         // printf("--> %u/%u\n", i, global->nmacrosteps);
         // Find the edge
-        hvalue_t ctx = global->macrosteps[i]->edge->ctx;
-        hvalue_t choice = global->macrosteps[i]->edge->choice;
+        hvalue_t ctx = edge_input(global->macrosteps[i]->edge)->ctx;
+        hvalue_t choice = edge_input(global->macrosteps[i]->edge)->choice;
         struct edge *e;
         for (e = node->fwd; e != NULL; e = e->fwdnext) {
-            if (e->ctx == ctx && e->choice == choice) {
+            if (edge_input(e)->ctx == ctx && edge_input(e)->choice == choice) {
                 global->macrosteps[i]->edge = e;
                 break;
             }
@@ -2222,7 +2220,7 @@ static void path_trim(struct global *global, struct engine *engine){
 
         // Look up the last microstep of this thread, which wasn't the
         // last one to take a step overall
-        struct context *cc = value_get(macro->edge->ctx, NULL);
+        struct context *cc = value_get(edge_input(macro->edge)->ctx, NULL);
         struct microstep *ls = macro->microsteps[macro->nmicrosteps - 1];
         struct instr *fi = &instrs[cc->pc];
         struct instr *li = &instrs[ls->ctx->pc];
@@ -2389,7 +2387,7 @@ static enum busywait is_stuck(
 	node->visited = true;
 	enum busywait result = BW_ESCAPE;
     for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
-        if (edge->ctx == ctx) {
+        if (edge_input(edge)->ctx == ctx) {
 			if (edge->dst == node) {
 				node->visited = false;
 				return BW_ESCAPE;
@@ -4146,7 +4144,7 @@ int exec_model_checker(int argc, char **argv){
                     struct state *state = node_state(node);
                     unsigned int j;
                     for (j = 0; j < state->bagsize; j++) {
-                        if (state_contexts(state)[j] == edge->ctx) {
+                        if (state_contexts(state)[j] == edge_input(edge)->ctx) {
                             break;
                         }
                     }
@@ -4216,16 +4214,17 @@ int exec_model_checker(int argc, char **argv){
                 int eno = 0;
                 for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext, eno++) {
                     fprintf(df, "        %d:\n", eno);
-                    struct context *ctx = value_get(edge->ctx, NULL);
+                    struct context *ctx = value_get(edge_input(edge)->ctx, NULL);
                     fprintf(df, "            node: %d (%d)\n", edge->dst->id, edge->dst->u.ph2.component);
-                    fprintf(df, "            context before: %"PRIx64" pc=%d\n", edge->ctx, ctx->pc);
+                    fprintf(df, "            context before: %"PRIx64" pc=%d\n", edge_input(edge)->ctx, ctx->pc);
                     ctx = value_get(edge_output(edge)->after, NULL);
                     fprintf(df, "            context after:  %"PRIx64" pc=%d\n", edge_output(edge)->after, ctx->pc);
                     if (edge->failed != 0) {
                         fprintf(df, "            failed\n");
                     }
-                    if (edge->choice != 0) {
-                        fprintf(df, "            choice: %s\n", value_string(edge->choice));
+                    if (edge_input(edge)->choice != 0) {
+                        fprintf(df, "            choice: %s\n",
+                                value_string(edge_input(edge)->choice));
                     }
                     if (edge_output(edge)->nlog > 0) {
                         fprintf(df, "            log:");
@@ -4378,9 +4377,6 @@ int exec_model_checker(int argc, char **argv){
                 bad = f;
             }
         }
-
-        // printf("BAD: %d %"PRIx64" %"PRIx64"\n", bad->edge->dst->id,
-        //                    bad->edge->ctx, edge_output(bad->edge)->after);
 
         switch (bad->type) {
         case FAIL_SAFETY:

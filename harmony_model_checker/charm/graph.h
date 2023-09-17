@@ -42,7 +42,11 @@ struct step_input {
     hvalue_t ctx;            // context at start
 };
 
-// Result of onestep()
+// Result of onestep().
+// We maintain the number of microsteps (Harmony instructions that were executed)
+// but, for memory efficiency, not the details of the microsteps themselves.  If
+// a failure is found, that information is recovered by re-executing the path to
+// the faulty state.
 struct step_output {
     hvalue_t vars;           // updated shared variables
     hvalue_t after;          // context at end
@@ -83,21 +87,10 @@ struct step_condition {
 
 // For each (directed) edge in the Kripke structure (a graph of states), we maintain
 // information of how a program can get from the source state to the destination
-// state.  This structure is directly followed by an array of Harmony values that
-// were printed in this transition.
-//
-// We maintain the number of microsteps (Harmony instructions that were executed)
-// but, for memory efficiency, not the details of the microsteps themselves.  If
-// a failure is found, that information is recovered by re-executing the path to
-// the faulty state.
+// state.
 struct edge {
     struct edge *fwdnext;        // forward linked list maintenance
-
-    // TODO. The following three can be struct dict_assoc *
-    hvalue_t ctx;                //< ctx that made the microstep
-    hvalue_t choice;             //< choice if any (-1 indicates interrupt)
     struct step_condition *sc;
-
     struct node *src;            // source node (TODO. Do we need this?)
     struct node *dst;            // destination node
 
