@@ -518,64 +518,75 @@ static void process_step(
     struct step_input *si = (struct step_input *) &stc[1];
     struct step_output *so = stc->u.completed;
 
-    sc->vars = so->vars;
-
-    // Remove old context from the bag
-    context_remove(sc, si->ctx);
-
-    // Update state with spawned and resumed threads.
-    for (unsigned int i = 0; i < so->nspawned; i++) {
-        if (context_add(sc, step_spawned(so)[i]) < 0) {
-            panic("too many threads 1");
-        }
-    }
-    for (unsigned int i = 0; i < so->nunstopped; i++) {
-        hvalue_t ctx = step_unstopped(so)[i];
-        // TODO.  Write function (same code in op_Go)
-        hvalue_t count;
-        if (value_tryload(engine, sc->stopbag, ctx, &count)) {
-            assert(VALUE_TYPE(count) == VALUE_INT);
-            assert(count != VALUE_INT);
-            count -= 1 << VALUE_BITS;
-            if (count != VALUE_INT) {
-                sc->stopbag = value_dict_store(engine, sc->stopbag, ctx, count);
-            }
-            else {
-                sc->stopbag = value_dict_remove(engine, sc->stopbag, ctx);
-            }
+    // If it was an invariant being evaluated, the state cannot have changed.
+    // If there was no error, no need to add an edge
+    if (invariant) {
+        if (!so->failed && !so->infinite_loop) {
+            return;
         }
     }
 
-    // Add new context to state unless it's terminated.
-    int new_index = -1;
-    if (so->stopped) {
-        sc->stopbag = value_bag_add(engine, sc->stopbag, so->after, 1);
-    }
-    else if (!so->terminated) {
-        new_index = context_add(sc, so->after);
-        if (new_index < 0) {
-            panic("too many threads 0");
-        }
-    }
-
-    // If choosing, save in state.  If some invariant uses "pre", then
-    // also keep track of "pre" state.
-    //
-    // The issue here is subtle.  Invariants are only checked when entering
-    // a normal state, not a choosing state, because choosing states can be
-    // in the middle of an atomic section.  So, we either need to keep track
-    // of the pre-state (as we do) or we need a much more complicated way of
-    // checking invariants with "pre" variables.  But always storing the
-    // pre-state in an old state can result in significant state explosion.
-    // So we only do it in case there are such invariant, and then only for
-    // choosing states.
-    if (so->choosing) {
-        sc->chooser = new_index;
-        // sc->pre = global->inv_pre ? node_state(node)->pre : sc->vars;
-    }
+    // Update the state if it was not an invariant.
     else {
-        sc->chooser = -1;
-        // sc->pre = sc->vars;
+        sc->vars = so->vars;
+
+        // Remove old context from the bag
+        context_remove(sc, si->ctx);
+
+        // Update state with spawned and resumed threads.
+        for (unsigned int i = 0; i < so->nspawned; i++) {
+            if (context_add(sc, step_spawned(so)[i]) < 0) {
+                panic("too many threads 1");
+            }
+        }
+        for (unsigned int i = 0; i < so->nunstopped; i++) {
+            hvalue_t ctx = step_unstopped(so)[i];
+            // TODO.  Write function (same code in op_Go)
+            hvalue_t count;
+            if (value_tryload(engine, sc->stopbag, ctx, &count)) {
+                assert(VALUE_TYPE(count) == VALUE_INT);
+                assert(count != VALUE_INT);
+                count -= 1 << VALUE_BITS;
+                if (count != VALUE_INT) {
+                    sc->stopbag = value_dict_store(engine, sc->stopbag, ctx, count);
+                }
+                else {
+                    sc->stopbag = value_dict_remove(engine, sc->stopbag, ctx);
+                }
+            }
+        }
+
+        // Add new context to state unless it's terminated.
+        int new_index = -1;
+        if (so->stopped) {
+            sc->stopbag = value_bag_add(engine, sc->stopbag, so->after, 1);
+        }
+        else if (!so->terminated) {
+            new_index = context_add(sc, so->after);
+            if (new_index < 0) {
+                panic("too many threads 0");
+            }
+        }
+
+        // If choosing, save in state.  If some invariant uses "pre", then
+        // also keep track of "pre" state.
+        //
+        // The issue here is subtle.  Invariants are only checked when entering
+        // a normal state, not a choosing state, because choosing states can be
+        // in the middle of an atomic section.  So, we either need to keep track
+        // of the pre-state (as we do) or we need a much more complicated way of
+        // checking invariants with "pre" variables.  But always storing the
+        // pre-state in an old state can result in significant state explosion.
+        // So we only do it in case there are such invariant, and then only for
+        // choosing states.
+        if (so->choosing) {
+            sc->chooser = new_index;
+            // sc->pre = global->inv_pre ? node_state(node)->pre : sc->vars;
+        }
+        else {
+            sc->chooser = -1;
+            // sc->pre = sc->vars;
+        }
     }
 
     // Allocate and initialize edge now.
@@ -3952,7 +3963,7 @@ int exec_model_checker(int argc, char **argv){
         si_hits += w->si_hits;
         si_total += w->si_total;
     }
-    printf("    * %u/%u hits\n", si_hits, si_total);
+    printf("    * %u/%u computations/edges\n", (si_total - si_hits), si_total);
 
     if (outfile == NULL) {
         exit(0);
