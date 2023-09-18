@@ -437,8 +437,9 @@ unsigned int check_finals(struct global *global, struct node *node, struct step 
 
 // This function is called when a new edge has been generated, possibly to
 // a new state with an uninitialized node.
-static void process_edge(struct worker *w, struct edge *edge, mutex_t *lock) {
-    struct node *node = edge->src, *next = edge->dst;
+static void process_edge(struct worker *w, struct node *node,
+                        struct edge *edge, mutex_t *lock) {
+    struct node *next = edge->dst;
 
     // mutex_acquire(lock);    ==> this lock is already acquired
 
@@ -579,8 +580,8 @@ static void process_step(
 
     // Allocate and initialize edge now.
     struct edge *edge = walloc(w, sizeof(struct edge), false, false);
-    edge->src = node;
-    edge->multiplicity = multiplicity;
+    edge->src_id = node->id;
+    edge->multiple = multiplicity > 1;
     edge->sc = stc;
     edge->failed = so->failed || so->infinite_loop;
     edge->invariant_chk = invariant;
@@ -620,7 +621,7 @@ static void process_step(
                 sc, size, &new, &lock);
     edge->dst = (struct node *) &hn[1];
 
-    process_edge(w, edge, lock);
+    process_edge(w, node, edge, lock);
 }
 
 // This is the main workhorse function of model checking: explore a state and
@@ -1276,14 +1277,14 @@ static void chk_invs(
     }
 }
 
-char *ctx_status(struct node *node, hvalue_t ctx) {
+char *ctx_status(struct global *global, struct node *node, hvalue_t ctx) {
     struct state *state = node_state(node);
 
     if (state->chooser >= 0 && state_contexts(state)[state->chooser] == ctx) {
         return "choosing";
     }
     while (state->chooser >= 0) {
-        node = node->u.ph2.u.to_parent->src;
+        node = global->graph.nodes[node->u.ph2.u.to_parent->src_id];
         state = node_state(node);
     }
     struct edge *edge;
@@ -1422,7 +1423,7 @@ void print_context(
             fprintf(file, "%s\"mode\": \"stopped\"", prefix);
         }
         else {
-            fprintf(file, "%s\"mode\": \"%s\"", prefix, ctx_status(node, ctx));
+            fprintf(file, "%s\"mode\": \"%s\"", prefix, ctx_status(global, node, ctx));
         }
     }
     fprintf(file, "\n");
@@ -1674,7 +1675,7 @@ void path_serialize(
     struct edge *e
 ) {
     // First recurse to the previous step
-    struct node *parent = e->src;
+    struct node *parent = global->graph.nodes[e->src_id];
     if (parent->u.ph2.u.to_parent != NULL) {
         path_serialize(global, parent->u.ph2.u.to_parent);
     }
@@ -2930,7 +2931,7 @@ static void worker(void *arg){
             while ((e = *pe) != NULL) {
                 w->fix_edge++;
                 *pe = e->fwdnext;
-                struct node *src = e->src;
+                struct node *src = global->graph.nodes[e->src_id];
                 e->fwdnext = src->fwd;
                 src->fwd = e;
             }
@@ -3110,7 +3111,7 @@ static void stack_push(struct stack **sp, struct node *v1, struct edge *v2) {
 
     // Push either a node or edge pointer
     if (v2 != NULL) {
-        assert(v1 == v2->src);
+        // assert(v1 == v2->src);
         s->ptrs[s->sp++] = (char *) v2 + 1;
     }
     else {
@@ -3118,7 +3119,7 @@ static void stack_push(struct stack **sp, struct node *v1, struct edge *v2) {
     }
 }
 
-static struct node *stack_pop(struct stack **sp, struct edge **v2) {
+static struct node *stack_pop(struct global *global, struct stack **sp, struct edge **v2) {
     // If the current chunk is empty, go to the previous one
     struct stack *s = *sp;
     if (s->sp == 0) {
@@ -3131,7 +3132,7 @@ static struct node *stack_pop(struct stack **sp, struct edge **v2) {
     void *ptr = s->ptrs[--s->sp];
     if ((hvalue_t) ptr & 1) {        // edge
         *v2 = (struct edge *) ((char *) ptr - 1);
-        return (*v2)->src;
+        return global->graph.nodes[(*v2)->src_id];
     }
     else {                              // node
         if (v2 != NULL) {
@@ -3158,7 +3159,7 @@ static void shortest_path(struct global *global){
     stack_push(&stack, global->graph.nodes[0], NULL);
     global->graph.nodes[0]->u.ph2.len = 0;
     while (!stack_empty(stack)) {
-        struct node *src = stack_pop(&stack, NULL);
+        struct node *src = stack_pop(global, &stack, NULL);
         for (struct edge *e = src->fwd; e != NULL; e = e->fwdnext) {
             struct node *dst = e->dst;
             if (dst->u.ph2.u.to_parent == NULL) {
@@ -3195,7 +3196,7 @@ static void tarjan(struct global *global){
             stack_push(&call_stack, n, NULL);
             while (!stack_empty(call_stack)) {
                 struct edge *e;
-                n = stack_pop(&call_stack, &e);
+                n = stack_pop(global, &call_stack, &e);
                 if (e == NULL) {
                     n->u.ph2.u.tarjan.index = i;
                     n->u.ph2.u.tarjan.lowlink = i;
@@ -3227,7 +3228,7 @@ static void tarjan(struct global *global){
                 else if (n->u.ph2.u.tarjan.lowlink == n->u.ph2.u.tarjan.index) {
                     for (;;) {
                         struct node *n2;
-                        n2 = stack_pop(&stack, NULL);
+                        n2 = stack_pop(global, &stack, NULL);
                         n2->on_stack = false;
                         n2->u.ph2.component = comp_id;
                         if (n2 == n) {
@@ -4206,7 +4207,7 @@ int exec_model_checker(int argc, char **argv){
                 fprintf(df, "    len to parent: %d\n", node->u.ph2.len);
                 if (node->u.ph2.u.to_parent != NULL) {
                     fprintf(df, "    ancestors:");
-                    for (struct node *n = node->u.ph2.u.to_parent->src;; n = n->u.ph2.u.to_parent->src) {
+                    for (struct node *n = global->graph.nodes[node->u.ph2.u.to_parent->src_id];; n = global->graph.nodes[n->u.ph2.u.to_parent->src_id]) {
                         fprintf(df, " %u", n->id);
                         if (n->u.ph2.u.to_parent == NULL) {
                             break;

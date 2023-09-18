@@ -97,13 +97,12 @@ struct step_comp {
 struct edge {
     struct edge *fwdnext;        // forward linked list maintenance
     struct step_condition *sc;	 // contains input and output of computation
-    struct node *src;            // source node (TODO. Do we need this?)
     struct node *dst;            // destination node
+    unsigned int src_id : 29;    // source node id
 
     // TODO.  The multiplicity can be looked up in the source state
-    unsigned short multiplicity; // multiplicity of context
+    bool multiple : 1;           // multiplicity of context > 1
     bool failed : 1;             // transition failed
-    // TODO.  We may not need this following bit
     bool invariant_chk : 1;      // this is an invariant check
 };
 #define edge_input(e)    ((struct step_input *) &(e)->sc[1])
