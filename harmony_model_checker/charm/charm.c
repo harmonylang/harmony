@@ -450,6 +450,7 @@ static void process_edge(struct worker *w, struct node *node,
         next->failed = edge->failed;
         next->u.ph1.lock = lock;
         next->u.ph1.next = w->results;
+	next->to_parent = edge;
         w->results = next;
         w->count++;
         w->enqueued++;
@@ -1295,7 +1296,7 @@ char *ctx_status(struct global *global, struct node *node, hvalue_t ctx) {
         return "choosing";
     }
     while (state->chooser >= 0) {
-        node = global->graph.nodes[node->u.ph2.u.to_parent->src_id];
+        node = global->graph.nodes[node_to_parent(node)->src_id];
         state = node_state(node);
     }
     struct edge *edge;
@@ -1687,8 +1688,8 @@ void path_serialize(
 ) {
     // First recurse to the previous step
     struct node *parent = global->graph.nodes[e->src_id];
-    if (parent->u.ph2.u.to_parent != NULL) {
-        path_serialize(global, parent->u.ph2.u.to_parent);
+    if (node_to_parent(parent) != NULL) {
+        path_serialize(global, node_to_parent(parent));
     }
 
     struct macrostep *macro = calloc(sizeof(*macro), 1);
@@ -2460,7 +2461,7 @@ static void detect_busywait(struct global *global, struct node *node){
 		if (is_stuck(node, node, state_contexts(node_state(node))[i], false) == BW_RETURN) {
 			struct failure *f = new_alloc(struct failure);
 			f->type = FAIL_BUSYWAIT;
-			f->edge = node->u.ph2.u.to_parent;
+			f->edge = node_to_parent(node);
 			add_failure(&global->failures, f);
 			// break;
 		}
@@ -3991,7 +3992,7 @@ int exec_model_checker(int argc, char **argv){
         computed_components = true;
 
         // Compute shortest path to initial state for each node.
-        shortest_path(global);
+        // shortest_path(global);
 
         printf("    * %u components (%.2lf+%.2lf seconds)\n", global->ncomponents, tween - now, gettime() - tween);
 
@@ -4099,22 +4100,10 @@ int exec_model_checker(int argc, char **argv){
 						!dfa_is_final(global->dfa, node_state(node)->dfa_state)) {
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_BEHAVIOR;
-                    f->edge = node->u.ph2.u.to_parent;
+                    f->edge = node_to_parent(node);
                     add_failure(&global->failures, f);
                     // break;
                 }
-
-#ifdef XYZ
-                // Check "finally" clauses
-                unsigned int fin = check_finals(global, node, &fin_step);
-                if (fin != 0) {
-                    struct failure *f = new_alloc(struct failure);
-                    f->type = FAIL_FINALLY;
-                    f->edge = node->u.ph2.u.to_parent;
-                    f->address = VALUE_TO_PC(fin);
-                    add_failure(&global->failures, f);
-                }
-#endif
             }
         }
 
@@ -4133,7 +4122,7 @@ int exec_model_checker(int argc, char **argv){
                         f->edge = node->fwd;
                     }
                     else {
-                        f->edge = node->u.ph2.u.to_parent;
+                        f->edge = node_to_parent(node);
                         assert(f->edge != NULL);
                     }
                     add_failure(&global->failures, f);
@@ -4160,7 +4149,7 @@ int exec_model_checker(int argc, char **argv){
     }
     else {
         // Compute shortest path to initial state for each node.
-        shortest_path(global);
+        // shortest_path(global);
     }
 
     // The -D flag is used to dump debug files
@@ -4188,13 +4177,13 @@ int exec_model_checker(int argc, char **argv){
                     if (edge->failed) {
                         fprintf(df, " s%u -> s%u [style=%s label=\"F %u\"]\n",
                             node->id, edge->dst->id,
-                            edge->dst->u.ph2.u.to_parent == edge ? "solid" : "dashed",
+                            node_to_parent(edge->dst) == edge ? "solid" : "dashed",
                             multiplicities(state)[j]);
                     }
                     else {
                         fprintf(df, " s%u -> s%u [style=%s label=\"%u\"]\n",
                             node->id, edge->dst->id,
-                            edge->dst->u.ph2.u.to_parent == edge ? "solid" : "dashed",
+                            node_to_parent(edge->dst) == edge ? "solid" : "dashed",
                             multiplicities(state)[j]);
                     }
                 }
@@ -4217,11 +4206,11 @@ int exec_model_checker(int argc, char **argv){
                     fprintf(df, "    component: %d\n", node->u.ph2.component);
                 }
                 fprintf(df, "    len to parent: %d\n", node->u.ph2.len);
-                if (node->u.ph2.u.to_parent != NULL) {
+                if (node_to_parent(node) != NULL) {
                     fprintf(df, "    ancestors:");
-                    for (struct node *n = global->graph.nodes[node->u.ph2.u.to_parent->src_id];; n = global->graph.nodes[n->u.ph2.u.to_parent->src_id]) {
+                    for (struct node *n = global->graph.nodes[node_to_parent(node)->src_id];; n = global->graph.nodes[node_to_parent(n)->src_id]) {
                         fprintf(df, " %u", n->id);
-                        if (n->u.ph2.u.to_parent == NULL) {
+                        if (node_to_parent(n) == NULL) {
                             break;
                         }
                     }

@@ -143,6 +143,8 @@ struct node {
         } ph2;
     } u;
 
+    struct edge *to_parent; // path to initial state
+
     struct edge *fwd;       // forward edges
     uint32_t id;            // nodes are numbered starting from 0
     bool on_stack : 1;      // for Tarjan
@@ -154,6 +156,7 @@ struct node {
     // NFA compression
     bool reachable : 1;     // TODO.  Maybe obsolete at this time
 };
+#define node_to_parent(n)       ((n)->to_parent)
 
 // The state corresponding to a node, directly following the node
 #define node_state(n)   ((struct state *) &(n)[1])
