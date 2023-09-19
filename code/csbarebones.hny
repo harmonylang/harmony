@@ -1,11 +1,7 @@
 def thread():
     while True:
-        # Enter critical section
-
         # Critical section is here
-        cs: assert countLabel(cs) == 1
-
-        # Exit critical section
+        pass
     
 spawn thread()
 spawn thread()

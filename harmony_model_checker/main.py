@@ -33,6 +33,8 @@ args.add_argument("-c", "--const", action='append', type=str,
                   metavar="name=value", help="define a constant")
 args.add_argument("-D", action="store_true",
                   help="dump Kripke graph")
+args.add_argument("-W", action="store_true",
+                  help="suppress busy waiting check")
 args.add_argument("-R", action="store_true",
                   help="suppress race condition warnings")
 args.add_argument("--module", "-m", action="append", type=str,
@@ -111,6 +113,8 @@ def handle_hvm(ns, output_files, parse_code_only, code, scope):
         charm_options.append("-D")
     if ns.R:
         charm_options.append("-R")
+    if ns.W:
+        charm_options.append("-c")
 
     # see if there is a configuration file
     if code is not None:

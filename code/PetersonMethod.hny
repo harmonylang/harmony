@@ -11,13 +11,20 @@ def P_mutex() returns result:
 
 #### The code above can go into its own Harmony module ####
 
+in_cs = 0
+invariant in_cs in { 0, 1 }
+
 sequential mutex
 mutex = P_mutex()
 
 def thread(self):
     while choose({ False, True }):
         P_enter(?mutex, self)
-        cs: assert countLabel(cs) == 1
+
+        atomically in_cs += 1
+        # Critical section
+        atomically in_cs -= 1
+
         P_exit(?mutex, self)
 
 spawn thread(0)
