@@ -3158,6 +3158,7 @@ static inline bool stack_empty(struct stack *s) {
     return s->prev == NULL && s->sp == 0;
 }
 
+#ifdef OBSOLETE
 // Compute shortest path to initial state using DFS.
 //
 // TODO.  Either clean up the stack afterwards or re-use it for tarjan?
@@ -3190,13 +3191,14 @@ static void shortest_path(struct global *global){
         }
     }
 }
+#endif // OBSOLETE
 
 // Tarjan SCC algorithm
 static void tarjan(struct global *global){
     // Initialize the nodes
     for (unsigned int v = 0; v < global->graph.size; v++) {
         struct node *n = global->graph.nodes[v];
-        n->u.ph2.u.tarjan.index = -1;
+        n->u.ph2.index = -1;
     }
 
     unsigned int i = 0, comp_id = 0;
@@ -3204,32 +3206,32 @@ static void tarjan(struct global *global){
     struct stack *call_stack = calloc(1, sizeof(*call_stack));
     for (unsigned int v = 0; v < 1 /*global->graph.size*/; v++) {
         struct node *n = global->graph.nodes[v];
-        if (n->u.ph2.u.tarjan.index == -1) {
+        if (n->u.ph2.index == -1) {
             stack_push(&call_stack, n, NULL);
             while (!stack_empty(call_stack)) {
                 struct edge *e;
                 n = stack_pop(global, &call_stack, &e);
                 if (e == NULL) {
-                    n->u.ph2.u.tarjan.index = i;
-                    n->u.ph2.u.tarjan.lowlink = i;
+                    n->u.ph2.index = i;
+                    n->u.ph2.lowlink = i;
                     i++;
                     stack_push(&stack, n, NULL);
                     n->on_stack = true;
                     e = n->fwd;
                 }
                 else {
-                    if (e->dst->u.ph2.u.tarjan.lowlink < n->u.ph2.u.tarjan.lowlink) {
-                        n->u.ph2.u.tarjan.lowlink = e->dst->u.ph2.u.tarjan.lowlink;
+                    if (e->dst->u.ph2.lowlink < n->u.ph2.lowlink) {
+                        n->u.ph2.lowlink = e->dst->u.ph2.lowlink;
                     }
                     e = e->fwdnext;
                 }
                 while (e != NULL) {
                     struct node *w = e->dst;
-                    if (w->u.ph2.u.tarjan.index < 0) {
+                    if (w->u.ph2.index < 0) {
                         break;
                     }
-                    if (w->on_stack && w->u.ph2.u.tarjan.index < n->u.ph2.u.tarjan.lowlink) {
-                        n->u.ph2.u.tarjan.lowlink = w->u.ph2.u.tarjan.index;
+                    if (w->on_stack && w->u.ph2.index < n->u.ph2.lowlink) {
+                        n->u.ph2.lowlink = w->u.ph2.index;
                     }
                     e = e->fwdnext;
                 }
@@ -3237,7 +3239,7 @@ static void tarjan(struct global *global){
                     stack_push(&call_stack, n, e);
                     stack_push(&call_stack, e->dst, NULL);
                 }
-                else if (n->u.ph2.u.tarjan.lowlink == n->u.ph2.u.tarjan.index) {
+                else if (n->u.ph2.lowlink == n->u.ph2.index) {
                     for (;;) {
                         struct node *n2;
                         n2 = stack_pop(global, &stack, NULL);

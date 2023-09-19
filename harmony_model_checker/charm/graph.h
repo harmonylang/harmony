@@ -134,12 +134,7 @@ struct node {
         struct {
             uint32_t component;     // strongly connected component id
             uint32_t len;           // length of shortest path to initial state
-            union {
-                struct {
-                    int32_t index, lowlink; // only needed for Tarjan
-                } tarjan;
-                struct edge *to_parent; // path to initial state
-            } u;
+            int32_t index, lowlink; // only needed for Tarjan
         } ph2;
     } u;
 
