@@ -1,3 +1,6 @@
+in_cs = 0
+invariant in_cs in { 0, 1 }
+
 flags = [ False, False ]
 
 def thread(self):
@@ -6,8 +9,9 @@ def thread(self):
         flags[self] = True
         await not flags[1 - self]
 
+        atomically in_cs += 1
         # Critical section
-        cs: assert countLabel(cs) == 1
+        atomically in_cs -= 1
 
         # Leave critical section
         flags[self] = False

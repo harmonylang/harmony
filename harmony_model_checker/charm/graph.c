@@ -47,9 +47,9 @@ static bool graph_edge_conflict(
     struct edge *edge,
     struct edge *edge2
 ) {
-    for (struct access_info *ai = edge->ai; ai != NULL; ai = ai->next) {
+    for (struct access_info *ai = edge_output(edge)->ai; ai != NULL; ai = ai->next) {
         if (ai->indices != NULL) {
-            for (struct access_info *ai2 = edge2->ai; ai2 != NULL; ai2 = ai2->next) {
+            for (struct access_info *ai2 = edge_output(edge2)->ai; ai2 != NULL; ai2 = ai2->next) {
                 if (ai2->indices != NULL && !(ai->load && ai2->load) && (!ai->atomic || !ai2->atomic)) {
                     int min = ai->n < ai2->n ? ai->n : ai2->n;
                     assert(min > 0);
@@ -57,7 +57,7 @@ static bool graph_edge_conflict(
                                    min * sizeof(hvalue_t)) == 0) {
                         struct failure *f = new_alloc(struct failure);
                         f->type = FAIL_RACE;
-                        f->edge = node->u.ph2.u.to_parent;
+                        f->edge = node_to_parent(node);
                         f->address = value_put_address(engine, ai->indices, min * sizeof(hvalue_t));
                         add_failure(failures, f);
                         return true;
@@ -78,13 +78,13 @@ void graph_check_for_data_race(
     // happen if more than one thread is in the same state and (all) write
     // the same variable
     for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
-        for (struct access_info *ai = edge->ai; ai != NULL; ai = ai->next) {
+        for (struct access_info *ai = edge_output(edge)->ai; ai != NULL; ai = ai->next) {
             if (ai->indices != NULL) {
                 assert(ai->n > 0);
-                if (edge->multiplicity > 1 && !ai->load && !ai->atomic) {
+                if (edge->multiple && !ai->load && !ai->atomic) {
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_RACE;
-                    f->edge = node->u.ph2.u.to_parent;
+                    f->edge = node_to_parent(node);
                     f->address = value_put_address(engine, ai->indices, ai->n * sizeof(hvalue_t));
                     add_failure(failures, f);
                 }

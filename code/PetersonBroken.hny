@@ -1,5 +1,7 @@
-sequential flags, turn
+in_cs = 0
+invariant in_cs in { 0, 1 }
 
+sequential flags, turn
 flags = [ False, False ]
 turn = choose({0, 1})
 
@@ -8,11 +10,11 @@ def thread(self):
         # Enter critical section
         turn = 1 - self
         flags[self] = True
-
         await (not flags[1 - self]) or (turn == self)
 
-        # Critical section is here
-        cs: assert countLabel(cs) == 1
+        atomically in_cs += 1
+        # Critical section
+        atomically in_cs -= 1
 
         # Leave critical section
         flags[self] = False

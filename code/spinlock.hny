@@ -1,8 +1,10 @@
 const N = 3
 
+in_cs = 0
+invariant in_cs in { 0, 1 }
+
 shared = False
 private = [ True, ] * N
-
 invariant len(x for x in [shared,] + private where not x) <= 1
 
 def test_and_set(s, p):
@@ -20,8 +22,9 @@ def thread(self):
         while private[self]:
             test_and_set(?shared, ?private[self])
 
-        # Critical section
-        cs: assert (not private[self]) and (countLabel(cs) == 1)
+        atomically in_cs += 1
+        assert not private[self]
+        atomically in_cs -= 1
 
         # Leave critical section
         private[self] = True

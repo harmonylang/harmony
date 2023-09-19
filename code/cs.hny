@@ -1,11 +1,17 @@
+# number of threads in the critical section
+in_cs = 0
+invariant in_cs in { 0, 1 }
+
 def thread():
-    while choose({ False, True }):
+    while choose { False, True }:
         # Enter critical section
+        atomically in_cs += 1
 
         # Critical section is here
-        cs: assert countLabel(cs) == 1
+        pass
 
         # Exit critical section
+        atomically in_cs -= 1
     
 spawn thread()
 spawn thread()

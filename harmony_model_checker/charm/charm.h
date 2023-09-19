@@ -11,6 +11,7 @@
 // a cost that we do not want to level against all invariants, we keep track of
 // whether an invariant refers to the pre state of a transition.
 struct invariant {
+    hvalue_t context;
     unsigned int pc;                // location of invariant code
     // TODO.  May not need the following since we can get it from env
     bool pre;                       // uses "pre" or not
@@ -65,7 +66,7 @@ struct global {
     struct invariant *invs;         // list of invariants
     bool inv_pre;                   // some invariant uses "pre"
     unsigned int nfinals;           // #finally predicates
-    unsigned int *finals;           // program counters of finally preds
+    hvalue_t *finals;               // contexts of finally preds
 
     struct graph graph;             // the Kripke structure but also the todo list
 

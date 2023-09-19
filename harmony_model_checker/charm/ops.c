@@ -97,6 +97,8 @@ static hvalue_t alloc_pool_atom, alloc_next_atom;
 static hvalue_t type_bool, type_int, type_str, type_pc, type_list;
 static hvalue_t type_dict, type_set, type_address, type_context;
 
+bool has_countLabel;            // TODO.  Hack for backward compatibility
+
 // Helper function for vt_string()
 static void vt_string_recurse(struct strbuf *sb, const struct var_tree *vt){
     switch (vt->type) {
@@ -621,26 +623,27 @@ void op_Print(const void *env, struct state *state, struct step *step, struct gl
         printf("%s\n", s);
         free(s);
     }
-    global->printed_something = true;
-    if (step->keep_callstack) {
-        strbuf_printf(&step->explain, "pop value (#+) and add to print log");
-        step->explain_args[step->explain_nargs++] = symbol;
-    }
     if (step->nlog == MAX_PRINT) {
         value_ctx_failure(step->ctx, &step->engine, "Print: too many prints");
         return;
     }
     step->log[step->nlog++] = symbol;
-    if (global->dfa != NULL) {
-        int nstate = dfa_step(global->dfa, state->dfa_state, symbol);
-        if (nstate < 0) {
-            char *p = value_string(symbol);
-            value_ctx_failure(step->ctx, &step->engine, "Behavior failure on %s", p);
-            free(p);
-            return;
-        }
-        state->dfa_state = nstate;
+    global->printed_something = true;
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "pop value (#+) and add to print log");
+        step->explain_args[step->explain_nargs++] = symbol;
 
+        // TODO.  This is currently duplicated in onestep/twostep
+        if (global->dfa != NULL) {
+            int nstate = dfa_step(global->dfa, state->dfa_state, symbol);
+            if (nstate < 0) {
+                char *p = value_string(symbol);
+                value_ctx_failure(step->ctx, &step->engine, "Behavior failure on %s", p);
+                free(p);
+                return;
+            }
+            state->dfa_state = nstate;
+        }
     }
     step->ctx->pc++;
 }
@@ -816,6 +819,11 @@ static void do_return(struct state *state, struct step *step, struct global *glo
 // To find data races, we track for each step which variables are read and
 // written.  This also turns out to be useful for optimizing counterexamples.
 static void ai_add(struct global *global, struct step *step, hvalue_t *indices, unsigned int n, bool load){
+    // Assertions and invariants do not conflict with normal ops.
+    if (step->ctx->readonly) {
+        return;
+    }
+
     struct allocator *al = step->engine.allocator;
     if (al != NULL) {
         // Find the end of the list
@@ -1345,21 +1353,6 @@ void op_Go(
         value_ctx_failure(step->ctx, &step->engine, "Go: not a context");
         return;
     }
-
-    // Remove from stopbag if it's there
-    hvalue_t count;
-    if (value_tryload(&step->engine, state->stopbag, ctx, &count)) {
-        assert(VALUE_TYPE(count) == VALUE_INT);
-        assert(count != VALUE_INT);
-        count -= 1 << VALUE_BITS;
-        if (count != VALUE_INT) {
-            state->stopbag = value_dict_store(&step->engine, state->stopbag, ctx, count);
-        }
-        else {
-            state->stopbag = value_dict_remove(&step->engine, state->stopbag, ctx);
-        }
-    }
-
     hvalue_t result = ctx_pop(step->ctx);
 
     // Copy the context and reserve an extra hvalue_t
@@ -1374,15 +1367,32 @@ void op_Go(
     struct context *copy = (struct context *) buffer;
     ctx_push(copy, result);
     copy->stopped = false;
-    // TODO.  Check success of context_add
     hvalue_t context = value_put_context(&step->engine, copy);
-    context_add(state, context);
 #ifdef HEAP_ALLOC
     free(buffer);
 #endif
     step->ctx->pc++;
 
     if (step->keep_callstack) {
+        // Remove old context from stopbag if it's there
+        hvalue_t count;
+        if (value_tryload(&step->engine, state->stopbag, ctx, &count)) {
+            assert(VALUE_TYPE(count) == VALUE_INT);
+            assert(count != VALUE_INT);
+            count -= 1 << VALUE_BITS;
+            if (count != VALUE_INT) {
+                state->stopbag = value_dict_store(&step->engine, state->stopbag, ctx, count);
+            }
+            else {
+                state->stopbag = value_dict_remove(&step->engine, state->stopbag, ctx);
+            }
+        }
+
+        // Add new context to context bag
+        if (context_add(state, context) < 0) {
+            panic("op_Go: context_add");
+        }
+
         // Find the process
         unsigned int pid;
         for (pid = 0; pid < global->nprocesses; pid++) {
@@ -1395,15 +1405,37 @@ void op_Go(
             panic("op_Go: can't find process");
         }
     }
+    else {
+        if (step->nunstopped == MAX_SPAWN) {
+            value_ctx_failure(step->ctx, &step->engine, "Maximum #threads unstopped exceeded");
+        }
+        step->unstopped[step->nunstopped++] = ctx;
+        if (step->nspawned == MAX_SPAWN) {
+            value_ctx_failure(step->ctx, &step->engine, "Maximum #threads resumed exceeded");
+        }
+        step->spawned[step->nspawned++] = context;
+    }
 }
 
 void op_Finally(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_Finally *ef = env;
 
+    // Create a context for the predicate
+    char context[sizeof(struct context) +
+                        (ctx_extent + 2) * sizeof(hvalue_t)];
+    struct context *ctx = (struct context *) context;
+    memset(ctx, 0, sizeof(*ctx));
+    ctx->pc = ef->pc;
+    ctx->vars = VALUE_DICT;
+    ctx->readonly = 1;
+    ctx->atomic = 1;
+    ctx->atomicFlag = true;
+    ctx_push(ctx, VALUE_LIST);
+    hvalue_t finctx = value_put_context(&step->engine, ctx);
+
     mutex_acquire(&global->inv_lock);
     global->finals = realloc(global->finals, (global->nfinals + 1) * sizeof(*global->finals));
-    unsigned int *fin = &global->finals[global->nfinals++];
-    *fin = ef->pc;
+    global->finals[global->nfinals++] = finctx;
     mutex_release(&global->inv_lock);
 
     step->ctx->pc += 1;
@@ -1412,9 +1444,23 @@ void op_Finally(const void *env, struct state *state, struct step *step, struct 
 void op_Invariant(const void *env, struct state *state, struct step *step, struct global *global){
     const struct env_Invariant *ei = env;
 
+    // Create a context for the invariant
+    char context[sizeof(struct context) +
+                        (ctx_extent + 2) * sizeof(hvalue_t)];
+    struct context *ctx = (struct context *) context;
+    memset(ctx, 0, sizeof(*ctx));
+    ctx->pc = ei->pc;
+    ctx->vars = VALUE_DICT;
+    ctx->readonly = 1;
+    ctx->atomic = 1;
+    ctx->atomicFlag = true;
+    ctx_push(ctx, VALUE_LIST);	// HACK
+    hvalue_t invctx = value_put_context(&step->engine, ctx);
+
     mutex_acquire(&global->inv_lock);
     global->invs = realloc(global->invs, (global->ninvs + 1) * sizeof(*global->invs));
     struct invariant *inv = &global->invs[global->ninvs++];
+    inv->context = invctx;
     inv->pc = ei->pc;
     inv->pre = ei->pre;
     if (ei->pre) {
@@ -2085,6 +2131,10 @@ void op_Spawn(
         value_ctx_failure(step->ctx, &step->engine, "Can't spawn in read-only mode");
         return;
     }
+    if (step->nspawned == MAX_SPAWN) {
+        value_ctx_failure(step->ctx, &step->engine, "Maximum #threads spawned exceeded");
+        return;
+    }
 
     hvalue_t thisval = ctx_pop(step->ctx);
     hvalue_t closure = ctx_pop(step->ctx);
@@ -2152,12 +2202,11 @@ void op_Spawn(
     }
     else {
         hvalue_t context = value_put_context(&step->engine, ctx);
-        if (context_add(state, context) < 0) {
-            value_ctx_failure(step->ctx, &step->engine, "spawn: too many threads");
-            return;
-        }
-
         if (step->keep_callstack) {
+            if (context_add(state, context) < 0) {
+                value_ctx_failure(step->ctx, &step->engine, "spawn: too many threads");
+                return;
+            }
             // Called in second phase, so sequential
             global->processes = realloc(global->processes, (global->nprocesses + 1) * sizeof(hvalue_t));
             global->callstacks = realloc(global->callstacks, (global->nprocesses + 1) * sizeof(struct callstack *));
@@ -2171,6 +2220,9 @@ void op_Spawn(
             cs->return_address = (step->ctx->pc << CALLTYPE_BITS) | CALLTYPE_PROCESS;
             global->callstacks[global->nprocesses] = cs;
             global->nprocesses++;
+        }
+        else {
+            step->spawned[step->nspawned++] = context;
         }
     }
 
@@ -2737,6 +2789,11 @@ void *init_Nary(struct dict *map, struct engine *engine){
     }
     env->fi = fi;
 
+    // TODO.  Hack for backward compatibility
+    if (strcmp(fi->name, "countLabel") == 0) {
+        has_countLabel = true;
+    }
+
     return env;
 }
 
@@ -3124,7 +3181,7 @@ hvalue_t f_get_ident(struct state *state, struct step *step, hvalue_t *args, uns
         return VALUE_TO_INT(0);
     }
     if (step->ctx->id == 0) {
-        step->ctx->id = ++state->tid_gen;
+        return value_ctx_failure(step->ctx, &step->engine, "get_ident() not implemented currently");
     }
     return VALUE_TO_INT(step->ctx->id);
 }

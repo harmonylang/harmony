@@ -1,5 +1,7 @@
-sequential flags
+in_cs = 0
+invariant in_cs in { 0, 1 }
 
+sequential flags
 flags = [ False, False ]
 
 def thread(self):
@@ -10,8 +12,9 @@ def thread(self):
             flags[self] = False
             flags[self] = True
         
+        atomically in_cs += 1
         # Critical section
-        cs: assert countLabel(cs) == 1
+        atomically in_cs -= 1
 
         # Leave critical section
         flags[self] = False

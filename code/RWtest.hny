@@ -1,5 +1,9 @@
 import RW
 
+nreaders = nwriters = 0
+invariant ((nreaders >= 0) and (nwriters == 0)) or
+            ((nreaders == 0) and (0 <= nwriters <= 1))
+
 const NOPS = 3
 
 rw = RW.RWlock()
@@ -8,11 +12,13 @@ def thread():
     while choose({ False, True }):
         if choose({ "read", "write" }) == "read":
             RW.read_acquire(?rw)
-            rcs: assert (countLabel(rcs) >= 1) and (countLabel(wcs) == 0)
+            atomically nreaders += 1
+            atomically nreaders -= 1
             RW.read_release(?rw)
         else:                       # write
             RW.write_acquire(?rw)
-            wcs: assert (countLabel(rcs) == 0) and (countLabel(wcs) == 1)
+            atomically nwriters += 1
+            atomically nwriters -= 1
             RW.write_release(?rw)
 
 for i in {1..NOPS}:
