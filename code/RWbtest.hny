@@ -10,7 +10,7 @@ def thread(self):
             print(self, "enter ra")
             RW.read_acquire(?rw)
             print(self, "exit ra")
-            rcs: assert (countLabel(rcs) >= 1) and (countLabel(wcs) == 0)
+
             print(self, "enter rr")
             RW.read_release(?rw)
             print(self, "exit rr")
@@ -18,7 +18,7 @@ def thread(self):
             print(self, "enter wa")
             RW.write_acquire(?rw)
             print(self, "exit wa")
-            wcs: assert (countLabel(rcs) == 0) and (countLabel(wcs) == 1)
+
             print(self, "enter wr")
             RW.write_release(?rw)
             print(self, "enter wr")

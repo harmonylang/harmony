@@ -1,15 +1,13 @@
-import list
-
 def Queue() returns empty:
     empty = []
 
 def put(q, v):
-    !q = list.append(!q, v)
+    !q += [v,]
+
 
 def get(q) returns next:
     if !q == []:
         next = None
     else:
-        next = list.head(!q)
-        !q = list.tail(!q)
-
+        next = (!q)[0]
+        del (!q)[0]

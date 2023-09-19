@@ -2,9 +2,9 @@ count = 0
 done = [ False, False ]
 
 def incrementer(self):
-    var register = count    # load count
-    register += 1           # increment
-    count = register        # store count
+    var register = count    # load shared variable count into a private register
+    register += 1           # increment the register
+    count = register        # store its value into variable count
     done[self] = True
     await done[1 - self]
     assert count == 2
