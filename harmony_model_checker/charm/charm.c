@@ -3990,13 +3990,12 @@ int exec_model_checker(int argc, char **argv){
         }
         double now = gettime();
         tarjan(global);
-        double tween = gettime();
         computed_components = true;
 
         // Compute shortest path to initial state for each node.
         // shortest_path(global);
 
-        printf("    * %u components (%.2lf+%.2lf seconds)\n", global->ncomponents, tween - now, gettime() - tween);
+        printf("    * %u components (%.2lf seconds)\n", global->ncomponents, gettime() - now);
 
 #ifdef DUMP_GRAPH
         printf("digraph Harmony {\n");
