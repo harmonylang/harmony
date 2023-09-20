@@ -186,6 +186,9 @@ struct worker {
     // instruction for profiling purposes.
     unsigned int *profile;      // one for each instruction in the HVM code
 
+    // Some space to compute a new state in
+    char state_space[sizeof(struct state) + 256*sizeof(hvalue_t)];
+
     // These need to be next to one another.  When a worker performs a
     // "step", it's on behalf of a particular thread with a particular
     // context (state of the thread).  The context structure is immediately
@@ -770,8 +773,6 @@ static struct step_output *onestep(
 
             // If not, but the context was not in atomic mode, save the current
             // state to restore to in case we have to "break".
-            // TODO.  We do not really need to store the context in
-            //        the hashtable here.  We could just copy it like the state.
             else if (step->ctx->atomic == 0) {
                 memcpy(w->as_state, sc, state_size(sc));
                 memcpy(&w->as_ctx, step->ctx, ctx_size(step->ctx));
@@ -1123,18 +1124,9 @@ static void trystep(
 
     // Make a copy of the state.
     //
-    // TODO. Would it not be more efficient to have a fixed state variable
-    //       in the worker structure, similar to what we do for contexts (w->ctx)?
-    //
     // TODO. Don't need to copy if ctx in readonly mode
     unsigned int statesz = state_size(state);
-    // Room to grown in copy for op_Spawn
-#ifdef HEAP_ALLOC
-    char *copy = malloc(statesz + 64*sizeof(hvalue_t));
-#else
-    char copy[statesz + 64*sizeof(hvalue_t)];
-#endif
-    struct state *sc = (struct state *) copy;
+    struct state *sc = (struct state *) w->state_space;
     memcpy(sc, state, statesz);
     sc->chooser = -1;
 
@@ -1173,10 +1165,6 @@ static void trystep(
             stc->u.completed = so;
             mutex_release(si_lock);
         }
-
-#ifdef HEAP_ALLOC
-        free(copy);
-#endif
     }
     else {
         assert(stc->type == SC_COMPLETED);
