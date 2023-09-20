@@ -3146,41 +3146,6 @@ static inline bool stack_empty(struct stack *s) {
     return s->prev == NULL && s->sp == 0;
 }
 
-#ifdef OBSOLETE
-// Compute shortest path to initial state using DFS.
-//
-// TODO.  Either clean up the stack afterwards or re-use it for tarjan?
-static void shortest_path(struct global *global){
-    // Initialize the nodes
-    for (unsigned int v = 0; v < global->graph.size; v++) {
-        struct node *n = global->graph.nodes[v];
-        n->u.ph2.u.to_parent = NULL;
-    }
-    struct stack *stack = calloc(1, sizeof(*stack));
-    stack_push(&stack, global->graph.nodes[0], NULL);
-    global->graph.nodes[0]->u.ph2.len = 0;
-    while (!stack_empty(stack)) {
-        struct node *src = stack_pop(global, &stack, NULL);
-        for (struct edge *e = src->fwd; e != NULL; e = e->fwdnext) {
-            struct node *dst = e->dst;
-            if (dst->u.ph2.u.to_parent == NULL) {
-                if (dst != global->graph.nodes[0]) {
-                    dst->u.ph2.u.to_parent = e;
-                    dst->u.ph2.len = src->u.ph2.len + 1;
-                    stack_push(&stack, dst, NULL);
-                }
-            }
-            else {
-                if (dst->u.ph2.len > src->u.ph2.len + 1) {
-                    dst->u.ph2.u.to_parent = e;
-                    dst->u.ph2.len = src->u.ph2.len;
-                }
-            }
-        }
-    }
-}
-#endif // OBSOLETE
-
 // Tarjan SCC algorithm
 static void tarjan(struct global *global){
     // Initialize the nodes
@@ -3979,10 +3944,6 @@ int exec_model_checker(int argc, char **argv){
         double now = gettime();
         tarjan(global);
         computed_components = true;
-
-        // Compute shortest path to initial state for each node.
-        // shortest_path(global);
-
         printf("    * %u components (%.2lf seconds)\n", global->ncomponents, gettime() - now);
 
 #ifdef DUMP_GRAPH
@@ -4135,10 +4096,6 @@ int exec_model_checker(int argc, char **argv){
                 }
             }
         }
-    }
-    else {
-        // Compute shortest path to initial state for each node.
-        // shortest_path(global);
     }
 
     // The -D flag is used to dump debug files
