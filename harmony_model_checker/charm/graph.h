@@ -143,7 +143,7 @@ struct node {
     struct edge *fwd;       // forward edges
     uint32_t id;            // nodes are numbered starting from 0
     bool on_stack : 1;      // for Tarjan
-    bool initialized : 1;   // this node structure has been initialized
+    // bool initialized : 1;   // this node structure has been initialized
     bool failed : 1;        // a thread has failed
     bool final : 1;         // only eternal threads left (TODO: need this?)
     bool visited : 1;       // for busy wait detection

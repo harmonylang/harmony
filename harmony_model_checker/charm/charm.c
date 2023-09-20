@@ -329,137 +329,25 @@ void spawn_thread(struct global *global, struct state *state, struct context *ct
     thread_create(wrap_thread, si);
 }
 
-#ifdef OLD_INVARIANTS
-
-// This function evaluates a predicate.  The predicate is evaluated in
-// every state as if by some thread.  sc contains the state, while
-// step keeps track of the state of the thread specifically.
-//
-// The code of a predicate ends in an Assert HVM instruction that
-// checks the value of the predicate.  The predicate may thus fail, but
-// if could also fails if there is something wrong with the predicate
-// (e.g., divice by zero).
-//
-// This function returns true iff the predicate evaluated to true.
-bool predicate_check(struct global *global, struct state *sc, struct step *step){
-    assert(!step->ctx->failed);
-    assert(step->ctx->sp == 1);     // just the argument
-    while (!step->ctx->terminated) {
-        struct op_info *oi = global->code.instrs[step->ctx->pc].oi;
-        (*oi->op)(global->code.instrs[step->ctx->pc].env, sc, step, global);
-        if (step->ctx->failed) {
-            step->ctx->sp = 0;
-            return false;
-        }
-    }
-    step->ctx->sp = 0;
-    return true;
-}
-
-// Check all the invariants that the program specified.
-// Returns 0 if there are no issues, or the pc of some invariant that failed.
-unsigned int check_invariants(struct global *global, struct node *node,
-                        struct node *before, struct step *step){
-    struct state *state = node_state(node);
-    assert(state != NULL);
-
-    assert(step->ctx->sp == 0);
-
-    // pre == 0 means it is a non-initialized state.
-    hvalue_t args[2];   // (pre, post)
-    if (node_state(before)->pre == 0) {
-        args[0] = state->vars;
-    }
-    else {
-        args[0] = node_state(before)->pre;
-    }
-    args[1] = state->vars;
-
-    // Check each invariant
-    for (unsigned int i = 0; i < global->ninvs; i++) {
-        // No need to check edges other than self-loops
-        if (!global->invs[i].pre && node != before) {
-            continue;
-        }
-
-        assert(step->ctx->sp == 0);
-        step->ctx->terminated = step->ctx->failed = false;
-        // TODO: this may be a bug unless step->ctx is extended
-        ctx_failure(step->ctx) = 0;
-        step->ctx->pc = global->invs[i].pc;
-        step->ctx->vars = VALUE_DICT;
-        value_ctx_push(step->ctx, value_put_list(&step->engine, args, sizeof(args)));
-
-        assert(strcmp(global->code.instrs[step->ctx->pc].oi->name, "Frame") == 0);
-        bool b = predicate_check(global, state, step);
-        if (step->ctx->failed) {
-            // printf("Invariant evaluation failed: %s\n", value_string(ctx_failure(step->ctx)));
-            b = false;
-        }
-        if (!b) {
-            // printf("INV %u %u failed\n", i, global->invs[i].pc);
-            return global->invs[i].pc;
-        }
-    }
-
-    return 0;
-}
-
-// Same as check_invariants but for "finally" predicates that are only
-// checked in final states.
-// Returns 0 if there are no issues, or the pc of the finally predicate if it failed.
-unsigned int check_finals(struct global *global, struct node *node, struct step *step){
-    struct state *state = node_state(node);
-    assert(state != NULL);
-
-    // Check each finally predicate
-    for (unsigned int i = 0; i < global->nfinals; i++) {
-        assert(step->ctx->sp == 0);
-        step->ctx->terminated = step->ctx->failed = false;
-        // TODO: this may be a bug unless step->ctx is extended
-        ctx_failure(step->ctx) = 0;
-        step->ctx->pc = global->finals[i];
-        step->ctx->vars = VALUE_DICT;
-        value_ctx_push(step->ctx, VALUE_LIST);
-
-        assert(strcmp(global->code.instrs[step->ctx->pc].oi->name, "Frame") == 0);
-        bool b = predicate_check(global, state, step);
-        if (step->ctx->failed) {
-            // printf("Finally evaluation failed: %s\n", value_string(ctx_failure(step->ctx)));
-            b = false;
-        }
-        if (!b) {
-            // printf("FIN %u %u failed\n", i, global->finals[i]);
-            return global->finals[i];
-        }
-    }
-    return 0;
-}
-
-#endif // OLD_INVARIANTS
-
 // This function is called when a new edge has been generated, possibly to
 // a new state with an uninitialized node.
 static void process_edge(struct worker *w, struct node *node,
-                        struct edge *edge, mutex_t *lock) {
+                        struct edge *edge, mutex_t *lock, bool new) {
     struct node *next = edge->dst;
 
-    // mutex_acquire(lock);    ==> this lock is already acquired
-
-    bool initialized = next->initialized;
-    if (!initialized) {
-        next->initialized = true;
+    // TODO.  Do we need the initialized flag or just use 'new'?
+    if (new) {
+        // mutex_acquire(lock);    ==> this lock is already acquired
         next->reachable = true;
         next->failed = edge->failed;
         next->u.ph1.lock = lock;
         next->u.ph1.next = w->results;
-	next->to_parent = edge;
+        next->to_parent = edge;
         w->results = next;
         w->count++;
         w->enqueued++;
+        mutex_release(lock);
     }
-
-    mutex_release(lock);
 
 #ifdef DELAY_INSERT
     // Don't do the forward edge at this time as that would involve locking
@@ -483,29 +371,6 @@ static void process_edge(struct worker *w, struct node *node,
         *pe = edge;
     }
 #endif
-
-#ifdef OLD_INVARIANTS
-    // If this is a good and normal (non-choosing) edge, check all the invariants.
-    if (!edge->failed && !edge->so->choosing) {
-        if (w->global->ninvs != 0) {
-            unsigned int inv = 0;
-            if (!initialized) {      // try self-loop if a new node
-                inv = check_invariants(w->global, next, next, &w->inv_step);
-            }
-            if (inv == 0 && next != node) { // try new edge
-                inv = check_invariants(w->global, next, node, &w->inv_step);
-            }
-            if (inv != 0) {
-                struct failure *f = new_alloc(struct failure);
-                f->type = FAIL_INVARIANT;
-                f->edge = edge;
-                f->address = VALUE_TO_PC(inv);
-                f->next = w->failures;
-                w->failures = f;
-            }
-        }
-    }
-#endif // OLD_INVARIANTS
 }
 
 static void process_step(
@@ -632,11 +497,11 @@ static void process_step(
     unsigned int size = state_size(sc);
     mutex_t *lock;
     bool new;
-    struct dict_assoc *hn = dict_find_lock(w->visited, &w->allocator,
+    struct dict_assoc *hn = dict_find_lock_new(w->visited, &w->allocator,
                 sc, size, &new, &lock);
     edge->dst = (struct node *) &hn[1];
 
-    process_edge(w, node, edge, lock);
+    process_edge(w, node, edge, lock, new);
 }
 
 // This is the main workhorse function of model checking: explore a state and
@@ -4401,91 +4266,6 @@ int exec_model_checker(int argc, char **argv){
         json_dump(jv, out, 2);
         fprintf(out, ",\n");
 
-        // If it was an invariant failure, add one more macrostep
-        // to replay the invariant code.
-        struct edge *edge;
-#ifdef OLD_INVARIANT
-        if (bad->type == FAIL_INVARIANT) {
-            struct context *inv_ctx = calloc(1, sizeof(struct context) +
-                                MAX_CONTEXT_STACK * sizeof(hvalue_t));
-            inv_ctx->pc = VALUE_FROM_PC(bad->address);
-            inv_ctx->vars = VALUE_DICT;
-            inv_ctx->atomic = 1;
-            inv_ctx->atomicFlag = true;
-            inv_ctx->readonly = 1;
-
-            hvalue_t args[2];
-            args[0] = node_state(bad->edge->src)->vars;
-            args[1] = node_state(bad->edge->dst)->vars;
-            value_ctx_push(inv_ctx, value_put_list(&engine, args, sizeof(args)));
-
-            hvalue_t inv_context = value_put_context(&engine, inv_ctx);
-
-            edge = calloc(1, sizeof(struct edge));
-            edge->so = calloc(1, sizeof(struct step_output));
-            edge->src = edge->dst = bad->edge->dst;
-            edge->ctx = inv_context;
-            edge->choice = 0;
-            edge->so->after = 0;
-            edge->so->ai = NULL;
-            edge->so->nlog = 0;
-            edge->so->nsteps = 65000;
-
-            global->processes = realloc(global->processes, (global->nprocesses + 1) * sizeof(hvalue_t));
-            global->callstacks = realloc(global->callstacks, (global->nprocesses + 1) * sizeof(struct callstack *));
-            global->processes[global->nprocesses] = inv_context;
-            struct callstack *cs = new_alloc(struct callstack);
-            cs->pc = inv_ctx->pc;
-            cs->arg = VALUE_LIST;
-            cs->vars = VALUE_DICT;
-            cs->return_address = (inv_ctx->pc << CALLTYPE_BITS) | CALLTYPE_PROCESS;
-            global->callstacks[global->nprocesses] = cs;
-            global->nprocesses++;
-        }
-        // TODO: Should be able to reuse more from last case
-        else
-        if (bad->type == FAIL_FINALLY) {
-            struct context *inv_ctx = calloc(1, sizeof(struct context) +
-                                MAX_CONTEXT_STACK * sizeof(hvalue_t));
-            inv_ctx->pc = VALUE_FROM_PC(bad->address);
-            inv_ctx->vars = VALUE_DICT;
-            inv_ctx->atomic = 1;
-            inv_ctx->atomicFlag = true;
-            inv_ctx->readonly = 1;
-
-            value_ctx_push(inv_ctx, VALUE_LIST);
-
-            hvalue_t inv_context = value_put_context(&engine, inv_ctx);
-
-            edge = calloc(1, sizeof(struct edge));
-            edge->so = calloc(1, sizeof(struct step_output));
-            edge->src = edge->dst = bad->edge->dst;
-            edge->ctx = inv_context;
-            edge->choice = 0;
-            edge->so->after = 0;
-            edge->so->ai = NULL;
-            edge->so->nlog = 0;
-            edge->so->nsteps = 65000;
-
-            global->processes = realloc(global->processes, (global->nprocesses + 1) * sizeof(hvalue_t));
-            global->callstacks = realloc(global->callstacks, (global->nprocesses + 1) * sizeof(struct callstack *));
-            global->processes[global->nprocesses] = inv_context;
-            struct callstack *cs = new_alloc(struct callstack);
-            cs->pc = inv_ctx->pc;
-            cs->arg = VALUE_LIST;
-            cs->vars = VALUE_DICT;
-            cs->return_address = (inv_ctx->pc << CALLTYPE_BITS) | CALLTYPE_PROCESS;
-            global->callstacks[global->nprocesses] = cs;
-            global->nprocesses++;
-        }
-        else
-#endif // OLD_INVARIANT
-        {
-            edge = bad->edge;
-        }
-
-        // printf("LEN=%u, STEPS=%u\n", bad->edge->dst->len, bad->edge->dst->steps);
-
         // This is where we actually output a path (shortest counter example).
         // Finding the shortest counter example is non-trivial and could be very
         // expensive.  Here we use a trick that seems to work well and is very
@@ -4494,7 +4274,7 @@ int exec_model_checker(int argc, char **argv){
         fprintf(out, "  \"macrosteps\": [");
 
         // First copy the path to the bad state into an array for easier sorting
-        path_serialize(global, edge);
+        path_serialize(global, bad->edge);
 
         // The optimal path minimizes the number of context switches.  Here we
         // reorder steps in the path to do so.
