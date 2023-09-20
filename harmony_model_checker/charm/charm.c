@@ -351,9 +351,8 @@ static void process_edge(struct worker *w, struct node *node,
 
     // Add the edge to the node.  This can be done without a lock as there is only one worker
     // that is adding edges to this node.
-    struct edge **pe = &w->edges[node->id % w->nworkers];
-    edge->fwdnext = *pe;
-    *pe = edge;
+    edge->fwdnext = node->fwd;
+    node->fwd = edge;
 
 #ifdef EDGE_OBSOLETE
 #ifdef DELAY_INSERT
