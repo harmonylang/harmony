@@ -113,7 +113,8 @@ struct dict *extract;            // TODO.  Rename
 struct worker {
     struct global *global;       // global state shared by all workers
     double timeout;              // deadline for model checker (-t option)
-    struct failure *failures;    // list of discovered failures
+    struct failure *failures;    // list of discovered failures (not data races)
+    struct failure *data_races;  // list of discovered data races
     unsigned int index;          // index of worker
     struct worker *workers;      // points to array of workers
     unsigned int nworkers;       // total number of workers
@@ -2367,6 +2368,12 @@ void do_work1(struct worker *w, struct node *node){
             make_step(w, node, i, 0);
         }
 
+        // Check for data races
+        struct engine engine;
+        engine.allocator = &w->allocator;
+        engine.values = w->global->values;
+        graph_check_for_data_race(&w->data_races, node, &engine);
+
         // Also check the invariants after initialization
         if (node->id != 0) {
             struct state *state = node_state(node);
@@ -4099,6 +4106,7 @@ int exec_model_checker(int argc, char **argv){
         }
     }
 
+#ifdef OLD_DATA_RACE
     // Look for data races
     if (!Rflag && global->failures == NULL) {
         printf("    * Check for data races\n");
@@ -4110,6 +4118,7 @@ int exec_model_checker(int argc, char **argv){
             }
         }
     }
+#endif
 
     if (global->failures == NULL) {
         printf("    * **No issues found**\n");
