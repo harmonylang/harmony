@@ -114,7 +114,6 @@ struct worker {
     struct global *global;       // global state shared by all workers
     double timeout;              // deadline for model checker (-t option)
     struct failure *failures;    // list of discovered failures (not data races)
-    struct failure *data_races;  // list of discovered data races
     unsigned int index;          // index of worker
     struct worker *workers;      // points to array of workers
     unsigned int nworkers;       // total number of workers
@@ -336,27 +335,22 @@ static void process_edge(struct worker *w, struct node *node,
                         struct edge *edge, mutex_t *lock, bool new) {
     struct node *next = edge->dst;
 
-    // TODO.  Do we need the initialized flag or just use 'new'?
     if (new) {
         // mutex_acquire(lock);    ==> this lock is already acquired
-        next->reachable = true;
-        next->failed = edge->failed;
         // next->u.ph1.lock = lock;
-        next->u.ph1.next = w->results;
+        next->fwd = NULL;
+        next->reachable = true;         // TODO.  Do we need this?
+        next->failed = edge->failed;    // TODO.  What if another edge to this node doesn't fail?
         next->to_parent = edge;
         next->len = w->global->diameter;
+        next->u.ph1.next = w->results;
         w->results = next;
         w->count++;
         w->enqueued++;
         mutex_release(lock);
     }
 
-    // Add the edge to the node.  This can be done without a lock as there is only one worker
-    // that is adding edges to this node.
-    edge->fwdnext = node->fwd;
-    node->fwd = edge;
-
-#ifdef EDGE_OBSOLETE
+#define DELAY_INSERT
 #ifdef DELAY_INSERT
     // Don't do the forward edge at this time as that would involve locking
     // the parent node.  Instead assign that task to one of the workers
@@ -379,7 +373,6 @@ static void process_edge(struct worker *w, struct node *node,
         *pe = edge;
     }
 #endif
-#endif // EDGE_OBSOLETE
 }
 
 static void process_step(
@@ -2369,12 +2362,6 @@ void do_work1(struct worker *w, struct node *node){
             make_step(w, node, i, 0);
         }
 
-        // Check for data races
-        struct engine engine;
-        engine.allocator = &w->allocator;
-        engine.values = w->global->values;
-        graph_check_for_data_race(&w->data_races, node, &engine);
-
         // Also check the invariants after initialization
         if (node->id != 0) {
             struct state *state = node_state(node);
@@ -2804,7 +2791,6 @@ static void worker(void *arg){
         w->middle_count++;
         before = after;
 
-#ifdef EDGE_OBSOLETE
         // Insert the forward edges.  Each worker is responsible for a subset
         // of the nodes, so this can be done in parallel.
         for (unsigned i = 0; i < w->nworkers; i++) {
@@ -2817,7 +2803,6 @@ static void worker(void *arg){
                 src->fwd = e;
             }
         }
-#endif // EDGE_OBSOLETE
 
         // Keep more stats
         after = gettime();
@@ -2984,7 +2969,7 @@ static void stack_push(struct stack **sp, struct node *v1, struct edge *v2) {
             s->next = NULL;
         }
         else {
-	    assert(s->next->prev == s);
+            assert(s->next->prev == s);
             s = s->next;
             assert(s->sp == 0);
         }
@@ -3005,7 +2990,7 @@ static struct node *stack_pop(struct global *global, struct stack **sp, struct e
     // If the current chunk is empty, go to the previous one
     struct stack *s = *sp;
     if (s->sp == 0) {
-	assert(s->prev->next == s);
+        assert(s->prev->next == s);
         s = s->prev;
         assert(s->sp == STACK_CHUNK);
         *sp = s;
@@ -3016,12 +3001,10 @@ static struct node *stack_pop(struct global *global, struct stack **sp, struct e
         *v2 = (struct edge *) ((char *) ptr - 1);
         return global->graph.nodes[(*v2)->src_id];
     }
-    else {                              // node
-        if (v2 != NULL) {
-            *v2 = NULL;
-        }
-        return ptr;
+    if (v2 != NULL) {
+        *v2 = NULL;
     }
+    return ptr;
 }
 
 static inline bool stack_empty(struct stack *s) {
@@ -3855,7 +3838,10 @@ int exec_model_checker(int argc, char **argv){
         struct component *components = calloc(global->ncomponents, sizeof(*components));
         for (unsigned int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
-			assert(node->u.ph2.component < global->ncomponents);
+            if (node->u.ph2.component >= global->ncomponents) {
+                fprintf(stderr, "c = %u, n = %u\n", node->u.ph2.component, global->ncomponents);
+            }
+            assert(node->u.ph2.component < global->ncomponents);
             struct component *comp = &components[node->u.ph2.component];
 
             // See if this is the first state that we are looking at for
@@ -4109,7 +4095,6 @@ int exec_model_checker(int argc, char **argv){
 
     // Look for data races
     if (!Rflag && global->failures == NULL) {
-#ifdef OLD_DATA_RACE
         printf("    * Check for data races\n");
         for (unsigned int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
@@ -4118,17 +4103,6 @@ int exec_model_checker(int argc, char **argv){
                 break;
             }
         }
-#else
-    for (unsigned int i = 0; i < global->nworkers; i++) {
-        struct worker *w = &workers[i];
-        struct failure *f;
-        while ((f = w->data_races) != NULL) {
-            w->data_races = f->next;
-            f->next = global->failures;
-            global->failures = f;
-        }
-    }
-#endif
     }
 
     if (global->failures == NULL) {

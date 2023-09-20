@@ -127,7 +127,7 @@ struct node {
     union {
         // Data we only need while creating the Kripke structure
         struct {
-            struct node *next;		// for linked list
+            struct node *next;	    // for linked list
             // ht_lock_t *lock;     // points to lock for forward edges
         } ph1;
         // Data we only need when analyzing the Kripke structure
@@ -147,7 +147,7 @@ struct node {
     // bool initialized : 1;   // this node structure has been initialized
     bool failed : 1;        // a thread has failed
     bool final : 1;         // only eternal threads left (TODO: need this?)
-    bool visited : 1;       // for busy wait detection
+    bool visited : 1;       // for busy wait detection (TODO: need this?)
 
     // NFA compression
     bool reachable : 1;     // TODO.  Maybe obsolete at this time
