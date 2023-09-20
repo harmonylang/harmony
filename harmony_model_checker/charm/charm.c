@@ -341,9 +341,10 @@ static void process_edge(struct worker *w, struct node *node,
         // mutex_acquire(lock);    ==> this lock is already acquired
         next->reachable = true;
         next->failed = edge->failed;
-        next->u.ph1.lock = lock;
+        // next->u.ph1.lock = lock;
         next->u.ph1.next = w->results;
         next->to_parent = edge;
+        next->len = w->global->diameter;
         w->results = next;
         w->count++;
         w->enqueued++;
@@ -3724,7 +3725,7 @@ int exec_model_checker(int argc, char **argv){
     struct node *node = (struct node *) &hn[1];
     memset(node, 0, sizeof(*node));
     // node->state = (struct state *) &node[1];
-    node->u.ph1.lock = lock;
+    // node->u.ph1.lock = lock;
     mutex_release(lock);
     node->reachable = true;
     graph_add(&global->graph, node);
@@ -4032,7 +4033,7 @@ int exec_model_checker(int argc, char **argv){
                 if (computed_components) {
                     fprintf(df, "    component: %d\n", node->u.ph2.component);
                 }
-                fprintf(df, "    len to parent: %d\n", node->u.ph2.len);
+                fprintf(df, "    len to parent: %d\n", node->len);
                 if (node_to_parent(node) != NULL) {
                     fprintf(df, "    ancestors:");
                     for (struct node *n = global->graph.nodes[node_to_parent(node)->src_id];; n = global->graph.nodes[node_to_parent(n)->src_id]) {
@@ -4237,7 +4238,7 @@ int exec_model_checker(int argc, char **argv){
         // the number of steps but by the number of context switches.
         struct failure *bad = NULL;
         for (struct failure *f = global->failures; f != NULL; f = f->next) {
-            if (bad == NULL || bad->edge->dst->u.ph2.len < f->edge->dst->u.ph2.len) {
+            if (bad == NULL || bad->edge->dst->len < f->edge->dst->len) {
                 bad = f;
             }
         }
