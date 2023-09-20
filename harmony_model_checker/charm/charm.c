@@ -349,6 +349,13 @@ static void process_edge(struct worker *w, struct node *node,
         mutex_release(lock);
     }
 
+    // Add the edge to the node.  This can be done without a lock as there is only one worker
+    // that is adding edges to this node.
+    struct edge **pe = &w->edges[node->id % w->nworkers];
+    edge->fwdnext = *pe;
+    *pe = edge;
+
+#ifdef EDGE_OBSOLETE
 #ifdef DELAY_INSERT
     // Don't do the forward edge at this time as that would involve locking
     // the parent node.  Instead assign that task to one of the workers
@@ -371,6 +378,7 @@ static void process_edge(struct worker *w, struct node *node,
         *pe = edge;
     }
 #endif
+#endif // EDGE_OBSOLETE
 }
 
 static void process_step(
@@ -2789,6 +2797,7 @@ static void worker(void *arg){
         w->middle_count++;
         before = after;
 
+#ifdef EDGE_OBSOLETE
         // Insert the forward edges.  Each worker is responsible for a subset
         // of the nodes, so this can be done in parallel.
         for (unsigned i = 0; i < w->nworkers; i++) {
@@ -2801,6 +2810,7 @@ static void worker(void *arg){
                 src->fwd = e;
             }
         }
+#endif // EDGE_OBSOLETE
 
         // Keep more stats
         after = gettime();
