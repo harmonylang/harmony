@@ -4106,9 +4106,9 @@ int exec_model_checker(int argc, char **argv){
         }
     }
 
-#ifdef OLD_DATA_RACE
     // Look for data races
     if (!Rflag && global->failures == NULL) {
+#ifdef OLD_DATA_RACE
         printf("    * Check for data races\n");
         for (unsigned int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
@@ -4117,8 +4117,18 @@ int exec_model_checker(int argc, char **argv){
                 break;
             }
         }
+#else
+    for (unsigned int i = 0; i < global->nworkers; i++) {
+        struct worker *w = &workers[i];
+        struct failure *f;
+        while ((f = w->data_races) != NULL) {
+            w->data_races = f->next;
+            f->next = global->failures;
+            global->failures = f;
+        }
     }
 #endif
+    }
 
     if (global->failures == NULL) {
         printf("    * **No issues found**\n");
