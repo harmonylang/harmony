@@ -990,8 +990,8 @@ static void trystep(
                 w->el_free = el->next;
             }
             el->node = node;
-	    el->multiple = multiplicity > 1;
-	    el->invariant = invariant;
+            el->multiple = multiplicity > 1;
+            el->invariant = invariant;
             el->next = stc->u.in_progress;
             stc->u.in_progress = el;
             mutex_release(si_lock);
@@ -1052,7 +1052,7 @@ static void trystep(
         assert(stc->type == SC_COMPLETED);
     }
 
-    process_step(w, &step->engine, stc, node, invariant, multiplicity, sc);
+    process_step(w, &step->engine, stc, node, invariant, multiplicity > 1, sc);
     while (el != NULL) {
         struct state *state = (struct state *) &node[1];
         unsigned int statesz = state_size(state);
