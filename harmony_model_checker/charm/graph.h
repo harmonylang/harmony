@@ -71,15 +71,17 @@ struct step_output {
 #define step_spawned(x)      ((hvalue_t *) ((x) + 1) + (x)->nlog)
 #define step_unstopped(x)    ((hvalue_t *) ((x) + 1) + (x)->nlog + (x)->nspawned)
 
-struct edge_list {
-    struct edge_list *next;
-    struct edge *edge;
+struct node_list {
+    struct node_list *next;
+    struct node *node;
+    bool multiple;
+    bool invariant;
 };
 
 struct step_condition {
     enum { SC_IN_PROGRESS, SC_COMPLETED } type;
     union {
-        struct edge_list *in_progress;
+        struct node_list *in_progress;
         struct step_output *completed;
     } u;
 };
@@ -127,12 +129,11 @@ struct node {
         // Data we only need while creating the Kripke structure
         struct {
             struct node *next;	    // for linked list
-            // ht_lock_t *lock;        // points to lock for forward edges
+            ht_lock_t *lock;        // points to lock for forward edges
         } ph1;
         // Data we only need when analyzing the Kripke structure
         struct {
             uint32_t component;     // strongly connected component id
-            // uint32_t len;        // length of shortest path to initial state
             int32_t index, lowlink; // only needed for Tarjan
         } ph2;
     } u;

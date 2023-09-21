@@ -119,7 +119,7 @@ struct worker {
     unsigned int nworkers;       // total number of workers
     unsigned int vproc;          // virtual processor for pinning
     unsigned int si_total, si_hits;
-    struct edge_list *el_free;
+    struct node_list *el_free;
 
     // The worker thread loop through three phases:
     //  1: model check part of the state space
@@ -378,7 +378,9 @@ static void process_step(
     struct worker *w,
     struct engine *engine,
     struct step_condition *stc,
-    struct edge *edge,
+    struct node *node,
+    bool invariant,
+    bool multiple,
     struct state *sc
 ) {
     assert(stc->type == SC_COMPLETED);
@@ -386,7 +388,6 @@ static void process_step(
     struct step_input *si = (struct step_input *) &stc[1];
     struct step_output *so = stc->u.completed;
 
-#ifdef TODO
     // If it was an invariant being evaluated, the state cannot have changed.
     // If there was no error, no need to add an edge
     if (invariant) {
@@ -397,9 +398,6 @@ static void process_step(
 
     // Update the state if it was not an invariant.
     else {
-#else
-    if (1) {
-#endif
         sc->vars = so->vars;
 
         // Remove old context from the bag
@@ -461,7 +459,11 @@ static void process_step(
         }
     }
 
-    // Add the missing info to the edge now.
+    // Allocate and initialize edge.  We do not yet know the destination node.
+    struct edge *edge = walloc(w, sizeof(struct edge), false, false);
+    edge->src_id = node->id;
+    edge->multiple = multiple;
+    edge->invariant_chk = invariant;
     edge->sc = stc;
     edge->failed = so->failed || so->infinite_loop;
 
@@ -490,9 +492,7 @@ static void process_step(
     }
 
     // See if this state has been computed before by looking up the node,
-    // or allocate if not.  Sets a lock on that node.
-    // TODO.  It seems that perhaps the node does not need to be locked
-    //        if it's not new.  After all, we don't change it in that case.
+    // or allocate if not.
     unsigned int size = state_size(sc);
     mutex_t *lock;
     bool new;
@@ -505,12 +505,19 @@ static void process_step(
         next->failed = edge->failed;
         next->to_parent = edge;
         next->len = w->global->diameter;
+	next->u.ph1.lock = lock;
         next->u.ph1.next = w->results;
         w->results = next;
         w->count++;
         w->enqueued++;
         mutex_release(lock);
     }
+
+    // Add edge to the node
+    mutex_acquire(node->u.ph1.lock);
+    edge->fwdnext = node->fwd;
+    node->fwd = edge;
+    mutex_release(node->u.ph1.lock);
 }
 
 // This is the main workhorse function of model checking: explore a state and
@@ -948,15 +955,6 @@ static void trystep(
     bool si_new;
     mutex_t *si_lock;
 
-    // Allocate and add an edge for this step, even if we do not know the
-    // details yet. In particular, we need to know edge->sc (step condition)
-    // and edge->failed.
-    struct edge *edge = walloc(w, sizeof(struct edge), false, false);
-    edge->src_id = node->id;
-    edge->multiple = multiplicity > 1;
-    edge->invariant_chk = invariant;
-    edge->fwdnext = node->fwd;
-    node->fwd = edge;
     w->si_total++;          // counts the number of edges
 
     struct step_input si = {
@@ -972,7 +970,7 @@ static void trystep(
         comp->input = si;
     }
     else {
-        // See if we did this already
+        // See if we did this already (or are doing this already)
         struct dict_assoc *da = dict_find_lock(extract, &w->allocator,
                     &si, sizeof(si), &si_new, &si_lock);
         stc = (struct step_condition *) &da[1];
@@ -984,14 +982,16 @@ static void trystep(
     else {
         w->si_hits++;
         if (stc->type == SC_IN_PROGRESS) {
-            struct edge_list *el;
+            struct node_list *el;
             if ((el = w->el_free) == NULL) {
-                el = walloc(w, sizeof(struct edge_list), false, false);
+                el = walloc(w, sizeof(struct node_list), false, false);
             }
             else {
                 w->el_free = el->next;
             }
-            el->edge = edge;
+            el->node = node;
+	    el->multiple = multiplicity > 1;
+	    el->invariant = invariant;
             el->next = stc->u.in_progress;
             stc->u.in_progress = el;
             mutex_release(si_lock);
@@ -1013,7 +1013,7 @@ static void trystep(
     sc->chooser = -1;
 
     // If this is a new step, perform it
-    struct edge_list *el = NULL;
+    struct node_list *el = NULL;
     if (si_new) {
         // Make a copy of the context
         assert(!cc->terminated);
@@ -1052,14 +1052,13 @@ static void trystep(
         assert(stc->type == SC_COMPLETED);
     }
 
-    process_step(w, &step->engine, stc, edge, sc);
+    process_step(w, &step->engine, stc, node, invariant, multiplicity, sc);
     while (el != NULL) {
-        struct node *node = w->global->graph.nodes[el->edge->src_id];
         struct state *state = (struct state *) &node[1];
         unsigned int statesz = state_size(state);
         memcpy(sc, state, statesz);
-        process_step(w, &step->engine, stc, el->edge, sc);
-        struct edge_list *next = el->next;
+        process_step(w, &step->engine, stc, el->node, el->invariant, el->multiple, sc);
+        struct node_list *next = el->next;
         el->next = w->el_free;
         w->el_free = el;
         el = next;
@@ -3727,7 +3726,7 @@ int exec_model_checker(int argc, char **argv){
     struct dict_assoc *hn = dict_find_lock(visited, &workers[0].allocator, state, state_size(state), NULL, &lock);
     struct node *node = (struct node *) &hn[1];
     memset(node, 0, sizeof(*node));
-    // node->u.ph1.lock = lock;
+    node->u.ph1.lock = lock;
     mutex_release(lock);
     node->reachable = true;
     graph_add(&global->graph, node);
