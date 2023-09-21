@@ -337,7 +337,7 @@ static void process_edge(struct worker *w, struct node *node,
 
     if (new) {
         // mutex_acquire(lock);    ==> this lock is already acquired
-        // next->u.ph1.lock = lock;
+        next->u.ph1.lock = lock;
         next->fwd = NULL;
         next->reachable = true;         // TODO.  Do we need this?
         next->failed = edge->failed;    // TODO.  What if another edge to this node doesn't fail?
@@ -350,7 +350,6 @@ static void process_edge(struct worker *w, struct node *node,
         mutex_release(lock);
     }
 
-#define DELAY_INSERT
 #ifdef DELAY_INSERT
     // Don't do the forward edge at this time as that would involve locking
     // the parent node.  Instead assign that task to one of the workers
@@ -362,7 +361,8 @@ static void process_edge(struct worker *w, struct node *node,
     // We see if we can get the lock on the old node without contention.  If
     // so, we add the edge now.  Otherwise we'll wait to do it later when we
     // we can process a batch in parallel.
-    if (mutex_try_acquire(node->u.ph1.lock)) {
+    if (1 || mutex_try_acquire(node->u.ph1.lock)) {
+        mutex_acquire(node->u.ph1.lock);
         edge->fwdnext = node->fwd;
         node->fwd = edge;
         mutex_release(node->u.ph1.lock);
@@ -3708,7 +3708,7 @@ int exec_model_checker(int argc, char **argv){
     struct node *node = (struct node *) &hn[1];
     memset(node, 0, sizeof(*node));
     // node->state = (struct state *) &node[1];
-    // node->u.ph1.lock = lock;
+    node->u.ph1.lock = lock;
     mutex_release(lock);
     node->reachable = true;
     graph_add(&global->graph, node);

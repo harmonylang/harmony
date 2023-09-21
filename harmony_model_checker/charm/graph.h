@@ -128,7 +128,7 @@ struct node {
         // Data we only need while creating the Kripke structure
         struct {
             struct node *next;	    // for linked list
-            // ht_lock_t *lock;     // points to lock for forward edges
+            ht_lock_t *lock;     // points to lock for forward edges
         } ph1;
         // Data we only need when analyzing the Kripke structure
         struct {
