@@ -331,30 +331,14 @@ void spawn_thread(struct global *global, struct state *state, struct context *ct
     thread_create(wrap_thread, si);
 }
 
+#ifdef OBSOLETE
 // This function is called when a new edge has been generated, possibly to
 // a new state with an uninitialized node.
 //
 // TODO.  Inline this function or get rid of it
 static void process_edge(struct worker *w,
                         struct edge *edge, mutex_t *lock, bool new) {
-    struct node *next = edge->dst;
 
-    if (new) {
-        // mutex_acquire(lock);    ==> this lock is already acquired
-        // next->u.ph1.lock = lock;
-        // next->fwd = NULL;
-        next->reachable = true;         // TODO.  Do we need this?
-        next->failed = edge->failed;
-        next->to_parent = edge;
-        next->len = w->global->diameter;
-        next->u.ph1.next = w->results;
-        w->results = next;
-        w->count++;
-        w->enqueued++;
-        mutex_release(lock);
-    }
-
-#ifdef OBSOLETE
 #ifdef USE_EDGES
 #ifdef DELAY_INSERT
     // Don't do the forward edge at this time as that would involve locking
@@ -384,8 +368,8 @@ static void process_edge(struct worker *w,
     node->fwd = edge;
     mutex_release(node->u.ph1.lock);
 #endif
-#endif // OBSOLETE
 }
+#endif // OBSOLETE
 
 // Apply the effect of evaluating a context (for a particular assignment
 // of shared variables and possibly some choice) to a state.  This leads
@@ -515,8 +499,18 @@ static void process_step(
     struct dict_assoc *hn = dict_find_lock_new(w->visited, &w->allocator,
                 sc, size, &new, &lock);
     edge->dst = (struct node *) &hn[1];
-
-    process_edge(w, edge, lock, new);
+    if (new) {
+        struct node *next = edge->dst;
+        next->reachable = true;         // TODO.  Do we need this?
+        next->failed = edge->failed;
+        next->to_parent = edge;
+        next->len = w->global->diameter;
+        next->u.ph1.next = w->results;
+        w->results = next;
+        w->count++;
+        w->enqueued++;
+        mutex_release(lock);
+    }
 }
 
 // This is the main workhorse function of model checking: explore a state and
