@@ -119,7 +119,7 @@ struct worker {
     unsigned int nworkers;       // total number of workers
     unsigned int vproc;          // virtual processor for pinning
     unsigned int si_total, si_hits;
-    struct node_list *nl_free;
+    struct edge_list *el_free;
 
     // The worker thread loop through three phases:
     //  1: model check part of the state space
@@ -159,6 +159,7 @@ struct worker {
     // 'count' node_ids starting at the following node_id.
     unsigned int node_id;
 
+#ifdef USE_EDGES
     // When new edges are in the Kripke structure are discovered, we
     // avoid workers stalling trying to get a lock on the source node
     // and instead keep an NxN table of edge lists (N is the number of
@@ -166,6 +167,7 @@ struct worker {
     // cell (i, j) if j is the worker that is responsible for the
     // source node (node_id % N).
     struct edge **edges;        // lists of edges to fix, one for each worker
+#endif
 
     // Workers optimize memory allocation.  In particular, it is not
     // necessary for the memory to ever be freed.  So the worker allocates
@@ -331,16 +333,18 @@ void spawn_thread(struct global *global, struct state *state, struct context *ct
 
 // This function is called when a new edge has been generated, possibly to
 // a new state with an uninitialized node.
-static void process_edge(struct worker *w, struct node *node,
+//
+// TODO.  Inline this function or get rid of it
+static void process_edge(struct worker *w,
                         struct edge *edge, mutex_t *lock, bool new) {
     struct node *next = edge->dst;
 
     if (new) {
         // mutex_acquire(lock);    ==> this lock is already acquired
-        next->u.ph1.lock = lock;
-        next->fwd = NULL;
+        // next->u.ph1.lock = lock;
+        // next->fwd = NULL;
         next->reachable = true;         // TODO.  Do we need this?
-        next->failed = edge->failed;    // TODO.  What if another edge to this node doesn't fail?
+        next->failed = edge->failed;
         next->to_parent = edge;
         next->len = w->global->diameter;
         next->u.ph1.next = w->results;
@@ -350,6 +354,8 @@ static void process_edge(struct worker *w, struct node *node,
         mutex_release(lock);
     }
 
+#ifdef OBSOLETE
+#ifdef USE_EDGES
 #ifdef DELAY_INSERT
     // Don't do the forward edge at this time as that would involve locking
     // the parent node.  Instead assign that task to one of the workers
@@ -361,8 +367,7 @@ static void process_edge(struct worker *w, struct node *node,
     // We see if we can get the lock on the old node without contention.  If
     // so, we add the edge now.  Otherwise we'll wait to do it later when we
     // we can process a batch in parallel.
-    if (1 || mutex_try_acquire(node->u.ph1.lock)) {
-        mutex_acquire(node->u.ph1.lock);
+    if (mutex_try_acquire(node->u.ph1.lock)) { // TODO
         edge->fwdnext = node->fwd;
         node->fwd = edge;
         mutex_release(node->u.ph1.lock);
@@ -372,23 +377,32 @@ static void process_edge(struct worker *w, struct node *node,
         edge->fwdnext = *pe;
         *pe = edge;
     }
+#endif // DELAY_INSERT
+#else
+    mutex_acquire(node->u.ph1.lock);
+    edge->fwdnext = node->fwd;
+    node->fwd = edge;
+    mutex_release(node->u.ph1.lock);
 #endif
+#endif // OBSOLETE
 }
 
+// Apply the effect of evaluating a context (for a particular assignment
+// of shared variables and possibly some choice) to a state.  This leads
+// to a new edge in the Kripke structure, possibly to a new state.
 static void process_step(
     struct worker *w,
     struct engine *engine,
     struct step_condition *stc,
-    struct node *node,
-    unsigned int multiplicity,
-    struct state *sc,
-    bool invariant
+    struct edge *edge,
+    struct state *sc
 ) {
     assert(stc->type == SC_COMPLETED);
     struct global *global = w->global;
     struct step_input *si = (struct step_input *) &stc[1];
     struct step_output *so = stc->u.completed;
 
+#ifdef TODO
     // If it was an invariant being evaluated, the state cannot have changed.
     // If there was no error, no need to add an edge
     if (invariant) {
@@ -399,6 +413,9 @@ static void process_step(
 
     // Update the state if it was not an invariant.
     else {
+#else
+    if (1) {
+#endif
         sc->vars = so->vars;
 
         // Remove old context from the bag
@@ -460,13 +477,9 @@ static void process_step(
         }
     }
 
-    // Allocate and initialize edge now.
-    struct edge *edge = walloc(w, sizeof(struct edge), false, false);
-    edge->src_id = node->id;
-    edge->multiple = multiplicity > 1;
+    // Add the missing info to the edge now.
     edge->sc = stc;
     edge->failed = so->failed || so->infinite_loop;
-    edge->invariant_chk = invariant;
 
     if (global->dfa != NULL) {
         for (unsigned int i = 0; i < so->nlog; i++) {
@@ -503,7 +516,7 @@ static void process_step(
                 sc, size, &new, &lock);
     edge->dst = (struct node *) &hn[1];
 
-    process_edge(w, node, edge, lock, new);
+    process_edge(w, edge, lock, new);
 }
 
 // This is the main workhorse function of model checking: explore a state and
@@ -942,18 +955,28 @@ static void trystep(
     bool si_new;
     mutex_t *si_lock;
 
+    // Allocate and add an edge for this step, even if we do not know the
+    // details yet. In particular, we need to know edge->sc (step condition)
+    // and edge->failed.
+    struct edge *edge = walloc(w, sizeof(struct edge), false, false);
+    edge->src_id = node->id;
+    edge->multiple = multiplicity > 1;
+    edge->invariant_chk = invariant;
+    edge->fwdnext = node->fwd;
+    node->fwd = edge;
+    w->si_total++;          // counts the number of edges
+
     struct step_input si = {
         .vars = state->vars,
         .choice = choice,
         .ctx = ctx
     };
 
-    w->si_total++;
     if (has_countLabel) {
         struct step_comp *comp = walloc(w, sizeof(struct step_comp), false, false);
         si_new = true;
         stc = &comp->cond;
-	comp->input = si;
+        comp->input = si;
     }
     else {
         // See if we did this already
@@ -968,17 +991,16 @@ static void trystep(
     else {
         w->si_hits++;
         if (stc->type == SC_IN_PROGRESS) {
-            struct node_list *nl;
-            if ((nl = w->nl_free) == NULL) {
-                nl = walloc(w, sizeof(struct node_list), false, false);
+            struct edge_list *el;
+            if ((el = w->el_free) == NULL) {
+                el = walloc(w, sizeof(struct edge_list), false, false);
             }
             else {
-                w->nl_free = nl->next;
+                w->el_free = el->next;
             }
-            nl->node = node;
-            nl->multiplicity = multiplicity;
-            nl->next = stc->u.in_progress;
-            stc->u.in_progress = nl;
+            el->edge = edge;
+            el->next = stc->u.in_progress;
+            stc->u.in_progress = el;
             mutex_release(si_lock);
             return;
         }
@@ -998,7 +1020,7 @@ static void trystep(
     sc->chooser = -1;
 
     // If this is a new step, perform it
-    struct node_list *nl = NULL;
+    struct edge_list *el = NULL;
     if (si_new) {
         // Make a copy of the context
         assert(!cc->terminated);
@@ -1020,14 +1042,14 @@ static void trystep(
         if (has_countLabel) {
             assert(stc->type == SC_IN_PROGRESS);
             assert(stc->u.in_progress == NULL);
-            nl = stc->u.in_progress;
+            el = stc->u.in_progress;
             stc->type = SC_COMPLETED;
             stc->u.completed = so;
         }
         else {
             mutex_acquire(si_lock);
             assert(stc->type == SC_IN_PROGRESS);
-            nl = stc->u.in_progress;
+            el = stc->u.in_progress;
             stc->type = SC_COMPLETED;
             stc->u.completed = so;
             mutex_release(si_lock);
@@ -1037,16 +1059,17 @@ static void trystep(
         assert(stc->type == SC_COMPLETED);
     }
 
-    process_step(w, &step->engine, stc, node, multiplicity, sc, invariant);
-    while (nl != NULL) {
-        struct state *state = (struct state *) &nl->node[1];
+    process_step(w, &step->engine, stc, edge, sc);
+    while (el != NULL) {
+        struct node *node = w->global->graph.nodes[el->edge->src_id];
+        struct state *state = (struct state *) &node[1];
         unsigned int statesz = state_size(state);
         memcpy(sc, state, statesz);
-        process_step(w, &step->engine, stc, nl->node, nl->multiplicity, sc, invariant);
-        struct node_list *next = nl->next;
-        nl->next = w->nl_free;
-        w->nl_free = nl;
-        nl = next;
+        process_step(w, &step->engine, stc, el->edge, sc);
+        struct edge_list *next = el->next;
+        el->next = w->el_free;
+        w->el_free = el;
+        el = next;
     }
 }
 
@@ -2791,6 +2814,7 @@ static void worker(void *arg){
         w->middle_count++;
         before = after;
 
+#ifdef USE_EDGES
         // Insert the forward edges.  Each worker is responsible for a subset
         // of the nodes, so this can be done in parallel.
         for (unsigned i = 0; i < w->nworkers; i++) {
@@ -2803,6 +2827,7 @@ static void worker(void *arg){
                 src->fwd = e;
             }
         }
+#endif
 
         // Keep more stats
         after = gettime();
@@ -3657,7 +3682,9 @@ int exec_model_checker(int argc, char **argv){
         w->index = i;
         w->workers = workers;
         w->nworkers = global->nworkers;
+#ifdef USE_EDGES
         w->edges = calloc(global->nworkers, sizeof(struct edge *));
+#endif
         w->profile = calloc(global->code.len, sizeof(*w->profile));
 
         // Create a context for evaluating invariants
@@ -3707,8 +3734,7 @@ int exec_model_checker(int argc, char **argv){
     struct dict_assoc *hn = dict_find_lock(visited, &workers[0].allocator, state, state_size(state), NULL, &lock);
     struct node *node = (struct node *) &hn[1];
     memset(node, 0, sizeof(*node));
-    // node->state = (struct state *) &node[1];
-    node->u.ph1.lock = lock;
+    // node->u.ph1.lock = lock;
     mutex_release(lock);
     node->reachable = true;
     graph_add(&global->graph, node);

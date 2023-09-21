@@ -71,16 +71,15 @@ struct step_output {
 #define step_spawned(x)      ((hvalue_t *) ((x) + 1) + (x)->nlog)
 #define step_unstopped(x)    ((hvalue_t *) ((x) + 1) + (x)->nlog + (x)->nspawned)
 
-struct node_list {
-    struct node_list *next;
-    struct node *node;
-    unsigned int multiplicity;
+struct edge_list {
+    struct edge_list *next;
+    struct edge *edge;
 };
 
 struct step_condition {
     enum { SC_IN_PROGRESS, SC_COMPLETED } type;
     union {
-        struct node_list *in_progress;
+        struct edge_list *in_progress;
         struct step_output *completed;
     } u;
 };
@@ -128,7 +127,7 @@ struct node {
         // Data we only need while creating the Kripke structure
         struct {
             struct node *next;	    // for linked list
-            ht_lock_t *lock;     // points to lock for forward edges
+            // ht_lock_t *lock;        // points to lock for forward edges
         } ph1;
         // Data we only need when analyzing the Kripke structure
         struct {
