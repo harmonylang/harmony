@@ -530,7 +530,6 @@ static struct step_output *onestep(
     struct step *step,      // step info
     hvalue_t choice,        // if about to make a choice, which choice?
     bool infloop_detect,    // try to detect infloop from the start
-    int multiplicity,       // #contexts that are in the current state
     bool invariant
 ) {
     assert(state_size(sc) == state_size(node_state(node)));
@@ -1023,14 +1022,14 @@ static void trystep(
         step->ctx = &w->ctx;
 
         struct step_output *so =
-            onestep(w, node, sc, ctx, step, choice, false, multiplicity, invariant);
+            onestep(w, node, sc, ctx, step, choice, false, invariant);
         if (so == NULL) {        // ran into an infinite loop
             // TODO.  Need probably more cleanup of step, like ai
             step->nlog = step->nspawned = step->nunstopped = 0;
             memcpy(sc, state, statesz);
             sc->chooser = -1;
             memcpy(&w->ctx, cc, ctx_size(cc));
-            so = onestep(w, node, sc, ctx, step, choice, true, multiplicity, invariant);
+            so = onestep(w, node, sc, ctx, step, choice, true, invariant);
         }
 
         if (has_countLabel) {
