@@ -936,10 +936,15 @@ static struct step_output *onestep(
     return so;
 }
 
-// This will first attempt to run onestep() with delayed detection
-// of infinite loops (for efficiency).  If an infinite loop is detect,
-// if will run it again immediately looking for infinite loops to find
-// the shortest counterexample.
+// Run the given context ctx in the given state, possibly making the given
+// choice.  We keep a cache for running contexts given a certain assignment
+// of shared variables and a given choice in the hashtable called ``extract''.
+// The hashtable maps (vars, choice, ctx) to something called ``struct
+// step_condition'' which keeps track of such computations.  The output
+// of the computation is ``struct step_output'', which essentially describes
+// the ``effect'' of running the computation.  The effect is then applied
+// to the given state.  The effect includes updates to shared variables,
+// printing values, spawning threads, and deleting contexts from the stopbag.
 static void trystep(
     struct worker *w,       // thread info
     struct node *node,      // starting node
@@ -963,6 +968,8 @@ static void trystep(
         .ctx = ctx
     };
 
+    // For backward compatibility, we still support countLabel().  If the
+    // Harmony program uses it, we circumvent the cache.
     if (has_countLabel) {
         struct step_comp *comp = walloc(w, sizeof(struct step_comp), false, false);
         si_new = true;
@@ -1021,6 +1028,10 @@ static void trystep(
         memcpy(&w->ctx, cc, ctx_size(cc));
         step->ctx = &w->ctx;
 
+        // This will first attempt to run onestep() with delayed detection
+        // of infinite loops (for efficiency).  If an infinite loop is
+        // detected, it will run again immediately looking for infinite
+        // loops to find the shortest counterexample.
         struct step_output *so =
             onestep(w, node, sc, ctx, step, choice, false, invariant);
         if (so == NULL) {        // ran into an infinite loop
