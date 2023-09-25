@@ -109,6 +109,13 @@ struct vproc_tree {
 
 struct dict *extract;            // TODO.  Rename
 
+#define NRESULTS    4096
+struct results_block {
+    struct results_block *next;
+    unsigned int nresults;
+    struct node *results[NRESULTS];
+};
+
 // One of these per worker thread
 struct worker {
     struct global *global;       // global state shared by all workers
@@ -151,7 +158,8 @@ struct worker {
     // When a worker creates a new state, it puts the corresponding node
     // in a list.  The nodes are added to the graph table after the
     // graph table has been grown.
-    struct node *results;       // linked list of nodes
+    struct results_block *results;       // linked list of nodes
+    struct results_block *rb_free;
     unsigned int count;         // size of the results list
 
     // New nodes are assigned node identifiers in phase 3.  This is
@@ -301,8 +309,8 @@ static void run_thread(struct global *global, struct state *state, struct contex
             fprintf(stderr, ">>> %s\n", oi->name);
         }
         assert(step.ctx->pc != pc);
-		assert(step.ctx->pc >= 0);
-		assert(step.ctx->pc < global->code.len);
+        assert(step.ctx->pc >= 0);
+        assert(step.ctx->pc < global->code.len);
     }
 
     mutex_acquire(&run_mutex);
@@ -505,9 +513,27 @@ static void process_step(
         next->failed = edge->failed;
         next->to_parent = edge;
         next->len = w->global->diameter;
-	next->u.ph1.lock = lock;
+        next->u.ph1.lock = lock;
+
+#ifdef NRESULTS
+        struct results_block *rb = w->results;
+        if (rb == NULL || rb->nresults == NRESULTS) {
+            if ((rb = w->rb_free) == NULL) {
+                rb = walloc(w, sizeof(*rb), false, false);
+            }
+            else {
+                w->rb_free = rb->next;
+            }
+            rb->nresults = 0;
+            rb->next = w->results;
+            w->results = rb;
+        }
+        rb->results[rb->nresults++] = next;
+#else
         next->u.ph1.next = w->results;
         w->results = next;
+#endif
+
         w->count++;
         w->enqueued++;
         mutex_release(lock);
@@ -1220,7 +1246,7 @@ void print_context(
     assert(strcmp(global->code.instrs[ecs->pc].oi->name, "Frame") == 0);
     const struct env_Frame *ef = global->code.instrs[ecs->pc].env;
     char *s = value_string(ef->name);
-	int len = strlen(s);
+    int len = strlen(s);
     char *a = json_escape_value(ecs->arg);
     if (*a == '(') {
         fprintf(file, "%s\"name\": \"%.*s%s\",\n", prefix, len - 2, s + 1, a);
@@ -1419,7 +1445,7 @@ static void twostep(
     if (choice == (hvalue_t) -1) {
         choice = 0;
         assert(step.ctx->extended);
-		assert(ctx_trap_pc(step.ctx) != 0);
+        assert(ctx_trap_pc(step.ctx) != 0);
         interrupt_invoke(&step);
         make_microstep(sc, step.ctx, step.callstack, true, false, 0, 0, &step, macro);
     }
@@ -1686,7 +1712,7 @@ static void path_output_microstep(struct global *global, FILE *file,
         assert(next->u.list.nvals == 2);
         struct json_value *codestr = next->u.list.vals[1];
         assert(codestr->type == JV_ATOM);
-		char *v = json_escape(codestr->u.atom.base, codestr->u.atom.len);
+        char *v = json_escape(codestr->u.atom.base, codestr->u.atom.len);
         fprintf(file, "          \"explain\": \"%s\",\n", v);
         fprintf(file, "          \"explain2\": { \"text\": \"%s\", \"args\": [] },\n", v);
         free(v);
@@ -1718,7 +1744,7 @@ static void path_output_microstep(struct global *global, FILE *file,
                 strbuf_append(&sb, p, 1);
             }
         }
-		char *v = json_escape(strbuf_getstr(&sb), strbuf_getlen(&sb));
+        char *v = json_escape(strbuf_getstr(&sb), strbuf_getlen(&sb));
         strbuf_deinit(&sb);
         fprintf(file, "          \"explain\": \"%s\",\n", v);
         free(v);
@@ -1854,7 +1880,7 @@ static void path_output_macrostep(struct global *global, FILE *file, struct macr
     assert(strcmp(global->code.instrs[cs->pc].oi->name, "Frame") == 0);
     const struct env_Frame *ef = global->code.instrs[cs->pc].env;
     char *name = value_string(ef->name);
-	int len = strlen(name);
+    int len = strlen(name);
     char *arg = json_escape_value(cs->arg);
     if (*arg == '(') {
         fprintf(file, "      \"name\": \"%.*s%s\",\n", len - 2, name + 1, arg);
@@ -2289,46 +2315,46 @@ static enum busywait is_stuck(
     hvalue_t ctx,
     bool change
 ) {
-	if (node->u.ph2.component != start->u.ph2.component) {
-		return BW_ESCAPE;
-	}
-	if (node->visited) {
-		return BW_VISITED;
-	}
+    if (node->u.ph2.component != start->u.ph2.component) {
+        return BW_ESCAPE;
+    }
+    if (node->visited) {
+        return BW_VISITED;
+    }
     change = change || (node_state(node)->vars != node_state(start)->vars);
-	node->visited = true;
-	enum busywait result = BW_ESCAPE;
+    node->visited = true;
+    enum busywait result = BW_ESCAPE;
     for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
         if (edge_input(edge)->ctx == ctx) {
-			if (edge->dst == node) {
-				node->visited = false;
-				return BW_ESCAPE;
-			}
-			if (edge->dst == start) {
-				if (!change) {
-					node->visited = false;
-					return BW_ESCAPE;
-				}
-				result = BW_RETURN;
-			}
-			else {
-				enum busywait bw = is_stuck(start, edge->dst, edge_output(edge)->after, change);
-				switch (bw) {
-				case BW_ESCAPE:
-					node->visited = false;
-					return BW_ESCAPE;
-				case BW_RETURN:
-					result = BW_RETURN;
-					break;
-				case BW_VISITED:
-					break;
-				default:
-					assert(false);
-				}
-			}
+            if (edge->dst == node) {
+                node->visited = false;
+                return BW_ESCAPE;
+            }
+            if (edge->dst == start) {
+                if (!change) {
+                    node->visited = false;
+                    return BW_ESCAPE;
+                }
+                result = BW_RETURN;
+            }
+            else {
+                enum busywait bw = is_stuck(start, edge->dst, edge_output(edge)->after, change);
+                switch (bw) {
+                case BW_ESCAPE:
+                    node->visited = false;
+                    return BW_ESCAPE;
+                case BW_RETURN:
+                    result = BW_RETURN;
+                    break;
+                case BW_VISITED:
+                    break;
+                default:
+                    assert(false);
+                }
+            }
         }
     }
-	node->visited = false;
+    node->visited = false;
     return result;
 }
 
@@ -2338,15 +2364,15 @@ void add_failure(struct failure **failures, struct failure *f) {
 }
 
 static void detect_busywait(struct global *global, struct node *node){
-	for (unsigned int i = 0; i < node_state(node)->bagsize; i++) {
-		if (is_stuck(node, node, state_contexts(node_state(node))[i], false) == BW_RETURN) {
-			struct failure *f = new_alloc(struct failure);
-			f->type = FAIL_BUSYWAIT;
-			f->edge = node_to_parent(node);
-			add_failure(&global->failures, f);
-			// break;
-		}
-	}
+    for (unsigned int i = 0; i < node_state(node)->bagsize; i++) {
+        if (is_stuck(node, node, state_contexts(node_state(node))[i], false) == BW_RETURN) {
+            struct failure *f = new_alloc(struct failure);
+            f->type = FAIL_BUSYWAIT;
+            f->edge = node_to_parent(node);
+            add_failure(&global->failures, f);
+            // break;
+        }
+    }
 }
 
 // This function evaluates a node just taken from the todo list by the worker.
@@ -2805,7 +2831,7 @@ static void worker(void *arg){
         // First phase starts now.  Call do_work() to do that actual work.
         // Also keep stats.
         before = after;
-		do_work(w);
+        do_work(w);
         after = gettime();
         w->phase1 += after - before;
 
@@ -2957,15 +2983,32 @@ static void worker(void *arg){
         // Worker w can assign node identifiers starting from w->node_id.
         if (global->layer_done) {
             // Fill the graph table
-            while (w->count != 0) {
-                struct node *node = w->results;
-                assert(node->id == 0);
-                node->id = w->node_id;
-                global->graph.nodes[w->node_id++] = node;
-                w->results = node->u.ph1.next;
-                w->count--;
+            unsigned int node_id = w->node_id;
+#ifdef NRESULTS
+            while (w->results != NULL) {
+                struct results_block *rb = w->results;
+                memcpy(&global->graph.nodes[node_id],
+                    rb->results, rb->nresults * sizeof(struct node *));
+                for (unsigned int i = 0; i < rb->nresults; i++) {
+                    rb->results[i]->id = node_id++;
+                }
+                w->node_id = node_id;
+                w->results = rb->next;
+                rb->next = w->rb_free;
+                w->rb_free = rb;
             }
-            assert(w->results == NULL);
+#else
+            struct node *node = w->results;
+            while (node != 0) {
+                assert(node->id == 0);
+                node->id = node_id;
+                global->graph.nodes[node_id++] = node;
+                node = node->u.ph1.next;
+            }
+            w->results = NULL;
+#endif
+            w->node_id = node_id;
+            w->count = 0;
         }
 
         // Update stats
@@ -3544,7 +3587,7 @@ int exec_model_checker(int argc, char **argv){
     // vproc_tree_dump(vproc_root, 0);
 
     // Determine how many worker threads to use
-	printf("* Phase 2: run the model checker (nworkers = %d)\n", global->nworkers);
+    printf("* Phase 2: run the model checker (nworkers = %d)\n", global->nworkers);
 
     // Initialize barriers for the three phases (see struct worker definition)
     barrier_t start_barrier, middle_barrier, end_barrier;
@@ -3601,10 +3644,10 @@ int exec_model_checker(int argc, char **argv){
     fclose(fp);
 
     // parse the contents
-	char *buf_orig = buf.base;
+    char *buf_orig = buf.base;
     struct json_value *jv = json_parse_value(&buf);
     assert(jv->type == JV_MAP);
-	free(buf_orig);
+    free(buf_orig);
 
     // travel through the json code contents to create the code array
     struct json_value *jc = dict_lookup(jv->u.map, "code", 4);
@@ -3758,14 +3801,12 @@ int exec_model_checker(int argc, char **argv){
 
     // Compute how much memory was used, approximately
     unsigned long allocated = global->allocated;
+// #define REPORT_WORKERS
 #ifdef REPORT_WORKERS
     double phase1 = 0, phase2a = 0, phase2b = 0, phase3 = 0, start_wait = 0, middle_wait = 0, end_wait = 0;
     unsigned int fix_edge = 0;
-    unsigned int si_hits = 0, si_total = 0;
     for (unsigned int i = 0; i < global->nworkers; i++) {
         struct worker *w = &workers[i];
-        si_hits += w->si_hits;
-        si_total += w->si_total;
         allocated += w->allocated;
         phase1 += w->phase1;
         phase2a += w->phase2a;
@@ -3936,7 +3977,7 @@ int exec_model_checker(int argc, char **argv){
         // Look for states in final components
         for (unsigned int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
-			assert(node->u.ph2.component < global->ncomponents);
+            assert(node->u.ph2.component < global->ncomponents);
             struct component *comp = &components[node->u.ph2.component];
             if (comp->final) {
                 node->final = true;
@@ -3944,7 +3985,7 @@ int exec_model_checker(int argc, char **argv){
                 // If an input dfa was specified, it should also be in the
                 // final state.
                 if (global->dfa != NULL &&
-						!dfa_is_final(global->dfa, node_state(node)->dfa_state)) {
+                            !dfa_is_final(global->dfa, node_state(node)->dfa_state)) {
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_BEHAVIOR;
                     f->edge = node_to_parent(node);
@@ -4330,7 +4371,7 @@ int exec_model_checker(int argc, char **argv){
     }
 
     fprintf(out, "}\n");
-	fclose(out);
+    fclose(out);
 
     // iface_write_spec_graph_to_file(global, "iface.gv");
     // iface_write_spec_graph_to_json_file(global, "iface.json");
