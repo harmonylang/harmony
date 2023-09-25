@@ -226,7 +226,6 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
             if (new != NULL) {
                 *new = false;
             }
-            // mutex_release(*lock);
             return k;
         }
         k = k->next;
@@ -242,7 +241,60 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
     dw->unstable[worker] = k;
     dw->count++;
 
-    // mutex_release(*lock);
+    if (new != NULL) {
+        *new = true;
+    }
+	return k;
+}
+
+// Similar to dict_find_lock(), but gets a lock on the bucket only if it's a new node
+struct dict_assoc *dict_find_lock_new(struct dict *dict, struct allocator *al,
+                            const void *key, unsigned int keylen, bool *new, mutex_t **lock){
+    assert(dict->concurrent);
+    assert(al != NULL);
+    uint32_t hash = hash_func(key, keylen);
+    unsigned int index = hash % dict->length;
+    *lock = &dict->locks[index % dict->nlocks];
+
+    struct dict_bucket *db = &dict->table[index];
+	struct dict_assoc *k = db->stable;
+	while (k != NULL) {
+		if (k->len == keylen && memcmp((char *) &k[1] + dict->value_len, key, keylen) == 0) {
+            if (new != NULL) {
+                *new = false;
+            }
+			return k;
+		}
+		k = k->next;
+	}
+
+    unsigned int worker = index * dict->nworkers / dict->length;
+    struct dict_worker *dw = &dict->workers[al->worker];
+
+    mutex_acquire(*lock);
+    // See if the item is in the unstable list
+    k = db->unstable;
+    while (k != NULL) {
+        if (k->len == keylen && memcmp((char *) &k[1] + dict->value_len, key, keylen) == 0) {
+            dw->clashes++;
+            if (new != NULL) {
+                *new = false;
+            }
+            mutex_release(*lock);
+            return k;
+        }
+        k = k->next;
+    }
+
+    k = dict_assoc_new(dict, al, (char *) key, keylen, hash);
+    k->next = db->unstable;
+    db->unstable = k;
+
+    // Keep track of this unstable node in the list for the
+    // worker who's going to look at this bucket
+    k->unstable_next = dw->unstable[worker];
+    dw->unstable[worker] = k;
+    dw->count++;
 
     if (new != NULL) {
         *new = true;

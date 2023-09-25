@@ -74,7 +74,8 @@ struct step_output {
 struct node_list {
     struct node_list *next;
     struct node *node;
-    unsigned int multiplicity;
+    bool multiple;
+    bool invariant;
 };
 
 struct step_condition {
@@ -127,26 +128,26 @@ struct node {
     union {
         // Data we only need while creating the Kripke structure
         struct {
-            struct node *next;		// for linked list
+            // struct node *next;	    // for linked list
             ht_lock_t *lock;        // points to lock for forward edges
         } ph1;
         // Data we only need when analyzing the Kripke structure
         struct {
             uint32_t component;     // strongly connected component id
-            uint32_t len;           // length of shortest path to initial state
             int32_t index, lowlink; // only needed for Tarjan
         } ph2;
     } u;
 
-    struct edge *to_parent; // path to initial state
-
-    struct edge *fwd;       // forward edges
     uint32_t id;            // nodes are numbered starting from 0
+    struct edge *fwd;       // forward edges
+
+    struct edge *to_parent; // path to initial state
+    uint16_t len;           // length of path to initial state
     bool on_stack : 1;      // for Tarjan
-    bool initialized : 1;   // this node structure has been initialized
+    // bool initialized : 1;   // this node structure has been initialized
     bool failed : 1;        // a thread has failed
     bool final : 1;         // only eternal threads left (TODO: need this?)
-    bool visited : 1;       // for busy wait detection
+    bool visited : 1;       // for busy wait detection (TODO: need this?)
 
     // NFA compression
     bool reachable : 1;     // TODO.  Maybe obsolete at this time
