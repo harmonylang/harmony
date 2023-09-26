@@ -927,12 +927,15 @@ static struct step_output *onestep(
     so->infinite_loop = infinite_loop;
 
     // Copy the logs
+    so->nlog = step->nlog;
+    so->nspawned = step->nspawned;
+    so->nunstopped = step->nunstopped;
     memcpy(step_log(so), step->log, step->nlog * sizeof(hvalue_t));
-    so->nlog = step->nlog; step->nlog = 0;
     memcpy(step_spawned(so), step->spawned, step->nspawned * sizeof(hvalue_t));
-    so->nspawned = step->nspawned; step->nspawned = 0;
     memcpy(step_unstopped(so), step->unstopped, step->nunstopped * sizeof(hvalue_t));
-    so->nunstopped = step->nunstopped; step->nunstopped = 0;
+    step->nspawned = 0;
+    step->nlog = 0;
+    step->nunstopped = 0;
     return so;
 }
 
@@ -4407,6 +4410,10 @@ int exec_model_checker(int argc, char **argv){
 
     free(global);
     return 0;
+}
+
+int run_model_checker(int argc, char **argv){
+    return exec_model_checker(argc, argv);
 }
 
 int main(int argc, char** argv) {

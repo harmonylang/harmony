@@ -10,7 +10,7 @@ tests = [
     { "args": "code/Up.hny", "issue": "Safety violation", "nstates": 44 },
 #    { "args": "code/Upf.hny", "issue": "Finally predicate violation", "nstates": 13 },
     { "args": "code/Upf.hny", "issue": "Safety violation", "nstates": 13 },
-    { "args": "code/UpEnter.hny", "issue": "Non-terminating state", "nstates": 59 },
+    { "args": "code/UpEnter.hny", "issue": "Non-terminating state", "nstates": 39 },
     { "args": "code/csbarebones.hny", "issue": "Non-terminating state", "nstates": 3 },
     { "args": "code/cs.hny", "issue": "Safety violation", "nstates": 11 },
     { "args": "code/naiveLock.hny", "issue": "Safety violation", "nstates": 34 },
