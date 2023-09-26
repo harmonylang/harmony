@@ -3093,6 +3093,8 @@ static void tarjan(struct global *global){
     unsigned int i = 0, comp_id = 0;
     struct stack *stack = calloc(1, sizeof(*stack));
     struct stack *call_stack = calloc(1, sizeof(*call_stack));
+    double now = gettime();
+    unsigned int ndone = 0, lastdone = 0;
     for (unsigned int v = 0; v < 1 /*global->graph.size*/; v++) {
         struct node *n = global->graph.nodes[v];
         if (n->u.ph2.index == -1) {
@@ -3130,6 +3132,12 @@ static void tarjan(struct global *global){
                 }
                 else if (n->u.ph2.lowlink == n->u.ph2.index) {
                     for (;;) {
+                        ndone++;
+                        if (ndone - lastdone >= 1000000 && gettime() - now > 3) {
+                            printf("completed %u/%u states (%.2f%%)\n", ndone, global->graph.size, 100.0 * ndone / global->graph.size);
+                            now = gettime();
+                            lastdone = ndone;
+                        }
                         struct node *n2;
                         n2 = stack_pop(global, &stack, NULL);
                         n2->on_stack = false;
