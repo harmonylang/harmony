@@ -511,6 +511,7 @@ static void process_step(
         struct node *next = edge->dst;
         next->reachable = true;         // TODO.  Do we need this?
         next->failed = edge->failed;
+        next->dead_end = true;
         next->to_parent = edge;
         next->len = w->global->diameter;
         next->u.ph1.lock = lock;
@@ -537,6 +538,11 @@ static void process_step(
         w->count++;
         w->enqueued++;
         mutex_release(lock);
+    }
+
+    // See if the node has outgoing edges
+    if (edge->dst != node) {
+        node->dead_end = false;
     }
 
     // Add edge to the node
@@ -2459,6 +2465,19 @@ void do_work1(struct worker *w, struct node *node){
                     && value_state_all_eternal(state)
                     && value_ctx_all_eternal(state->stopbag);
             chk_invs(w, node, final);
+        }
+
+        // Check for deadlock
+        if (node->dead_end) {
+            bool final = value_state_all_eternal(state)
+                    && value_ctx_all_eternal(state->stopbag);
+            if (!final) {
+                struct failure *f = new_alloc(struct failure);
+                f->type = FAIL_TERMINATION;
+                f->edge = node_to_parent(node);
+                assert(f->edge != NULL);
+                add_failure(&w->failures, f);
+            }
         }
     }
 }

@@ -148,6 +148,7 @@ struct node {
     bool failed : 1;        // a thread has failed
     bool final : 1;         // only eternal threads left (TODO: need this?)
     bool visited : 1;       // for busy wait detection (TODO: need this?)
+    bool dead_end : 1;      // all outgoing edges point back
 
     // NFA compression
     bool reachable : 1;     // TODO.  Maybe obsolete at this time
