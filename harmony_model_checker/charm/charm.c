@@ -2400,7 +2400,7 @@ void do_work1(struct worker *w, struct node *node){
     // system call, worker 0 only checks every 100 instructions.
     if (w->index == 0 && w->timecnt-- == 0) {
         double now = gettime();
-        if (now - global->lasttime > 1) {
+        if (now - global->lasttime > 3) {
             if (global->lasttime != 0) {
                 unsigned int enqueued = 0, dequeued = 0;
                 unsigned long allocated = global->allocated;
@@ -2423,7 +2423,7 @@ void do_work1(struct worker *w, struct node *node){
                 exit(1);
             }
         }
-        w->timecnt = 100;
+        w->timecnt = 1000;
     }
 #endif // OLD_PACIFIER
 
