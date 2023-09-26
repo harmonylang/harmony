@@ -62,6 +62,9 @@
 // This is use for reading lines from the /proc/cpuinfo file
 #define LINE_CHUNK      128
 
+// Newly discovered  nodes are kept in arrays of this size
+#define NRESULTS        4096
+
 // For -d option
 // TODO: this is still experimental and not fully fleshed out
 unsigned int run_count;  // counter of #threads
@@ -109,7 +112,6 @@ struct vproc_tree {
 
 struct dict *extract;            // TODO.  Rename
 
-#define NRESULTS    4096
 struct results_block {
     struct results_block *next;
     unsigned int nresults;
@@ -127,6 +129,7 @@ struct worker {
     unsigned int vproc;          // virtual processor for pinning
     unsigned int si_total, si_hits;
     struct node_list *el_free;
+    bool loops_possible;         // cycles in graph are possible
 
     // The worker thread loop through three phases:
     //  1: model check part of the state space
@@ -339,46 +342,6 @@ void spawn_thread(struct global *global, struct state *state, struct context *ct
     thread_create(wrap_thread, si);
 }
 
-#ifdef OBSOLETE
-// This function is called when a new edge has been generated, possibly to
-// a new state with an uninitialized node.
-//
-// TODO.  Inline this function or get rid of it
-static void process_edge(struct worker *w,
-                        struct edge *edge, mutex_t *lock, bool new) {
-
-#ifdef USE_EDGES
-#ifdef DELAY_INSERT
-    // Don't do the forward edge at this time as that would involve locking
-    // the parent node.  Instead assign that task to one of the workers
-    // in the next phase.
-    struct edge **pe = &w->edges[node->id % w->nworkers];
-    edge->fwdnext = *pe;
-    *pe = edge;
-#else
-    // We see if we can get the lock on the old node without contention.  If
-    // so, we add the edge now.  Otherwise we'll wait to do it later when we
-    // we can process a batch in parallel.
-    if (mutex_try_acquire(node->u.ph1.lock)) { // TODO
-        edge->fwdnext = node->fwd;
-        node->fwd = edge;
-        mutex_release(node->u.ph1.lock);
-    }
-    else {
-        struct edge **pe = &w->edges[node->id % w->nworkers];
-        edge->fwdnext = *pe;
-        *pe = edge;
-    }
-#endif // DELAY_INSERT
-#else
-    mutex_acquire(node->u.ph1.lock);
-    edge->fwdnext = node->fwd;
-    node->fwd = edge;
-    mutex_release(node->u.ph1.lock);
-#endif
-}
-#endif // OBSOLETE
-
 // Apply the effect of evaluating a context (for a particular assignment
 // of shared variables and possibly some choice) to a state.  This leads
 // to a new edge in the Kripke structure, possibly to a new state.
@@ -508,15 +471,16 @@ static void process_step(
                 sc, size, &new, &lock);
     edge->dst = (struct node *) &hn[1];
     if (new) {
+        assert(node->len == global->diameter);
         struct node *next = edge->dst;
         next->reachable = true;         // TODO.  Do we need this?
         next->failed = edge->failed;
         next->dead_end = true;
         next->to_parent = edge;
-        next->len = w->global->diameter;
+        next->len = node->len + 1;
         next->u.ph1.lock = lock;
 
-#ifdef NRESULTS
+        // Add new node to results list kept per worker
         struct results_block *rb = w->results;
         if (rb == NULL || rb->nresults == NRESULTS) {
             if ((rb = w->rb_free) == NULL) {
@@ -530,10 +494,6 @@ static void process_step(
             w->results = rb;
         }
         rb->results[rb->nresults++] = next;
-#else
-        next->u.ph1.next = w->results;
-        w->results = next;
-#endif
 
         w->count++;
         w->enqueued++;
@@ -543,6 +503,12 @@ static void process_step(
     // See if the node has outgoing edges
     if (edge->dst != node) {
         node->dead_end = false;
+
+        // See if the node points sideways or backwards, in which
+        // case cycles in the graph are possible
+        if (edge->dst->len <= node->len) {
+            w->loops_possible = true;
+        }
     }
 
     // Add edge to the node
@@ -3040,7 +3006,6 @@ static void worker(void *arg){
         if (global->layer_done) {
             // Fill the graph table
             unsigned int node_id = w->node_id;
-#ifdef NRESULTS
             while (w->results != NULL) {
                 struct results_block *rb = w->results;
                 memcpy(&global->graph.nodes[node_id],
@@ -3053,16 +3018,6 @@ static void worker(void *arg){
                 rb->next = w->rb_free;
                 w->rb_free = rb;
             }
-#else
-            struct node *node = w->results;
-            while (node != 0) {
-                assert(node->id == 0);
-                node->id = node_id;
-                global->graph.nodes[node_id++] = node;
-                node = node->u.ph1.next;
-            }
-            w->results = NULL;
-#endif
             w->node_id = node_id;
             w->count = 0;
         }
@@ -3913,12 +3868,22 @@ int exec_model_checker(int argc, char **argv){
 
     printf("    * %u states (time %.2lfs, mem=%.3lfGB)\n", global->graph.size, gettime() - before, (double) allocated / (1L << 30));
     unsigned int si_hits = 0, si_total = 0;
+    bool loops_possible = false;
     for (unsigned int i = 0; i < global->nworkers; i++) {
         struct worker *w = &workers[i];
+        if (w->loops_possible) {
+            loops_possible = true;
+        }
         si_hits += w->si_hits;
         si_total += w->si_total;
     }
     printf("    * %u/%u computations/edges\n", (si_total - si_hits), si_total);
+    if (loops_possible) {
+        printf("LOOPS POSSIBLE\n");
+    }
+    else {
+        printf("LOOPS IMPOSSIBLE\n");
+    }
 
     if (outfile == NULL) {
         exit(0);
