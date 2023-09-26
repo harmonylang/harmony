@@ -601,6 +601,7 @@ static struct step_output *onestep(
     for (;;) {
         int pc = step->ctx->pc;
 
+#ifdef OLD_PACIFIER
         // Worker 0 periodically (every second) prints some stats for long runs.
         // To avoid calling gettime() very often, which may involve an expensive
         // system call, worker 0 only checks every 100 instructions.
@@ -651,6 +652,7 @@ static struct step_output *onestep(
             }
             w->timecnt = 100;
         }
+#endif // OLD_PACIFIER
 
         // Each worker keeps track of how many times each instruction is executed.
         w->profile[pc]++;
@@ -2384,6 +2386,41 @@ void do_work1(struct worker *w, struct node *node){
         return;
     }
 
+#ifndef OLD_PACIFIER
+    struct global *global = w->global;
+
+    // Worker 0 periodically (every second) prints some stats for long runs.
+    // To avoid calling gettime() very often, which may involve an expensive
+    // system call, worker 0 only checks every 100 instructions.
+    if (w->index == 0 && w->timecnt-- == 0) {
+        double now = gettime();
+        if (now - global->lasttime > 1) {
+            if (global->lasttime != 0) {
+                unsigned int enqueued = 0, dequeued = 0;
+                unsigned long allocated = global->allocated;
+
+                for (unsigned int i = 0; i < w->nworkers; i++) {
+                    struct worker *w2 = &w->workers[i];
+                    enqueued += w2->enqueued;
+                    dequeued += w2->dequeued;
+                    allocated += w2->allocated;
+                }
+                double gigs = (double) allocated / (1 << 30);
+                fprintf(stderr, "states=%u diam=%u q=%d mem=%.3lfGB\n",
+                        enqueued, global->diameter,
+                        enqueued - dequeued, gigs);
+                global->last_nstates = enqueued;
+            }
+            global->lasttime = now;
+            if (now > w->timeout) {
+                fprintf(stderr, "charm: timeout exceeded\n");
+                exit(1);
+            }
+        }
+        w->timecnt = 100;
+    }
+#endif // OLD_PACIFIER
+
     // See what type of state it is.  There are two kinds of states: choosing
     // states and non-choosing states.  In case of choosing states, we explore
     // the possible choices for the thread that is executing.  For a non-choosing
@@ -2418,7 +2455,7 @@ void do_work1(struct worker *w, struct node *node){
         if (node->id != 0) {
             struct state *state = node_state(node);
             // TODO.  Make this check cheaper somehow
-            bool final = w->global->nfinals > 0
+            bool final = global->nfinals > 0
                     && value_state_all_eternal(state)
                     && value_ctx_all_eternal(state->stopbag);
             chk_invs(w, node, final);
@@ -3133,7 +3170,7 @@ static void tarjan(struct global *global){
                 else if (n->u.ph2.lowlink == n->u.ph2.index) {
                     for (;;) {
                         ndone++;
-                        if (ndone - lastdone >= 1000000 && gettime() - now > 3) {
+                        if (ndone - lastdone >= 10000000 && gettime() - now > 3) {
                             printf("completed %u/%u states (%.2f%%)\n", ndone, global->graph.size, 100.0 * ndone / global->graph.size);
                             now = gettime();
                             lastdone = ndone;
