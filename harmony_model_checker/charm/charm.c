@@ -147,7 +147,7 @@ struct worker {
     // Statistics about the three phases for optimization purposes
     double start_wait, middle_wait, end_wait;
     unsigned int start_count, middle_count, end_count;
-    double phase1, phase2a, phase2b, phase3;
+    double phase1, phase2a, phase2b, phase3a, phase3b;
     unsigned int fix_edge;
     unsigned int dequeued;      // total number of dequeued states
     unsigned int enqueued;      // total number of enqueued states
@@ -2973,6 +2973,10 @@ static void worker(void *arg){
         dict_make_stable(w->visited, w->index);
         dict_make_stable(global.computations, w->index);
 
+        after = gettime();
+        w->phase3a += after - before;
+        before = after;
+
         // If a layer was completed, move the buffered nodes into the graph.
         // Worker w can assign node identifiers starting from w->node_id.
         if (global.layer_done) {
@@ -2996,7 +3000,7 @@ static void worker(void *arg){
 
         // Update stats
         after = gettime();
-        w->phase3 += after - before;
+        w->phase3b += after - before;
     }
 }
 
@@ -3786,7 +3790,7 @@ int exec_model_checker(int argc, char **argv){
     unsigned long allocated = global.allocated;
 #define REPORT_WORKERS
 #ifdef REPORT_WORKERS
-    double phase1 = 0, phase2a = 0, phase2b = 0, phase3 = 0, start_wait = 0, middle_wait = 0, end_wait = 0;
+    double phase1 = 0, phase2a = 0, phase2b = 0, phase3a = 0, phase3b, start_wait = 0, middle_wait = 0, end_wait = 0;
     unsigned int fix_edge = 0;
     for (unsigned int i = 0; i < global.nworkers; i++) {
         struct worker *w = &workers[i];
@@ -3794,16 +3798,18 @@ int exec_model_checker(int argc, char **argv){
         phase1 += w->phase1;
         phase2a += w->phase2a;
         phase2b += w->phase2b;
-        phase3 += w->phase3;
+        phase3a += w->phase3a;
+        phase3b += w->phase3b;
         fix_edge += w->fix_edge;
         start_wait += w->start_wait;
         middle_wait += w->middle_wait;
         end_wait += w->end_wait;
-        printf("W%u: %lf %lf %lf %lf %lf %lf %lf %u %u\n", i,
+        printf("W%2u: %.3lf %.3lf %.3lf %.3lf %.3lf %.3lf %.3lf %.3lf %u %u\n", i,
                 w->phase1,
                 w->phase2a,
                 w->phase2b,
-                w->phase3,
+                w->phase3a,
+                w->phase3b,
                 w->start_wait/w->start_count,
                 w->middle_wait/w->middle_count,
                 w->end_wait/w->end_count,
