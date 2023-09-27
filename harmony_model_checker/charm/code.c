@@ -11,7 +11,7 @@
 #include "ops.h"
 #endif
 
-static struct instr code_instr_parse(struct engine *engine, struct json_value *jv) {
+static struct instr code_instr_parse(struct allocator *allocator, struct json_value *jv) {
     assert(jv->type == JV_MAP);
     struct json_value *op = dict_lookup(jv->u.map, "op", 2);
     assert(op->type == JV_ATOM);
@@ -22,7 +22,7 @@ static struct instr code_instr_parse(struct engine *engine, struct json_value *j
     }
     struct instr i;
     i.oi = oi;
-    i.env = (*oi->init)(jv->u.map, engine);
+    i.env = (*oi->init)(jv->u.map, allocator);
     i.choose = strcmp(oi->name, "Choose") == 0;
     i.load = strcmp(oi->name, "Load") == 0;
     i.store = strcmp(oi->name, "Store") == 0;
@@ -42,7 +42,7 @@ static struct instr code_instr_parse(struct engine *engine, struct json_value *j
     return i;
 }
 
-struct code code_init_parse(struct engine *engine, struct json_value *json_code) {
+struct code code_init_parse(struct allocator *allocator, struct json_value *json_code) {
     assert(json_code->type == JV_LIST);
 
     struct code code;
@@ -50,7 +50,7 @@ struct code code_init_parse(struct engine *engine, struct json_value *json_code)
     code.instrs = malloc(code.len * sizeof(struct instr));
 
     for (unsigned int i = 0; i < json_code->u.list.nvals; i++) {
-        code.instrs[i] = code_instr_parse(engine, json_code->u.list.vals[i]);
+        code.instrs[i] = code_instr_parse(allocator, json_code->u.list.vals[i]);
     }
 
     code.code_map = dict_new("code", sizeof(char *), 0, 0, false);

@@ -345,7 +345,7 @@ void spawn_thread(struct state *state, struct context *ctx){
 // to a new edge in the Kripke structure, possibly to a new state.
 static void process_step(
     struct worker *w,
-    struct engine *engine,
+    struct allocator *allocator,
     struct step_condition *stc,
     struct node *node,
     bool invariant,
@@ -381,15 +381,15 @@ static void process_step(
             hvalue_t ctx = step_unstopped(so)[i];
             // TODO.  Write function (same code in op_Go)
             hvalue_t count;
-            if (value_tryload(engine, sc->stopbag, ctx, &count)) {
+            if (value_tryload(allocator, sc->stopbag, ctx, &count)) {
                 assert(VALUE_TYPE(count) == VALUE_INT);
                 assert(count != VALUE_INT);
                 count -= 1 << VALUE_BITS;
                 if (count != VALUE_INT) {
-                    sc->stopbag = value_dict_store(engine, sc->stopbag, ctx, count);
+                    sc->stopbag = value_dict_store(allocator, sc->stopbag, ctx, count);
                 }
                 else {
-                    sc->stopbag = value_dict_remove(engine, sc->stopbag, ctx);
+                    sc->stopbag = value_dict_remove(allocator, sc->stopbag, ctx);
                 }
             }
         }
@@ -397,7 +397,7 @@ static void process_step(
         // Add new context to state unless it's terminated.
         int new_index = -1;
         if (so->stopped) {
-            sc->stopbag = value_bag_add(engine, sc->stopbag, so->after, 1);
+            sc->stopbag = value_bag_add(allocator, sc->stopbag, so->after, 1);
         }
         else if (!so->terminated) {
             new_index = context_add(sc, so->after);
@@ -536,7 +536,6 @@ static struct step_output *onestep(
 
     assert(!step->ctx->terminated);
     assert(!step->ctx->failed);
-    assert(step->engine.allocator == &w->allocator);
 
     bool infinite_loop = false;
 
@@ -553,7 +552,7 @@ static struct step_output *onestep(
         hvalue_t args[2];
         args[0] = args[1] = sc->vars;
         (void) value_ctx_pop(step->ctx); // HACK
-        value_ctx_push(step->ctx, value_put_list(&step->engine, args, sizeof(args)));
+        value_ctx_push(step->ctx, value_put_list(step->allocator, args, sizeof(args)));
     }
 #endif
 
@@ -742,7 +741,7 @@ static struct step_output *onestep(
                     // if (*loc != 0) {
                     //     instrcnt = *loc;
                     // }
-                    value_ctx_failure(step->ctx, &step->engine, "infinite loop");
+                    value_ctx_failure(step->ctx, step->allocator, "infinite loop");
                     infinite_loop = true;
                     printf("INFINITE LOOP\n");
                     break;
@@ -781,7 +780,7 @@ static struct step_output *onestep(
 
 #ifdef TODO         // not sure why ifdef'd out
             if (0 && step->ctx->readonly > 0) {    // TODO
-                value_ctx_failure(step->ctx, &step->engine, "can't choose in assertion or invariant");
+                value_ctx_failure(step->ctx, step->allocator, "can't choose in assertion or invariant");
                 instrcnt++;
                 break;
             }
@@ -790,7 +789,7 @@ static struct step_output *onestep(
             // Check that the top of the stack contains a set.
             hvalue_t s = ctx_stack(step->ctx)[step->ctx->sp - 1];
             if (VALUE_TYPE(s) != VALUE_SET) {
-                value_ctx_failure(step->ctx, &step->engine, "choose operation requires a set");
+                value_ctx_failure(step->ctx, step->allocator, "choose operation requires a set");
                 instrcnt++;
                 break;
             }
@@ -804,7 +803,7 @@ static struct step_output *onestep(
             value_get(s, &size);
             size /= sizeof(hvalue_t);
             if (size == 0) {
-                value_ctx_failure(step->ctx, &step->engine, "choose operation requires a non-empty set");
+                value_ctx_failure(step->ctx, step->allocator, "choose operation requires a non-empty set");
                 instrcnt++;
                 break;
             }
@@ -848,7 +847,7 @@ static struct step_output *onestep(
                 }
 #else
                 if (VALUE_TYPE(addr) != VALUE_ADDRESS_SHARED && VALUE_TYPE(addr) != VALUE_ADDRESS_PRIVATE) {
-                    value_ctx_failure(step->ctx, &step->engine, "Load: not an address");
+                    value_ctx_failure(step->ctx, step->allocator, "Load: not an address");
                     instrcnt++;
                     break;
                 }
@@ -909,7 +908,7 @@ static struct step_output *onestep(
             (step->nlog + step->nspawned + step->nunstopped) * sizeof(hvalue_t),
             false, false);
     so->vars = sc->vars;
-    so->after = value_put_context(&step->engine, step->ctx);
+    so->after = value_put_context(step->allocator, step->ctx);
     so->ai = step->ai;     step->ai = NULL;
     so->nsteps = instrcnt;
 
@@ -1062,12 +1061,12 @@ static void trystep(
     }
 
     // TODO.  Should I restore sc here?
-    process_step(w, &step->engine, stc, node, invariant, multiplicity > 1, sc);
+    process_step(w, step->allocator, stc, node, invariant, multiplicity > 1, sc);
     while (el != NULL) {
         struct state *state = (struct state *) &el->node[1];
         unsigned int statesz = state_size(state);
         memcpy(sc, state, statesz);
-        process_step(w, &step->engine, stc, el->node, el->invariant, el->multiple, sc);
+        process_step(w, step->allocator, stc, el->node, el->invariant, el->multiple, sc);
         struct node_list *next = el->next;
         el->next = w->el_free;
         w->el_free = el;
@@ -1107,7 +1106,7 @@ static void make_step(
 ) {
     struct step step;
     memset(&step, 0, sizeof(step));
-    step.engine.allocator = &w->allocator;
+    step.allocator = &w->allocator;
 
     struct state *state = node_state(node);
     hvalue_t ctx = state_contexts(state)[ctx_index];
@@ -1136,7 +1135,7 @@ static void chk_invs(
 ) {
     struct step step;
     memset(&step, 0, sizeof(step));
-    step.engine.allocator = &w->allocator;
+    step.allocator = &w->allocator;
 
     struct state *state = node_state(node);
 
@@ -1421,7 +1420,7 @@ static void twostep(
         hvalue_t args[2];
         args[0] = args[1] = sc->vars;
         (void) value_ctx_pop(step.ctx); // HACK
-        value_ctx_push(step.ctx, value_put_list(&step.engine, args, sizeof(args)));
+        value_ctx_push(step.ctx, value_put_list(step.allocator, args, sizeof(args)));
     }
 #endif
 
@@ -1473,7 +1472,7 @@ static void twostep(
             dict_insert(infloop, NULL, combo, combosize, &new);
             free(combo);
             if (!new) {
-                value_ctx_failure(step.ctx, &step.engine, "infinite loop");
+                value_ctx_failure(step.ctx, step.allocator, "infinite loop");
             }
         }
 
@@ -1498,14 +1497,14 @@ static void twostep(
             assert(step.ctx->sp > 0);
 #ifdef TODO
             if (0 && step.ctx->readonly > 0) {    // TODO
-                value_ctx_failure(step.ctx, &step.engine, "can't choose in assertion or invariant");
+                value_ctx_failure(step.ctx, step.allocator, "can't choose in assertion or invariant");
                 make_microstep(sc, step.ctx, step.callstack, false, global.code.instrs[pc].choose, choice, 0, &step, macro);
                 break;
             }
 #endif
             hvalue_t s = ctx_stack(step.ctx)[step.ctx->sp - 1];
             if (VALUE_TYPE(s) != VALUE_SET) {
-                value_ctx_failure(step.ctx, &step.engine, "choose operation requires a set");
+                value_ctx_failure(step.ctx, step.allocator, "choose operation requires a set");
                 make_microstep(sc, step.ctx, step.callstack, false, global.code.instrs[pc].choose, choice, 0, &step, macro);
                 break;
             }
@@ -1513,7 +1512,7 @@ static void twostep(
             hvalue_t *vals = value_get(s, &size);
             size /= sizeof(hvalue_t);
             if (size == 0) {
-                value_ctx_failure(step.ctx, &step.engine, "choose operation requires a non-empty set");
+                value_ctx_failure(step.ctx, step.allocator, "choose operation requires a non-empty set");
                 make_microstep(sc, step.ctx, step.callstack, false, global.code.instrs[pc].choose, choice, 0, &step, macro);
                 break;
             }
@@ -1529,11 +1528,11 @@ static void twostep(
     // Remove old context from the bag
     context_remove(sc, ctx);
 
-    hvalue_t after = value_put_context(&step.engine, step.ctx);
+    hvalue_t after = value_put_context(step.allocator, step.ctx);
 
     // Add new context to state unless it's terminated or stopped
     if (step.ctx->stopped) {
-        sc->stopbag = value_bag_add(&step.engine, sc->stopbag, after, 1);
+        sc->stopbag = value_bag_add(step.allocator, sc->stopbag, after, 1);
     }
     else if (!step.ctx->terminated) {
         // TODO.  Check failure of context_add
@@ -2104,7 +2103,7 @@ static void path_output(FILE *file){
 }
 
 // Remove unneeded microsteps from error trace
-static void path_trim(struct engine *engine){
+static void path_trim(struct allocator *allocator){
     // Find the last macrostep for each thread
     unsigned int *last = calloc(global.nprocesses, sizeof(*last));
     for (unsigned int i = 0; i < global.nmacrosteps; i++) {
@@ -2136,7 +2135,7 @@ static void path_trim(struct engine *engine){
                 assert(ai->next == NULL);
                 assert(!ai->load);
                 assert(!ai->atomic);
-                macro->value = value_put_address(engine, ai->indices, ai->n * sizeof(hvalue_t));
+                macro->value = value_put_address(allocator, ai->indices, ai->n * sizeof(hvalue_t));
             }
             else if (fi->print) {
                 assert(edge_output(macro->edge)->nlog == 1);
@@ -2144,7 +2143,7 @@ static void path_trim(struct engine *engine){
                 macro->value = log[0];
             }
 
-            hvalue_t ictx = value_put_context(engine, macro->microsteps[0]->ctx);
+            hvalue_t ictx = value_put_context(allocator, macro->microsteps[0]->ctx);
             for (unsigned int j = last[i]; j < global.nmacrosteps; j++) {
                 struct macrostep *m = global.macrosteps[j];
                 m->processes[macro->tid] = ictx;
@@ -3594,9 +3593,7 @@ int exec_model_checker(int argc, char **argv){
     mutex_acquire(&global.todo_wait);          // Split Binary Semaphore
     global.values = dict_new("values", 0, 0, global.nworkers, true);
 
-    struct engine engine;
-    engine.allocator = NULL;
-    ops_init(&engine);
+    ops_init(NULL);
 
     graph_init(&global.graph, 1 << 20);
     global.failures = NULL;
@@ -3604,7 +3601,7 @@ int exec_model_checker(int argc, char **argv){
 
     // First read and parse the DFA if any
     if (dfafile != NULL) {
-        global.dfa = dfa_read(&engine, dfafile);
+        global.dfa = dfa_read(NULL, dfafile);
         if (global.dfa == NULL) {
             exit(1);
         }
@@ -3637,7 +3634,7 @@ int exec_model_checker(int argc, char **argv){
     // travel through the json code contents to create the code array
     struct json_value *jc = dict_lookup(jv->u.map, "code", 4);
     assert(jc->type == JV_LIST);
-    global.code = code_init_parse(&engine, jc);
+    global.code = code_init_parse(NULL, jc);
 
     if (has_countLabel) {
         printf("    * compability with countLabel\n");
@@ -3654,7 +3651,7 @@ int exec_model_checker(int argc, char **argv){
     // Now create the state
     struct state *state = calloc(1, sizeof(struct state) + sizeof(hvalue_t) + 1);
     state->vars = VALUE_DICT;
-    hvalue_t ictx = value_put_context(&engine, init_ctx);
+    hvalue_t ictx = value_put_context(NULL, init_ctx);
     state->chooser = -1;
     state->bagsize = 1;
     state_contexts(state)[0] = ictx;
@@ -3720,12 +3717,12 @@ int exec_model_checker(int argc, char **argv){
         // Create a context for evaluating invariants
         w->inv_step.ctx = calloc(1, sizeof(struct context) +
                                 MAX_CONTEXT_STACK * sizeof(hvalue_t));
-        // w->inv_step.ctx->name = value_put_atom(&engine, "__invariant__", 13);
+        // w->inv_step.ctx->name = value_put_atom(&allocator, "__invariant__", 13);
         w->inv_step.ctx->vars = VALUE_DICT;
         w->inv_step.ctx->atomic = w->inv_step.ctx->readonly = 1;
         w->inv_step.ctx->atomicFlag = true;
         w->inv_step.ctx->interruptlevel = false;
-        w->inv_step.engine.allocator = &w->allocator;
+        w->inv_step.allocator = &w->allocator;
 
         w->alloc_buf = malloc(WALLOC_CHUNK);
         w->alloc_ptr = w->alloc_buf;
@@ -4183,7 +4180,7 @@ int exec_model_checker(int argc, char **argv){
         printf("    * Check for data races\n");
         for (unsigned int i = 0; i < global.graph.size; i++) {
             struct node *node = global.graph.nodes[i];
-            graph_check_for_data_race(&global.failures, node, &engine);
+            graph_check_for_data_race(&global.failures, node, NULL);
             if (global.failures != NULL) {
                 break;
             }
@@ -4375,7 +4372,7 @@ int exec_model_checker(int argc, char **argv){
         // If this was a safety failure, we remove any unneeded steps to further
         // reduce the length of the counter-example.
         if (/* bad->type == FAIL_INVARIANT || */ bad->type == FAIL_SAFETY) {
-            path_trim(&engine);
+            path_trim(NULL);
         }
 
         // Finally, we output the path.

@@ -176,7 +176,7 @@ void graph_init(struct graph *graph, unsigned int initial_size);
 void graph_check_for_data_race(
     struct failure **failures,
     struct node *node,
-    struct engine *engine
+    struct allocator *allocator
 );
 void graph_add(struct graph *graph, struct node *node);
 unsigned int graph_add_multiple(struct graph *graph, unsigned int n);

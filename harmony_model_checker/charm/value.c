@@ -19,7 +19,7 @@
 //      Retrieve the value v.  *psize (if not NULL) will contain
 //      the size in bytes
 //
-//  hvalue_t value_put_X(struct engine *engine, const void *p,
+//  hvalue_t value_put_X(struct allocator *allocator, const void *p,
 //                                            unsigned int size);
 //      Store a value pointed to by p (of value size in bytes) and
 //      return an hvalue_t.
@@ -34,7 +34,7 @@
 //  char *value_json(hvalue_t v);
 //      Return a JSON representation of v.
 //
-//  hvalue_t value_from_json(struct engine *engine, struct dict *map);
+//  hvalue_t value_from_json(struct allocator *allocator, struct dict *map);
 //      Return a value from the JSON encoded in the given map.
 
 #ifndef _GNU_SOURCE
@@ -109,51 +109,51 @@ void *value_copy_extend(hvalue_t v, unsigned int inc, unsigned int *psize){
 }
 
 // p points to an UTF-8 string of size bytes.  Return an hvalue.
-hvalue_t value_put_atom(struct engine *engine, const void *p, unsigned int size){
+hvalue_t value_put_atom(struct allocator *allocator, const void *p, unsigned int size){
     if (size == 0) {
         return VALUE_ATOM;
     }
-    void *q = dict_find(global.values, engine->allocator, p, size, NULL);
+    void *q = dict_find(global.values, allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_ATOM;
 }
 
 // p points to a sorted list of unique hvalues.  size is the number of
 // bytes that the list occupies.  Return an hvalue for the set.
-hvalue_t value_put_set(struct engine *engine, void *p, unsigned int size){
+hvalue_t value_put_set(struct allocator *allocator, void *p, unsigned int size){
     if (size == 0) {
         return VALUE_SET;
     }
-    void *q = dict_find(global.values, engine->allocator, p, size, NULL);
+    void *q = dict_find(global.values, allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_SET;
 }
 
 // p points to an array of key/value pairs, sorted by key (which must be
 // unique).  Return an hvalue.
-hvalue_t value_put_dict(struct engine *engine, void *p, unsigned int size){
+hvalue_t value_put_dict(struct allocator *allocator, void *p, unsigned int size){
     if (size == 0) {
         return VALUE_DICT;
     }
-    void *q = dict_find(global.values, engine->allocator, p, size, NULL);
+    void *q = dict_find(global.values, allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_DICT;
 }
 
 // p points to an array of hvalues.  Return an hvalue.
-hvalue_t value_put_list(struct engine *engine, void *p, unsigned int size){
+hvalue_t value_put_list(struct allocator *allocator, void *p, unsigned int size){
     if (size == 0) {
         return VALUE_LIST;
     }
-    void *q = dict_find(global.values, engine->allocator, p, size, NULL);
+    void *q = dict_find(global.values, allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_LIST;
 }
 
 // p points to an array of hvalues.  The first is the function, and the
 // rest are the arguments.  Return an hvalue.
-hvalue_t value_put_address(struct engine *engine, void *p, unsigned int size){
+hvalue_t value_put_address(struct allocator *allocator, void *p, unsigned int size){
     if (size == 0) {
         return VALUE_ADDRESS_SHARED;
     }
     assert(size % sizeof(hvalue_t) == 0);
-    void *q = dict_find(global.values, engine->allocator, p, size, NULL);
+    void *q = dict_find(global.values, allocator, p, size, NULL);
     if (* (hvalue_t *) p == VALUE_PC_SHARED) {
         return (hvalue_t) q | VALUE_ADDRESS_SHARED;
     }
@@ -163,9 +163,9 @@ hvalue_t value_put_address(struct engine *engine, void *p, unsigned int size){
 }
 
 // ctx points to a context.  Returns an hvalue.
-hvalue_t value_put_context(struct engine *engine, struct context *ctx){
+hvalue_t value_put_context(struct allocator *allocator, struct context *ctx){
 	assert(ctx->pc >= 0);
-    void *q = dict_find(global.values, engine->allocator, ctx, ctx_size(ctx), NULL);
+    void *q = dict_find(global.values, allocator, ctx, ctx_size(ctx), NULL);
     if (ctx->eternal) {
         return (hvalue_t) q | VALUE_CONTEXT | VALUE_CONTEXT_ETERNAL;
     }
@@ -1051,19 +1051,19 @@ static hvalue_t value_pc(struct dict *map){
 
 // Helper function for value_from_json.  An atom (string) has a "value" field
 // containing the string value.
-static hvalue_t value_atom(struct engine *engine, struct dict *map){
+static hvalue_t value_atom(struct allocator *allocator, struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_ATOM);
     if (value->u.atom.len == 0) {
         return VALUE_ATOM;
     }
-    void *p = dict_find(global.values, engine->allocator, value->u.atom.base, value->u.atom.len, NULL);
+    void *p = dict_find(global.values, allocator, value->u.atom.base, value->u.atom.len, NULL);
     return (hvalue_t) p | VALUE_ATOM;
 }
 
 // Helper function for value_from_json.  A dictionary has a "value" field containing
 // a list of "key"/"value" pairs.
-static hvalue_t value_dict(struct engine *engine, struct dict *map){
+static hvalue_t value_dict(struct allocator *allocator, struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_LIST);
     if (value->u.list.nvals == 0) {
@@ -1077,12 +1077,12 @@ static hvalue_t value_dict(struct engine *engine, struct dict *map){
         assert(k->type == JV_MAP);
         struct json_value *v = dict_lookup(jv->u.map, "value", 5);
         assert(v->type == JV_MAP);
-        vals[2*i] = value_from_json(engine, k->u.map);
-        vals[2*i+1] = value_from_json(engine, v->u.map);
+        vals[2*i] = value_from_json(allocator, k->u.map);
+        vals[2*i+1] = value_from_json(allocator, v->u.map);
     }
 
     // vals is sorted already by harmony compiler
-    void *p = dict_find(global.values, engine->allocator, vals,
+    void *p = dict_find(global.values, allocator, vals,
                     value->u.list.nvals * sizeof(hvalue_t) * 2, NULL);
     free(vals);
     return (hvalue_t) p | VALUE_DICT;
@@ -1090,7 +1090,7 @@ static hvalue_t value_dict(struct engine *engine, struct dict *map){
 
 // Helper function for value_from_json.  A set has a "value" field containing
 // a sorted list of the values.
-static hvalue_t value_set(struct engine *engine, struct dict *map){
+static hvalue_t value_set(struct allocator *allocator, struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_LIST);
     if (value->u.list.nvals == 0) {
@@ -1100,18 +1100,18 @@ static hvalue_t value_set(struct engine *engine, struct dict *map){
     for (unsigned int i = 0; i < value->u.list.nvals; i++) {
         struct json_value *jv = value->u.list.vals[i];
         assert(jv->type == JV_MAP);
-        vals[i] = value_from_json(engine, jv->u.map);
+        vals[i] = value_from_json(allocator, jv->u.map);
     }
 
     // vals is sorted already by harmony compiler
-    void *p = dict_find(global.values, engine->allocator, vals, value->u.list.nvals * sizeof(hvalue_t), NULL);
+    void *p = dict_find(global.values, allocator, vals, value->u.list.nvals * sizeof(hvalue_t), NULL);
     free(vals);
     return (hvalue_t) p | VALUE_SET;
 }
 
 // Helper function for value_from_json.  A list has a "value" field containing
 // a list of the values.
-static hvalue_t value_list(struct engine *engine, struct dict *map){
+static hvalue_t value_list(struct allocator *allocator, struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_LIST);
     if (value->u.list.nvals == 0) {
@@ -1121,9 +1121,9 @@ static hvalue_t value_list(struct engine *engine, struct dict *map){
     for (unsigned int i = 0; i < value->u.list.nvals; i++) {
         struct json_value *jv = value->u.list.vals[i];
         assert(jv->type == JV_MAP);
-        vals[i] = value_from_json(engine, jv->u.map);
+        vals[i] = value_from_json(allocator, jv->u.map);
     }
-    void *p = dict_find(global.values, engine->allocator, vals, value->u.list.nvals * sizeof(hvalue_t), NULL);
+    void *p = dict_find(global.values, allocator, vals, value->u.list.nvals * sizeof(hvalue_t), NULL);
     free(vals);
     return (hvalue_t) p | VALUE_LIST;
 }
@@ -1131,7 +1131,7 @@ static hvalue_t value_list(struct engine *engine, struct dict *map){
 // Helper function for value_from_json.  An address (or perhaps better, a "thunk")
 // has a "func" field containing a function value and an "args" field containing
 // a list of arguments.
-static hvalue_t value_address(struct engine *engine, struct dict *map){
+static hvalue_t value_address(struct allocator *allocator, struct dict *map){
     struct json_value *func = dict_lookup(map, "func", 4);
     if (func == NULL) {
         return (hvalue_t) VALUE_ADDRESS_SHARED;        // None
@@ -1141,20 +1141,20 @@ static hvalue_t value_address(struct engine *engine, struct dict *map){
     assert(args->type == JV_LIST);
     unsigned int size = (1 + args->u.list.nvals) * sizeof(hvalue_t);
     hvalue_t *vals = malloc(size);
-    vals[0] = value_from_json(engine, func->u.map);
+    vals[0] = value_from_json(allocator, func->u.map);
     for (unsigned int i = 0; i < args->u.list.nvals; i++) {
         struct json_value *jv = args->u.list.vals[i];
         assert(jv->type == JV_MAP);
-        vals[1+i] = value_from_json(engine, jv->u.map);
+        vals[1+i] = value_from_json(allocator, jv->u.map);
     }
-    hvalue_t result = value_put_address(engine, vals, size);
+    hvalue_t result = value_put_address(allocator, vals, size);
     assert(vals[0] != VALUE_PC_SHARED || VALUE_TYPE(result) == VALUE_ADDRESS_SHARED);
     free(vals);
     return result;
 }
 
 // This function takes a JSON dictionary value and turns it into a Harmony value.
-hvalue_t value_from_json(struct engine *engine, struct dict *map){
+hvalue_t value_from_json(struct allocator *allocator, struct dict *map){
     struct json_value *type = dict_lookup(map, "type", 4);
     assert(type != 0);
     assert(type->type == JV_ATOM);
@@ -1165,22 +1165,22 @@ hvalue_t value_from_json(struct engine *engine, struct dict *map){
         return value_int(map);
     }
     else if (atom_cmp(type->u.atom, "atom")) {
-        return value_atom(engine, map);
+        return value_atom(allocator, map);
     }
     else if (atom_cmp(type->u.atom, "list")) {
-        return value_list(engine, map);
+        return value_list(allocator, map);
     }
     else if (atom_cmp(type->u.atom, "dict")) {
-        return value_dict(engine, map);
+        return value_dict(allocator, map);
     }
     else if (atom_cmp(type->u.atom, "set")) {
-        return value_set(engine, map);
+        return value_set(allocator, map);
     }
     else if (atom_cmp(type->u.atom, "pc")) {
         return value_pc(map);
     }
     else if (atom_cmp(type->u.atom, "address")) {
-        return value_address(engine, map);
+        return value_address(allocator, map);
     }
     else {
         panic("value_from_json: bad type");
@@ -1190,7 +1190,7 @@ hvalue_t value_from_json(struct engine *engine, struct dict *map){
 
 // Store key:value in the given dictionary and returns its value code
 // in *result.  May fail if allow_inserts is false and key does not exist
-bool value_dict_trystore(struct engine *engine, hvalue_t dict, hvalue_t key, hvalue_t value, bool allow_inserts, hvalue_t *result){
+bool value_dict_trystore(struct allocator *allocator, hvalue_t dict, hvalue_t key, hvalue_t value, bool allow_inserts, hvalue_t *result){
     assert(VALUE_TYPE(dict) == VALUE_DICT);
 
     hvalue_t *vals;
@@ -1220,7 +1220,7 @@ bool value_dict_trystore(struct engine *engine, hvalue_t dict, hvalue_t key, hva
 #endif
             memcpy(copy, vals, n);
             copy[i + 1] = value;
-            hvalue_t v = value_put_dict(engine, copy, n);
+            hvalue_t v = value_put_dict(allocator, copy, n);
 #ifdef HEAP_ALLOC
             free(copy);
 #endif
@@ -1246,7 +1246,7 @@ bool value_dict_trystore(struct engine *engine, hvalue_t dict, hvalue_t key, hva
     nvals[i] = key;
     nvals[i+1] = value;
     memcpy(&nvals[i+2], &vals[i], (size - i) * sizeof(hvalue_t));
-    hvalue_t v = value_put_dict(engine, nvals, n);
+    hvalue_t v = value_put_dict(allocator, nvals, n);
 #ifdef HEAP_ALLOC
     free(nvals);
 #endif
@@ -1255,9 +1255,9 @@ bool value_dict_trystore(struct engine *engine, hvalue_t dict, hvalue_t key, hva
 }
 
 // Like value_dict_trystore, but panics if something goes wrong
-hvalue_t value_dict_store(struct engine *engine, hvalue_t dict, hvalue_t key, hvalue_t value){
+hvalue_t value_dict_store(struct allocator *allocator, hvalue_t dict, hvalue_t key, hvalue_t value){
     hvalue_t result;
-    bool r = value_dict_trystore(engine, dict, key, value, true, &result);
+    bool r = value_dict_trystore(allocator, dict, key, value, true, &result);
     if (!r) {
         fprintf(stderr, "value_dict_store: failed\n");
         exit(1);
@@ -1272,7 +1272,7 @@ hvalue_t value_dict_store(struct engine *engine, hvalue_t dict, hvalue_t key, hv
 //
 // For a list of size n, note that you can store in root[n] and extend the length
 // of the list by 1.
-bool value_trystore(struct engine *engine, hvalue_t root, hvalue_t key, hvalue_t value, bool allow_inserts, hvalue_t *result){
+bool value_trystore(struct allocator *allocator, hvalue_t root, hvalue_t key, hvalue_t value, bool allow_inserts, hvalue_t *result){
     assert(VALUE_TYPE(root) == VALUE_DICT || VALUE_TYPE(root) == VALUE_LIST);
 
     unsigned int size;
@@ -1295,7 +1295,7 @@ bool value_trystore(struct engine *engine, hvalue_t root, hvalue_t key, hvalue_t
 #endif
                 memcpy(nvals, vals, size);
                 nvals[i + 1] = value;
-                hvalue_t v = value_put_dict(engine, nvals, size);
+                hvalue_t v = value_put_dict(allocator, nvals, size);
 #ifdef HEAP_ALLOC
                 free(nvals);
 #endif
@@ -1321,7 +1321,7 @@ bool value_trystore(struct engine *engine, hvalue_t root, hvalue_t key, hvalue_t
         nvals[i] = key;
         nvals[i+1] = value;
         memcpy(&nvals[i+2], &vals[i], (n - i) * sizeof(hvalue_t));
-        hvalue_t v = value_put_dict(engine, nvals, size);
+        hvalue_t v = value_put_dict(allocator, nvals, size);
 #ifdef HEAP_ALLOC
         free(nvals);
 #endif
@@ -1358,7 +1358,7 @@ bool value_trystore(struct engine *engine, hvalue_t root, hvalue_t key, hvalue_t
 #endif
         memcpy(nvals, vals, size);
         nvals[index] = value;
-        hvalue_t v = value_put_list(engine, nvals, nsize);
+        hvalue_t v = value_put_list(allocator, nvals, nsize);
 #ifdef HEAP_ALLOC
         free(nvals);
 #endif
@@ -1368,9 +1368,9 @@ bool value_trystore(struct engine *engine, hvalue_t root, hvalue_t key, hvalue_t
 }
 
 // Like value_try_store but panics if something goes wrong
-hvalue_t value_store(struct engine *engine, hvalue_t root, hvalue_t key, hvalue_t value){
+hvalue_t value_store(struct allocator *allocator, hvalue_t root, hvalue_t key, hvalue_t value){
     hvalue_t result;
-    bool r = value_trystore(engine, root, key, value, true, &result);
+    bool r = value_trystore(allocator, root, key, value, true, &result);
     if (!r) {
         fprintf(stderr, "value_store: failed\n");
         exit(1);
@@ -1411,7 +1411,7 @@ hvalue_t value_dict_load(hvalue_t dict, hvalue_t key){
 
 // Remove the given key from the dictionary and return the new dictionary.
 // TODO.  Does this duplicate the work of value_remove()??
-hvalue_t value_dict_remove(struct engine *engine, hvalue_t dict, hvalue_t key){
+hvalue_t value_dict_remove(struct allocator *allocator, hvalue_t dict, hvalue_t key){
     assert(VALUE_TYPE(dict) == VALUE_DICT);
     if (dict == VALUE_DICT) {       // dictionary is empty
         return VALUE_DICT;
@@ -1440,7 +1440,7 @@ hvalue_t value_dict_remove(struct engine *engine, hvalue_t dict, hvalue_t key){
             memcpy(copy, vals, i * sizeof(hvalue_t));
             memcpy(&copy[i], &vals[i+2],
                    (size - i - 2) * sizeof(hvalue_t));
-            hvalue_t v = value_put_dict(engine, copy, n);
+            hvalue_t v = value_put_dict(allocator, copy, n);
 #ifdef HEAP_ALLOC
             free(copy);
 #endif
@@ -1458,7 +1458,7 @@ hvalue_t value_dict_remove(struct engine *engine, hvalue_t dict, hvalue_t key){
 
 // Remove the given key from either a dictionary or a list.
 // TODO.  Should perhaps also support removing characters from a string.
-hvalue_t value_remove(struct engine *engine, hvalue_t root, hvalue_t key){
+hvalue_t value_remove(struct allocator *allocator, hvalue_t root, hvalue_t key){
     assert(VALUE_TYPE(root) == VALUE_DICT || VALUE_TYPE(root) == VALUE_LIST);
 
     unsigned int size;
@@ -1489,7 +1489,7 @@ hvalue_t value_remove(struct engine *engine, hvalue_t root, hvalue_t key){
                 memcpy(copy, vals, i * sizeof(hvalue_t));
                 memcpy(&copy[i], &vals[i+2],
                        (n - i - 2) * sizeof(hvalue_t));
-                hvalue_t v = value_put_dict(engine, copy, size);
+                hvalue_t v = value_put_dict(allocator, copy, size);
 #ifdef HEAP_ALLOC
                 free(copy);
 #endif
@@ -1527,7 +1527,7 @@ hvalue_t value_remove(struct engine *engine, hvalue_t root, hvalue_t key){
         memcpy(copy, vals, index * sizeof(hvalue_t));
         memcpy(&copy[index], &vals[index+1],
                (n - index - 1) * sizeof(hvalue_t));
-        hvalue_t v = value_put_list(engine, copy, size);
+        hvalue_t v = value_put_list(allocator, copy, size);
 #ifdef HEAP_ALLOC
         free(copy);
 #endif
@@ -1539,7 +1539,7 @@ hvalue_t value_remove(struct engine *engine, hvalue_t root, hvalue_t key){
 
 // Try to load from either a dict (by key) or a string or list (by index).
 bool value_tryload(
-    struct engine *engine,
+    struct allocator *allocator,
     hvalue_t root,
     hvalue_t key,
     hvalue_t *result
@@ -1554,7 +1554,7 @@ bool value_tryload(
         if (key >= (unsigned int) size) {
             return false;
         }
-        *result = value_put_atom(engine, chars + key, 1);
+        *result = value_put_atom(allocator, chars + key, 1);
         return true;
     }
 
@@ -1598,31 +1598,31 @@ bool value_tryload(
 
 // A bag is a dictionary that maps elements to their multiplicity.  This function
 // add "multiplicity" copies of v to the given bag and returns a new bag.
-hvalue_t value_bag_add(struct engine *engine, hvalue_t bag, hvalue_t v, int multiplicity){
+hvalue_t value_bag_add(struct allocator *allocator, hvalue_t bag, hvalue_t v, int multiplicity){
     hvalue_t count;
     assert(VALUE_TYPE(bag) == VALUE_DICT);
-    if (value_tryload(engine, bag, v, &count)) {
+    if (value_tryload(allocator, bag, v, &count)) {
         assert(VALUE_TYPE(count) == VALUE_INT);
         assert(count != VALUE_INT);
         count += multiplicity << VALUE_BITS;
-        return value_dict_store(engine, bag, v, count);
+        return value_dict_store(allocator, bag, v, count);
     }
     else {
-        return value_dict_store(engine, bag, v, VALUE_TO_INT(1));
+        return value_dict_store(allocator, bag, v, VALUE_TO_INT(1));
     }
 }
 
 // Remove a copy of v from the given bag (which must be in there).
-hvalue_t value_bag_remove(struct engine *engine, hvalue_t bag, hvalue_t v){
+hvalue_t value_bag_remove(struct allocator *allocator, hvalue_t bag, hvalue_t v){
     assert(VALUE_TYPE(bag) == VALUE_DICT);
     hvalue_t count = value_dict_load(bag, v);
     assert(VALUE_TYPE(count) == VALUE_INT);
     count -= 1 << VALUE_BITS;
     if (count == VALUE_INT) {
-        return value_dict_remove(engine, bag, v);
+        return value_dict_remove(allocator, bag, v);
     }
     else {
-        return value_dict_store(engine, bag, v, count);
+        return value_dict_store(allocator, bag, v, count);
     }
 }
 
@@ -1656,7 +1656,7 @@ void value_ctx_extend(struct context *ctx){
 }
 
 // A failure has occurred and this is registered with the context.
-hvalue_t value_ctx_failure(struct context *ctx, struct engine *engine, char *fmt, ...){
+hvalue_t value_ctx_failure(struct context *ctx, struct allocator *allocator, char *fmt, ...){
     va_list args;
 
     assert(!ctx->failed);
@@ -1669,7 +1669,7 @@ hvalue_t value_ctx_failure(struct context *ctx, struct engine *engine, char *fmt
     strbuf_vprintf(&sb, fmt, args);
     va_end(args);
     // printf("FAIL %.*s\n", strbuf_getlen(&sb), strbuf_getstr(&sb));
-    ctx_failure(ctx) = value_put_atom(engine, strbuf_getstr(&sb), strbuf_getlen(&sb));
+    ctx_failure(ctx) = value_put_atom(allocator, strbuf_getstr(&sb), strbuf_getlen(&sb));
     ctx->failed = true;
     strbuf_deinit(&sb);
 

@@ -42,7 +42,7 @@ unsigned int graph_add_multiple(struct graph *graph, unsigned int n) {
 
 static bool graph_edge_conflict(
     struct failure **failures,
-    struct engine *engine,
+    struct allocator *allocator,
     struct node *node,
     struct edge *edge,
     struct edge *edge2
@@ -58,7 +58,7 @@ static bool graph_edge_conflict(
                         struct failure *f = new_alloc(struct failure);
                         f->type = FAIL_RACE;
                         f->edge = node_to_parent(node);
-                        f->address = value_put_address(engine, ai->indices, min * sizeof(hvalue_t));
+                        f->address = value_put_address(allocator, ai->indices, min * sizeof(hvalue_t));
                         add_failure(failures, f);
                         return true;
                     }
@@ -72,7 +72,7 @@ static bool graph_edge_conflict(
 void graph_check_for_data_race(
     struct failure **failures,
     struct node *node,
-    struct engine *engine
+    struct allocator *allocator
 ) {
     // First check whether any edges conflict with themselves.  That could
     // happen if more than one thread is in the same state and (all) write
@@ -85,7 +85,7 @@ void graph_check_for_data_race(
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_RACE;
                     f->edge = node_to_parent(node);
-                    f->address = value_put_address(engine, ai->indices, ai->n * sizeof(hvalue_t));
+                    f->address = value_put_address(allocator, ai->indices, ai->n * sizeof(hvalue_t));
                     add_failure(failures, f);
                 }
             }
@@ -95,7 +95,7 @@ void graph_check_for_data_race(
     // TODO.  We're checking both if x and y conflict and y and x conflict for any two x and y, which is redundant
     for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
         for (struct edge *edge2 = edge->fwdnext; edge2 != NULL; edge2 = edge2->fwdnext) {
-            if (graph_edge_conflict(failures, engine, node, edge, edge2)) {
+            if (graph_edge_conflict(failures, allocator, node, edge, edge2)) {
                 break;
             }
         }
