@@ -71,15 +71,17 @@ struct step_output {
 #define step_spawned(x)      ((hvalue_t *) ((x) + 1) + (x)->nlog)
 #define step_unstopped(x)    ((hvalue_t *) ((x) + 1) + (x)->nlog + (x)->nspawned)
 
-struct edge_list {
-    struct edge_list *next;
-    struct edge *edge;
+struct node_list {
+    struct node_list *next;
+    struct node *node;
+    bool multiple;
+    bool invariant;
 };
 
 struct step_condition {
     enum { SC_IN_PROGRESS, SC_COMPLETED } type;
     union {
-        struct edge_list *in_progress;
+        struct node_list *in_progress;
         struct step_output *completed;
     } u;
 };

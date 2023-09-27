@@ -128,7 +128,7 @@ struct worker {
     unsigned int nworkers;       // total number of workers
     unsigned int vproc;          // virtual processor for pinning
     unsigned int si_total, si_hits;
-    struct edge_list *el_free;
+    struct node_list *el_free;
     bool loops_possible;         // cycles in graph are possible
 
     // The worker thread loop through three phases:
@@ -164,7 +164,6 @@ struct worker {
     struct results_block *results;       // linked list of nodes
     struct results_block *rb_free;
     unsigned int count;         // size of the results list
-    unsigned int total_results;
 
     // New nodes are assigned node identifiers in phase 3.  This is
     // done in parallel by the various workers.  Each worker gets
@@ -347,18 +346,19 @@ void spawn_thread(struct state *state, struct context *ctx){
 static void process_step(
     struct worker *w,
     struct allocator *allocator,
-    struct edge *edge,
+    struct step_condition *stc,
+    struct node *node,
+    bool invariant,
+    bool multiple,
     struct state *sc
 ) {
-    struct step_condition *stc = edge->sc;
     assert(stc->type == SC_COMPLETED);
     struct step_input *si = (struct step_input *) &stc[1];
     struct step_output *so = stc->u.completed;
-    struct node *node = global.graph.nodes[edge->src_id];
 
     // If it was an invariant being evaluated, the state cannot have changed.
     // If there was no error, no need to add an edge
-    if (edge->invariant_chk) {
+    if (invariant) {
         if (!so->failed && !so->infinite_loop) {
             return;
         }
@@ -428,6 +428,11 @@ static void process_step(
     }
 
     // Allocate and initialize edge.  We do not yet know the destination node.
+    struct edge *edge = walloc(w, sizeof(struct edge), false, false);
+    edge->src_id = node->id;
+    edge->multiple = multiple;
+    edge->invariant_chk = invariant;
+    edge->sc = stc;
     edge->failed = so->failed || so->infinite_loop;
 
     if (global.dfa != NULL) {
@@ -489,7 +494,6 @@ static void process_step(
 
         w->count++;
         w->enqueued++;
-        w->total_results++;
         mutex_release(lock);
     }
 
@@ -954,11 +958,6 @@ static void trystep(
 
     w->si_total++;          // counts the number of edges
 
-    struct edge *edge = walloc(w, sizeof(struct edge), false, false);
-    edge->src_id = node->id;
-    edge->multiple = multiplicity > 1;
-    edge->invariant_chk = invariant;
-
     struct step_input si = {
         .vars = state->vars,
         .choice = choice,
@@ -979,7 +978,6 @@ static void trystep(
             &w->allocator, &si, sizeof(si), &si_new, &si_lock);
         stc = (struct step_condition *) &da[1];
     }
-    edge->sc = stc;
 
     if (si_new) {
         stc->type = SC_IN_PROGRESS;
@@ -988,14 +986,16 @@ static void trystep(
     else {
         w->si_hits++;
         if (stc->type == SC_IN_PROGRESS) {
-            struct edge_list *el;
+            struct node_list *el;
             if ((el = w->el_free) == NULL) {
-                el = walloc(w, sizeof(struct edge_list), false, false);
+                el = walloc(w, sizeof(struct node_list), false, false);
             }
             else {
                 w->el_free = el->next;
             }
-            el->edge = edge;
+            el->node = node;
+            el->multiple = multiplicity > 1;
+            el->invariant = invariant;
             el->next = stc->u.in_progress;
             stc->u.in_progress = el;
             mutex_release(si_lock);
@@ -1017,7 +1017,7 @@ static void trystep(
     sc->chooser = -1;
 
     // If this is a new step, perform it
-    struct edge_list *el = NULL;
+    struct node_list *el = NULL;
     if (si_new) {
         // Make a copy of the context
         assert(!cc->terminated);
@@ -1061,14 +1061,13 @@ static void trystep(
     }
 
     // TODO.  Should I restore sc here?
-    process_step(w, step->allocator, edge, sc);
+    process_step(w, step->allocator, stc, node, invariant, multiplicity > 1, sc);
     while (el != NULL) {
-        struct node *n = global.graph.nodes[el->edge->src_id];
-        struct state *state = (struct state *) &n[1];
+        struct state *state = (struct state *) &el->node[1];
         unsigned int statesz = state_size(state);
         memcpy(sc, state, statesz);
-        process_step(w, step->allocator, el->edge, sc);
-        struct edge_list *next = el->next;
+        process_step(w, step->allocator, stc, el->node, el->invariant, el->multiple, sc);
+        struct node_list *next = el->next;
         el->next = w->el_free;
         w->el_free = el;
         el = next;
@@ -3798,15 +3797,14 @@ int exec_model_checker(int argc, char **argv){
         start_wait += w->start_wait;
         middle_wait += w->middle_wait;
         end_wait += w->end_wait;
-        printf("W%u: %lf %lf %lf %lf %lf %lf %lf %u\n", i,
+        printf("W%u: %lf %lf %lf %lf %lf %lf %lf\n", i,
                 w->phase1,
                 w->phase2a,
                 w->phase2b,
                 w->phase3,
                 w->start_wait/w->start_count,
                 w->middle_wait/w->middle_count,
-                w->end_wait/w->end_count,
-                w->total_results);
+                w->end_wait/w->end_count);
     }
 #else
     for (unsigned int i = 0; i < global.nworkers; i++) {
