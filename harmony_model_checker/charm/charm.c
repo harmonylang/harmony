@@ -3857,195 +3857,193 @@ int exec_model_checker(int argc, char **argv){
 
     bool computed_components = false;
 
+    // Do a cheap check for deadlock if no other errors have been detected
+    // TODO.  Could be parallelized
+    if (global.failures == NULL) {
+        if (global.graph.size > 10000) {
+            printf("* Check for deadlock\n");
+            fflush(stdout);
+        }
+        for (unsigned int i = 0; i < global.graph.size; i++) {
+            struct node *node = global.graph.nodes[i];
+            struct state *state = node_state(node);
+            if (node->dead_end) {
+                bool final = value_state_all_eternal(state)
+                        && value_ctx_all_eternal(state->stopbag);
+                if (final) {
+                    // If an input dfa was specified, it should also be in the
+                    // final state.
+                    if (global.dfa != NULL &&
+                            !dfa_is_final(global.dfa, state->dfa_state)) {
+                        struct failure *f = new_alloc(struct failure);
+                        f->type = FAIL_BEHAVIOR;
+                        f->edge = node_to_parent(node);
+                        add_failure(&global.failures, f);
+                    }
+                    else {
+                        node->final = true;
+                    }
+                }
+                else {
+                    struct failure *f = new_alloc(struct failure);
+                    f->type = FAIL_TERMINATION;
+                    f->edge = node_to_parent(node);
+                    assert(f->edge != NULL);
+                    add_failure(&global.failures, f);
+                }
+            }
+        }
+    }
+
     // If no failures were detected (yet), look for deadlock and busy
     // waiting.
     // TODO.  Also look for other final states and evaluate more finally
     //        clauses.  This can happen if an eternal thread sits in
     //        a loop like:  await x and y
-    if (global.failures == NULL) {
-        // If loops are possible, run an SCC algorithm
-        if (loops_possible) {
-            if (global.graph.size > 10000) {
-                printf("* Determine strongly connected components\n");
-                fflush(stdout);
+    if (global.failures == NULL && loops_possible) {
+        if (global.graph.size > 10000) {
+            printf("* Determine strongly connected components\n");
+            fflush(stdout);
+        }
+        double now = gettime();
+        tarjan();
+        computed_components = true;
+        printf("    * %u components (%.2lf seconds)\n", global.ncomponents, gettime() - now);
+
+#ifdef DUMP_GRAPH
+        printf("digraph Harmony {\n");
+        for (unsigned int i = 0; i < global.graph.size; i++) {
+            struct node *node = global.graph.nodes[i];
+            printf(" s%u [label=\"%u/%u\"]\n", i, i, node->u.ph2.component);
+        }
+        for (unsigned int i = 0; i < global.graph.size; i++) {
+            struct node *node = global.graph.nodes[i];
+            for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
+                printf(" s%u -> s%u\n", node->id, edge->dst->id);
             }
-            double now = gettime();
-            tarjan();
-            computed_components = true;
-            printf("    * %u components (%.2lf seconds)\n", global.ncomponents, gettime() - now);
+        }
+        printf("}\n");
+#endif
 
-    #ifdef DUMP_GRAPH
-            printf("digraph Harmony {\n");
-            for (unsigned int i = 0; i < global.graph.size; i++) {
-                struct node *node = global.graph.nodes[i];
-                printf(" s%u [label=\"%u/%u\"]\n", i, i, node->u.ph2.component);
+        // The search for non-terminating states starts with marking the
+        // non-sink components as "good".  They cannot contain non-terminating
+        // states.  This loop, for each state, looks at what component it is
+        // in.  As part of this loop we also determine how many states are in
+        // each component, and assign a "representative" state to the component.
+        // We also determine a boolean value 'all_same'.  It is true iff all
+        // states in the component have the same variable assignment, but also
+        // all remaining contexts must be 'eternal' (i.e., all normal threads
+        // must have terminated in each state).
+        struct component *components = calloc(global.ncomponents, sizeof(*components));
+        for (unsigned int i = 0; i < global.graph.size; i++) {
+            struct node *node = global.graph.nodes[i];
+            assert(node->u.ph2.component < global.ncomponents);
+            struct component *comp = &components[node->u.ph2.component];
+
+            // See if this is the first state that we are looking at for
+            // this component, make this state the 'representative' for
+            // this component.
+            if (comp->size == 0) {
+                comp->rep = node;
+                comp->all_same = value_state_all_eternal(node_state(node))
+                    && value_ctx_all_eternal(node_state(node)->stopbag);
             }
-            for (unsigned int i = 0; i < global.graph.size; i++) {
-                struct node *node = global.graph.nodes[i];
-                for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
-                    printf(" s%u -> s%u\n", node->id, edge->dst->id);
-                }
+            else if (node_state(node)->vars != node_state(comp->rep)->vars
+                        || !value_state_all_eternal(node_state(node))
+                        || !value_ctx_all_eternal(node_state(node)->stopbag)) {
+                comp->all_same = false;
             }
-            printf("}\n");
-    #endif
+            comp->size++;
 
-            // The search for non-terminating states starts with marking the
-            // non-sink components as "good".  They cannot contain non-terminating
-            // states.  This loop, for each state, looks at what component it is
-            // in.  As part of this loop we also determine how many states are in
-            // each component, and assign a "representative" state to the component.
-            // We also determine a boolean value 'all_same'.  It is true iff all
-            // states in the component have the same variable assignment, but also
-            // all remaining contexts must be 'eternal' (i.e., all normal threads
-            // must have terminated in each state).
-            struct component *components = calloc(global.ncomponents, sizeof(*components));
-            for (unsigned int i = 0; i < global.graph.size; i++) {
-                struct node *node = global.graph.nodes[i];
-                assert(node->u.ph2.component < global.ncomponents);
-                struct component *comp = &components[node->u.ph2.component];
-
-                // See if this is the first state that we are looking at for
-                // this component, make this state the 'representative' for
-                // this component.
-                if (comp->size == 0) {
-                    comp->rep = node;
-                    comp->all_same = value_state_all_eternal(node_state(node))
-                        && value_ctx_all_eternal(node_state(node)->stopbag);
-                }
-                else if (node_state(node)->vars != node_state(comp->rep)->vars
-                            || !value_state_all_eternal(node_state(node))
-                            || !value_ctx_all_eternal(node_state(node)->stopbag)) {
-                    comp->all_same = false;
-                }
-                comp->size++;
-
-                // If we already determined that this component has a way out,
-                // we're done.
-                if (comp->good) {
-                    continue;
-                }
-
-                // If this component has a way out, it is good
-                for (struct edge *edge = node->fwd;
-                                edge != NULL && !comp->good; edge = edge->fwdnext) {
-                    if (edge->dst->u.ph2.component != node->u.ph2.component) {
-                        comp->good = true;
-                        break;
-                    }
-                }
+            // If we already determined that this component has a way out,
+            // we're done.
+            if (comp->good) {
+                continue;
             }
 
-            // Components that have only states in which the variables are the same
-            // and have only eternal threads are good because it means all its
-            // eternal threads are blocked and all other threads have terminated.
-            // It also means that these are final states.
-            for (unsigned int i = 0; i < global.ncomponents; i++) {
-                struct component *comp = &components[i];
-                assert(comp->size > 0);
-                if (!comp->good && comp->all_same) {
+            // If this component has a way out, it is good
+            for (struct edge *edge = node->fwd;
+                            edge != NULL && !comp->good; edge = edge->fwdnext) {
+                if (edge->dst->u.ph2.component != node->u.ph2.component) {
                     comp->good = true;
-                    comp->final = true;
-                }
-            }
-
-            // Next we'll determine for all 'final' states if they satisfy the
-            // 'finally' clauses.  Also, if an input dfa was specified, we check
-            // that that dfa is in the final state as welll.
-
-            // Look for states in final components
-            for (unsigned int i = 0; i < global.graph.size; i++) {
-                struct node *node = global.graph.nodes[i];
-                assert(node->u.ph2.component < global.ncomponents);
-                struct component *comp = &components[node->u.ph2.component];
-                if (comp->final) {
-                    node->final = true;
-
-                    // If an input dfa was specified, it should also be in the
-                    // final state.
-                    if (global.dfa != NULL &&
-                                !dfa_is_final(global.dfa, node_state(node)->dfa_state)) {
-                        struct failure *f = new_alloc(struct failure);
-                        f->type = FAIL_BEHAVIOR;
-                        f->edge = node_to_parent(node);
-                        add_failure(&global.failures, f);
-                        // break;
-                    }
-                }
-            }
-
-            // If we haven't found any failures yet, look for states in bad components.
-            // If there are none, look for busy waiting states.
-            if (global.failures == NULL) {
-                // Report the states in bad components as non-terminating.
-                int nbad = 0;
-                for (unsigned int i = 0; i < global.graph.size; i++) {
-                    struct node *node = global.graph.nodes[i];
-                    if (!components[node->u.ph2.component].good) {
-                        nbad++;
-                        struct failure *f = new_alloc(struct failure);
-                        f->type = FAIL_TERMINATION;
-                        if (node->fwd != NULL && node->fwd->fwdnext == NULL) {
-                            f->edge = node->fwd;
-                        }
-                        else {
-                            f->edge = node_to_parent(node);
-                            assert(f->edge != NULL);
-                        }
-                        add_failure(&global.failures, f);
-                        // TODO.  Can we be done here?
-                        // break;
-                    }
-                }
-
-                // If there are no non-terminating states, look for busy-waiting
-                // states.
-                if (nbad == 0 && !cflag) {
-                    // TODO.  Why are we clearing the visited flags??
-                    for (unsigned int i = 0; i < global.graph.size; i++) {
-                        global.graph.nodes[i]->visited = false;
-                    }
-                    for (unsigned int i = 0; i < global.graph.size; i++) {
-                        struct node *node = global.graph.nodes[i];
-                        if (components[node->u.ph2.component].size > 1) {
-                            detect_busywait(node);
-                        }
-                    }
+                    break;
                 }
             }
         }
-        else {
-            // Do a cheap check for deadlock.
-            // TODO.  Could be parallelized
-            if (global.graph.size > 10000) {
-                printf("* Check for deadlock\n");
-                fflush(stdout);
+
+        // Components that have only states in which the variables are the same
+        // and have only eternal threads are good because it means all its
+        // eternal threads are blocked and all other threads have terminated.
+        // It also means that these are final states.
+        for (unsigned int i = 0; i < global.ncomponents; i++) {
+            struct component *comp = &components[i];
+            assert(comp->size > 0);
+            if (!comp->good && comp->all_same) {
+                comp->good = true;
+                comp->final = true;
             }
+        }
+
+        // Next we'll determine for all 'final' states if they satisfy the
+        // 'finally' clauses.  Also, if an input dfa was specified, we check
+        // that that dfa is in the final state as welll.
+
+        // Look for states in final components
+        for (unsigned int i = 0; i < global.graph.size; i++) {
+            struct node *node = global.graph.nodes[i];
+            assert(node->u.ph2.component < global.ncomponents);
+            struct component *comp = &components[node->u.ph2.component];
+            if (comp->final) {
+                node->final = true;
+
+                // If an input dfa was specified, it should also be in the
+                // final state.
+                if (global.dfa != NULL &&
+                            !dfa_is_final(global.dfa, node_state(node)->dfa_state)) {
+                    struct failure *f = new_alloc(struct failure);
+                    f->type = FAIL_BEHAVIOR;
+                    f->edge = node_to_parent(node);
+                    add_failure(&global.failures, f);
+                    // break;
+                }
+            }
+        }
+
+        // If we haven't found any failures yet, look for states in bad components.
+        // If there are none, look for busy waiting states.
+        if (global.failures == NULL) {
+            // Report the states in bad components as non-terminating.
+            int nbad = 0;
             for (unsigned int i = 0; i < global.graph.size; i++) {
                 struct node *node = global.graph.nodes[i];
-                struct state *state = node_state(node);
-                if (node->dead_end) {
-                    bool final = value_state_all_eternal(state)
-                            && value_ctx_all_eternal(state->stopbag);
-                    if (final) {
-                        // If an input dfa was specified, it should also be in the
-                        // final state.
-                        if (global.dfa != NULL &&
-                                !dfa_is_final(global.dfa, state->dfa_state)) {
-                            struct failure *f = new_alloc(struct failure);
-                            f->type = FAIL_BEHAVIOR;
-                            f->edge = node_to_parent(node);
-                            add_failure(&global.failures, f);
-                        }
-                        else {
-                            node->final = true;
-                        }
+                if (!components[node->u.ph2.component].good) {
+                    nbad++;
+                    struct failure *f = new_alloc(struct failure);
+                    f->type = FAIL_TERMINATION;
+                    if (node->fwd != NULL && node->fwd->fwdnext == NULL) {
+                        f->edge = node->fwd;
                     }
                     else {
-                        struct failure *f = new_alloc(struct failure);
-                        f->type = FAIL_TERMINATION;
                         f->edge = node_to_parent(node);
                         assert(f->edge != NULL);
-                        add_failure(&global.failures, f);
+                    }
+                    add_failure(&global.failures, f);
+                    // TODO.  Can we be done here?
+                    // break;
+                }
+            }
+
+            // If there are no non-terminating states, look for busy-waiting
+            // states.
+            if (nbad == 0 && !cflag) {
+                // TODO.  Why are we clearing the visited flags??
+                for (unsigned int i = 0; i < global.graph.size; i++) {
+                    global.graph.nodes[i]->visited = false;
+                }
+                for (unsigned int i = 0; i < global.graph.size; i++) {
+                    struct node *node = global.graph.nodes[i];
+                    if (components[node->u.ph2.component].size > 1) {
+                        detect_busywait(node);
                     }
                 }
             }
