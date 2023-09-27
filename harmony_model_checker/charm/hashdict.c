@@ -50,6 +50,7 @@ struct dict *dict_new(char *whoami, unsigned int value_len, unsigned int initial
     dict->whoami = whoami;
     dict->value_len = value_len;
 	if (initial_size == 0) initial_size = 1024;
+	if (initial_size == 0) initial_size = 1;
 	dict->length = dict->old_length = initial_size;
 	dict->count = dict->old_count = 0;
 	dict->table = dict->old_table = calloc(sizeof(struct dict_bucket), initial_size);

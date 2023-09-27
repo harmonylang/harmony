@@ -114,8 +114,6 @@ enum fail_type {
     FAIL_NONE,
     FAIL_SAFETY,            // assertion failure, divide by zero, etc.
     FAIL_BEHAVIOR,          // output behavior not allowed by input DFA
-    // FAIL_INVARIANT,         // some invariant failed
-    // FAIL_FINALLY,           // some "finally" predicate failed
     FAIL_TERMINATION,       // a non-terminating state exists
     FAIL_BUSYWAIT,          // the program allows busy waiting
     FAIL_RACE               // the program has a race condition
@@ -144,7 +142,6 @@ struct node {
     struct edge *to_parent; // path to initial state
     uint16_t len;           // length of path to initial state
     bool on_stack : 1;      // for Tarjan
-    // bool initialized : 1;   // this node structure has been initialized
     bool failed : 1;        // a thread has failed
     bool final : 1;         // only eternal threads left (TODO: need this?)
     bool visited : 1;       // for busy wait detection (TODO: need this?)
@@ -183,8 +180,5 @@ void graph_check_for_data_race(
 );
 void graph_add(struct graph *graph, struct node *node);
 unsigned int graph_add_multiple(struct graph *graph, unsigned int n);
-unsigned int graph_find_scc(struct graph *graph);
-struct scc *graph_find_scc_one(struct graph *graph, struct scc *scc, unsigned int component, void **scc_cache);
-struct scc *scc_alloc(unsigned int start, unsigned int finish, struct scc *next, void **scc_cache);
 
 #endif //SRC_GRAPH_H

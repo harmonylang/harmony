@@ -11,14 +11,14 @@
 #define MAX_SPAWN       64
 #define MAX_ARGS         8
 
-void ops_init(struct global *global, struct engine *engine);
+void ops_init(struct engine *engine);
 struct op_info *ops_get(char *opname, int size);
 
 // This contains information that is kept when the execution of some thread
 // is evaluated from some state.  During re-execution when a counter-example
 // is re-evaluated, more information is kept.
 struct step {
-    struct engine engine;           // allocator and global variabels
+    struct engine engine;           // allocator and global variables
     struct context *ctx;            // points to the context (state of the thread)
     struct access_info *ai;         // info about load and store operations
 
@@ -47,8 +47,8 @@ struct step {
 struct op_info {
     const char *name;       // name of the instruction
     void *(*init)(struct dict *, struct engine *engine);
-    void (*op)(const void *env, struct state *state, struct step *step, struct global *global);
-    void (*next)(const void *env, struct context *ctx, struct global *global, FILE *fp);
+    void (*op)(const void *env, struct state *state, struct step *step);
+    void (*next)(const void *env, struct context *ctx, FILE *fp);
 };
 
 // Each instruction can have one or more arguments in the code.  Which arguments

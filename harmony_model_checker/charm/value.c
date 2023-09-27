@@ -3,7 +3,7 @@
 // of value (bool, int, set, list, ...).  In case of basic types (bool, int,
 // program counter), the remaining 60 bits contain the actual value.
 // Otherwise, the value is a 16-byte aligned pointer to where the actual
-// value is stored.  The value is stored in the global->values hash table
+// value is stored.  The value is stored in the global.values hash table
 // so it can be easily retrieved.  The entry also maintains the size of
 // the value.  In the case of a set or list, the value is simply an array
 // of Harmony values (sorted in case of a set).  If it's a dictionary,
@@ -31,7 +31,7 @@
 //  char *value_string(hvalue_t v);
 //      Return a string representation of the given value v.
 //
-//  char *value_json(hvalue_t v, struct global *global);
+//  char *value_json(hvalue_t v);
 //      Return a JSON representation of v.
 //
 //  hvalue_t value_from_json(struct engine *engine, struct dict *map);
@@ -60,7 +60,7 @@
 #include "json.h"
 
 // Return the value represented by v.  If psize != NULL, return the size
-// in bytes in *psize.  The value should be stored in the global->values
+// in bytes in *psize.  The value should be stored in the global.values
 // hash table.
 void *value_get(hvalue_t v, unsigned int *psize){
     v &= ~VALUE_MASK;
@@ -113,7 +113,7 @@ hvalue_t value_put_atom(struct engine *engine, const void *p, unsigned int size)
     if (size == 0) {
         return VALUE_ATOM;
     }
-    void *q = dict_find(engine->values, engine->allocator, p, size, NULL);
+    void *q = dict_find(global.values, engine->allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_ATOM;
 }
 
@@ -123,7 +123,7 @@ hvalue_t value_put_set(struct engine *engine, void *p, unsigned int size){
     if (size == 0) {
         return VALUE_SET;
     }
-    void *q = dict_find(engine->values, engine->allocator, p, size, NULL);
+    void *q = dict_find(global.values, engine->allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_SET;
 }
 
@@ -133,7 +133,7 @@ hvalue_t value_put_dict(struct engine *engine, void *p, unsigned int size){
     if (size == 0) {
         return VALUE_DICT;
     }
-    void *q = dict_find(engine->values, engine->allocator, p, size, NULL);
+    void *q = dict_find(global.values, engine->allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_DICT;
 }
 
@@ -142,7 +142,7 @@ hvalue_t value_put_list(struct engine *engine, void *p, unsigned int size){
     if (size == 0) {
         return VALUE_LIST;
     }
-    void *q = dict_find(engine->values, engine->allocator, p, size, NULL);
+    void *q = dict_find(global.values, engine->allocator, p, size, NULL);
     return (hvalue_t) q | VALUE_LIST;
 }
 
@@ -153,7 +153,7 @@ hvalue_t value_put_address(struct engine *engine, void *p, unsigned int size){
         return VALUE_ADDRESS_SHARED;
     }
     assert(size % sizeof(hvalue_t) == 0);
-    void *q = dict_find(engine->values, engine->allocator, p, size, NULL);
+    void *q = dict_find(global.values, engine->allocator, p, size, NULL);
     if (* (hvalue_t *) p == VALUE_PC_SHARED) {
         return (hvalue_t) q | VALUE_ADDRESS_SHARED;
     }
@@ -165,7 +165,7 @@ hvalue_t value_put_address(struct engine *engine, void *p, unsigned int size){
 // ctx points to a context.  Returns an hvalue.
 hvalue_t value_put_context(struct engine *engine, struct context *ctx){
 	assert(ctx->pc >= 0);
-    void *q = dict_find(engine->values, engine->allocator, ctx, ctx_size(ctx), NULL);
+    void *q = dict_find(global.values, engine->allocator, ctx, ctx_size(ctx), NULL);
     if (ctx->eternal) {
         return (hvalue_t) q | VALUE_CONTEXT | VALUE_CONTEXT_ETERNAL;
     }
@@ -469,7 +469,7 @@ static void value_string_dict(struct strbuf *sb, hvalue_t v) {
 }
 
 // Helper function for value_json
-static void value_json_dict(struct strbuf *sb, hvalue_t v, struct global *global) {
+static void value_json_dict(struct strbuf *sb, hvalue_t v) {
     if (v == 0) {
         strbuf_printf(sb, "{ \"type\": \"dict\", \"value\": [] }");
         return;
@@ -486,9 +486,9 @@ static void value_json_dict(struct strbuf *sb, hvalue_t v, struct global *global
             strbuf_printf(sb, ", ");
         }
         strbuf_printf(sb, "{ \"key\": ");
-        strbuf_value_json(sb, vals[2*i], global);
+        strbuf_value_json(sb, vals[2*i]);
         strbuf_printf(sb, ", \"value\": ");
-        strbuf_value_json(sb, vals[2*i+1], global);
+        strbuf_value_json(sb, vals[2*i+1]);
         strbuf_printf(sb, " }");
     }
     strbuf_printf(sb, " ] }");
@@ -539,7 +539,7 @@ static void value_string_set(struct strbuf *sb, hvalue_t v) {
 }
 
 // Helper function for value_json
-static void value_json_list(struct strbuf *sb, hvalue_t v, struct global *global) {
+static void value_json_list(struct strbuf *sb, hvalue_t v) {
     if (v == 0) {
         strbuf_printf(sb, "{ \"type\": \"list\", \"value\": [] }");
         return;
@@ -555,13 +555,13 @@ static void value_json_list(struct strbuf *sb, hvalue_t v, struct global *global
         if (i != 0) {
             strbuf_printf(sb, ", ");
         }
-        strbuf_value_json(sb, vals[i], global);
+        strbuf_value_json(sb, vals[i]);
     }
     strbuf_printf(sb, " ] }");
 }
 
 // Helper function for value_json
-static void value_json_set(struct strbuf *sb, hvalue_t v, struct global *global) {
+static void value_json_set(struct strbuf *sb, hvalue_t v) {
     if (v == 0) {
         strbuf_printf(sb, "{ \"type\": \"set\", \"value\": [] }");
         return;
@@ -577,7 +577,7 @@ static void value_json_set(struct strbuf *sb, hvalue_t v, struct global *global)
         if (i != 0) {
             strbuf_printf(sb, ", ");
         }
-        strbuf_value_json(sb, vals[i], global);
+        strbuf_value_json(sb, vals[i]);
     }
     strbuf_printf(sb, " ] }");
 }
@@ -646,7 +646,7 @@ static void value_string_address(struct strbuf *sb, hvalue_t v) {
 }
 
 // Helper function for value_json
-static void value_json_address(struct strbuf *sb, hvalue_t v, struct global *global) {
+static void value_json_address(struct strbuf *sb, hvalue_t v) {
     if (v == 0) {
         strbuf_printf(sb, "{ \"type\": \"address\" }");
         return;
@@ -658,13 +658,13 @@ static void value_json_address(struct strbuf *sb, hvalue_t v, struct global *glo
     size /= sizeof(hvalue_t);
     assert(size > 0);
     strbuf_printf(sb, "{ \"type\": \"address\", \"func\": ");
-    strbuf_value_json(sb, vals[0], global);
+    strbuf_value_json(sb, vals[0]);
     strbuf_printf(sb, ", \"args\": [");
     for (unsigned int i = 1; i < size; i++) {
         if (i != 1) {
             strbuf_printf(sb, ", ");
         }
-        strbuf_value_json(sb, vals[i], global);
+        strbuf_value_json(sb, vals[i]);
     }
 
     strbuf_printf(sb, " ] }");
@@ -725,7 +725,7 @@ static void value_string_context(struct strbuf *sb, hvalue_t v) {
 }
 
 // Helper function for print_vars
-static void strbuf_print_vars(struct global *global, struct strbuf *sb, hvalue_t v){
+static void strbuf_print_vars(struct strbuf *sb, hvalue_t v){
     if (VALUE_TYPE(v) == VALUE_DICT) {
         unsigned int size;
         hvalue_t *vars = value_get(v, &size);
@@ -737,7 +737,7 @@ static void strbuf_print_vars(struct global *global, struct strbuf *sb, hvalue_t
             }
             char *k = value_string(vars[i]);
             int len = strlen(k);
-            char *v = value_json(vars[i+1], global);
+            char *v = value_json(vars[i+1]);
             strbuf_printf(sb, " \"%.*s\": %s", len - 2, k + 1, v);
             free(k);
             free(v);
@@ -745,37 +745,37 @@ static void strbuf_print_vars(struct global *global, struct strbuf *sb, hvalue_t
         strbuf_printf(sb, " }");
     }
     else {
-        strbuf_value_json(sb, v, global);
+        strbuf_value_json(sb, v);
     }
 }
 
 // v would typically represent a dictionary that maps variable names to values.
 // Instead of printing it as a regular dictionary, the output is stylized to
 // represent a set of variables and their respective values.
-void print_vars(struct global *global, FILE *file, hvalue_t v){
+void print_vars(FILE *file, hvalue_t v){
     struct strbuf sb;
     strbuf_init(&sb);
-    strbuf_print_vars(global, &sb, v);
+    strbuf_print_vars(&sb, v);
     fwrite(sb.buf, 1, sb.len, file);
     strbuf_deinit(&sb);
 }
 
 // Helper function for value_trace
-static void value_json_trace(struct global *global, struct strbuf *sb, struct callstack *cs, unsigned int pc, hvalue_t vars){
+static void value_json_trace(struct strbuf *sb, struct callstack *cs, unsigned int pc, hvalue_t vars){
     if (cs->parent != NULL) {
-        value_json_trace(global, sb, cs->parent, cs->return_address >> CALLTYPE_BITS, cs->vars);
+        value_json_trace(sb, cs->parent, cs->return_address >> CALLTYPE_BITS, cs->vars);
         strbuf_printf(sb, ",");
     }
-    const struct env_Frame *ef = global->code.instrs[cs->pc].env;
+    const struct env_Frame *ef = global.code.instrs[cs->pc].env;
     char *method = value_string(ef->name);
     char *arg = json_escape_value(cs->arg);
     strbuf_printf(sb, "{\"pc\": \"%u\",", pc);
     strbuf_printf(sb, "\"xpc\": \"%u\",", cs->pc);
     strbuf_printf(sb, "\"method_name\": ");
-    strbuf_value_json(sb, ef->name, global);
+    strbuf_value_json(sb, ef->name);
     strbuf_printf(sb, ",\n");
     strbuf_printf(sb, "\"method_arg\": ");
-    strbuf_value_json(sb, cs->arg, global);
+    strbuf_value_json(sb, cs->arg);
     strbuf_printf(sb, ",\n");
     if (*arg == '(') {
         strbuf_printf(sb, "\"method\": \"%.*s%s\",", (int) strlen(method) - 2, method + 1, arg);
@@ -798,7 +798,7 @@ static void value_json_trace(struct global *global, struct strbuf *sb, struct ca
         panic("value_json_trace: bad call type");
     }
     strbuf_printf(sb, "\"vars\":");
-    strbuf_print_vars(global, sb, vars);
+    strbuf_print_vars(sb, vars);
     strbuf_printf(sb, ",\"sp\": %u}", cs->sp);
     free(arg);
     free(method);
@@ -807,16 +807,16 @@ static void value_json_trace(struct global *global, struct strbuf *sb, struct ca
 // This function prints information about a context (state of a threads) with
 // additional information about its callstack which is kept during the re-execution
 // of a counter-example.
-void value_trace(struct global *global, FILE *file, struct callstack *cs, unsigned int pc, hvalue_t vars, char *prefix){
+void value_trace(FILE *file, struct callstack *cs, unsigned int pc, hvalue_t vars, char *prefix){
     struct strbuf sb;
     strbuf_init(&sb);
-    value_json_trace(global, &sb, cs, pc, vars);
+    value_json_trace(&sb, cs, pc, vars);
     fwrite(sb.buf, 1, sb.len, file);
     strbuf_deinit(&sb);
 }
 
 // Helper function for value_json
-static void value_json_context(struct strbuf *sb, hvalue_t v, struct global *global) {
+static void value_json_context(struct strbuf *sb, hvalue_t v) {
     struct context *ctx = value_get(v, NULL);
     
     strbuf_printf(sb, "{ \"type\": \"context\", \"value\": {");
@@ -825,20 +825,20 @@ static void value_json_context(struct strbuf *sb, hvalue_t v, struct global *glo
     }
     strbuf_printf(sb, "\"pc\": { \"type\": \"pc\", \"value\": \"%u\" },", ctx->pc);
 #ifdef TODO
-    struct callstack *cs = dict_lookup(global->tracemap, &v, sizeof(v));
+    struct callstack *cs = dict_lookup(global.tracemap, &v, sizeof(v));
     if (cs == NULL) {
         strbuf_printf(sb, "\"vars\":");
-        strbuf_print_vars(global, sb, ctx->vars);
+        strbuf_print_vars(sb, ctx->vars);
         strbuf_printf(sb, ",");
     }
     else {
         strbuf_printf(sb, "\"callstack\":[");
-        value_json_trace(global, sb, cs, ctx->pc, ctx->vars);
+        value_json_trace(sb, cs, ctx->pc, ctx->vars);
         strbuf_printf(sb, "],");
     }
 #else
     strbuf_printf(sb, "\"vars\":");
-    strbuf_print_vars(global, sb, ctx->vars);
+    strbuf_print_vars(sb, ctx->vars);
     strbuf_printf(sb, ",");
 #endif
 
@@ -872,22 +872,22 @@ static void value_json_context(struct strbuf *sb, hvalue_t v, struct global *glo
     if (ctx->extended) {
         if (ctx_this(ctx) != 0) {
             strbuf_printf(sb, "\"this\": ");
-            strbuf_value_json(sb, ctx_this(ctx), global);
+            strbuf_value_json(sb, ctx_this(ctx));
             strbuf_printf(sb, ", ");
         }
         if (ctx_failure(ctx) != 0) {
             strbuf_printf(sb, "\"failure\": ");
-            strbuf_value_json(sb, ctx_failure(ctx), global);
+            strbuf_value_json(sb, ctx_failure(ctx));
             strbuf_printf(sb, ", ");
         }
         if (ctx_trap_pc(ctx) != 0) {
             strbuf_printf(sb, "\"trap_pc\": ");
-            strbuf_value_json(sb, ctx_trap_pc(ctx), global);
+            strbuf_value_json(sb, ctx_trap_pc(ctx));
             strbuf_printf(sb, ", ");
         }
         if (ctx_trap_arg(ctx) != 0) {
             strbuf_printf(sb, "\"trap_arg\": ");
-            strbuf_value_json(sb, ctx_trap_arg(ctx), global);
+            strbuf_value_json(sb, ctx_trap_arg(ctx));
             strbuf_printf(sb, ", ");
         }
     }
@@ -943,7 +943,7 @@ char *value_string(hvalue_t v){
 }
 
 // Print Harmony value v encoded as a JSON object in the given string buffer
-void strbuf_value_json(struct strbuf *sb, hvalue_t v, struct global *global){
+void strbuf_value_json(struct strbuf *sb, hvalue_t v){
     switch VALUE_TYPE(v) {
     case VALUE_BOOL:
         value_json_bool(sb, v & ~VALUE_LOBITS);
@@ -958,20 +958,20 @@ void strbuf_value_json(struct strbuf *sb, hvalue_t v, struct global *global){
         value_json_pc(sb, v & ~VALUE_LOBITS);
         break;
     case VALUE_LIST:
-        value_json_list(sb, v & ~VALUE_MASK, global);
+        value_json_list(sb, v & ~VALUE_MASK);
         break;
     case VALUE_DICT:
-        value_json_dict(sb, v & ~VALUE_MASK, global);
+        value_json_dict(sb, v & ~VALUE_MASK);
         break;
     case VALUE_SET:
-        value_json_set(sb, v & ~VALUE_MASK, global);
+        value_json_set(sb, v & ~VALUE_MASK);
         break;
     case VALUE_ADDRESS_SHARED:
     case VALUE_ADDRESS_PRIVATE:
-        value_json_address(sb, v & ~VALUE_MASK, global);
+        value_json_address(sb, v & ~VALUE_MASK);
         break;
     case VALUE_CONTEXT:
-        value_json_context(sb, v, global);
+        value_json_context(sb, v);
         break;
     default:
         printf("bad value type: %p\n", (void *) v);
@@ -980,10 +980,10 @@ void strbuf_value_json(struct strbuf *sb, hvalue_t v, struct global *global){
 }
 
 // Encode the given Harmony value v as a JSON value, returned as a string.
-char *value_json(hvalue_t v, struct global *global){
+char *value_json(hvalue_t v){
     struct strbuf sb;
     strbuf_init(&sb);
-    strbuf_value_json(&sb, v, global);
+    strbuf_value_json(&sb, v);
     return strbuf_convert(&sb);
 }
 
@@ -1057,7 +1057,7 @@ static hvalue_t value_atom(struct engine *engine, struct dict *map){
     if (value->u.atom.len == 0) {
         return VALUE_ATOM;
     }
-    void *p = dict_find(engine->values, engine->allocator, value->u.atom.base, value->u.atom.len, NULL);
+    void *p = dict_find(global.values, engine->allocator, value->u.atom.base, value->u.atom.len, NULL);
     return (hvalue_t) p | VALUE_ATOM;
 }
 
@@ -1082,7 +1082,7 @@ static hvalue_t value_dict(struct engine *engine, struct dict *map){
     }
 
     // vals is sorted already by harmony compiler
-    void *p = dict_find(engine->values, engine->allocator, vals,
+    void *p = dict_find(global.values, engine->allocator, vals,
                     value->u.list.nvals * sizeof(hvalue_t) * 2, NULL);
     free(vals);
     return (hvalue_t) p | VALUE_DICT;
@@ -1104,7 +1104,7 @@ static hvalue_t value_set(struct engine *engine, struct dict *map){
     }
 
     // vals is sorted already by harmony compiler
-    void *p = dict_find(engine->values, engine->allocator, vals, value->u.list.nvals * sizeof(hvalue_t), NULL);
+    void *p = dict_find(global.values, engine->allocator, vals, value->u.list.nvals * sizeof(hvalue_t), NULL);
     free(vals);
     return (hvalue_t) p | VALUE_SET;
 }
@@ -1123,7 +1123,7 @@ static hvalue_t value_list(struct engine *engine, struct dict *map){
         assert(jv->type == JV_MAP);
         vals[i] = value_from_json(engine, jv->u.map);
     }
-    void *p = dict_find(engine->values, engine->allocator, vals, value->u.list.nvals * sizeof(hvalue_t), NULL);
+    void *p = dict_find(global.values, engine->allocator, vals, value->u.list.nvals * sizeof(hvalue_t), NULL);
     free(vals);
     return (hvalue_t) p | VALUE_LIST;
 }

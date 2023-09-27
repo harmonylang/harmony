@@ -34,9 +34,10 @@ struct code {
 
 // This is a badly named structure containing an "allocator" (a way for a thread
 // to efficiently allocate memory) and the global values of a Harmony state.
+// The reason we want these together is because dict_find() needs an allocator
+// to create a new entry if some value does not yet exist.
 struct engine {
     struct allocator *allocator;
-    struct dict *values;
 };
 
 // During re-execution, Charm keeps track of the callstack of a thread as a

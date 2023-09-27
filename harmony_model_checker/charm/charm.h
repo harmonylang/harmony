@@ -58,6 +58,7 @@ struct macrostep {
 struct global {
     struct code code;               // code of the Harmony program
     struct dict *values;            // dictionary of values
+    struct dict *computations;      // evaluated Harmony byte code
     hvalue_t seqs;                  // sequential variables
 
     // invariants
@@ -101,6 +102,8 @@ struct global {
     unsigned int nmacrosteps, alloc_macrosteps;
     struct macrostep **macrosteps;
 };
+
+extern struct global global;
 
 void add_failure(struct failure **failures, struct failure *f);
 

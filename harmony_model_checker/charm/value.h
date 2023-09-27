@@ -77,10 +77,10 @@ hvalue_t value_put_address(struct engine *engine, void *p, unsigned int size);
 hvalue_t value_put_context(struct engine *engine, struct context *ctx);
 char *value_string(hvalue_t v);
 char *indices_string(const hvalue_t *vec, int size);
-char *value_json(hvalue_t v, struct global *global);
+char *value_json(hvalue_t v);
 
 void strbuf_value_string(strbuf *sb, hvalue_t v);
-void strbuf_value_json(strbuf *sb, hvalue_t v, struct global *global);
+void strbuf_value_json(strbuf *sb, hvalue_t v);
 
 // A Harmony value is represented by a 64 bit representation.  Currently the
 // low 4 bits indicate the type of the value.  We sometimes also use the top 16
@@ -144,7 +144,7 @@ bool value_state_all_eternal(struct state *state);
 void context_remove(struct state *state, hvalue_t ctx);
 int context_add(struct state *state, hvalue_t ctx);
 char *json_escape_value(hvalue_t v);
-void value_trace(struct global *global, FILE *file, struct callstack *cs, unsigned int pc, hvalue_t vars, char *prefix);
-void print_vars(struct global *global, FILE *file, hvalue_t v);
+void value_trace(FILE *file, struct callstack *cs, unsigned int pc, hvalue_t vars, char *prefix);
+void print_vars(FILE *file, hvalue_t v);
 
 #endif //SRC_VALUE_H
