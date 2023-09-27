@@ -128,7 +128,7 @@ struct worker {
     unsigned int nworkers;       // total number of workers
     unsigned int vproc;          // virtual processor for pinning
     unsigned int si_total, si_hits;
-    struct node_list *el_free;
+    struct edge_list *el_free;
     bool loops_possible;         // cycles in graph are possible
 
     // The worker thread loop through three phases:
@@ -346,19 +346,18 @@ void spawn_thread(struct state *state, struct context *ctx){
 static void process_step(
     struct worker *w,
     struct allocator *allocator,
-    struct step_condition *stc,
-    struct node *node,
-    bool invariant,
-    bool multiple,
+    struct edge *edge,
     struct state *sc
 ) {
+    struct step_condition *stc = edge->sc;
     assert(stc->type == SC_COMPLETED);
     struct step_input *si = (struct step_input *) &stc[1];
     struct step_output *so = stc->u.completed;
+    struct node *node = global.graph.nodes[edge->src_id];
 
     // If it was an invariant being evaluated, the state cannot have changed.
     // If there was no error, no need to add an edge
-    if (invariant) {
+    if (edge->invariant_chk) {
         if (!so->failed && !so->infinite_loop) {
             return;
         }
@@ -428,11 +427,6 @@ static void process_step(
     }
 
     // Allocate and initialize edge.  We do not yet know the destination node.
-    struct edge *edge = walloc(w, sizeof(struct edge), false, false);
-    edge->src_id = node->id;
-    edge->multiple = multiple;
-    edge->invariant_chk = invariant;
-    edge->sc = stc;
     edge->failed = so->failed || so->infinite_loop;
 
     if (global.dfa != NULL) {
@@ -958,6 +952,11 @@ static void trystep(
 
     w->si_total++;          // counts the number of edges
 
+    struct edge *edge = walloc(w, sizeof(struct edge), false, false);
+    edge->src_id = node->id;
+    edge->multiple = multiplicity > 1;
+    edge->invariant_chk = invariant;
+
     struct step_input si = {
         .vars = state->vars,
         .choice = choice,
@@ -978,6 +977,7 @@ static void trystep(
             &w->allocator, &si, sizeof(si), &si_new, &si_lock);
         stc = (struct step_condition *) &da[1];
     }
+    edge->sc = stc;
 
     if (si_new) {
         stc->type = SC_IN_PROGRESS;
@@ -986,16 +986,14 @@ static void trystep(
     else {
         w->si_hits++;
         if (stc->type == SC_IN_PROGRESS) {
-            struct node_list *el;
+            struct edge_list *el;
             if ((el = w->el_free) == NULL) {
-                el = walloc(w, sizeof(struct node_list), false, false);
+                el = walloc(w, sizeof(struct edge_list), false, false);
             }
             else {
                 w->el_free = el->next;
             }
-            el->node = node;
-            el->multiple = multiplicity > 1;
-            el->invariant = invariant;
+            el->edge = edge;
             el->next = stc->u.in_progress;
             stc->u.in_progress = el;
             mutex_release(si_lock);
@@ -1017,7 +1015,7 @@ static void trystep(
     sc->chooser = -1;
 
     // If this is a new step, perform it
-    struct node_list *el = NULL;
+    struct edge_list *el = NULL;
     if (si_new) {
         // Make a copy of the context
         assert(!cc->terminated);
@@ -1061,13 +1059,14 @@ static void trystep(
     }
 
     // TODO.  Should I restore sc here?
-    process_step(w, step->allocator, stc, node, invariant, multiplicity > 1, sc);
+    process_step(w, step->allocator, edge, sc);
     while (el != NULL) {
-        struct state *state = (struct state *) &el->node[1];
+        struct node *n = global.graph.nodes[el->edge->src_id];
+        struct state *state = (struct state *) &n[1];
         unsigned int statesz = state_size(state);
         memcpy(sc, state, statesz);
-        process_step(w, step->allocator, stc, el->node, el->invariant, el->multiple, sc);
-        struct node_list *next = el->next;
+        process_step(w, step->allocator, el->edge, sc);
+        struct edge_list *next = el->next;
         el->next = w->el_free;
         w->el_free = el;
         el = next;
