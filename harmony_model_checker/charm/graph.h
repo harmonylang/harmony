@@ -71,17 +71,15 @@ struct step_output {
 #define step_spawned(x)      ((hvalue_t *) ((x) + 1) + (x)->nlog)
 #define step_unstopped(x)    ((hvalue_t *) ((x) + 1) + (x)->nlog + (x)->nspawned)
 
-struct node_list {
-    struct node_list *next;
-    struct node *node;
-    bool multiple;
-    bool invariant;
+struct edge_list {
+    struct edge_list *next;
+    struct edge *edge;
 };
 
 struct step_condition {
     enum { SC_IN_PROGRESS, SC_COMPLETED } type;
     union {
-        struct node_list *in_progress;
+        struct edge_list *in_progress;
         struct step_output *completed;
     } u;
 };
@@ -99,6 +97,7 @@ struct edge {
     struct edge *fwdnext;        // forward linked list maintenance
     struct step_condition *sc;	 // contains input and output of computation
     struct node *dst;            // destination node
+    struct node *src;
     unsigned int src_id : 29;    // source node id
 
     // TODO.  The multiplicity can be looked up in the source state
