@@ -164,6 +164,7 @@ struct worker {
     struct results_block *results;       // linked list of nodes
     struct results_block *rb_free;
     unsigned int count;         // size of the results list
+    unsigned int total_results;
 
     // New nodes are assigned node identifiers in phase 3.  This is
     // done in parallel by the various workers.  Each worker gets
@@ -488,6 +489,7 @@ static void process_step(
 
         w->count++;
         w->enqueued++;
+        w->total_results++;
         mutex_release(lock);
     }
 
@@ -3781,7 +3783,7 @@ int exec_model_checker(int argc, char **argv){
 
     // Compute how much memory was used, approximately
     unsigned long allocated = global.allocated;
-// #define REPORT_WORKERS
+#define REPORT_WORKERS
 #ifdef REPORT_WORKERS
     double phase1 = 0, phase2a = 0, phase2b = 0, phase3 = 0, start_wait = 0, middle_wait = 0, end_wait = 0;
     unsigned int fix_edge = 0;
@@ -3796,14 +3798,15 @@ int exec_model_checker(int argc, char **argv){
         start_wait += w->start_wait;
         middle_wait += w->middle_wait;
         end_wait += w->end_wait;
-        printf("W%u: %lf %lf %lf %lf %lf %lf %lf\n", i,
+        printf("W%u: %lf %lf %lf %lf %lf %lf %lf %u\n", i,
                 w->phase1,
                 w->phase2a,
                 w->phase2b,
                 w->phase3,
                 w->start_wait/w->start_count,
                 w->middle_wait/w->middle_count,
-                w->end_wait/w->end_count);
+                w->end_wait/w->end_count,
+                w->total_results);
     }
 #else
     for (unsigned int i = 0; i < global.nworkers; i++) {
