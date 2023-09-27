@@ -97,8 +97,7 @@ struct edge {
     struct edge *fwdnext;        // forward linked list maintenance
     struct step_condition *sc;	 // contains input and output of computation
     struct node *dst;            // destination node
-    struct node *src;
-    unsigned int src_id : 29;    // source node id
+    struct node *src;            // source node
 
     // TODO.  The multiplicity can be looked up in the source state
     bool multiple : 1;           // multiplicity of context > 1

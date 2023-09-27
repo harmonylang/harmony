@@ -955,7 +955,6 @@ static void trystep(
 
     struct edge *edge = walloc(w, sizeof(struct edge), false, false);
     edge->src = node;
-    edge->src_id = node->id;
     edge->multiple = multiplicity > 1;
     edge->invariant_chk = invariant;
 
@@ -1063,7 +1062,7 @@ static void trystep(
     // TODO.  Should I restore sc here?
     process_step(w, edge, sc);
     while (el != NULL) {
-        struct node *n = global.graph.nodes[el->edge->src_id];
+        struct node *n = el->edge->src;
         struct state *state = (struct state *) &n[1];
         unsigned int statesz = state_size(state);
         memcpy(sc, state, statesz);
@@ -1172,7 +1171,7 @@ char *ctx_status(struct node *node, hvalue_t ctx) {
         return "choosing";
     }
     while (state->chooser >= 0) {
-        node = global.graph.nodes[node_to_parent(node)->src_id];
+        node = node_to_parent(node)->src;
         state = node_state(node);
     }
     struct edge *edge;
@@ -1557,7 +1556,7 @@ static void *copy(void *p, unsigned int size){
 // Take the path and put it in an array
 void path_serialize(struct edge *e){
     // First recurse to the previous step
-    struct node *parent = global.graph.nodes[e->src_id];
+    struct node *parent = e->src;
     if (node_to_parent(parent) != NULL) {
         path_serialize(node_to_parent(parent));
     }
@@ -2845,7 +2844,7 @@ static void worker(void *arg){
             while ((e = *pe) != NULL) {
                 w->fix_edge++;
                 *pe = e->fwdnext;
-                struct node *src = global.graph.nodes[e->src_id];
+                struct node *src = e->src;
                 e->fwdnext = src->fwd;
                 src->fwd = e;
             }
@@ -3053,7 +3052,7 @@ static struct node *stack_pop(struct stack **sp, struct edge **v2) {
     void *ptr = s->ptrs[--s->sp];
     if ((hvalue_t) ptr & 1) {        // edge
         *v2 = (struct edge *) ((char *) ptr - 1);
-        return global.graph.nodes[(*v2)->src_id];
+        return (*v2)->src;
     }
     if (v2 != NULL) {
         *v2 = NULL;
@@ -4105,7 +4104,7 @@ int exec_model_checker(int argc, char **argv){
                 fprintf(df, "    len to parent: %d\n", node->len);
                 if (node_to_parent(node) != NULL) {
                     fprintf(df, "    ancestors:");
-                    for (struct node *n = global.graph.nodes[node_to_parent(node)->src_id];; n = global.graph.nodes[node_to_parent(n)->src_id]) {
+                    for (struct node *n = node_to_parent(node)->src;; n = node_to_parent(n)->src) {
                         fprintf(df, " %u", n->id);
                         if (node_to_parent(n) == NULL) {
                             break;
