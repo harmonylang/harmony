@@ -171,6 +171,7 @@ struct worker {
     struct results_block *rb_free;
     unsigned int count;         // size of the results list
     unsigned int total_results;
+    unsigned int process_step;
 
     // New nodes are assigned node identifiers in phase 3.  This is
     // done in parallel by the various workers.  Each worker gets
@@ -361,6 +362,7 @@ static void process_step(
     struct step_output *so = stc->u.completed;
     struct node *node = edge->src;
 
+    w->process_step++;
     sc->vars = so->vars;
 
     // Remove old context from the bag
@@ -3797,7 +3799,7 @@ int exec_model_checker(int argc, char **argv){
         start_wait += w->start_wait;
         middle_wait += w->middle_wait;
         end_wait += w->end_wait;
-        printf("W%u: %lf %lf %lf %lf %lf %lf %lf %u\n", i,
+        printf("W%u: %lf %lf %lf %lf %lf %lf %lf %u %u\n", i,
                 w->phase1,
                 w->phase2a,
                 w->phase2b,
@@ -3805,7 +3807,8 @@ int exec_model_checker(int argc, char **argv){
                 w->start_wait/w->start_count,
                 w->middle_wait/w->middle_count,
                 w->end_wait/w->end_count,
-                w->total_results);
+                w->total_results,
+                w->process_step);
     }
 #else
     for (unsigned int i = 0; i < global.nworkers; i++) {
