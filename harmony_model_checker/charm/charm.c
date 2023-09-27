@@ -76,6 +76,12 @@ mutex_t run_waiting;     // for main thread to wait on
 
 extern bool has_countLabel;     // TODO.  Hack for backward compatibility
 
+// TODO.  Move into global
+struct scc {
+    uint32_t component;     // strongly connected component id
+    int32_t index, lowlink; // only needed for Tarjan
+} *scc;
+
 // Info about virtual processors (cores or hyperthreads).  Virtual
 // processors are thought of a organized in a tree, for example based
 // on cache affinity.  Each processor is therefore uniquely identified
@@ -355,78 +361,66 @@ static void process_step(
     struct step_output *so = stc->u.completed;
     struct node *node = edge->src;
 
-    // If it was an invariant being evaluated, the state cannot have changed.
-    // If there was no error, no need to add an edge
-    if (edge->invariant_chk) {
-        if (!so->failed && !so->infinite_loop) {
-            return;
+    sc->vars = so->vars;
+
+    // Remove old context from the bag
+    context_remove(sc, si->ctx);
+
+    // Update state with spawned and resumed threads.
+    for (unsigned int i = 0; i < so->nspawned; i++) {
+        if (context_add(sc, step_spawned(so)[i]) < 0) {
+            panic("too many threads 1");
+        }
+    }
+    for (unsigned int i = 0; i < so->nunstopped; i++) {
+        hvalue_t ctx = step_unstopped(so)[i];
+        // TODO.  Write function (same code in op_Go)
+        hvalue_t count;
+        if (value_tryload(&w->allocator, sc->stopbag, ctx, &count)) {
+            assert(VALUE_TYPE(count) == VALUE_INT);
+            assert(count != VALUE_INT);
+            count -= 1 << VALUE_BITS;
+            if (count != VALUE_INT) {
+                sc->stopbag = value_dict_store(&w->allocator, sc->stopbag, ctx, count);
+            }
+            else {
+                sc->stopbag = value_dict_remove(&w->allocator, sc->stopbag, ctx);
+            }
         }
     }
 
-    // Update the state if it was not an invariant.
+    // Add new context to state unless it's terminated.
+    int new_index = -1;
+    if (so->stopped) {
+        sc->stopbag = value_bag_add(&w->allocator, sc->stopbag, so->after, 1);
+    }
+    else if (!so->terminated) {
+        new_index = context_add(sc, so->after);
+        if (new_index < 0) {
+            panic("too many threads 0");
+        }
+    }
+
+    // If choosing, save in state.  If some invariant uses "pre", then
+    // also keep track of "pre" state.
+    //
+    // The issue here is subtle.  Invariants are only checked when entering
+    // a normal state, not a choosing state, because choosing states can be
+    // in the middle of an atomic section.  So, we either need to keep track
+    // of the pre-state (as we do) or we need a much more complicated way of
+    // checking invariants with "pre" variables.  But always storing the
+    // pre-state in an old state can result in significant state explosion.
+    // So we only do it in case there are such invariant, and then only for
+    // choosing states.
+    if (so->choosing) {
+        sc->chooser = new_index;
+        // sc->pre = global.inv_pre ? node_state(node)->pre : sc->vars;
+    }
     else {
-        sc->vars = so->vars;
-
-        // Remove old context from the bag
-        context_remove(sc, si->ctx);
-
-        // Update state with spawned and resumed threads.
-        for (unsigned int i = 0; i < so->nspawned; i++) {
-            if (context_add(sc, step_spawned(so)[i]) < 0) {
-                panic("too many threads 1");
-            }
-        }
-        for (unsigned int i = 0; i < so->nunstopped; i++) {
-            hvalue_t ctx = step_unstopped(so)[i];
-            // TODO.  Write function (same code in op_Go)
-            hvalue_t count;
-            if (value_tryload(&w->allocator, sc->stopbag, ctx, &count)) {
-                assert(VALUE_TYPE(count) == VALUE_INT);
-                assert(count != VALUE_INT);
-                count -= 1 << VALUE_BITS;
-                if (count != VALUE_INT) {
-                    sc->stopbag = value_dict_store(&w->allocator, sc->stopbag, ctx, count);
-                }
-                else {
-                    sc->stopbag = value_dict_remove(&w->allocator, sc->stopbag, ctx);
-                }
-            }
-        }
-
-        // Add new context to state unless it's terminated.
-        int new_index = -1;
-        if (so->stopped) {
-            sc->stopbag = value_bag_add(&w->allocator, sc->stopbag, so->after, 1);
-        }
-        else if (!so->terminated) {
-            new_index = context_add(sc, so->after);
-            if (new_index < 0) {
-                panic("too many threads 0");
-            }
-        }
-
-        // If choosing, save in state.  If some invariant uses "pre", then
-        // also keep track of "pre" state.
-        //
-        // The issue here is subtle.  Invariants are only checked when entering
-        // a normal state, not a choosing state, because choosing states can be
-        // in the middle of an atomic section.  So, we either need to keep track
-        // of the pre-state (as we do) or we need a much more complicated way of
-        // checking invariants with "pre" variables.  But always storing the
-        // pre-state in an old state can result in significant state explosion.
-        // So we only do it in case there are such invariant, and then only for
-        // choosing states.
-        if (so->choosing) {
-            sc->chooser = new_index;
-            // sc->pre = global.inv_pre ? node_state(node)->pre : sc->vars;
-        }
-        else {
-            sc->chooser = -1;
-            // sc->pre = sc->vars;
-        }
+        sc->chooser = -1;
+        // sc->pre = sc->vars;
     }
 
-    // Allocate and initialize edge.  We do not yet know the destination node.
     edge->failed = so->failed || so->infinite_loop;
 
     if (global.dfa != NULL) {
@@ -466,10 +460,12 @@ static void process_step(
         struct node *next = edge->dst;
         next->reachable = true;         // TODO.  Do we need this?
         next->failed = edge->failed;
-        next->dead_end = true;
         next->to_parent = edge;
         next->len = node->len + 1;
+#ifdef OBSOLETE
+        next->dead_end = true;
         next->u.ph1.lock = lock;
+#endif
 
         // Add new node to results list kept per worker
         struct results_block *rb = w->results;
@@ -498,14 +494,14 @@ static void process_step(
         w->loops_possible = true;
     }
 
-    // Add edge to the node
-    mutex_acquire(node->u.ph1.lock);
-    edge->fwdnext = node->fwd;
-    node->fwd = edge;
+#ifdef OBSOLETE
+    // Keep track of whether 'node' is a candidate for a 'final' state
     if (edge->dst != node) {
+        mutex_acquire(node->u.ph1.lock);
         node->dead_end = false;
+        mutex_release(node->u.ph1.lock);
     }
-    mutex_release(node->u.ph1.lock);
+#endif
 }
 
 // This is the main workhorse function of model checking: explore a state and
@@ -953,10 +949,13 @@ static void trystep(
 
     w->si_total++;          // counts the number of edges
 
+    // Allocate the edge and add to the node
     struct edge *edge = walloc(w, sizeof(struct edge), false, false);
     edge->src = node;
     edge->multiple = multiplicity > 1;
     edge->invariant_chk = invariant;
+    edge->fwdnext = node->fwd;
+    node->fwd = edge;
 
     struct step_input si = {
         .vars = state->vars,
@@ -2277,7 +2276,7 @@ static enum busywait is_stuck(
     hvalue_t ctx,
     bool change
 ) {
-    if (node->u.ph2.component != start->u.ph2.component) {
+    if (scc[node->id].component != scc[start->id].component) {
         return BW_ESCAPE;
     }
     if (node->visited) {
@@ -3066,10 +3065,9 @@ static inline bool stack_empty(struct stack *s) {
 
 // Tarjan SCC algorithm
 static void tarjan(){
-    // Initialize the nodes
+    scc = malloc(global.graph.size * sizeof(*scc));
     for (unsigned int v = 0; v < global.graph.size; v++) {
-        struct node *n = global.graph.nodes[v];
-        n->u.ph2.index = -1;
+        scc->index = -1;
     }
 
     unsigned int i = 0, comp_id = 0;
@@ -3079,32 +3077,32 @@ static void tarjan(){
     unsigned int ndone = 0, lastdone = 0;
     for (unsigned int v = 0; v < 1 /*global.graph.size*/; v++) {
         struct node *n = global.graph.nodes[v];
-        if (n->u.ph2.index == -1) {
+        if (scc[v].index == -1) {
             stack_push(&call_stack, n, NULL);
             while (!stack_empty(call_stack)) {
                 struct edge *e;
                 n = stack_pop(&call_stack, &e);
                 if (e == NULL) {
-                    n->u.ph2.index = i;
-                    n->u.ph2.lowlink = i;
+                    scc[v].index = i;
+                    scc[v].lowlink = i;
                     i++;
                     stack_push(&stack, n, NULL);
                     n->on_stack = true;
                     e = n->fwd;
                 }
                 else {
-                    if (e->dst->u.ph2.lowlink < n->u.ph2.lowlink) {
-                        n->u.ph2.lowlink = e->dst->u.ph2.lowlink;
+                    if (scc[e->dst->id].lowlink < scc[v].lowlink) {
+                        scc[v].lowlink = scc[e->dst->id].lowlink;
                     }
                     e = e->fwdnext;
                 }
                 while (e != NULL) {
                     struct node *w = e->dst;
-                    if (w->u.ph2.index < 0) {
+                    if (scc[w->id].index < 0) {
                         break;
                     }
-                    if (w->on_stack && w->u.ph2.index < n->u.ph2.lowlink) {
-                        n->u.ph2.lowlink = w->u.ph2.index;
+                    if (w->on_stack && scc[w->id].index < scc[v].lowlink) {
+                        scc[v].lowlink = scc[w->id].index;
                     }
                     e = e->fwdnext;
                 }
@@ -3112,7 +3110,7 @@ static void tarjan(){
                     stack_push(&call_stack, n, e);
                     stack_push(&call_stack, e->dst, NULL);
                 }
-                else if (n->u.ph2.lowlink == n->u.ph2.index) {
+                else if (scc[v].lowlink == scc[v].index) {
                     for (;;) {
                         ndone++;
                         if (ndone - lastdone >= 10000000 && gettime() - now > 3) {
@@ -3123,7 +3121,7 @@ static void tarjan(){
                         struct node *n2;
                         n2 = stack_pop(&stack, NULL);
                         n2->on_stack = false;
-                        n2->u.ph2.component = comp_id;
+                        scc[n2->id].component = comp_id;
                         if (n2 == n) {
                             break;
                         }
@@ -3760,10 +3758,12 @@ int exec_model_checker(int argc, char **argv){
     struct dict_assoc *hn = dict_find_lock(visited, &workers[0].allocator, state, state_size(state), NULL, &lock);
     struct node *node = (struct node *) &hn[1];
     memset(node, 0, sizeof(*node));
+#ifdef OBSOLETE
     node->u.ph1.lock = lock;
+    node->dead_end = true;
+#endif
     mutex_release(lock);
     node->reachable = true;
-    node->dead_end = true;
     graph_add(&global.graph, node);
 
     // Compute how much table space is allocated
@@ -3865,7 +3865,14 @@ int exec_model_checker(int argc, char **argv){
         for (unsigned int i = 0; i < global.graph.size; i++) {
             struct node *node = global.graph.nodes[i];
             struct state *state = node_state(node);
-            if (node->dead_end) {
+            bool dead_end = true;
+            for (struct edge *e = node->fwd; e != NULL; e = e->fwdnext) {
+                if (e->dst != node) {
+                    dead_end = false;
+                    break;
+                }
+            }
+            if (dead_end) {
                 bool final = value_state_all_eternal(state)
                         && value_ctx_all_eternal(state->stopbag);
                 if (final) {
@@ -3911,8 +3918,7 @@ int exec_model_checker(int argc, char **argv){
 #ifdef DUMP_GRAPH
         printf("digraph Harmony {\n");
         for (unsigned int i = 0; i < global.graph.size; i++) {
-            struct node *node = global.graph.nodes[i];
-            printf(" s%u [label=\"%u/%u\"]\n", i, i, node->u.ph2.component);
+            printf(" s%u [label=\"%u/%u\"]\n", i, i, scc[i].component);
         }
         for (unsigned int i = 0; i < global.graph.size; i++) {
             struct node *node = global.graph.nodes[i];
@@ -3934,9 +3940,9 @@ int exec_model_checker(int argc, char **argv){
         // must have terminated in each state).
         struct component *components = calloc(global.ncomponents, sizeof(*components));
         for (unsigned int i = 0; i < global.graph.size; i++) {
+            assert(scc[i].component < global.ncomponents);
+            struct component *comp = &components[scc[i].component];
             struct node *node = global.graph.nodes[i];
-            assert(node->u.ph2.component < global.ncomponents);
-            struct component *comp = &components[node->u.ph2.component];
 
             // See if this is the first state that we are looking at for
             // this component, make this state the 'representative' for
@@ -3962,7 +3968,7 @@ int exec_model_checker(int argc, char **argv){
             // If this component has a way out, it is good
             for (struct edge *edge = node->fwd;
                             edge != NULL && !comp->good; edge = edge->fwdnext) {
-                if (edge->dst->u.ph2.component != node->u.ph2.component) {
+                if (scc[edge->dst->id].component != scc[node->id].component) {
                     comp->good = true;
                     break;
                 }
@@ -3989,8 +3995,8 @@ int exec_model_checker(int argc, char **argv){
         // Look for states in final components
         for (unsigned int i = 0; i < global.graph.size; i++) {
             struct node *node = global.graph.nodes[i];
-            assert(node->u.ph2.component < global.ncomponents);
-            struct component *comp = &components[node->u.ph2.component];
+            assert(scc[i].component < global.ncomponents);
+            struct component *comp = &components[scc[i].component];
             if (comp->final) {
                 node->final = true;
 
@@ -4014,7 +4020,7 @@ int exec_model_checker(int argc, char **argv){
             int nbad = 0;
             for (unsigned int i = 0; i < global.graph.size; i++) {
                 struct node *node = global.graph.nodes[i];
-                if (!components[node->u.ph2.component].good) {
+                if (!components[scc[i].component].good) {
                     nbad++;
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_TERMINATION;
@@ -4039,8 +4045,7 @@ int exec_model_checker(int argc, char **argv){
                     global.graph.nodes[i]->visited = false;
                 }
                 for (unsigned int i = 0; i < global.graph.size; i++) {
-                    struct node *node = global.graph.nodes[i];
-                    if (components[node->u.ph2.component].size > 1) {
+                    if (components[scc[i].component].size > 1) {
                         detect_busywait(node);
                     }
                 }
@@ -4099,7 +4104,7 @@ int exec_model_checker(int argc, char **argv){
                 assert(node->id == i);
                 fprintf(df, "\nNode %d:\n", node->id);
                 if (computed_components) {
-                    fprintf(df, "    component: %d\n", node->u.ph2.component);
+                    fprintf(df, "    component: %d\n", scc[i].component);
                 }
                 fprintf(df, "    len to parent: %d\n", node->len);
                 if (node_to_parent(node) != NULL) {
@@ -4136,7 +4141,7 @@ int exec_model_checker(int argc, char **argv){
                 for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext, eno++) {
                     fprintf(df, "        %d:\n", eno);
                     struct context *ctx = value_get(edge_input(edge)->ctx, NULL);
-                    fprintf(df, "            node: %d (%d)\n", edge->dst->id, edge->dst->u.ph2.component);
+                    fprintf(df, "            node: %d (%d)\n", edge->dst->id, scc[edge->dst->id].component);
                     fprintf(df, "            context before: %"PRIx64" pc=%d\n", edge_input(edge)->ctx, ctx->pc);
                     ctx = value_get(edge_output(edge)->after, NULL);
                     fprintf(df, "            context after:  %"PRIx64" pc=%d\n", edge_output(edge)->after, ctx->pc);
@@ -4245,7 +4250,7 @@ int exec_model_checker(int argc, char **argv){
                 fprintf(out, "    {\n");
                 fprintf(out, "      \"idx\": %d,\n", node->id);
                 if (computed_components) {
-                    fprintf(out, "      \"component\": %d,\n", node->u.ph2.component);
+                    fprintf(out, "      \"component\": %d,\n", scc[node->id].component);
                 }
 #ifdef notdef
                 if (node->parent != NULL) {

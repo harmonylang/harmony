@@ -100,6 +100,8 @@ struct edge {
     struct node *src;            // source node
 
     // TODO.  The multiplicity can be looked up in the source state
+    // TODO.  These bits can be packed into the unused bits of the pointers
+    //        in this structure.  Maybe src as it's not used much.
     bool multiple : 1;           // multiplicity of context > 1
     bool failed : 1;             // transition failed
     bool invariant_chk : 1;      // this is an invariant check
@@ -120,6 +122,7 @@ enum fail_type {
 // This is information about a node in the Kripke structure.  The Harmony state
 // corresponding to this node is stored directly behind this node.
 struct node {
+#ifdef OBSOLETE
     // Carefully packed data...
     union {
         // Data we only need while creating the Kripke structure
@@ -134,17 +137,19 @@ struct node {
             int32_t index, lowlink; // only needed for Tarjan
         } ph2;
     } u;
+#endif
 
-    uint32_t id;            // nodes are numbered starting from 0
     struct edge *fwd;       // forward edges
-
     struct edge *to_parent; // path to initial state
+    uint32_t id;            // nodes are numbered starting from 0
     uint16_t len;           // length of path to initial state
     bool on_stack : 1;      // for Tarjan
     bool failed : 1;        // a thread has failed
     bool final : 1;         // only eternal threads left (TODO: need this?)
     bool visited : 1;       // for busy wait detection (TODO: need this?)
+#ifdef OBSOLETE
     bool dead_end : 1;      // all outgoing edges point back
+#endif
 
     // NFA compression
     bool reachable : 1;     // TODO.  Maybe obsolete at this time
