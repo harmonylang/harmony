@@ -468,6 +468,7 @@ static void process_step(
         next->dead_end = true;
         next->u.ph1.lock = lock;
 #endif
+        mutex_release(lock);
 
         // Add new node to results list kept per worker
         struct results_block *rb = w->results;
@@ -487,7 +488,6 @@ static void process_step(
         w->count++;
         w->enqueued++;
         w->total_results++;
-        mutex_release(lock);
     }
 
     // See if the node points sideways or backwards, in which
