@@ -464,10 +464,6 @@ static void process_step(
         next->failed = edge->failed;
         next->to_parent = edge;
         next->len = node->len + 1;
-#ifdef OBSOLETE
-        next->dead_end = true;
-        next->u.ph1.lock = lock;
-#endif
         mutex_release(lock);
 
         // Add new node to results list kept per worker
@@ -495,15 +491,6 @@ static void process_step(
     if (edge->dst != node && edge->dst->len <= node->len) {
         w->loops_possible = true;
     }
-
-#ifdef OBSOLETE
-    // Keep track of whether 'node' is a candidate for a 'final' state
-    if (edge->dst != node) {
-        mutex_acquire(node->u.ph1.lock);
-        node->dead_end = false;
-        mutex_release(node->u.ph1.lock);
-    }
-#endif
 }
 
 // This is the main workhorse function of model checking: explore a state and
@@ -1010,7 +997,8 @@ static void trystep(
 
     // Make a copy of the state.
     //
-    // TODO. Don't need to copy if ctx in readonly mode
+    // TODO. Don't need to copy if ctx in readonly mode (unless it stops being in
+    //       readonly mode...
     unsigned int statesz = state_size(state);
     struct state *sc = (struct state *) w->state_space;
     memcpy(sc, state, statesz);
@@ -2694,42 +2682,6 @@ static struct vproc_tree *vproc_tree_insert(
     return vproc_tree_insert(vt, ids, len, offset + 1);
 }
 
-#ifdef OBSOLETE
-// Find a virtual processor into the tree recursively.
-static struct vproc_tree *vproc_tree_find(
-    struct vproc_tree *parent,
-    unsigned int *ids,              // local id 'path'
-    unsigned int len,               // length of path
-    unsigned int offset             // offset into path
-){
-    if (offset == len) {
-        return parent;
-    }
-    for (unsigned int i = 0; i < parent->nchildren; i++) {
-        if (parent->children[i].local_id == ids[offset]) {
-            return vproc_tree_find(parent->children[i].child, ids, len, offset + 1);
-        }
-    }
-    return NULL;
-}
-
-// For debugging, dump the contents of the virtual processor tree
-static void vproc_tree_dump(struct vproc_tree *vt, unsigned int level){
-    printf("%p; vid = %u; # = %u", vt, vt->virtual_id, vt->n_vprocessors);
-    if (vt->nchildren > 0) {
-        printf("; nchildren = %u:", vt->nchildren);
-    }
-    printf("\n");
-    for (unsigned int i = 0; i < vt->nchildren; i++) {
-        for (unsigned int j = 0; j < level; j++) {
-            printf(" ");
-        }
-        printf("%u: ", vt->children[i].local_id);
-        vproc_tree_dump(vt->children[i].child, level + 1);
-    }
-}
-#endif // OBSOLETE
-
 // This function creates a tree, more or less representing the memory
 // hierarchy, with the selected virtual processors at its leaves.
 static void vproc_tree_create(){
@@ -3073,7 +3025,7 @@ static inline bool stack_empty(struct stack *s) {
 static void tarjan(){
     scc = malloc(global.graph.size * sizeof(*scc));
     for (unsigned int v = 0; v < global.graph.size; v++) {
-        scc->index = -1;
+        scc[v].index = -1;
     }
 
     unsigned int i = 0, comp_id = 0;
@@ -3089,16 +3041,16 @@ static void tarjan(){
                 struct edge *e;
                 n = stack_pop(&call_stack, &e);
                 if (e == NULL) {
-                    scc[v].index = i;
-                    scc[v].lowlink = i;
+                    scc[n->id].index = i;
+                    scc[n->id].lowlink = i;
                     i++;
                     stack_push(&stack, n, NULL);
                     n->on_stack = true;
                     e = n->fwd;
                 }
                 else {
-                    if (scc[e->dst->id].lowlink < scc[v].lowlink) {
-                        scc[v].lowlink = scc[e->dst->id].lowlink;
+                    if (scc[e->dst->id].lowlink < scc[n->id].lowlink) {
+                        scc[n->id].lowlink = scc[e->dst->id].lowlink;
                     }
                     e = e->fwdnext;
                 }
@@ -3107,8 +3059,8 @@ static void tarjan(){
                     if (scc[w->id].index < 0) {
                         break;
                     }
-                    if (w->on_stack && scc[w->id].index < scc[v].lowlink) {
-                        scc[v].lowlink = scc[w->id].index;
+                    if (w->on_stack && scc[w->id].index < scc[n->id].lowlink) {
+                        scc[n->id].lowlink = scc[w->id].index;
                     }
                     e = e->fwdnext;
                 }
@@ -3116,7 +3068,7 @@ static void tarjan(){
                     stack_push(&call_stack, n, e);
                     stack_push(&call_stack, e->dst, NULL);
                 }
-                else if (scc[v].lowlink == scc[v].index) {
+                else if (scc[n->id].lowlink == scc[n->id].index) {
                     for (;;) {
                         ndone++;
                         if (ndone - lastdone >= 10000000 && gettime() - now > 3) {
@@ -3764,10 +3716,6 @@ int exec_model_checker(int argc, char **argv){
     struct dict_assoc *hn = dict_find_lock(visited, &workers[0].allocator, state, state_size(state), NULL, &lock);
     struct node *node = (struct node *) &hn[1];
     memset(node, 0, sizeof(*node));
-#ifdef OBSOLETE
-    node->u.ph1.lock = lock;
-    node->dead_end = true;
-#endif
     mutex_release(lock);
     node->reachable = true;
     graph_add(&global.graph, node);
@@ -3788,7 +3736,7 @@ int exec_model_checker(int argc, char **argv){
 
     // Compute how much memory was used, approximately
     unsigned long allocated = global.allocated;
-#define REPORT_WORKERS
+// #define REPORT_WORKERS
 #ifdef REPORT_WORKERS
     double phase1 = 0, phase2a = 0, phase2b = 0, phase3a = 0, phase3b, start_wait = 0, middle_wait = 0, end_wait = 0;
     unsigned int fix_edge = 0;
@@ -4055,7 +4003,7 @@ int exec_model_checker(int argc, char **argv){
                 }
                 for (unsigned int i = 0; i < global.graph.size; i++) {
                     if (components[scc[i].component].size > 1) {
-                        detect_busywait(node);
+                        detect_busywait(global.graph.nodes[i]);
                     }
                 }
             }
