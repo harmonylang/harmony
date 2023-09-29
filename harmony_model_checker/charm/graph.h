@@ -95,19 +95,27 @@ struct step_comp {
 // state.
 struct edge {
     struct edge *fwdnext;        // forward linked list maintenance
-    struct step_condition *sc;	 // contains input and output of computation
     struct node *dst;            // destination node
     struct node *src;            // source node
 
-    // TODO.  The multiplicity can be looked up in the source state
-    // TODO.  These bits can be packed into the unused bits of the pointers
-    //        in this structure.  Maybe src as it's not used much.
-    bool multiple : 1;           // multiplicity of context > 1
-    bool failed : 1;             // transition failed
-    bool invariant_chk : 1;      // this is an invariant check
+    // This field consists of the pointer to a step_condition (which contains the
+    // input and output of the computation) plus a few flags in the unused bits
+    // (see below).
+    uintptr_t flags;
 };
-#define edge_input(e)    ((struct step_input *) &(e)->sc[1])
-#define edge_output(e)   ((e)->sc->u.completed)
+#define EDGE_FLAGS           ((uintptr_t) 0xFF << 56)
+#define edge_sc(e)           ((struct step_condition *) ((e)->flags & ~EDGE_FLAGS))
+#define edge_input(e)        ((struct step_input *) &edge_sc(e)[1])
+#define edge_output(e)       (edge_sc(e)->u.completed)
+
+// Multiplicity > 1
+#define EDGE_MULTIPLE        ((uintptr_t) 1 << 63)
+
+// Something went wrong in computation
+#define EDGE_FAILED          ((uintptr_t) 1 << 62)
+
+// This is an invariant check computation
+#define EDGE_INVARIANT_CHK   ((uintptr_t) 1 << 61)
 
 // Charm can detect a variety of failure types:
 enum fail_type {
@@ -122,23 +130,6 @@ enum fail_type {
 // This is information about a node in the Kripke structure.  The Harmony state
 // corresponding to this node is stored directly behind this node.
 struct node {
-#ifdef OBSOLETE
-    // Carefully packed data...
-    union {
-        // Data we only need while creating the Kripke structure
-        struct {
-            // struct node *next;	    // for linked list
-            ht_lock_t *lock;        // points to lock for forward edges
-        } ph1;
-        // Data we only need when analyzing the Kripke structure
-        // TODO. Can just allocate this in a separate array when running Tarjan
-        struct {
-            uint32_t component;     // strongly connected component id
-            int32_t index, lowlink; // only needed for Tarjan
-        } ph2;
-    } u;
-#endif
-
     struct edge *fwd;       // forward edges
     struct edge *to_parent; // path to initial state
     uint32_t id;            // nodes are numbered starting from 0
@@ -147,9 +138,6 @@ struct node {
     bool failed : 1;        // a thread has failed
     bool final : 1;         // only eternal threads left (TODO: need this?)
     bool visited : 1;       // for busy wait detection (TODO: need this?)
-#ifdef OBSOLETE
-    bool dead_end : 1;      // all outgoing edges point back
-#endif
 
     // NFA compression
     bool reachable : 1;     // TODO.  Maybe obsolete at this time

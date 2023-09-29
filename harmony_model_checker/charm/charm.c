@@ -178,16 +178,6 @@ struct worker {
     // 'count' node_ids starting at the following node_id.
     unsigned int node_id;
 
-#ifdef USE_EDGES
-    // When new edges are in the Kripke structure are discovered, we
-    // avoid workers stalling trying to get a lock on the source node
-    // and instead keep an NxN table of edge lists (N is the number of
-    // workers) that need to be inserted.  Worker i puts the edge in
-    // cell (i, j) if j is the worker that is responsible for the
-    // source node (node_id % N).
-    struct edge **edges;        // lists of edges to fix, one for each worker
-#endif
-
     // Workers optimize memory allocation.  In particular, it is not
     // necessary for the memory to ever be freed.  So the worker allocates
     // large chunks of memory (WALLOC_CHUNK) and then use a pointer into
@@ -370,7 +360,7 @@ static void process_step(
     struct edge *edge,
     struct state *sc
 ) {
-    struct step_condition *stc = edge->sc;
+    struct step_condition *stc = edge_sc(edge);
     assert(stc->type == SC_COMPLETED);
     struct step_input *si = (struct step_input *) &stc[1];
     struct step_output *so = stc->u.completed;
@@ -437,7 +427,9 @@ static void process_step(
         // sc->pre = sc->vars;
     }
 
-    edge->failed = so->failed || so->infinite_loop;
+    if (so->failed || so->infinite_loop) {
+        edge->flags |= EDGE_FAILED;
+    }
 
     if (global.dfa != NULL) {
         for (unsigned int i = 0; i < so->nlog; i++) {
@@ -446,7 +438,7 @@ static void process_step(
                 struct failure *f = new_alloc(struct failure);
                 f->type = FAIL_BEHAVIOR;
                 f->edge = edge;
-                edge->failed = true;
+                edge->flags |= EDGE_FAILED;
                 add_failure(&global.failures, f);
                 break;
             }
@@ -455,7 +447,7 @@ static void process_step(
     }
 
     // If a failure has occurred, keep track of that too.
-    if (edge->failed) {
+    if (edge->flags & EDGE_FAILED) {
         struct failure *f = new_alloc(struct failure);
         f->type = edge_output(edge)->infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
         f->edge = edge;
@@ -475,7 +467,7 @@ static void process_step(
         assert(node->len == global.diameter);
         struct node *next = edge->dst;
         next->reachable = true;         // TODO.  Do we need this?
-        next->failed = edge->failed;
+        next->failed = (edge->flags & EDGE_FAILED) != 0;
         next->to_parent = edge;
         next->len = node->len + 1;
         mutex_release(lock);
@@ -954,8 +946,6 @@ static void trystep(
     // Allocate the edge and add to the node
     struct edge *edge = walloc_fast(w, sizeof(struct edge));
     edge->src = node;
-    edge->multiple = multiplicity > 1;
-    edge->invariant_chk = invariant;
     edge->fwdnext = node->fwd;
     node->fwd = edge;
 
@@ -979,7 +969,14 @@ static void trystep(
             &w->allocator, &si, sizeof(si), &si_new, &si_lock);
         stc = (struct step_condition *) &da[1];
     }
-    edge->sc = stc;
+
+    edge->flags = (uintptr_t) stc;
+    if (multiplicity > 1) {
+        edge->flags |= EDGE_MULTIPLE;
+    }
+    if (invariant) {
+        edge->flags |= EDGE_INVARIANT_CHK;
+    }
 
     if (si_new) {
         stc->type = SC_IN_PROGRESS;
@@ -1574,7 +1571,7 @@ void path_recompute(){
         struct edge *e = macro->edge;
         hvalue_t ctx = edge_input(e)->ctx;
 
-        if (e->invariant_chk) {
+        if (e->flags & EDGE_INVARIANT_CHK) {
             global.processes = realloc(global.processes, (global.nprocesses + 1) * sizeof(hvalue_t));
             global.callstacks = realloc(global.callstacks, (global.nprocesses + 1) * sizeof(struct callstack *));
             global.processes[global.nprocesses] = ctx;
@@ -1621,7 +1618,7 @@ void path_recompute(){
             ctx,
             global.callstacks[pid],
             edge_input(e)->choice,
-            e->invariant_chk,
+            e->flags & EDGE_INVARIANT_CHK,
             edge_output(e)->nsteps,
             pid,
             macro
@@ -2788,21 +2785,6 @@ static void worker(void *arg){
         w->middle_count++;
         before = after;
 
-#ifdef USE_EDGES
-        // Insert the forward edges.  Each worker is responsible for a subset
-        // of the nodes, so this can be done in parallel.
-        for (unsigned i = 0; i < w->nworkers; i++) {
-            struct edge **pe = &w->workers[i].edges[w->index], *e;
-            while ((e = *pe) != NULL) {
-                w->fix_edge++;
-                *pe = e->fwdnext;
-                struct node *src = e->src;
-                e->fwdnext = src->fwd;
-                src->fwd = e;
-            }
-        }
-#endif
-
         // Keep more stats
         after = gettime();
         w->phase2a += after - before;
@@ -3664,9 +3646,6 @@ int exec_model_checker(int argc, char **argv){
         w->index = i;
         w->workers = workers;
         w->nworkers = global.nworkers;
-#ifdef USE_EDGES
-        w->edges = calloc(global.nworkers, sizeof(struct edge *));
-#endif
         w->profile = calloc(global.code.len, sizeof(*w->profile));
 
         // Create a context for evaluating invariants
@@ -4031,7 +4010,7 @@ int exec_model_checker(int argc, char **argv){
                         }
                     }
                     assert(j < state->bagsize);
-                    if (edge->failed) {
+                    if (edge->flags & EDGE_FAILED) {
                         fprintf(df, " s%u -> s%u [style=%s label=\"F %u\"]\n",
                             node->id, edge->dst->id,
                             node_to_parent(edge->dst) == edge ? "solid" : "dashed",
@@ -4101,7 +4080,7 @@ int exec_model_checker(int argc, char **argv){
                     fprintf(df, "            context before: %"PRIx64" pc=%d\n", edge_input(edge)->ctx, ctx->pc);
                     ctx = value_get(edge_output(edge)->after, NULL);
                     fprintf(df, "            context after:  %"PRIx64" pc=%d\n", edge_output(edge)->after, ctx->pc);
-                    if (edge->failed != 0) {
+                    if (edge->flags & EDGE_FAILED) {
                         fprintf(df, "            failed\n");
                     }
                     if (edge_input(edge)->choice != 0) {
