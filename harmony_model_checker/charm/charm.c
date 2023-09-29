@@ -357,20 +357,14 @@ void spawn_thread(struct state *state, struct context *ctx){
 // to a new edge in the Kripke structure, possibly to a new state.
 static void process_step(
     struct worker *w,
+    struct step_output *so,
     struct edge *edge,
     struct state *sc
 ) {
-    struct step_condition *stc = edge_sc(edge);
-    assert(stc->type == SC_COMPLETED);
-    struct step_input *si = (struct step_input *) &stc[1];
-    struct step_output *so = stc->u.completed;
     struct node *node = edge->src;
 
     w->process_step++;
     sc->vars = so->vars;
-
-    // Remove old context from the bag
-    context_remove(sc, si->ctx);
 
     // Update state with spawned and resumed threads.
     for (unsigned int i = 0; i < so->nspawned; i++) {
@@ -1058,14 +1052,15 @@ static void trystep(
         assert(stc->type == SC_COMPLETED);
     }
 
-    // TODO.  Should I restore sc here?
-    process_step(w, edge, sc);
+    context_remove(sc, ctx);
+    process_step(w, stc->u.completed, edge, sc);
     while (el != NULL) {
         struct node *n = el->edge->src;
         struct state *state = (struct state *) &n[1];
         unsigned int statesz = state_size(state);
         memcpy(sc, state, statesz);
-        process_step(w, el->edge, sc);
+        context_remove(sc, ctx);
+        process_step(w, stc->u.completed, el->edge, sc);
         struct edge_list *next = el->next;
         el->next = w->el_free;
         w->el_free = el;
