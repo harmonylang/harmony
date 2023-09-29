@@ -262,9 +262,9 @@ static void *walloc(void *ctx, unsigned int size, bool zero, bool align16){
     }
     else {
         unsigned int asize = (size + 0x7) & ~0x7;     // align to 8 bytes
-        w->align_waste += asize - size;
+        // w->align_waste += asize - size;
         if (w->alloc_ptr + asize > w->alloc_buf + WALLOC_CHUNK) {
-            w->frag_waste += WALLOC_CHUNK - (w->alloc_ptr - w->alloc_buf);
+            // w->frag_waste += WALLOC_CHUNK - (w->alloc_ptr - w->alloc_buf);
             w->alloc_buf = malloc(WALLOC_CHUNK);
             w->alloc_ptr = w->alloc_buf;
             w->allocated += WALLOC_CHUNK;
@@ -275,6 +275,20 @@ static void *walloc(void *ctx, unsigned int size, bool zero, bool align16){
     if (zero) {
         memset(result, 0, size);
     }
+    return result;
+}
+
+// Per thread one-time memory allocator (no free(), although the last
+// thing allocated can be freed with wfree()).
+static inline void *walloc_fast(struct worker *w, unsigned int size){
+    assert(size % 8 == 0);
+    if (w->alloc_ptr + size > w->alloc_buf + WALLOC_CHUNK) {
+        w->alloc_buf = malloc(WALLOC_CHUNK);
+        w->alloc_ptr = w->alloc_buf;
+        w->allocated += WALLOC_CHUNK;
+    }
+    void *result = w->alloc_ptr;
+    w->alloc_ptr += size;
     return result;
 }
 
@@ -470,7 +484,7 @@ static void process_step(
         struct results_block *rb = w->results;
         if (rb == NULL || rb->nresults == NRESULTS) {
             if ((rb = w->rb_free) == NULL) {
-                rb = walloc(w, sizeof(*rb), false, false);
+                rb = walloc_fast(w, sizeof(*rb));
             }
             else {
                 w->rb_free = rb->next;
@@ -884,9 +898,8 @@ static struct step_output *onestep(
     }
 
     // Capture the result of executing this step
-    struct step_output *so = walloc(w, sizeof(struct step_output) +
-            (step->nlog + step->nspawned + step->nunstopped) * sizeof(hvalue_t),
-            false, false);
+    struct step_output *so = walloc_fast(w, sizeof(struct step_output) +
+            (step->nlog + step->nspawned + step->nunstopped) * sizeof(hvalue_t));
     so->vars = sc->vars;
     so->after = value_put_context(step->allocator, step->ctx);
     so->ai = step->ai;     step->ai = NULL;
@@ -939,7 +952,7 @@ static void trystep(
     w->si_total++;          // counts the number of edges
 
     // Allocate the edge and add to the node
-    struct edge *edge = walloc(w, sizeof(struct edge), false, false);
+    struct edge *edge = walloc_fast(w, sizeof(struct edge));
     edge->src = node;
     edge->multiple = multiplicity > 1;
     edge->invariant_chk = invariant;
@@ -955,7 +968,7 @@ static void trystep(
     // For backward compatibility, we still support countLabel().  If the
     // Harmony program uses it, we circumvent the cache.
     if (has_countLabel) {
-        struct step_comp *comp = walloc(w, sizeof(struct step_comp), false, false);
+        struct step_comp *comp = walloc_fast(w, sizeof(struct step_comp));
         si_new = true;
         stc = &comp->cond;
         comp->input = si;
@@ -977,7 +990,7 @@ static void trystep(
         if (stc->type == SC_IN_PROGRESS) {
             struct edge_list *el;
             if ((el = w->el_free) == NULL) {
-                el = walloc(w, sizeof(struct edge_list), false, false);
+                el = walloc_fast(w, sizeof(struct edge_list));
             }
             else {
                 w->el_free = el->next;
@@ -1070,23 +1083,9 @@ static void trystep(
 // multiplicity gives the number of threads that can make this step.  Any
 // resulting states should be buffered in w->results.
 //
-// The hard work of makestep is accomplished by function onestep().  makestep()
-// may invoke onestep() multiple times.  One reason is to explore interrupts
-// (which can only happen in non-choosing states).  Another reason is based on
-// how infinite loops are detected.  The easy way would be to maintain a set
-// of all states that are computed after every machine instruction, and to
-// check if a state re-occurs.  But that would be very expensive in the
-// presumably normal case where there are no infinite loops in the code.
-// So, an optimization that has been made is to explore a certain number
-// of instructions without doing this check (currently 1000).  After that
-// we start trying to detect an infinite loop.  If we detect one, we restart
-// the whole thing to produce a shorter couter example.
-//
-// So, in total, make_step may call onestep up to four times:
-//  1) to explore an interrupt
-//  2) restarting 1) if an infinite loop is detected
-//  3) explore a normal transition
-//  4) restarting 3) if an infinite loop is detected.
+// The hard work of make_step is accomplished by function trystep().
+// make_step() may invoke trystep() twice to explore interrupts
+// (which can only happen in non-choosing states).
 static void make_step(
     struct worker *w,
     struct node *node,      // the state we're exploring
@@ -2422,7 +2421,7 @@ void do_work1(struct worker *w, struct node *node){
 // Workers move on to phase 2 when the goal is reached, to give charm an
 // opportunity to grow the hash tables which might otherwise become inefficient.
 static void do_work(struct worker *w){
-    unsigned int todo_count = 5;        // TODO probably should just be a constant
+    unsigned int todo_count = 10;        // TODO
 
     for (;;) {
         // Grab one or a few states to evaluate.  When not using atomics, we
