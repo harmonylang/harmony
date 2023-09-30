@@ -1,5 +1,5 @@
 set -e
-HARMONY=./harmony
+HARMONY=harmony
 
 echo ==============
 echo triangle

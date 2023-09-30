@@ -32,13 +32,6 @@ struct code {
     struct dict *code_map;       // maps pc to file:line
 };
 
-// This is a badly named structure containing an "allocator" (a way for a thread
-// to efficiently allocate memory) and the global values of a Harmony state.
-struct engine {
-    struct allocator *allocator;
-    struct dict *values;
-};
-
 // During re-execution, Charm keeps track of the callstack of a thread as a
 // linked list of invocation (most recent invocation at the start of the list)
 struct callstack {
@@ -50,6 +43,6 @@ struct callstack {
     hvalue_t vars;                  // saved local variables of the parent method
 };
 
-struct code code_init_parse(struct engine *engine, struct json_value *json_code);
+struct code code_init_parse(struct allocator *allocator, struct json_value *json_code);
 
 #endif //SRC_CODE_H

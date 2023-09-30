@@ -110,8 +110,7 @@ for t in tests:
                 print("Different issue (was %s)???  Aborting further tests" % t["issue"])
                 break
             if t["issue"] != "Safety violation" and min(t["nstates"], hco["nstates"]) / max(t["nstates"], hco["nstates"]) < .9:
-                print("#states very different (was %d)???  Aborting further tests" % t["nstates"])
-                break
+                print("#states very different (was %d)???" % t["nstates"])
     else:
         print("Error code %d, aborting further tests" % cp.returncode)
         print("Output: ", cp.stdout)

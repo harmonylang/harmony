@@ -64,23 +64,23 @@ typedef struct context {   // context value
 #define ctx_size(c)     (sizeof(struct context) + (c)->sp * sizeof(hvalue_t) + ((c)->extended ? (ctx_extent*sizeof(hvalue_t)) : 0))
 #define ctx_stack(c)    ((c)->extended ? &context_stack(c)[ctx_extent] : context_stack(c))
 
-hvalue_t value_from_json(struct engine *engine, struct dict *map);
+hvalue_t value_from_json(struct allocator *allocator, struct dict *map);
 int value_cmp(hvalue_t v1, hvalue_t v2);
 void *value_get(hvalue_t v, unsigned int *size);
 void *value_copy(hvalue_t v, unsigned int *size);
 void *value_copy_extend(hvalue_t v, unsigned int inc, unsigned int *psize);
-hvalue_t value_put_atom(struct engine *engine, const void *p, unsigned int size);
-hvalue_t value_put_set(struct engine *engine, void *p, unsigned int size);
-hvalue_t value_put_dict(struct engine *engine, void *p, unsigned int size);
-hvalue_t value_put_list(struct engine *engine, void *p, unsigned int size);
-hvalue_t value_put_address(struct engine *engine, void *p, unsigned int size);
-hvalue_t value_put_context(struct engine *engine, struct context *ctx);
+hvalue_t value_put_atom(struct allocator *allocator, const void *p, unsigned int size);
+hvalue_t value_put_set(struct allocator *allocator, void *p, unsigned int size);
+hvalue_t value_put_dict(struct allocator *allocator, void *p, unsigned int size);
+hvalue_t value_put_list(struct allocator *allocator, void *p, unsigned int size);
+hvalue_t value_put_address(struct allocator *allocator, void *p, unsigned int size);
+hvalue_t value_put_context(struct allocator *allocator, struct context *ctx);
 char *value_string(hvalue_t v);
 char *indices_string(const hvalue_t *vec, int size);
-char *value_json(hvalue_t v, struct global *global);
+char *value_json(hvalue_t v);
 
 void strbuf_value_string(strbuf *sb, hvalue_t v);
-void strbuf_value_json(strbuf *sb, hvalue_t v, struct global *global);
+void strbuf_value_json(strbuf *sb, hvalue_t v);
 
 // A Harmony value is represented by a 64 bit representation.  Currently the
 // low 4 bits indicate the type of the value.  We sometimes also use the top 16
@@ -125,26 +125,26 @@ void strbuf_value_json(strbuf *sb, hvalue_t v, struct global *global);
 #define VALUE_PC_SHARED    VALUE_TO_PC(-1)
 #define VALUE_PC_LOCAL     VALUE_TO_PC(-2)
 
-bool value_trystore(struct engine *engine, hvalue_t dict, hvalue_t key, hvalue_t value, bool allow_inserts, hvalue_t *result);
-hvalue_t value_store(struct engine *engine, hvalue_t root, hvalue_t key, hvalue_t value);
-hvalue_t value_dict_store(struct engine *engine, hvalue_t dict, hvalue_t key, hvalue_t value);
-bool value_dict_trystore(struct engine *engine, hvalue_t dict, hvalue_t key, hvalue_t value, bool allow_inserts, hvalue_t *result);
+bool value_trystore(struct allocator *allocator, hvalue_t dict, hvalue_t key, hvalue_t value, bool allow_inserts, hvalue_t *result);
+hvalue_t value_store(struct allocator *allocator, hvalue_t root, hvalue_t key, hvalue_t value);
+hvalue_t value_dict_store(struct allocator *allocator, hvalue_t dict, hvalue_t key, hvalue_t value);
+bool value_dict_trystore(struct allocator *allocator, hvalue_t dict, hvalue_t key, hvalue_t value, bool allow_inserts, hvalue_t *result);
 hvalue_t value_dict_load(hvalue_t dict, hvalue_t key);
-bool value_tryload(struct engine *engine, hvalue_t dict, hvalue_t key, hvalue_t *result);
-hvalue_t value_remove(struct engine *engine, hvalue_t root, hvalue_t key);
-hvalue_t value_dict_remove(struct engine *engine, hvalue_t dict, hvalue_t key);
-hvalue_t value_bag_add(struct engine *engine, hvalue_t bag, hvalue_t v, int multiplicity);
-hvalue_t value_bag_remove(struct engine *engine, hvalue_t bag, hvalue_t v);
+bool value_tryload(struct allocator *allocator, hvalue_t dict, hvalue_t key, hvalue_t *result);
+hvalue_t value_remove(struct allocator *allocator, hvalue_t root, hvalue_t key);
+hvalue_t value_dict_remove(struct allocator *allocator, hvalue_t dict, hvalue_t key);
+hvalue_t value_bag_add(struct allocator *allocator, hvalue_t bag, hvalue_t v, int multiplicity);
+hvalue_t value_bag_remove(struct allocator *allocator, hvalue_t bag, hvalue_t v);
 bool value_ctx_push(struct context *ctx, hvalue_t v);
 hvalue_t value_ctx_pop(struct context *ctx);
 void value_ctx_extend(struct context *ctx);
-hvalue_t value_ctx_failure(struct context *ctx, struct engine *engine, char *fmt, ...);
+hvalue_t value_ctx_failure(struct context *ctx, struct allocator *allocator, char *fmt, ...);
 bool value_ctx_all_eternal(hvalue_t ctxbag);
 bool value_state_all_eternal(struct state *state);
 void context_remove(struct state *state, hvalue_t ctx);
 int context_add(struct state *state, hvalue_t ctx);
 char *json_escape_value(hvalue_t v);
-void value_trace(struct global *global, FILE *file, struct callstack *cs, unsigned int pc, hvalue_t vars, char *prefix);
-void print_vars(struct global *global, FILE *file, hvalue_t v);
+void value_trace(FILE *file, struct callstack *cs, unsigned int pc, hvalue_t vars, char *prefix);
+void print_vars(FILE *file, hvalue_t v);
 
 #endif //SRC_VALUE_H

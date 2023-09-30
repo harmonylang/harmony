@@ -71,17 +71,15 @@ struct step_output {
 #define step_spawned(x)      ((hvalue_t *) ((x) + 1) + (x)->nlog)
 #define step_unstopped(x)    ((hvalue_t *) ((x) + 1) + (x)->nlog + (x)->nspawned)
 
-struct node_list {
-    struct node_list *next;
-    struct node *node;
-    bool multiple;
-    bool invariant;
+struct edge_list {
+    struct edge_list *next;
+    struct edge *edge;
 };
 
 struct step_condition {
     enum { SC_IN_PROGRESS, SC_COMPLETED } type;
     union {
-        struct node_list *in_progress;
+        struct edge_list *in_progress;
         struct step_output *completed;
     } u;
 };
@@ -97,25 +95,33 @@ struct step_comp {
 // state.
 struct edge {
     struct edge *fwdnext;        // forward linked list maintenance
-    struct step_condition *sc;	 // contains input and output of computation
     struct node *dst;            // destination node
-    unsigned int src_id : 29;    // source node id
+    struct node *src;            // source node
 
-    // TODO.  The multiplicity can be looked up in the source state
-    bool multiple : 1;           // multiplicity of context > 1
-    bool failed : 1;             // transition failed
-    bool invariant_chk : 1;      // this is an invariant check
+    // This field consists of the pointer to a step_condition (which contains the
+    // input and output of the computation) plus a few flags in the unused bits
+    // (see below).
+    uintptr_t flags;
 };
-#define edge_input(e)    ((struct step_input *) &(e)->sc[1])
-#define edge_output(e)   ((e)->sc->u.completed)
+#define EDGE_FLAGS           ((uintptr_t) 0xFF << 56)
+#define edge_sc(e)           ((struct step_condition *) ((e)->flags & ~EDGE_FLAGS))
+#define edge_input(e)        ((struct step_input *) &edge_sc(e)[1])
+#define edge_output(e)       (edge_sc(e)->u.completed)
+
+// Multiplicity > 1
+#define EDGE_MULTIPLE        ((uintptr_t) 1 << 63)
+
+// Something went wrong in computation
+#define EDGE_FAILED          ((uintptr_t) 1 << 62)
+
+// This is an invariant check computation
+#define EDGE_INVARIANT_CHK   ((uintptr_t) 1 << 61)
 
 // Charm can detect a variety of failure types:
 enum fail_type {
     FAIL_NONE,
     FAIL_SAFETY,            // assertion failure, divide by zero, etc.
     FAIL_BEHAVIOR,          // output behavior not allowed by input DFA
-    // FAIL_INVARIANT,         // some invariant failed
-    // FAIL_FINALLY,           // some "finally" predicate failed
     FAIL_TERMINATION,       // a non-terminating state exists
     FAIL_BUSYWAIT,          // the program allows busy waiting
     FAIL_RACE               // the program has a race condition
@@ -124,27 +130,11 @@ enum fail_type {
 // This is information about a node in the Kripke structure.  The Harmony state
 // corresponding to this node is stored directly behind this node.
 struct node {
-    // Carefully packed data...
-    union {
-        // Data we only need while creating the Kripke structure
-        struct {
-            // struct node *next;	    // for linked list
-            ht_lock_t *lock;        // points to lock for forward edges
-        } ph1;
-        // Data we only need when analyzing the Kripke structure
-        struct {
-            uint32_t component;     // strongly connected component id
-            int32_t index, lowlink; // only needed for Tarjan
-        } ph2;
-    } u;
-
-    uint32_t id;            // nodes are numbered starting from 0
     struct edge *fwd;       // forward edges
-
     struct edge *to_parent; // path to initial state
+    uint32_t id;            // nodes are numbered starting from 0
     uint16_t len;           // length of path to initial state
     bool on_stack : 1;      // for Tarjan
-    // bool initialized : 1;   // this node structure has been initialized
     bool failed : 1;        // a thread has failed
     bool final : 1;         // only eternal threads left (TODO: need this?)
     bool visited : 1;       // for busy wait detection (TODO: need this?)
@@ -178,12 +168,9 @@ void graph_init(struct graph *graph, unsigned int initial_size);
 void graph_check_for_data_race(
     struct failure **failures,
     struct node *node,
-    struct engine *engine
+    struct allocator *allocator
 );
 void graph_add(struct graph *graph, struct node *node);
 unsigned int graph_add_multiple(struct graph *graph, unsigned int n);
-unsigned int graph_find_scc(struct graph *graph);
-struct scc *graph_find_scc_one(struct graph *graph, struct scc *scc, unsigned int component, void **scc_cache);
-struct scc *scc_alloc(unsigned int start, unsigned int finish, struct scc *next, void **scc_cache);
 
 #endif //SRC_GRAPH_H

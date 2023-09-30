@@ -45,7 +45,7 @@ static int int_parse(char *p, int len){
 }
 
 // read a DFA from a json file
-struct dfa *dfa_read(struct engine *engine, char *fname){
+struct dfa *dfa_read(struct allocator *allocator, char *fname){
     // open the HFA file
     FILE *fp = fopen(fname, "r");
     if (fp == NULL) {
@@ -127,7 +127,7 @@ struct dfa *dfa_read(struct engine *engine, char *fname){
             symalloc *= 2;
             dfa->symbols = realloc(dfa->symbols, symalloc * sizeof(hvalue_t));
         }
-        dfa->symbols[dfa->nsymbols++] = value_from_json(engine, symbol->u.map);
+        dfa->symbols[dfa->nsymbols++] = value_from_json(allocator, symbol->u.map);
     }
 
     // read the list of edges
