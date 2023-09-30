@@ -1731,29 +1731,6 @@ char *json_escape_value(hvalue_t v){
     return r;
 }
 
-// Remove context 'ctx' from the state.  The multiset of contexts in a state
-// is represented as a bag.
-void context_remove(struct state *state, hvalue_t ctx){
-    for (unsigned int i = 0; i < state->bagsize; i++) {
-        if (state_contexts(state)[i] == ctx) {
-            if (multiplicities(state)[i] > 1) {
-                multiplicities(state)[i]--;
-            }
-            else {
-                state->bagsize--;
-                memmove(&state_contexts(state)[i], &state_contexts(state)[i+1],
-                        (state->bagsize - i) * sizeof(hvalue_t) + i);
-                memmove((char *) &state_contexts(state)[state->bagsize] + i,
-                        (char *) &state_contexts(state)[state->bagsize + 1] + i + 1,
-                        state->bagsize - i);
-            }
-            return;
-        }
-    }
-    // TODO. this can happen with invariant contexts
-    // panic("context_remove: can't find context");
-}
-
 // Add context 'ctx' to the state's context bag.  May fail if there are too
 // many different contexts (i.e., >= MAX_CONTEXT_BAG).
 int context_add(struct state *state, hvalue_t ctx){
@@ -1785,4 +1762,27 @@ int context_add(struct state *state, hvalue_t ctx){
     state_contexts(state)[i] = ctx;
     multiplicities(state)[i] = 1;
     return i;
+}
+
+// Remove context 'ctx' from the state.  The multiset of contexts in a state
+// is represented as a bag.
+void context_remove(struct state *state, hvalue_t ctx){
+    for (unsigned int i = 0; i < state->bagsize; i++) {
+        if (state_contexts(state)[i] == ctx) {
+            if (multiplicities(state)[i] > 1) {
+                multiplicities(state)[i]--;
+            }
+            else {
+                state->bagsize--;
+                memmove(&state_contexts(state)[i], &state_contexts(state)[i+1],
+                        (state->bagsize - i) * sizeof(hvalue_t) + i);
+                memmove((char *) &state_contexts(state)[state->bagsize] + i,
+                        (char *) &state_contexts(state)[state->bagsize + 1] + i + 1,
+                        state->bagsize - i);
+            }
+            return;
+        }
+    }
+    // TODO. this can happen with invariant contexts
+    // panic("context_remove: can't find context");
 }

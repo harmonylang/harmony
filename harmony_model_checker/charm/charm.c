@@ -911,6 +911,21 @@ static struct step_output *onestep(
     return so;
 }
 
+// Remove context 'ctx' from the state by index.
+static inline void context_remove_by_index(struct state *state, int i){
+    if (multiplicities(state)[i] > 1) {
+        multiplicities(state)[i]--;
+    }
+    else {
+        state->bagsize--;
+        memmove(&state_contexts(state)[i], &state_contexts(state)[i+1],
+                (state->bagsize - i) * sizeof(hvalue_t) + i);
+        memmove((char *) &state_contexts(state)[state->bagsize] + i,
+                (char *) &state_contexts(state)[state->bagsize + 1] + i + 1,
+                state->bagsize - i);
+    }
+}
+
 // Run the given context ctx in the given state, possibly making the given
 // choice.  We keep a cache for running contexts given a certain assignment
 // of shared variables and a given choice in the hashtable called ``computations''.
@@ -928,7 +943,7 @@ static void trystep(
     struct context *cc,     // value of context
     struct step *step,      // step info
     hvalue_t choice,        // if about to make a choice, which choice?
-    unsigned int multiplicity,
+    int ctx_index,          // -1 if not in the context bag
     bool invariant
 ) {
     struct step_condition *stc;
@@ -965,7 +980,7 @@ static void trystep(
     }
 
     edge->flags = (uintptr_t) stc;
-    if (multiplicity > 1) {
+    if (ctx_index >= 0 && multiplicities(state)[ctx_index] > 1) { 
         edge->flags |= EDGE_MULTIPLE;
     }
     if (invariant) {
@@ -1052,7 +1067,10 @@ static void trystep(
         assert(stc->type == SC_COMPLETED);
     }
 
-    context_remove(sc, ctx);
+    if (ctx_index >= 0) {
+        assert(state_contexts(sc)[ctx_index] == ctx);
+        context_remove_by_index(sc, ctx_index);
+    }
     process_step(w, stc->u.completed, edge, sc);
     while (el != NULL) {
         struct node *n = el->edge->src;
@@ -1101,11 +1119,11 @@ static void make_step(
     //        This could possibly happen if the thread was stopped in an atomic
     //        section and is then later restarted.
     if (state->chooser < 0 && cc->extended && ctx_trap_pc(cc) != 0 && !cc->interruptlevel) {
-        trystep(w, node, state, ctx, cc, &step, (hvalue_t) -1, multiplicities(state)[ctx_index], false);
+        trystep(w, node, state, ctx, cc, &step, (hvalue_t) -1, ctx_index, false);
     }
 
     // Explore the state normally (not as an interrupt).
-    trystep(w, node, state, ctx, cc, &step, choice, multiplicities(state)[ctx_index], false);
+    trystep(w, node, state, ctx, cc, &step, choice, ctx_index, false);
 }
 
 static void chk_invs(
@@ -1126,7 +1144,7 @@ static void chk_invs(
         struct context *cc = value_get(global.invs[i].context, &size);
         assert(ctx_size(cc) == size);
         assert(strcmp(global.code.instrs[cc->pc].oi->name, "Frame") == 0);
-        trystep(w, node, state, global.invs[i].context, cc, &step, 0, 1, true);
+        trystep(w, node, state, global.invs[i].context, cc, &step, 0, -1, true);
     }
 
     if (!finally) {
@@ -1140,7 +1158,7 @@ static void chk_invs(
         struct context *cc = value_get(global.finals[i], &size);
         assert(ctx_size(cc) == size);
         assert(strcmp(global.code.instrs[cc->pc].oi->name, "Frame") == 0);
-        trystep(w, node, state, global.finals[i], cc, &step, 0, 1, true);
+        trystep(w, node, state, global.finals[i], cc, &step, 0, -1, true);
     }
 }
 
