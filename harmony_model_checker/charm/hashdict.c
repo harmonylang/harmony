@@ -4,6 +4,10 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+#ifdef USE_ATOMIC
+#include <stdatomic.h>
+#endif
+
 #include "global.h"
 #include "hashdict.h"
 #include "thread.h"
@@ -68,6 +72,11 @@ struct dict *dict_new(char *whoami, unsigned int value_len, unsigned int initial
         dict->workers[i].unstable = calloc(sizeof(struct dict_assoc *), nworkers);
     }
     dict->align16 = align16;
+#ifdef HASHDICT_STATS
+    atomic_init(&dict->nstable_hits, 0);
+    atomic_init(&dict->nunstable_hits, 0);
+    atomic_init(&dict->nmisses, 0);
+#endif
 	return dict;
 }
 
@@ -135,6 +144,9 @@ struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
             if (new != NULL) {
                 *new = false;
             }
+#ifdef HASHDICT_STATS
+            (void) atomic_fetch_add(&dict->nstable_hits, 1);
+#endif
 			return k;
 		}
 		k = k->next;
@@ -152,6 +164,9 @@ struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
                 if (new != NULL) {
                     *new = false;
                 }
+#ifdef HASHDICT_STATS
+                (void) atomic_fetch_add(&dict->nunstable_hits, 1);
+#endif
                 return k;
             }
             k = k->next;
@@ -167,6 +182,9 @@ struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
 		}
 	}
 
+#ifdef HASHDICT_STATS
+    (void) atomic_fetch_add(&dict->nmisses, 1);
+#endif
     k = dict_assoc_new(dict, al, (char *) key, keylen, hash);
     if (dict->concurrent) {
         k->next = db->unstable;
@@ -210,6 +228,9 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
                 *new = false;
             }
             mutex_acquire(*lock);
+#ifdef HASHDICT_STATS
+            (void) atomic_fetch_add(&dict->nstable_hits, 1);
+#endif
 			return k;
 		}
 		k = k->next;
@@ -227,6 +248,9 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
             if (new != NULL) {
                 *new = false;
             }
+#ifdef HASHDICT_STATS
+            (void) atomic_fetch_add(&dict->nunstable_hits, 1);
+#endif
             return k;
         }
         k = k->next;
@@ -245,6 +269,9 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
     if (new != NULL) {
         *new = true;
     }
+#ifdef HASHDICT_STATS
+    (void) atomic_fetch_add(&dict->nmisses, 1);
+#endif
 	return k;
 }
 
@@ -264,6 +291,9 @@ struct dict_assoc *dict_find_lock_new(struct dict *dict, struct allocator *al,
             if (new != NULL) {
                 *new = false;
             }
+#ifdef HASHDICT_STATS
+            (void) atomic_fetch_add(&dict->nstable_hits, 1);
+#endif
 			return k;
 		}
 		k = k->next;
@@ -281,6 +311,9 @@ struct dict_assoc *dict_find_lock_new(struct dict *dict, struct allocator *al,
             if (new != NULL) {
                 *new = false;
             }
+#ifdef HASHDICT_STATS
+            (void) atomic_fetch_add(&dict->nunstable_hits, 1);
+#endif
             mutex_release(*lock);
             return k;
         }
@@ -300,6 +333,9 @@ struct dict_assoc *dict_find_lock_new(struct dict *dict, struct allocator *al,
     if (new != NULL) {
         *new = true;
     }
+#ifdef HASHDICT_STATS
+    (void) atomic_fetch_add(&dict->nmisses, 1);
+#endif
 	return k;
 }
 

@@ -3789,6 +3789,10 @@ int exec_model_checker(int argc, char **argv){
         si_total += w->si_total;
     }
     printf("    * %u/%u computations/edges\n", (si_total - si_hits), si_total);
+#ifdef HASHDICT_STATS
+    float atotal = atomic_load(&visited->nstable_hits) + atomic_load(&visited->nunstable_hits) + atomic_load(&visited->nmisses);
+    printf("    * hashtable %.2f/%.2f/%.2f\n", atomic_load(&visited->nstable_hits)/atotal, atomic_load(&visited->nunstable_hits)/atotal, atomic_load(&visited->nmisses)/atotal);
+#endif
 
     if (outfile == NULL) {
         exit(0);

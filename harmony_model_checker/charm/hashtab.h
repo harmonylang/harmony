@@ -1,12 +1,11 @@
 // TODO.  May be obsolete
 
+#ifdef OBSOLETE
+
 #ifndef SRC_HASHTAB_H
 #define SRC_HASHTAB_H
 
 #ifdef USE_ATOMIC
-#include <stdatomic.h>
-#define hAtomic(x)  _Atomic(x)
-#else
 
 #define hAtomic(t)          t
 #define atomic_init(p, v)   do *(p) = (v); while (0)
@@ -115,3 +114,5 @@ unsigned long ht_allocated(struct hashtab *ht);
 bool ht_needs_to_grow(struct hashtab *ht);
 
 #endif //SRC_HASHTAB_H
+
+#endif // OBSOLETE

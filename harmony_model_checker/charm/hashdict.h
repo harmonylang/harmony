@@ -45,6 +45,13 @@ struct dict {
 	unsigned int growth_factor;
     bool concurrent;         // 0 = not concurrent
     bool align16;            // entries must be aligned to 16 bytes
+
+#ifdef HASHDICT_STATS
+    // stats
+    hAtomic(unsigned int) nmisses;
+    hAtomic(unsigned int) nunstable_hits;
+    hAtomic(unsigned int) nstable_hits;
+#endif
 };
 
 struct dict *dict_new(char *whoami, unsigned int value_len, unsigned int initial_size,
