@@ -16,12 +16,12 @@ typedef void (*dict_enumfunc)(void *env, const void *key, unsigned int key_size,
 struct dict_assoc {
 	struct dict_assoc *next;
     struct dict_assoc *unstable_next;
-	unsigned int len;               // key length
+	unsigned short len;     // key length
+    bool stable;
 };
 
-// TODO.  Split into two tables, one for stable, one for unstable.
 struct dict_bucket {
-    struct dict_assoc *stable, *unstable;
+    struct dict_assoc *stable;
 };
 
 struct dict_worker {
