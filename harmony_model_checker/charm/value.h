@@ -22,15 +22,18 @@ typedef struct state {
     uint32_t dfa_state;   // state of input dfa
     int8_t chooser;       // context that is choosing, -1 if none
 
-    // The state includes a variable-size bag of contexts.  This is represented
-    // by an array of contexts of type hvalue_t, which is followed by an array
-    // of multiplicities (of type uint8_t) with the same number of elements.
+    // The state includes a variable-size bag of contexts.  A context is
+    // of type hvalue_t.  We use bits 48..55 (8 bits total) to contain the
+    // multiplicity of the context.
     uint8_t bagsize;
     // hvalue_t contexts[VAR_SIZE];   // context/multiplicity pairs
 } state;
-#define state_contexts(s)   ((hvalue_t *) ((s) + 1))
-#define multiplicities(s)   ((uint8_t *) &state_contexts(s)[(s)->bagsize])
-#define state_size(s)       (sizeof(struct state) + (s)->bagsize * (sizeof(hvalue_t) + 1))
+#define state_size(s)            (sizeof(struct state) + (s)->bagsize * sizeof(hvalue_t))
+#define state_ctxlist(s)         ((hvalue_t *) ((s) + 1))
+#define STATE_M_SHIFT            48
+#define STATE_MULTIPLICITY       ((hvalue_t) 0xFF << STATE_M_SHIFT)
+#define state_ctx(s, i)          (state_ctxlist(s)[i] & ~STATE_MULTIPLICITY)
+#define state_multiplicity(s, i) ((unsigned int) ((state_ctxlist(s)[i] & STATE_MULTIPLICITY) >> STATE_M_SHIFT))
 
 // A context is the state of a Harmony thread.  The state, which is part of the
 // state of a thread, immediately follows this structure.

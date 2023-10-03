@@ -3097,11 +3097,16 @@ hvalue_t f_countLabel(struct state *state, struct step *step, hvalue_t *args, un
     e = VALUE_FROM_PC(e);
 
     unsigned int result = 0;
+    hvalue_t *ctxlist = state_ctxlist(state);
     for (unsigned int i = 0; i < state->bagsize; i++) {
-        assert(VALUE_TYPE(state_contexts(state)[i]) == VALUE_CONTEXT);
-        struct context *ctx = value_get(state_contexts(state)[i], NULL);
+        // TODO.  May be unnecessary to do this because value_get will
+        hvalue_t ctxi = ctxlist[i] & ~STATE_MULTIPLICITY;
+        assert(VALUE_TYPE(ctxi) == VALUE_CONTEXT);
+        struct context *ctx = value_get(ctxi, NULL);
         if ((hvalue_t) ctx->pc == e) {
-            result += multiplicities(state)[i];
+            unsigned int m = (ctxlist[i] & STATE_MULTIPLICITY) >> STATE_M_SHIFT;
+            assert(m > 0);
+            result += m;
         }
     }
     return VALUE_TO_INT(result);

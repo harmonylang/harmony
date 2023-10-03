@@ -1683,9 +1683,12 @@ bool value_state_all_eternal(struct state *state) {
     if (state->bagsize == 0) {
         return true;
     }
+    hvalue_t *ctxlist = state_ctxlist(state);
     for (unsigned int i = 0; i < state->bagsize; i++) {
-        assert(VALUE_TYPE(state_contexts(state)[i]) == VALUE_CONTEXT);
-        struct context *ctx = value_get(state_contexts(state)[i], NULL);
+        // TODO.  May be unnecessary to do this because value_get will
+        hvalue_t ctxi = ctxlist[i] & ~STATE_MULTIPLICITY;
+        assert(VALUE_TYPE(ctxi) == VALUE_CONTEXT);
+        struct context *ctx = value_get(ctxi, NULL);
         if (!ctx->eternal) {
             return false;
         }
@@ -1734,13 +1737,16 @@ char *json_escape_value(hvalue_t v){
 // Add context 'ctx' to the state's context bag.  May fail if there are too
 // many different contexts (i.e., >= MAX_CONTEXT_BAG).
 int context_add(struct state *state, hvalue_t ctx){
+    hvalue_t *ctxlist = state_ctxlist(state);
+
     unsigned int i;
     for (i = 0; i < state->bagsize; i++) {
-        if (state_contexts(state)[i] == ctx) {
-            multiplicities(state)[i]++;
+        hvalue_t ctxi = ctxlist[i] & ~STATE_MULTIPLICITY;
+        if (ctxi == ctx) {
+            ctxlist[i] += (hvalue_t) 1 << STATE_M_SHIFT;
             return i;
         }
-        if (state_contexts(state)[i] > ctx) {
+        if (ctxi > ctx) {
             break;
         }
     }
@@ -1749,36 +1755,30 @@ int context_add(struct state *state, hvalue_t ctx){
         return -1;
     }
  
-    // Move the last multiplicities
-    memmove((char *) &state_contexts(state)[state->bagsize + 1] + i + 1,
-            (char *) &state_contexts(state)[state->bagsize] + i,
-            state->bagsize - i);
-
-    // Move the last contexts plus the first multiplicitkes
-    memmove(&state_contexts(state)[i+1], &state_contexts(state)[i],
-                    (state->bagsize - i) * sizeof(hvalue_t) + i);
+    // Move the last contexts
+    memmove(&ctxlist[i+1], &ctxlist[i],
+                    (state->bagsize - i) * sizeof(hvalue_t));
 
     state->bagsize++;
-    state_contexts(state)[i] = ctx;
-    multiplicities(state)[i] = 1;
+    ctxlist[i] = ctx | ((hvalue_t) 1 << STATE_M_SHIFT);
     return i;
 }
 
 // Remove context 'ctx' from the state.  The multiset of contexts in a state
 // is represented as a bag.
 void context_remove(struct state *state, hvalue_t ctx){
+    hvalue_t *ctxlist = state_ctxlist(state);
+
     for (unsigned int i = 0; i < state->bagsize; i++) {
-        if (state_contexts(state)[i] == ctx) {
-            if (multiplicities(state)[i] > 1) {
-                multiplicities(state)[i]--;
+        hvalue_t ctxi = ctxlist[i] & ~STATE_MULTIPLICITY;
+        if (ctxi == ctx) {
+            if ((ctxlist[i] & STATE_MULTIPLICITY) > ((hvalue_t) 1 << STATE_M_SHIFT)) {
+                ctxlist[i] -= ((hvalue_t) 1 << STATE_M_SHIFT);
             }
             else {
                 state->bagsize--;
-                memmove(&state_contexts(state)[i], &state_contexts(state)[i+1],
-                        (state->bagsize - i) * sizeof(hvalue_t) + i);
-                memmove((char *) &state_contexts(state)[state->bagsize] + i,
-                        (char *) &state_contexts(state)[state->bagsize + 1] + i + 1,
-                        state->bagsize - i);
+                memmove(&ctxlist[i], &ctxlist[i+1],
+                        (state->bagsize - i) * sizeof(hvalue_t));
             }
             return;
         }

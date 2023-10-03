@@ -913,16 +913,14 @@ static struct step_output *onestep(
 
 // Remove context 'ctx' from the state by index.
 static inline void context_remove_by_index(struct state *state, int i){
-    if (multiplicities(state)[i] > 1) {
-        multiplicities(state)[i]--;
+    hvalue_t *ctxlist = state_ctxlist(state);
+    if ((ctxlist[i] & STATE_MULTIPLICITY) > ((hvalue_t) 1 << STATE_M_SHIFT)) {
+        ctxlist[i] -= (hvalue_t) 1 << STATE_M_SHIFT;
     }
     else {
         state->bagsize--;
-        memmove(&state_contexts(state)[i], &state_contexts(state)[i+1],
-                (state->bagsize - i) * sizeof(hvalue_t) + i);
-        memmove((char *) &state_contexts(state)[state->bagsize] + i,
-                (char *) &state_contexts(state)[state->bagsize + 1] + i + 1,
-                state->bagsize - i);
+        memmove(&ctxlist[i], &ctxlist[i+1],
+                (state->bagsize - i) * sizeof(hvalue_t));
     }
 }
 
@@ -980,7 +978,7 @@ static void trystep(
     }
 
     edge->flags = (uintptr_t) stc;
-    if (ctx_index >= 0 && multiplicities(state)[ctx_index] > 1) { 
+    if (ctx_index >= 0 && state_multiplicity(state, ctx_index) > 1) { 
         edge->flags |= EDGE_MULTIPLE;
     }
     if (invariant) {
@@ -1068,7 +1066,7 @@ static void trystep(
     }
 
     if (ctx_index >= 0) {
-        assert(state_contexts(sc)[ctx_index] == ctx);
+        assert(state_ctx(sc, ctx_index) == ctx);
         context_remove_by_index(sc, ctx_index);
     }
     process_step(w, stc->u.completed, edge, sc);
@@ -1107,7 +1105,7 @@ static void make_step(
     step.allocator = &w->allocator;
 
     struct state *state = node_state(node);
-    hvalue_t ctx = state_contexts(state)[ctx_index];
+    hvalue_t ctx = state_ctx(state, ctx_index);
 
     // Get the context
     unsigned int size;
@@ -1165,7 +1163,7 @@ static void chk_invs(
 char *ctx_status(struct node *node, hvalue_t ctx) {
     struct state *state = node_state(node);
 
-    if (state->chooser >= 0 && state_contexts(state)[state->chooser] == ctx) {
+    if (state->chooser >= 0 && state_ctx(state, state->chooser) == ctx) {
         return "choosing";
     }
     while (state->chooser >= 0) {
@@ -1810,16 +1808,7 @@ static void path_output_microstep(
     }
     fprintf(file, " ],\n");
 
-#ifdef notdef
-    unsigned int bs = oldstate->bagsize * (sizeof(hvalue_t) + 1);
-    if (oldstate->bagsize != micro->state->bagsize ||
-            memcmp(state_contexts(oldstate), state_contexts(micro->state), bs) != 0) {
-        fprintf(file, "          \"contexts\": \"%d\",\n", micro->state->bagsize);
-    }
-#endif
-
     fprintf(file, "          \"pc\": \"%d\"\n", oldctx->pc);
-
     fprintf(file, "        }");
 }
 
@@ -1894,9 +1883,9 @@ static void path_output_macrostep(FILE *file, struct macrostep *macro, struct st
         if (i > 0) {
             fprintf(file, ",\n");
         }
-        assert(VALUE_TYPE(state_contexts(state)[i]) == VALUE_CONTEXT);
-        fprintf(file, "          \"%"PRIx64"\": \"%u\"", state_contexts(state)[i],
-                multiplicities(state)[i]);
+        assert(VALUE_TYPE(state_ctx(state, i)) == VALUE_CONTEXT);
+        fprintf(file, "          \"%"PRIx64"\": \"%u\"", state_ctx(state, i),
+                state_multiplicity(state, i));
     }
     fprintf(file, "\n      },\n");
 
@@ -2324,8 +2313,11 @@ void add_failure(struct failure **failures, struct failure *f) {
 }
 
 static void detect_busywait(struct node *node){
-    for (unsigned int i = 0; i < node_state(node)->bagsize; i++) {
-        if (is_stuck(node, node, state_contexts(node_state(node))[i], false) == BW_RETURN) {
+    struct state *state = node_state(node);
+    hvalue_t *ctxlist = state_ctxlist(state);
+    for (unsigned int i = 0; i < state->bagsize; i++) {
+        hvalue_t ctxi = ctxlist[i] & ~STATE_MULTIPLICITY;
+        if (is_stuck(node, node, ctxi, false) == BW_RETURN) {
             struct failure *f = new_alloc(struct failure);
             f->type = FAIL_BUSYWAIT;
             f->edge = node_to_parent(node);
@@ -2384,7 +2376,7 @@ void do_work1(struct worker *w, struct node *node){
     struct state *state = node_state(node);
     if (state->chooser >= 0) {
         // The actual set of choices is on top of its stack
-        hvalue_t chooser = state_contexts(state)[state->chooser];
+        hvalue_t chooser = state_ctx(state, state->chooser);
         struct context *cc = value_get(chooser, NULL);
         assert(cc != NULL);
         assert(cc->sp > 0);
@@ -2403,7 +2395,7 @@ void do_work1(struct worker *w, struct node *node){
     else {
         // Explore each thread that can make a step.
         for (unsigned int i = 0; i < state->bagsize; i++) {
-            assert(VALUE_TYPE(state_contexts(state)[i]) == VALUE_CONTEXT);
+            assert(VALUE_TYPE(state_ctx(state, i)) == VALUE_CONTEXT);
             make_step(w, node, i, 0);
         }
 
@@ -3604,8 +3596,7 @@ int exec_model_checker(int argc, char **argv){
     hvalue_t ictx = value_put_context(NULL, init_ctx);
     state->chooser = -1;
     state->bagsize = 1;
-    state_contexts(state)[0] = ictx;
-    multiplicities(state)[0] = 1;
+    state_ctxlist(state)[0] = ictx | ((hvalue_t) 1 << STATE_M_SHIFT);
     state->stopbag = VALUE_DICT;
     state->dfa_state = global.dfa == NULL ? 0 : dfa_initial(global.dfa);
 
@@ -4022,7 +4013,7 @@ int exec_model_checker(int argc, char **argv){
                     struct state *state = node_state(node);
                     unsigned int j;
                     for (j = 0; j < state->bagsize; j++) {
-                        if (state_contexts(state)[j] == edge_input(edge)->ctx) {
+                        if (state_ctx(state, j) == edge_input(edge)->ctx) {
                             break;
                         }
                     }
@@ -4031,13 +4022,13 @@ int exec_model_checker(int argc, char **argv){
                         fprintf(df, " s%u -> s%u [style=%s label=\"F %u\"]\n",
                             node->id, edge->dst->id,
                             node_to_parent(edge->dst) == edge ? "solid" : "dashed",
-                            multiplicities(state)[j]);
+                            state_multiplicity(state, j));
                     }
                     else {
                         fprintf(df, " s%u -> s%u [style=%s label=\"%u\"]\n",
                             node->id, edge->dst->id,
                             node_to_parent(edge->dst) == edge ? "solid" : "dashed",
-                            multiplicities(state)[j]);
+                            state_multiplicity(state, j));
                     }
                 }
             }
@@ -4073,7 +4064,7 @@ int exec_model_checker(int argc, char **argv){
                 fprintf(df, "    vars: %s\n", value_string(state->vars));
                 fprintf(df, "    contexts:\n");
                 for (unsigned int i = 0; i < state->bagsize; i++) {
-                    fprintf(df, "      %"PRI_HVAL": %u\n", state_contexts(state)[i], multiplicities(state)[i]);
+                    fprintf(df, "      %"PRI_HVAL": %u\n", state_ctx(state, i), state_multiplicity(state, i));
                 }
                 if (state->stopbag != VALUE_DICT) {
                     fprintf(df, "    stopbag:\n");
