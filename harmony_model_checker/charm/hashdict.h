@@ -13,28 +13,21 @@ typedef void (*dict_enumfunc)(void *env, const void *key, unsigned int key_size,
 
 // This header is followed directly by first the data and then the key.
 // The value is of length dict->value_len.
-// TODO.  Pack key length into top 16 bits of next pointer.
 struct dict_assoc {
 	struct dict_assoc *next;
+    struct dict_assoc *unstable_next;
 	unsigned int len;               // key length
 };
 
-// Linked list of unstable entries
-struct dict_unstable {
-    struct dict_unstable *next;
-    struct dict_assoc *da;
-};
-
+// TODO.  Split into two tables, one for stable, one for unstable.
 struct dict_bucket {
-    // TODO.  Make 'unstable' an extension of the stable list
     struct dict_assoc *stable, *unstable;
 };
 
 struct dict_worker {
-    struct dict_unstable **unstable;  // one linked list for each of the workers
-    struct dict_unstable *du_free;    // free list per worker
-    unsigned int count;               // #unstable entries added
-    unsigned int clashes;             // some profiling
+    struct dict_assoc **unstable;   // one for each of the workers
+    unsigned int count;             // #unstable entries added
+    unsigned int clashes;           // some profiling
 };
 		
 struct dict {

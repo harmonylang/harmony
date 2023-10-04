@@ -129,15 +129,6 @@ static void dict_resize(struct dict *dict, unsigned int newsize) {
 	free(old);
 }
 
-struct dict_unstable *du_alloc(struct dict *dict, struct allocator *al){
-    struct dict_unstable *du = dict->workers[al->worker].du_free;
-    if (du == NULL) {
-        return (*al->alloc)(al->ctx, sizeof(*du), false, false);
-    }
-    dict->workers[al->worker].du_free = du->next;
-    return du;
-}
-
 // Perhaps the most performance critical function in the entire code base
 struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
                 const void *key, unsigned int keylen, bool *new){
@@ -204,10 +195,8 @@ struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
         // worker who's going to look at this bucket
         unsigned int worker = index * dict->nworkers / dict->length;
         struct dict_worker *dw = &dict->workers[al->worker];
-        struct dict_unstable *du = du_alloc(dict, al);
-        du->da = k;
-        du->next = dw->unstable[worker];
-        dw->unstable[worker] = du;
+        k->unstable_next = dw->unstable[worker];
+        dw->unstable[worker] = k;
         dw->count++;
     }
     else {
@@ -273,10 +262,8 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
 
     // Keep track of this unstable node in the list for the
     // worker who's going to look at this bucket
-    struct dict_unstable *du = du_alloc(dict, al);
-    du->da = k;
-    du->next = dw->unstable[worker];
-    dw->unstable[worker] = du;
+    k->unstable_next = dw->unstable[worker];
+    dw->unstable[worker] = k;
     dw->count++;
 
     if (new != NULL) {
@@ -339,10 +326,8 @@ struct dict_assoc *dict_find_lock_new(struct dict *dict, struct allocator *al,
 
     // Keep track of this unstable node in the list for the
     // worker who's going to look at this bucket
-    struct dict_unstable *du = du_alloc(dict, al);
-    du->da = k;
-    du->next = dw->unstable[worker];
-    dw->unstable[worker] = du;
+    k->unstable_next = dw->unstable[worker];
+    dw->unstable[worker] = k;
     dw->count++;
 
     if (new != NULL) {
@@ -450,16 +435,14 @@ void dict_make_stable(struct dict *dict, unsigned int worker){
 
 	for (unsigned int i = 0; i < dict->nworkers; i++) {
         struct dict_worker *dw = &dict->workers[i];
-        struct dict_unstable *du;
-        while ((du = dw->unstable[worker]) != NULL) {
-            struct dict_assoc *k = du->da;
+        struct dict_assoc *k;
+        while ((k = dw->unstable[worker]) != NULL) {
             uint32_t hash = hash_func((char *) &k[1] + dict->value_len, k->len);
             unsigned int index = hash % dict->length;
             struct dict_bucket *db = &dict->table[index];
-            dw->unstable[worker] = du->next;
-            du->next = dict->workers[worker].du_free;
-            dict->workers[worker].du_free = du;
+            dw->unstable[worker] = k->unstable_next;
             k->next = db->stable;
+            k->unstable_next = NULL;
             db->stable = k;
             if (dict->table == dict->old_table) {
                 db->unstable = NULL;
