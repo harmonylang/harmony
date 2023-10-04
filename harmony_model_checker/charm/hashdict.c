@@ -41,14 +41,11 @@ static inline struct dict_assoc *dict_assoc_new(struct dict *dict,
 	return k;
 }
 
+// TODO.  Make iterative rather than recursive
 // TODO.  free() doesn't work with allocator->alloc
 void dict_assoc_delete(struct dict *dict, struct dict_assoc *node) {
-    while (node != ONE) {
-        assert(node != NULL);
-        struct dict_assoc *next = node->next;
-        free(node);
-        node = next;
-    }
+	if (node->next) dict_assoc_delete(dict, node->next);
+	free(node);
 }
 
 struct dict *dict_new(char *whoami, unsigned int value_len, unsigned int initial_size,
@@ -60,10 +57,7 @@ struct dict *dict_new(char *whoami, unsigned int value_len, unsigned int initial
 	if (initial_size == 0) initial_size = 1;
 	dict->length = dict->old_length = initial_size;
 	dict->count = dict->old_count = 0;
-	dict->table = dict->old_table = malloc(sizeof(struct dict_bucket) * initial_size);
-    for (unsigned int i = 0; i < initial_size; i++) {
-        dict->table[i].stable = ONE;
-    }
+	dict->table = dict->old_table = calloc(sizeof(struct dict_bucket), initial_size);
     dict->nlocks = nworkers * 64;        // TODO: how much?
     dict->locks = malloc(dict->nlocks * sizeof(mutex_t));
 	for (unsigned int i = 0; i < dict->nlocks; i++) {
@@ -74,6 +68,9 @@ struct dict *dict_new(char *whoami, unsigned int value_len, unsigned int initial
 	dict->concurrent = false;
     dict->workers = calloc(sizeof(struct dict_worker), nworkers);
     dict->nworkers = nworkers;
+    for (unsigned int i = 0; i < nworkers; i++) {
+        dict->workers[i].unstable = calloc(sizeof(struct dict_assoc *), nworkers);
+    }
     dict->align16 = align16;
 #ifdef HASHDICT_STATS
     atomic_init(&dict->nstable_hits, 0);
@@ -90,9 +87,10 @@ bool dict_remove(struct dict *dict, const void *key, unsigned int keylen){
 
 void dict_delete(struct dict *dict) {
 	for (unsigned int i = 0; i < dict->length; i++) {
-		if (dict->table[i].stable != ONE) {
+		if (dict->table[i].stable != NULL)
 			dict_assoc_delete(dict, dict->table[i].stable);
-        }
+		if (dict->table[i].unstable != NULL)
+			dict_assoc_delete(dict, dict->table[i].unstable);
 	}
 	for (unsigned int i = 0; i < dict->nlocks; i++) {
 		mutex_destroy(&dict->locks[i]);
@@ -119,10 +117,10 @@ static void dict_resize(struct dict *dict, unsigned int newsize) {
 	dict->length = newsize;
 	for (unsigned int i = 0; i < o; i++) {
 		struct dict_bucket *b = &old[i];
+        assert(b->unstable == NULL);
         struct dict_assoc *k = b->stable;
-		b->stable = ONE;
-		while (k != ONE) {
-            assert(k != NULL);
+		b->stable = NULL;
+		while (k != NULL) {
 			struct dict_assoc *next = k->next;
 			dict_reinsert_when_resizing(dict, k);
 			k = next;
@@ -140,8 +138,8 @@ struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
     // a lock
     unsigned int index = hash % dict->length;
     struct dict_bucket *db = &dict->table[index];
-	struct dict_assoc *k = db->stable, **unstable = &db->stable;
-	while (!((uintptr_t) k & 1)) {
+	struct dict_assoc *k = db->stable;
+	while (k != NULL) {
 		if (k->len == keylen && memcmp((char *) &k[1] + dict->value_len, key, keylen) == 0) {
             if (new != NULL) {
                 *new = false;
@@ -151,7 +149,6 @@ struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
 #endif
 			return k;
 		}
-        unstable = &k->next;
 		k = k->next;
 	}
 
@@ -159,11 +156,11 @@ struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
         mutex_acquire(&dict->locks[index % dict->nlocks]);
 
         // See if the item is in the unstable list
-        while (k != ONE) {
-            assert(k != NULL);
-            k = (struct dict_assoc *) ((uintptr_t) k & ~ (uintptr_t) 1);
+        k = db->unstable;
+        while (k != NULL) {
             if (k->len == keylen && memcmp((char *) &k[1] + dict->value_len, key, keylen) == 0) {
                 mutex_release(&dict->locks[index % dict->nlocks]);
+                dict->workers[al->worker].clashes++;
                 if (new != NULL) {
                     *new = false;
                 }
@@ -177,7 +174,7 @@ struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
     }
 
     // If not concurrent may have to grow the table now
-	if (!dict->concurrent && db->stable == ONE) {
+	if (!dict->concurrent && db->stable == NULL) {
 		double f = (double)dict->count / (double)dict->length;
 		if (f > dict->growth_threshold) {
 			dict_resize(dict, dict->length * dict->growth_factor - 1);
@@ -190,10 +187,17 @@ struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
 #endif
     k = dict_assoc_new(dict, al, (char *) key, keylen, hash);
     if (dict->concurrent) {
-        k->next = *unstable;
-        *unstable = (struct dict_assoc *) ((uintptr_t) k | (uintptr_t) 1);
+        k->next = db->unstable;
+        db->unstable = k;
         mutex_release(&dict->locks[index % dict->nlocks]);
-        dict->workers[al->worker].count++;
+
+        // Keep track of this unstable node in the list for the
+        // worker who's going to look at this bucket
+        unsigned int worker = index * dict->nworkers / dict->length;
+        struct dict_worker *dw = &dict->workers[al->worker];
+        k->unstable_next = dw->unstable[worker];
+        dw->unstable[worker] = k;
+        dw->count++;
     }
     else {
         k->next = db->stable;
@@ -217,8 +221,8 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
     *lock = &dict->locks[index % dict->nlocks];
 
     struct dict_bucket *db = &dict->table[index];
-	struct dict_assoc *k = db->stable, **unstable = &db->stable;
-	while (!((uintptr_t) k & 1)) {
+	struct dict_assoc *k = db->stable;
+	while (k != NULL) {
 		if (k->len == keylen && memcmp((char *) &k[1] + dict->value_len, key, keylen) == 0) {
             if (new != NULL) {
                 *new = false;
@@ -229,16 +233,18 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
 #endif
 			return k;
 		}
-        unstable = &k->next;
 		k = k->next;
 	}
 
-    // See if the item is in the unstable list
+    unsigned int worker = index * dict->nworkers / dict->length;
+    struct dict_worker *dw = &dict->workers[al->worker];
+
     mutex_acquire(*lock);
-    while (k != ONE) {
-        assert(k != NULL);
-        k = (struct dict_assoc *) ((uintptr_t) k & ~ (uintptr_t) 1);
+    // See if the item is in the unstable list
+    k = db->unstable;
+    while (k != NULL) {
         if (k->len == keylen && memcmp((char *) &k[1] + dict->value_len, key, keylen) == 0) {
+            dw->clashes++;
             if (new != NULL) {
                 *new = false;
             }
@@ -251,9 +257,14 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
     }
 
     k = dict_assoc_new(dict, al, (char *) key, keylen, hash);
-    k->next = *unstable;
-    *unstable = k;
-    dict->workers[al->worker].count++;
+    k->next = db->unstable;
+    db->unstable = k;
+
+    // Keep track of this unstable node in the list for the
+    // worker who's going to look at this bucket
+    k->unstable_next = dw->unstable[worker];
+    dw->unstable[worker] = k;
+    dw->count++;
 
     if (new != NULL) {
         *new = true;
@@ -274,8 +285,8 @@ struct dict_assoc *dict_find_lock_new(struct dict *dict, struct allocator *al,
     *lock = &dict->locks[index % dict->nlocks];
 
     struct dict_bucket *db = &dict->table[index];
-	struct dict_assoc *k = db->stable, **unstable = &db->stable;
-	while (!((uintptr_t) k & 1)) {
+	struct dict_assoc *k = db->stable;
+	while (k != NULL) {
 		if (k->len == keylen && memcmp((char *) &k[1] + dict->value_len, key, keylen) == 0) {
             if (new != NULL) {
                 *new = false;
@@ -285,16 +296,18 @@ struct dict_assoc *dict_find_lock_new(struct dict *dict, struct allocator *al,
 #endif
 			return k;
 		}
-        unstable = &k->next;
 		k = k->next;
 	}
 
-    // See if the item is in the unstable list
+    unsigned int worker = index * dict->nworkers / dict->length;
+    struct dict_worker *dw = &dict->workers[al->worker];
+
     mutex_acquire(*lock);
-    while (k != ONE) {
-        assert(k != NULL);
-        k = (struct dict_assoc *) ((uintptr_t) k & ~ (uintptr_t) 1);
+    // See if the item is in the unstable list
+    k = db->unstable;
+    while (k != NULL) {
         if (k->len == keylen && memcmp((char *) &k[1] + dict->value_len, key, keylen) == 0) {
+            dw->clashes++;
             if (new != NULL) {
                 *new = false;
             }
@@ -308,9 +321,14 @@ struct dict_assoc *dict_find_lock_new(struct dict *dict, struct allocator *al,
     }
 
     k = dict_assoc_new(dict, al, (char *) key, keylen, hash);
-    k->next = *unstable;
-    *unstable = k;
-    dict->workers[al->worker].count++;
+    k->next = db->unstable;
+    db->unstable = k;
+
+    // Keep track of this unstable node in the list for the
+    // worker who's going to look at this bucket
+    k->unstable_next = dw->unstable[worker];
+    dw->unstable[worker] = k;
+    dw->count++;
 
     if (new != NULL) {
         *new = true;
@@ -346,7 +364,7 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keylen) {
 
     // First look in the stable list, which does not require a lock
 	struct dict_assoc *k = db->stable;
-	while (!((uintptr_t) k & 1)) {
+	while (k != NULL) {
 		if (k->len == keylen && !memcmp((char *) &k[1] + dict->value_len, key, keylen)) {
             return * (void **) &k[1];
 		}
@@ -356,9 +374,8 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keylen) {
     // Look in the unstable list
     if (dict->concurrent) {
         mutex_acquire(&dict->locks[index % dict->nlocks]);
-        while (k != ONE) {
-            assert(k != NULL);
-            k = (struct dict_assoc *) ((uintptr_t) k & ~ (uintptr_t) 1);
+        k = db->unstable;
+        while (k != NULL) {
             if (k->len == keylen && !memcmp((char *) &k[1] + dict->value_len, key, keylen)) {
                 mutex_release(&dict->locks[index % dict->nlocks]);
                 return * (void **) &k[1];
@@ -375,15 +392,14 @@ void dict_iter(struct dict *dict, dict_enumfunc f, void *env) {
 	for (unsigned int i = 0; i < dict->length; i++) {
         struct dict_bucket *db = &dict->table[i];
         struct dict_assoc *k = db->stable;
-        while (!((uintptr_t) k & 1)) {
+        while (k != NULL) {
             (*f)(env, (char *) &k[1] + dict->value_len, k->len, &k[1]);
             k = k->next;
         }
         if (dict->concurrent) {
             mutex_acquire(&dict->locks[i % dict->nlocks]);
-            while (k != ONE) {
-                assert(k != NULL);
-                k = (struct dict_assoc *) ((uintptr_t) k & ~ (uintptr_t) 1);
+            k = db->unstable;
+            while (k != NULL) {
                 (*f)(env, (char *) &k[1] + dict->value_len, k->len, &k[1]);
                 k = k->next;
             }
@@ -399,40 +415,37 @@ void dict_set_concurrent(struct dict *dict) {
 }
 
 // When going from concurrent to sequential, need to move over
-// the unstable values.  Also deals with re-sizing.
+// the unstable values.
 void dict_make_stable(struct dict *dict, unsigned int worker){
     assert(dict->concurrent);
 
-    unsigned int first = (uint64_t) worker * dict->old_length / dict->nworkers;
-    unsigned int last = (uint64_t) (worker + 1) * dict->old_length / dict->nworkers;
     if (dict->length != dict->old_length) {
+        unsigned int first = (uint64_t) worker * dict->old_length / dict->nworkers;
+        unsigned int last = (uint64_t) (worker + 1) * dict->old_length / dict->nworkers;
         for (unsigned i = first; i < last; i++) {
             struct dict_bucket *b = &dict->old_table[i];
             struct dict_assoc *k = b->stable;
-            while (k != ONE) {
-                assert(k != NULL);
-                k = (struct dict_assoc *) ((uintptr_t) k & ~ (uintptr_t) 1);
+            while (k != NULL) {
                 struct dict_assoc *next = k->next;
-                assert(next != NULL);
                 dict_reinsert_when_resizing(dict, k);
                 k = next;
             }
         }
     }
-    else {
-        for (unsigned i = first; i < last; i++) {
-            struct dict_bucket *b = &dict->table[i];
-            struct dict_assoc *k = b->stable;
-            if (k != ONE) {
-                assert(k != NULL);
-                if ((uintptr_t) k & 1) {
-                    b->stable = k = (struct dict_assoc *) ((uintptr_t) k & ~ (uintptr_t) 1);
-                }
-                while (k->next != ONE) {
-                    assert(k != NULL);
-                    k->next = (struct dict_assoc *) ((uintptr_t) k->next & ~ (uintptr_t) 1);
-                    k = k->next;
-                }
+
+	for (unsigned int i = 0; i < dict->nworkers; i++) {
+        struct dict_worker *dw = &dict->workers[i];
+        struct dict_assoc *k;
+        while ((k = dw->unstable[worker]) != NULL) {
+            uint32_t hash = hash_func((char *) &k[1] + dict->value_len, k->len);
+            unsigned int index = hash % dict->length;
+            struct dict_bucket *db = &dict->table[index];
+            dw->unstable[worker] = k->unstable_next;
+            k->next = db->stable;
+            k->unstable_next = NULL;
+            db->stable = k;
+            if (dict->table == dict->old_table) {
+                db->unstable = NULL;
             }
         }
     }
@@ -464,15 +477,17 @@ void dict_grow_prepare(struct dict *dict){
             factor++;
         }
         dict->length *= factor;
-        dict->table = malloc(sizeof(struct dict_bucket) * dict->length);
-        for (unsigned int i = 0; i < dict->length; i++) {
-            dict->table[i].stable = ONE;
-        }
+        dict->table = calloc(sizeof(struct dict_bucket), dict->length);
     }
 }
 
 void dict_dump(struct dict *dict){
-    assert(false);
+    unsigned int clashes = 0;
+    for (unsigned int i = 0; i < dict->nworkers; i++) {
+        struct dict_worker *dw = &dict->workers[i];
+        clashes += dw->clashes;
+    }
+    printf("%s: %u clashes\n", dict->whoami, clashes);
 }
 
 void dict_set_sequential(struct dict *dict) {

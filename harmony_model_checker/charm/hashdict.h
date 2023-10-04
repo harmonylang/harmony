@@ -15,18 +15,19 @@ typedef void (*dict_enumfunc)(void *env, const void *key, unsigned int key_size,
 // The value is of length dict->value_len.
 struct dict_assoc {
 	struct dict_assoc *next;
-    // TODO.  Pack into next pointer's unused bits
-	unsigned int len;             // key length
+    struct dict_assoc *unstable_next;
+	unsigned int len;               // key length
 };
 
-#define ONE  ((struct dict_assoc *) 1)
-
+// TODO.  Split into two tables, one for stable, one for unstable.
 struct dict_bucket {
-    struct dict_assoc *stable;      // TODO.  Rename to "entries"`
+    struct dict_assoc *stable, *unstable;
 };
 
 struct dict_worker {
+    struct dict_assoc **unstable;   // one for each of the workers
     unsigned int count;             // #unstable entries added
+    unsigned int clashes;           // some profiling
 };
 		
 struct dict {
