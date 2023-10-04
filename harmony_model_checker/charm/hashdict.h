@@ -19,24 +19,24 @@ struct dict_assoc {
 	unsigned int len;               // key length
 };
 
-// TODO.  Split into two tables, one for stable, one for unstable.
-struct dict_bucket {
-    struct dict_assoc *stable, *unstable;
-};
-
 struct dict_worker {
-    struct dict_assoc **unstable;   // one for each of the workers
-    unsigned int count;             // #unstable entries added
+    unsigned int unstable_count;    // #unstable entries added
     unsigned int clashes;           // some profiling
 };
-		
+
+struct dict_table {
+    unsigned int count;                 // #entries total
+    unsigned int length;                // #buckets
+    struct dict_assoc **buckets;        // each bucket points to a linked list of entries
+};
+
 struct dict {
     char *whoami;
     unsigned int value_len;
-	struct dict_bucket *table;
-	unsigned int length, count;
-	struct dict_bucket *old_table;
-	unsigned int old_length, old_count;
+    struct dict_table stable;           // stable entries (do not need lock)
+    struct dict_table unstable;         // unstable entries (require lock))
+    struct dict_table old_stable;
+    struct dict_table old_unstable;
     struct dict_worker *workers;
     unsigned int nworkers;
     mutex_t *locks;

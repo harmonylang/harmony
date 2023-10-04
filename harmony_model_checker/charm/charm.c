@@ -2880,7 +2880,7 @@ static void worker(void *arg){
 
             // We check here if more than 10000 nodes are on tbe todo list.  If
             // so, we explore only 10000 for now to give us a chance to grow
-            // hash tables if needed for efficiency.
+            // or stabilize hash tables if needed for efficiency.
             //
             // TODO.  Why 10000?
             if (global.graph.size - todo > 10000) {
