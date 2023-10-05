@@ -1685,6 +1685,7 @@ bool value_state_all_eternal(struct state *state) {
     }
     hvalue_t *ctxlist = state_ctxlist(state);
     for (unsigned int i = 0; i < state->bagsize; i++) {
+#ifdef TODO
         // TODO.  May be unnecessary to do this because value_get will
         hvalue_t ctxi = ctxlist[i] & ~STATE_MULTIPLICITY;
         assert(VALUE_TYPE(ctxi) == VALUE_CONTEXT);
@@ -1692,6 +1693,11 @@ bool value_state_all_eternal(struct state *state) {
         if (!ctx->eternal) {
             return false;
         }
+#else
+        if (!(ctxlist[i] & VALUE_CONTEXT_ETERNAL)) {
+            return false;
+        }
+#endif
     }
     return true;
 }
@@ -1707,6 +1713,7 @@ bool value_ctx_all_eternal(hvalue_t ctxbag) {
     hvalue_t *vals = value_get(ctxbag, &size);
     size /= sizeof(hvalue_t);
     for (unsigned int i = 0; i < size; i += 2) {
+#ifdef TODO
         assert(VALUE_TYPE(vals[i]) == VALUE_CONTEXT);
         assert(VALUE_TYPE(vals[i + 1]) == VALUE_INT);
         struct context *ctx = value_get(vals[i], NULL);
@@ -1714,6 +1721,11 @@ bool value_ctx_all_eternal(hvalue_t ctxbag) {
         if (!ctx->eternal) {
             return false;
         }
+#else
+        if (!(vals[i] & VALUE_CONTEXT_ETERNAL)) {
+            return false;
+        }
+#endif
     }
     return true;
 }
