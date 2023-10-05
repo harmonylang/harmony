@@ -1555,7 +1555,7 @@ void path_serialize(struct node *parent, struct edge *e){
     // First recurse to the previous step
     struct edge *to_grandparent = node_to_parent(parent);
     if (to_grandparent != NULL) {
-        path_serialize(parent, to_grandparent);
+        path_serialize(parent->parent, to_grandparent);
     }
 
     struct macrostep *macro = calloc(sizeof(*macro), 1);
@@ -2920,16 +2920,19 @@ static void worker(void *arg){
 
 #define STACK_CHUNK 4096
 
-// The stack contains pointers to either nodes or edges.
-// Which of the two it is is captured in the lowest bit.
-// Memory space is at premium here...
+struct node_edge {
+    struct node *node;
+    struct edge *edge;
+};
+
+// The stack contains pointers to nodes and, possibly, edges.
 struct stack {
     struct stack *next, *prev;
-    void *ptrs[STACK_CHUNK];          // low bit = 1 --> edge
+    struct node_edge ptrs[STACK_CHUNK];
     unsigned int sp;
 };
 
-static void stack_push(struct stack **sp, struct node *v1, struct edge *v2) {
+static void stack_push(struct stack **sp, struct node *n, struct edge *e) {
     // See if there's space in the current chunk
     struct stack *s = *sp;
     if (s->sp == STACK_CHUNK) {
@@ -2947,18 +2950,12 @@ static void stack_push(struct stack **sp, struct node *v1, struct edge *v2) {
         }
         *sp = s;
     }
-
-    // Push either a node or edge pointer
-    if (v2 != NULL) {
-        // assert(v1 == v2->src);
-        s->ptrs[s->sp++] = (char *) v2 + 1;
-    }
-    else {
-        s->ptrs[s->sp++] = v1;
-    }
+    s->ptrs[s->sp].edge = e;
+    s->ptrs[s->sp].node = n;
+    s->sp++;
 }
 
-static struct node *stack_pop(struct stack **sp, struct edge **v2) {
+static struct node *stack_pop(struct stack **sp, struct edge **pe) {
     // If the current chunk is empty, go to the previous one
     struct stack *s = *sp;
     if (s->sp == 0) {
@@ -2968,16 +2965,11 @@ static struct node *stack_pop(struct stack **sp, struct edge **v2) {
         *sp = s;
     }
 
-    void *ptr = s->ptrs[--s->sp];
-    if ((hvalue_t) ptr & 1) {        // edge
-        *v2 = (struct edge *) ((char *) ptr - 1);
-        // return (*v2)->src;
-        return NULL;    // TODO
+    struct node_edge *ptr = &s->ptrs[--s->sp];
+    if (pe != NULL) {
+        *pe = ptr->edge;
     }
-    if (v2 != NULL) {
-        *v2 = NULL;
-    }
-    return ptr;
+    return ptr->node;
 }
 
 static inline bool stack_empty(struct stack *s) {

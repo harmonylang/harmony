@@ -50,7 +50,7 @@ struct edge *find_edge(struct node *src, struct node *dst){
 }
 
 struct edge *node_to_parent(struct node *n){
-    return find_edge(n->parent, n);
+    return n->parent == NULL ? NULL : find_edge(n->parent, n);
 }
 
 static bool graph_edge_conflict(
