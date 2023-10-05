@@ -91,6 +91,8 @@ tests = [
     { "args": "code/abptest.hny", "issue": "No issues", "nstates": 2778 },
     { "args": "code/leader.hny", "issue": "No issues", "nstates": 33005 },
     { "args": "code/2pc.hny", "issue": "No issues", "nstates": 666316 },
+    { "args": "-o rsm.hfa code/rsm.hny", "issue": "No issues", "nstates": 1952 },
+    { "args": "-B rsm.hfa code/chain.hny", "issue": "No issues", "nstates": 201408 },
     { "args": "-mstack=stack1 code/stacktest.hny", "issue": "No issues", "nstates": 2 },
     { "args": "-mstack=stack2 code/stacktest.hny", "issue": "No issues", "nstates": 2 },
     { "args": "-mstack=stack3 code/stacktest.hny", "issue": "No issues", "nstates": 2 },
