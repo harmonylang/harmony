@@ -7,7 +7,7 @@
 #include "charm.h"
 
 #define MAX_CONTEXT_STACK   250        // maximum size of context stack
-#define MAX_CONTEXT_BAG       32        // maximum number of distinct contexts
+#define MAX_CONTEXT_BAG      32        // maximum number of distinct contexts
 
 // This contains the state in a Harmony execution.
 //
@@ -19,11 +19,14 @@ typedef struct state {
     uint32_t dfa_state;   // state of input dfa
     int8_t chooser;       // context that is choosing, -1 if none
 
-    // The state includes a variable-size bag of contexts.  A context is
+    // The state includes two variable-sized bag of contexts.  A context is
     // of type hvalue_t.  We use bits 48..55 (8 bits total) to contain the
-    // multiplicity of the context.
+    // multiplicity of the context.  The context bag is of size bagsize,
+    // while the stopbag is of size total - bagsize.
+    // TODO.  Currently the stopbag is behind the context bag, but if we want
+    //        to support more than 256 contexts, maybe the other way around is better
     uint8_t bagsize;      // size of context bag
-    uint8_t total;        // bagsize + size of bag of stopped contexts
+    uint16_t total;       // bagsize + size of bag of stopped contexts
     // hvalue_t contexts[VAR_SIZE];   // context/multiplicity pairs
 } state;
 #define state_size(s)            (sizeof(struct state) + (s)->total * sizeof(hvalue_t))

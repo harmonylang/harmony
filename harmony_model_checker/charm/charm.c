@@ -3564,7 +3564,7 @@ int exec_model_checker(int argc, char **argv){
     state->vars = VALUE_DICT;
     hvalue_t ictx = value_put_context(NULL, init_ctx);
     state->chooser = -1;
-    state->bagsize = 1;
+    state->bagsize = state->total = 1;
     state_ctxlist(state)[0] = ictx | ((hvalue_t) 1 << STATE_M_SHIFT);
     state->dfa_state = global.dfa == NULL ? 0 : dfa_initial(global.dfa);
 

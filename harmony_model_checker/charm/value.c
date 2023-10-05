@@ -1680,9 +1680,6 @@ hvalue_t value_ctx_failure(struct context *ctx, struct allocator *allocator, cha
 // if all that contexts are of "eternal" threads (threads that are allowed not
 // to terminate).
 bool value_state_all_eternal(struct state *state) {
-    if (state->bagsize == 0) {
-        return true;
-    }
     hvalue_t *ctxlist = state_ctxlist(state);
     for (unsigned int i = 0; i < state->total; i++) {
         if (!(ctxlist[i] & VALUE_CONTEXT_ETERNAL)) {
@@ -1785,8 +1782,7 @@ int stopped_context_add(struct state *state, hvalue_t ctx){
     }
  
     // Move the last contexts
-    memmove(&ctxlist[i+1], &ctxlist[i],
-                    (state->total - i) * sizeof(hvalue_t));
+    memmove(&ctxlist[i+1], &ctxlist[i], (state->total - i) * sizeof(hvalue_t));
 
     state->total++;
     ctxlist[i] = ctx | ((hvalue_t) 1 << STATE_M_SHIFT);
