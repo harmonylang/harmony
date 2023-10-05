@@ -67,7 +67,7 @@ struct dict *dict_new(char *whoami, unsigned int value_len, unsigned int initial
 		mutex_init(&dict->locks[i]);
 	}
 	dict->growth_threshold = 2;
-	dict->growth_factor = 10;
+	dict->growth_factor = 8;
 	dict->concurrent = false;
     dict->workers = calloc(sizeof(struct dict_worker), nworkers);
     dict->nworkers = nworkers;
@@ -198,13 +198,15 @@ struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
     (void) atomic_fetch_add(&dict->nmisses, 1);
 #endif
     k = dict_assoc_new(dict, al, (char *) key, keylen, hash);
-    k->next = dict->unstable.buckets[index];
-    dict->unstable.buckets[index] = k;
     if (dict->concurrent) {
+        k->next = dict->unstable.buckets[index];
+        dict->unstable.buckets[index] = k;
         dict->workers[al->worker].unstable_count++;
         mutex_release(&dict->locks[index % dict->nlocks]);
     }
     else {
+        k->next = dict->stable.buckets[index];
+        dict->stable.buckets[index] = k;
 		dict->stable.count++;
     }
 
@@ -217,11 +219,14 @@ struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
 // Similar to dict_find(), but gets a lock on the bucket
 struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
                             const void *key, unsigned int keylen, bool *new, mutex_t **lock){
+    assert(dict->concurrent);
+
     uint32_t hash = hash_func(key, keylen);
 
     // First see if the item is in the stable list, which does not require
     // a lock
     unsigned int index = hash % dict->stable.length;
+    *lock = &dict->locks[index % dict->nlocks];
     struct dict_assoc *k = dict->stable.buckets[index];
 	while (k != NULL) {
 		if (k->len == keylen && memcmp((char *) &k[1] + dict->value_len, key, keylen) == 0) {
@@ -273,11 +278,14 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
 // Similar to dict_find_lock(), but gets a lock on the bucket only if it's a new node
 struct dict_assoc *dict_find_lock_new(struct dict *dict, struct allocator *al,
                             const void *key, unsigned int keylen, bool *new, mutex_t **lock){
+    assert(dict->concurrent);
+
     uint32_t hash = hash_func(key, keylen);
 
     // First see if the item is in the stable list, which does not require
     // a lock
     unsigned int index = hash % dict->stable.length;
+    *lock = &dict->locks[index % dict->nlocks];
     struct dict_assoc *k = dict->stable.buckets[index];
 	while (k != NULL) {
 		if (k->len == keylen && memcmp((char *) &k[1] + dict->value_len, key, keylen) == 0) {
@@ -349,7 +357,7 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keylen) {
 #ifdef HASHDICT_STATS
             (void) atomic_fetch_add(&dict->nstable_hits, 1);
 #endif
-			return k;
+			return * (void **) &k[1];
 		}
 		k = k->next;
 	}
@@ -366,7 +374,7 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keylen) {
 #ifdef HASHDICT_STATS
                 (void) atomic_fetch_add(&dict->nunstable_hits, 1);
 #endif
-                return k;
+                return * (void **) &k[1];
             }
             k = k->next;
         }
@@ -400,36 +408,23 @@ void dict_iter(struct dict *dict, dict_enumfunc f, void *env) {
 // Switch to concurrent mode
 void dict_set_concurrent(struct dict *dict) {
     assert(!dict->concurrent);
-
-    // Free any old tables
-    if (dict->old_stable.buckets != NULL) {
-        free(dict->old_stable.buckets);
-        dict->old_stable.buckets = NULL;
-    }
-    if (dict->old_unstable.buckets != NULL) {
-        free(dict->old_unstable.buckets);
-        dict->old_unstable.buckets = NULL;
-    }
-    dict->old_stable.count = dict->old_stable.length = 0;
-    dict->old_unstable.count = dict->old_unstable.length = 0;
-
     dict->concurrent = true;
 }
 
 // Move entries from one table into the other.
 static void dict_reinsert(struct dict *dict, unsigned int worker,
                         struct dict_table *src, struct dict_table *dst) {
-    // Figure out which part this worker is going to redistribute
-    unsigned int first = (uint64_t) worker * src->length / dict->nworkers;
-    unsigned int last = (uint64_t) (worker + 1) * src->length / dict->nworkers;
-    for (unsigned i = first; i < last; i++) {
+    for (unsigned i = worker; i < src->length; i += dict->nworkers) {
         struct dict_assoc *k = src->buckets[i];
         while (k != NULL) {
             struct dict_assoc *next = k->next;
             dict_reinsert_when_resizing(dict, dst, k);
             k = next;
         }
-        src->buckets[i] = NULL;
+        src->buckets[i] = NULL;     // TODO: not needed when growing table
+    }
+    if (src == &dict->old_stable) {
+        printf("WORKER %u done\n", worker);
     }
 }
 
@@ -453,22 +448,34 @@ void dict_make_stable(struct dict *dict, unsigned int worker){
 void dict_grow_prepare(struct dict *dict){
     assert(dict->concurrent);
 
-    // Update the #entries in the unstable table
-    unsigned int unstable_count = 0;
+    // Free any old tables
+    if (dict->old_stable.buckets != NULL) {
+        free(dict->old_stable.buckets);
+        dict->old_stable.buckets = NULL;
+    }
+    if (dict->old_unstable.buckets != NULL) {
+        free(dict->old_unstable.buckets);
+        dict->old_unstable.buckets = NULL;
+    }
+    dict->old_stable.count = dict->old_stable.length = 0;
+    dict->old_unstable.count = dict->old_unstable.length = 0;
+
+    // Compute the #entries in the stable and unstable tables
+    unsigned int total = dict->stable.count;
 	for (unsigned int i = 0; i < dict->nworkers; i++) {
         struct dict_worker *dw = &dict->workers[i];
-        unstable_count += dw->unstable_count;
+        total += dw->unstable_count;
         dw->unstable_count = 0;
     }
-    dict->unstable.count = unstable_count;
 
     // See if we need to grow the stable table
-    unsigned int total = dict->stable.count + dict->unstable.count;
 	if ((double) total / dict->stable.length > dict->growth_threshold) {
         int factor = dict->growth_factor;
         while (factor * dict->stable.length < total) {
             factor++;
         }
+        printf("GROW %u %u %u\n", dict->stable.length, dict->stable.count, total);
+
         dict->old_stable.buckets = dict->stable.buckets;
         dict->old_stable.length = dict->stable.length;
         dict->old_stable.count = dict->stable.count;
