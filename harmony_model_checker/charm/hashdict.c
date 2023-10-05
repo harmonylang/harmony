@@ -31,7 +31,7 @@ static inline uint32_t meiyan(const char *key, int count) {
 }
 
 static inline struct dict_assoc *dict_assoc_new(struct dict *dict,
-        struct allocator *al, char *key, unsigned int len, uint32_t hash){
+        struct allocator *al, char *key, unsigned int len){
     unsigned int total = sizeof(struct dict_assoc) + dict->value_len + len;
 	struct dict_assoc *k = al == NULL ?  malloc(total) :
                         (*al->alloc)(al->ctx, total, false, dict->align16);
@@ -138,13 +138,16 @@ static inline void dict_unstable(struct dict *dict, struct allocator *al,
     struct dict_unstable *du = &dw->unstable[worker];
     if (du->next == du->len) {
         if (du->len == 0) {
-            du->len = 1024;
+            du->len = 4096;
+            assert(du->entries == NULL);
         }
         else {
             du->len *= 2;
+            assert(du->entries != NULL);
         }
         du->entries = realloc(du->entries, du->len * sizeof(*du->entries));
     }
+    assert(du->next < du->len);
     du->entries[du->next++] = k;
     dw->count++;
 }
@@ -204,7 +207,7 @@ struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
 #ifdef HASHDICT_STATS
     (void) atomic_fetch_add(&dict->nmisses, 1);
 #endif
-    k = dict_assoc_new(dict, al, (char *) key, keylen, hash);
+    k = dict_assoc_new(dict, al, (char *) key, keylen);
     if (dict->concurrent) {
         k->next = db->unstable;
         db->unstable = k;
@@ -264,7 +267,7 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
         k = k->next;
     }
 
-    k = dict_assoc_new(dict, al, (char *) key, keylen, hash);
+    k = dict_assoc_new(dict, al, (char *) key, keylen);
     k->next = db->unstable;
     db->unstable = k;
     dict_unstable(dict, al, index, k);
@@ -319,7 +322,7 @@ struct dict_assoc *dict_find_lock_new(struct dict *dict, struct allocator *al,
         k = k->next;
     }
 
-    k = dict_assoc_new(dict, al, (char *) key, keylen, hash);
+    k = dict_assoc_new(dict, al, (char *) key, keylen);
     k->next = db->unstable;
     db->unstable = k;
     dict_unstable(dict, al, index, k);
@@ -413,10 +416,6 @@ void dict_set_concurrent(struct dict *dict) {
 void dict_make_stable(struct dict *dict, unsigned int worker){
     assert(dict->concurrent);
 
-    // TODO.  How come the following doesn't seem to conflict with the stabilization
-    //        below?  It seems to me workers should be stepping on each other.  Maybe
-    //        it's just unlikely in practice?  My initial attempts at fixing it led
-    //        to significant slow down
     if (dict->length != dict->old_length) {
         unsigned int first = (uint64_t) worker * dict->old_length / dict->nworkers;
         unsigned int last = (uint64_t) (worker + 1) * dict->old_length / dict->nworkers;
@@ -459,6 +458,7 @@ void dict_make_stable(struct dict *dict, unsigned int worker){
                 struct dict_bucket *db = &dict->table[index];
                 k->next = db->stable;
                 db->stable = k;
+                assert(db->unstable == NULL);
             }
             du->next = 0;
         }
@@ -501,7 +501,7 @@ void dict_dump(struct dict *dict){
 void dict_set_sequential(struct dict *dict) {
     assert(dict->concurrent);
 
-#ifdef notdef
+#ifndef notdef
     // check integrity
     struct dict_bucket *db = dict->table;
     unsigned int total = 0;
@@ -515,6 +515,9 @@ void dict_set_sequential(struct dict *dict) {
     }
     if (total != dict->count) {
         printf("DICT: bad total %s\n", dict->whoami);
+    }
+    else {
+        printf("DICT: good total %s\n", dict->whoami);
     }
 #endif
 
