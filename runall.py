@@ -77,6 +77,8 @@ tests = [
     { "args": "-msynch=synchS code/barriertest.hny", "issue": "No issues", "nstates": 7425 },
     { "args": "code/barriertest2.hny", "issue": "No issues", "nstates": 5711 },
     { "args": "-msynch=synchS code/barriertest2.hny", "issue": "No issues", "nstates": 16511 },
+    { "args": "-o file.hfa code/filetest.hny", "issue": "No issues", "nstates": 5593 },
+    { "args": "-B file.hfa -m file=fs code/filetest.hny", "issue": "No issues", "nstates": 17352427 },
     { "args": "code/trap.hny", "issue": "No issues", "nstates": 8 },
 #    { "args": "code/trap2.hny", "issue": "Finally predicate violation", "nstates": 21 },
     { "args": "code/trap2.hny", "issue": "Safety violation", "nstates": 21 },

@@ -2332,7 +2332,7 @@ void do_work1(struct worker *w, struct node *node){
                     allocated += w2->allocated;
                 }
                 double gigs = (double) allocated / (1 << 30);
-                fprintf(stderr, "states=%u diam=%u q=%d mem=%.3lfGB\n",
+                fprintf(stderr, "    states=%u diam=%u q=%d mem=%.3lfGB\n",
                         enqueued, global.diameter,
                         enqueued - dequeued, gigs);
                 global.last_nstates = enqueued;
@@ -3027,7 +3027,7 @@ static void tarjan(){
                     for (;;) {
                         ndone++;
                         if (ndone - lastdone >= 10000000 && gettime() - now > 3) {
-                            printf("completed %u/%u states (%.2f%%)\n", ndone, global.graph.size, 100.0 * ndone / global.graph.size);
+                            printf("        completed %u/%u states (%.2f%%)\n", ndone, global.graph.size, 100.0 * ndone / global.graph.size);
                             now = gettime();
                             lastdone = ndone;
                         }
@@ -3049,7 +3049,7 @@ static void tarjan(){
 
 // This routine removes all nodes that have a single incoming edge and it's
 // an "epsilon" edge (empty print log).  These are essentially useless nodes.
-static void destutter1(){
+static void destutter1(FILE *out, bool suppress){
     struct graph *graph = &global.graph;
 
     // If nothing got printed, we can just return a single node
@@ -3058,6 +3058,17 @@ static void destutter1(){
         struct node *n = graph->nodes[0];
         n->final = 1;
         n->fwd = NULL;
+        return;
+    }
+
+    // Also suppress very large outputs when checking behaviors.
+    if (suppress && graph->size > 100000) {
+        graph->size = 1;
+        struct node *n = graph->nodes[0];
+        n->final = 1;
+        n->fwd = NULL;
+        fprintf(out, "  \"suppressed\": \"True\",\n");
+        return;
     }
 
 #ifdef OBSOLETE
@@ -3266,7 +3277,7 @@ static void usage(char *prog){
 //    -w<workers>: specifies what and how many workers to use (see below)
 //
 int exec_model_checker(int argc, char **argv){
-    bool cflag = false, dflag = false, Dflag = false, Rflag = false;
+    bool cflag = false, dflag = false, Dflag = false, Rflag = false, bflag = false;
     int i, maxtime = 300000000 /* about 10 years */;
     char *outfile = NULL, *dfafile = NULL, *worker_flag = NULL;
     for (i = 1; i < argc; i++) {
@@ -3295,6 +3306,9 @@ int exec_model_checker(int argc, char **argv){
             break;
         case 'B':
             dfafile = &argv[i][2];
+            break;
+        case 'b':
+            bflag = true;
             break;
         case 'o':
             outfile = &argv[i][2];
@@ -3770,7 +3784,7 @@ int exec_model_checker(int argc, char **argv){
     // TODO.  Could be parallelized
     if (global.failures == NULL) {
         if (global.graph.size > 10000) {
-            printf("* Check for deadlock\n");
+            printf("    * Check for deadlock\n");
             fflush(stdout);
         }
         for (unsigned int i = 0; i < global.graph.size; i++) {
@@ -3819,13 +3833,13 @@ int exec_model_checker(int argc, char **argv){
     //        a loop like:  await x and y
     if (global.failures == NULL && loops_possible) {
         if (global.graph.size > 10000) {
-            printf("* Determine strongly connected components\n");
+            printf("    * Determine strongly connected components\n");
             fflush(stdout);
         }
         double now = gettime();
         tarjan();
         computed_components = true;
-        printf("    * %u components (%.2lf seconds)\n", global.ncomponents, gettime() - now);
+        printf("        * %u components (%.2lf seconds)\n", global.ncomponents, gettime() - now);
 
 #ifdef DUMP_GRAPH
         printf("digraph Harmony {\n");
@@ -4138,10 +4152,10 @@ int exec_model_checker(int argc, char **argv){
 
         // Reduce the output graph by removing nodes with only
         // one incoming edge that is an epsilon edge
-        //
-        destutter1();
+        destutter1(out, dfafile != NULL && !bflag);
 
-        // Output the symbols;
+        // Output the symbols
+        // TODO.  This can probably be done more efficiently (and in parallel if needed)
         struct dict *symbols = collect_symbols(&global.graph);
         fprintf(out, "  \"symbols\": {\n");
         struct symbol_env se = { .out = out, .first = true };
