@@ -414,9 +414,20 @@ void dict_make_stable(struct dict *dict, unsigned int worker){
     assert(dict->concurrent);
 
     if (dict->length != dict->old_length) {
+#ifdef OLD
         unsigned int first = (uint64_t) worker * dict->old_length / dict->nworkers;
         unsigned int last = (uint64_t) (worker + 1) * dict->old_length / dict->nworkers;
         for (unsigned i = first; i < last; i++) {
+            struct dict_bucket *b = &dict->old_table[i];
+            struct dict_assoc *k = b->stable;
+            while (k != NULL) {
+                struct dict_assoc *next = k->next;
+                dict_reinsert_when_resizing(dict, k);
+                k = next;
+            }
+        }
+#endif
+        for (unsigned i = worker; i < dict->old_length; i += dict->nworkers) {
             struct dict_bucket *b = &dict->old_table[i];
             struct dict_assoc *k = b->stable;
             while (k != NULL) {
