@@ -40,6 +40,19 @@ unsigned int graph_add_multiple(struct graph *graph, unsigned int n) {
     return node_id;
 }
 
+struct edge *find_edge(struct node *src, struct node *dst){
+    for (struct edge *e = src->fwd; e != NULL; e = e->fwdnext) {
+        if (e->dst == dst) {
+            return e;
+        }
+    }
+    return NULL;
+}
+
+struct edge *node_to_parent(struct node *n){
+    return find_edge(n->parent, n);
+}
+
 static bool graph_edge_conflict(
     struct failure **failures,
     struct allocator *allocator,

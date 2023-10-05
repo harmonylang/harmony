@@ -358,11 +358,10 @@ void spawn_thread(struct state *state, struct context *ctx){
 static void process_step(
     struct worker *w,
     struct step_output *so,
+    struct node *node,
     struct edge *edge,
     struct state *sc
 ) {
-    struct node *node = edge->src;
-
     w->process_step++;
     sc->vars = so->vars;
 
@@ -431,6 +430,7 @@ static void process_step(
             if (nstate < 0) {
                 struct failure *f = new_alloc(struct failure);
                 f->type = FAIL_BEHAVIOR;
+                f->node = node;
                 f->edge = edge;
                 edge->flags |= EDGE_FAILED;
                 add_failure(&global.failures, f);
@@ -444,6 +444,7 @@ static void process_step(
     if (edge->flags & EDGE_FAILED) {
         struct failure *f = new_alloc(struct failure);
         f->type = edge_output(edge)->infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
+        f->node = node;
         f->edge = edge;
         f->next = w->failures;
         w->failures = f;
@@ -462,7 +463,7 @@ static void process_step(
         struct node *next = edge->dst;
         next->reachable = true;         // TODO.  Do we need this?
         next->failed = (edge->flags & EDGE_FAILED) != 0;
-        next->to_parent = edge;
+        next->parent = node;
         next->len = node->len + 1;
         mutex_release(lock);
 
@@ -952,7 +953,6 @@ static void trystep(
 
     // Allocate the edge and add to the node
     struct edge *edge = walloc_fast(w, sizeof(struct edge));
-    edge->src = node;
     edge->fwdnext = node->fwd;
     node->fwd = edge;
 
@@ -999,6 +999,7 @@ static void trystep(
             else {
                 w->el_free = el->next;
             }
+            el->node = node;
             el->edge = edge;
             el->next = stc->u.in_progress;
             stc->u.in_progress = el;
@@ -1069,14 +1070,14 @@ static void trystep(
         assert(state_ctx(sc, ctx_index) == ctx);
         context_remove_by_index(sc, ctx_index);
     }
-    process_step(w, stc->u.completed, edge, sc);
+    process_step(w, stc->u.completed, node, edge, sc);
     while (el != NULL) {
-        struct node *n = el->edge->src;
+        struct node *n = el->node;
         struct state *state = (struct state *) &n[1];
         unsigned int statesz = state_size(state);
         memcpy(sc, state, statesz);
         context_remove(sc, ctx);
-        process_step(w, stc->u.completed, el->edge, sc);
+        process_step(w, stc->u.completed, n, el->edge, sc);
         struct edge_list *next = el->next;
         el->next = w->el_free;
         w->el_free = el;
@@ -1167,7 +1168,7 @@ char *ctx_status(struct node *node, hvalue_t ctx) {
         return "choosing";
     }
     while (state->chooser >= 0) {
-        node = node_to_parent(node)->src;
+        node = node->parent;
         state = node_state(node);
     }
     struct edge *edge;
@@ -1550,11 +1551,11 @@ static void *copy(void *p, unsigned int size){
 }
 
 // Take the path and put it in an array
-void path_serialize(struct edge *e){
+void path_serialize(struct node *parent, struct edge *e){
     // First recurse to the previous step
-    struct node *parent = e->src;
-    if (node_to_parent(parent) != NULL) {
-        path_serialize(node_to_parent(parent));
+    struct edge *to_grandparent = node_to_parent(parent);
+    if (to_grandparent != NULL) {
+        path_serialize(parent, to_grandparent);
     }
 
     struct macrostep *macro = calloc(sizeof(*macro), 1);
@@ -1942,32 +1943,6 @@ static void path_optimize(){
     hvalue_t current;
 
 again:
-
-#ifdef notdef
-    current = 0;
-    printf("Path:");
-    for (unsigned int i = 0; i < global.nmacrosteps; i++) {
-        struct edge *e = global.macrosteps[i]->edge;
-        if (edge_input(e)->ctx != current) {
-            printf("\n");
-        }
-        printf(" %u [", e->src->id);
-        for (struct access_info *ai = e->ai; ai != NULL; ai = ai->next) {
-            char *p = indices_string(ai->indices, ai->n);
-            if (ai->load) {
-                printf(" load %s", p);
-            }
-            else {
-                printf(" store %s", p);
-            }
-            free(p);
-        }
-        printf(" ]");
-        current = edge_output(e)->after;
-    }
-    printf(" %u\n", global.macrosteps[global.nmacrosteps - 1]->edge->dst->id);
-#endif
-
     cbs = calloc(1, sizeof(*cbs));
     cbs->before = edge_input(global.macrosteps[0]->edge)->ctx;
     ncbs = 0;
@@ -2320,6 +2295,7 @@ static void detect_busywait(struct node *node){
         if (is_stuck(node, node, ctxi, false) == BW_RETURN) {
             struct failure *f = new_alloc(struct failure);
             f->type = FAIL_BUSYWAIT;
+            f->node = node->parent;
             f->edge = node_to_parent(node);
             add_failure(&global.failures, f);
             // break;
@@ -2995,7 +2971,8 @@ static struct node *stack_pop(struct stack **sp, struct edge **v2) {
     void *ptr = s->ptrs[--s->sp];
     if ((hvalue_t) ptr & 1) {        // edge
         *v2 = (struct edge *) ((char *) ptr - 1);
-        return (*v2)->src;
+        // return (*v2)->src;
+        return NULL;    // TODO
     }
     if (v2 != NULL) {
         *v2 = NULL;
@@ -3825,6 +3802,7 @@ int exec_model_checker(int argc, char **argv){
                             !dfa_is_final(global.dfa, state->dfa_state)) {
                         struct failure *f = new_alloc(struct failure);
                         f->type = FAIL_BEHAVIOR;
+                        f->node = node->parent;
                         f->edge = node_to_parent(node);
                         add_failure(&global.failures, f);
                     }
@@ -3835,6 +3813,7 @@ int exec_model_checker(int argc, char **argv){
                 else {
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_TERMINATION;
+                    f->node = node->parent;
                     f->edge = node_to_parent(node);
                     assert(f->edge != NULL);
                     add_failure(&global.failures, f);
@@ -3949,6 +3928,7 @@ int exec_model_checker(int argc, char **argv){
                             !dfa_is_final(global.dfa, node_state(node)->dfa_state)) {
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_BEHAVIOR;
+                    f->node = node->parent;
                     f->edge = node_to_parent(node);
                     add_failure(&global.failures, f);
                     // break;
@@ -3968,9 +3948,11 @@ int exec_model_checker(int argc, char **argv){
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_TERMINATION;
                     if (node->fwd != NULL && node->fwd->fwdnext == NULL) {
+                        f->node = node;
                         f->edge = node->fwd;
                     }
                     else {
+                        f->node = node->parent;
                         f->edge = node_to_parent(node);
                         assert(f->edge != NULL);
                     }
@@ -4052,7 +4034,7 @@ int exec_model_checker(int argc, char **argv){
                 fprintf(df, "    len to parent: %d\n", node->len);
                 if (node_to_parent(node) != NULL) {
                     fprintf(df, "    ancestors:");
-                    for (struct node *n = node_to_parent(node)->src;; n = node_to_parent(n)->src) {
+                    for (struct node *n = node->parent;; n = n->parent) {
                         fprintf(df, " %u", n->id);
                         if (node_to_parent(n) == NULL) {
                             break;
@@ -4308,7 +4290,7 @@ int exec_model_checker(int argc, char **argv){
         fprintf(out, "  \"macrosteps\": [");
 
         // First copy the path to the bad state into an array for easier sorting
-        path_serialize(bad->edge);
+        path_serialize(bad->node, bad->edge);
 
         // The optimal path minimizes the number of context switches.  Here we
         // reorder steps in the path to do so.

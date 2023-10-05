@@ -73,6 +73,7 @@ struct step_output {
 
 struct edge_list {
     struct edge_list *next;
+    struct node *node;      // source
     struct edge *edge;
 };
 
@@ -96,7 +97,6 @@ struct step_comp {
 struct edge {
     struct edge *fwdnext;        // forward linked list maintenance
     struct node *dst;            // destination node
-    struct node *src;            // source node
 
     // This field consists of the pointer to a step_condition (which contains the
     // input and output of the computation) plus a few flags in the unused bits
@@ -131,7 +131,7 @@ enum fail_type {
 // corresponding to this node is stored directly behind this node.
 struct node {
     struct edge *fwd;       // forward edges
-    struct edge *to_parent; // path to initial state
+    struct node *parent;    // path to initial state
     uint32_t id;            // nodes are numbered starting from 0
     uint16_t len;           // length of path to initial state
     bool on_stack : 1;      // for Tarjan
@@ -142,7 +142,6 @@ struct node {
     // NFA compression
     bool reachable : 1;     // TODO.  Maybe obsolete at this time
 };
-#define node_to_parent(n)       ((n)->to_parent)
 
 // The state corresponding to a node, directly following the node
 #define node_state(n)   ((struct state *) &(n)[1])
@@ -153,6 +152,7 @@ struct failure {
     struct failure *next;   // for linked list maintenance
     enum fail_type type;    // failure type
     struct edge *edge;      // edge->dst is the faulty state
+    struct node *node;      // source node of edge
     hvalue_t address;       // in case of data race or invariant failure
 };
 
@@ -172,5 +172,6 @@ void graph_check_for_data_race(
 );
 void graph_add(struct graph *graph, struct node *node);
 unsigned int graph_add_multiple(struct graph *graph, unsigned int n);
+struct edge *node_to_parent(struct node *n);
 
 #endif //SRC_GRAPH_H
