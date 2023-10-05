@@ -15,35 +15,40 @@ typedef void (*dict_enumfunc)(void *env, const void *key, unsigned int key_size,
 // The value is of length dict->value_len.
 struct dict_assoc {
 	struct dict_assoc *next;
-    struct dict_assoc *unstable_next;
+    // TODO.  Encode len in unused bits of 'next'
 	unsigned int len;               // key length
 };
 
+// TODO.  Split into two tables, one for stable, one for unstable.
+struct dict_bucket {
+    struct dict_assoc *stable, *unstable;
+};
+
+struct dict_unstable {
+    unsigned int next;               // points into array of entries
+    unsigned int len;
+    struct dict_assoc **entries;     // array of len entries
+};
+
 struct dict_worker {
-    unsigned int unstable_count;    // #unstable entries added
-    unsigned int clashes;           // some profiling
+    struct dict_unstable *unstable;  // one for each of the workers
+    unsigned int count;              // #unstable entries added
 };
-
-struct dict_table {
-    unsigned int count;                 // #entries total
-    unsigned int length;                // #buckets
-    struct dict_assoc **buckets;        // each bucket points to a linked list of entries
-};
-
+		
 struct dict {
     char *whoami;
     unsigned int value_len;
-    struct dict_table stable;           // stable entries (do not need lock)
-    struct dict_table unstable;         // unstable entries (require lock))
-    struct dict_table old_stable;
-    struct dict_table old_unstable;
+	struct dict_bucket *table;
+	unsigned int length, count;
+	struct dict_bucket *old_table;
+	unsigned int old_length, old_count;
     struct dict_worker *workers;
     unsigned int nworkers;
     mutex_t *locks;
     unsigned int nlocks;
 	double growth_threshold;
 	unsigned int growth_factor;
-    bool concurrent;         // 0 = not concurrent
+    bool concurrent;
     bool align16;            // entries must be aligned to 16 bytes
 
 #ifdef HASHDICT_STATS
