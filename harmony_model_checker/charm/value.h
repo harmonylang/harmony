@@ -92,7 +92,7 @@ void strbuf_value_json(strbuf *sb, hvalue_t v);
 //
 // TODO.  Perhaps we should put everything in the top 16 bits.
 #define VALUE_BITS      4
-#define VALUE_HIBITS    ((hvalue_t) 0xFF << 48)
+#define VALUE_HIBITS    ((hvalue_t) 0xFFFF << 48)
 #define VALUE_LOBITS    ((hvalue_t) ((1 << VALUE_BITS) - 1))
 #define VALUE_MASK      (VALUE_HIBITS | VALUE_LOBITS)
 
@@ -108,7 +108,7 @@ void strbuf_value_json(strbuf *sb, hvalue_t v);
 #define VALUE_ADDRESS_PRIVATE   9
 #define VALUE_CONTEXT  10
 
-#define VALUE_CONTEXT_ETERNAL   ((hvalue_t) 1 << 48)
+#define VALUE_CONTEXT_ETERNAL   ((hvalue_t) 1 << 56)
 
 #define VALUE_FALSE     VALUE_BOOL
 #define VALUE_TRUE      ((1 << VALUE_BITS) | VALUE_BOOL)

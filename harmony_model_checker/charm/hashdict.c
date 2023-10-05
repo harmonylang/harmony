@@ -54,7 +54,6 @@ struct dict *dict_new(char *whoami, unsigned int value_len, unsigned int initial
     dict->whoami = whoami;
     dict->value_len = value_len;
 	if (initial_size == 0) initial_size = 1024;
-	if (initial_size == 0) initial_size = 1;
 	dict->length = dict->old_length = initial_size;
 	dict->count = dict->old_count = 0;
 	dict->table = dict->old_table = calloc(sizeof(struct dict_bucket), initial_size);
@@ -294,9 +293,7 @@ struct dict_assoc *dict_find_lock_new(struct dict *dict, struct allocator *al,
 	struct dict_assoc *k = db->stable;
 	while (k != NULL) {
 		if (k->len == keylen && memcmp((char *) &k[1] + dict->value_len, key, keylen) == 0) {
-            if (new != NULL) {
-                *new = false;
-            }
+            *new = false;
 #ifdef HASHDICT_STATS
             (void) atomic_fetch_add(&dict->nstable_hits, 1);
 #endif
@@ -310,9 +307,7 @@ struct dict_assoc *dict_find_lock_new(struct dict *dict, struct allocator *al,
     k = db->unstable;
     while (k != NULL) {
         if (k->len == keylen && memcmp((char *) &k[1] + dict->value_len, key, keylen) == 0) {
-            if (new != NULL) {
-                *new = false;
-            }
+            *new = false;
 #ifdef HASHDICT_STATS
             (void) atomic_fetch_add(&dict->nunstable_hits, 1);
 #endif
@@ -327,9 +322,7 @@ struct dict_assoc *dict_find_lock_new(struct dict *dict, struct allocator *al,
     db->unstable = k;
     dict_unstable(dict, al, index, k);
 
-    if (new != NULL) {
-        *new = true;
-    }
+    *new = true;
 #ifdef HASHDICT_STATS
     (void) atomic_fetch_add(&dict->nmisses, 1);
 #endif
@@ -501,7 +494,7 @@ void dict_dump(struct dict *dict){
 void dict_set_sequential(struct dict *dict) {
     assert(dict->concurrent);
 
-#ifndef notdef
+#ifdef notdef
     // check integrity
     struct dict_bucket *db = dict->table;
     unsigned int total = 0;

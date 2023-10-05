@@ -136,7 +136,8 @@ void mutex_init(mutex_t *mutex){
 }
 
 void mutex_acquire(mutex_t *mutex){
-    pthread_mutex_lock(mutex);
+    int r = pthread_mutex_lock(mutex);
+    assert(r == 0);
 }
 
 bool mutex_try_acquire(mutex_t *mutex){
@@ -144,7 +145,8 @@ bool mutex_try_acquire(mutex_t *mutex){
 }
 
 void mutex_release(mutex_t *mutex){
-    pthread_mutex_unlock(mutex);
+    int r = pthread_mutex_unlock(mutex);
+    assert(r == 0);
 }
 
 void mutex_destroy(mutex_t *mutex){
