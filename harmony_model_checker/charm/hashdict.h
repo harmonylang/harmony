@@ -12,12 +12,18 @@ typedef void (*dict_enumfunc)(void *env, const void *key, unsigned int key_size,
                                 void *value);
 
 // This header is followed directly by first the data and then the key.
-// The value is of length dict->value_len.
+// We put the length in the top 16 bits and the pointer to the next
+// entry in the lower 48 bits.  Space is at a premium...
 struct dict_assoc {
-	struct dict_assoc *next;
-    // TODO.  Encode len in unused bits of 'next'
-	unsigned int len;               // key length
+    uintptr_t flags;
+	// struct dict_assoc *next;
+	// unsigned int len;               // key length
+#define DA_LEN_BITS    ((uintptr_t) 0xFFFF << 48)
+#define da_next(k)     ((struct dict_assoc *) ((k)->flags & ~DA_LEN_BITS))
+#define da_len(k)      ((k)->flags >> 48)
 };
+
+#define da_set(k, next) do (k)->flags = (((k)->flags & DA_LEN_BITS) | (uintptr_t) (next)); while (0)
 
 // TODO.  Split into two tables, one for stable, one for unstable.
 struct dict_bucket {
