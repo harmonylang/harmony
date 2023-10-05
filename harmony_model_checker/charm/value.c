@@ -1684,48 +1684,10 @@ bool value_state_all_eternal(struct state *state) {
         return true;
     }
     hvalue_t *ctxlist = state_ctxlist(state);
-    for (unsigned int i = 0; i < state->bagsize; i++) {
-#ifdef TODO
-        // TODO.  May be unnecessary to do this because value_get will
-        hvalue_t ctxi = ctxlist[i] & ~STATE_MULTIPLICITY;
-        assert(VALUE_TYPE(ctxi) == VALUE_CONTEXT);
-        struct context *ctx = value_get(ctxi, NULL);
-        if (!ctx->eternal) {
-            return false;
-        }
-#else
+    for (unsigned int i = 0; i < state->total; i++) {
         if (!(ctxlist[i] & VALUE_CONTEXT_ETERNAL)) {
             return false;
         }
-#endif
-    }
-    return true;
-}
-
-// ctxbag is a Harmony value containing a bag of contexts.  A bag is a
-// multiset represented as a dictionary that maps elements to their
-// multiplicity.  This function checks if all contexts are of eternal threads.
-bool value_ctx_all_eternal(hvalue_t ctxbag) {
-    if (ctxbag == VALUE_DICT) {     // optimization
-        return true;
-    }
-    unsigned int size;
-    hvalue_t *vals = value_get(ctxbag, &size);
-    size /= sizeof(hvalue_t);
-    for (unsigned int i = 0; i < size; i += 2) {
-#ifdef TODO
-        assert(VALUE_TYPE(vals[i]) == VALUE_CONTEXT);
-        assert(VALUE_TYPE(vals[i + 1]) == VALUE_INT);
-        struct context *ctx = value_get(vals[i], NULL);
-        assert(ctx != NULL);
-        if (!ctx->eternal) {
-            return false;
-        }
-#else
-        if (!(vals[i] & VALUE_CONTEXT_ETERNAL)) {
-            return false;
-        }
-#endif
     }
     return true;
 }
@@ -1763,15 +1725,16 @@ int context_add(struct state *state, hvalue_t ctx){
         }
     }
 
-    if (state->bagsize >= MAX_CONTEXT_BAG) {
+    if (state->total >= MAX_CONTEXT_BAG) {
         return -1;
     }
  
     // Move the last contexts
     memmove(&ctxlist[i+1], &ctxlist[i],
-                    (state->bagsize - i) * sizeof(hvalue_t));
+                    (state->total - i) * sizeof(hvalue_t));
 
     state->bagsize++;
+    state->total++;
     ctxlist[i] = ctx | ((hvalue_t) 1 << STATE_M_SHIFT);
     return i;
 }
@@ -1789,12 +1752,43 @@ void context_remove(struct state *state, hvalue_t ctx){
             }
             else {
                 state->bagsize--;
+                state->total--;
                 memmove(&ctxlist[i], &ctxlist[i+1],
-                        (state->bagsize - i) * sizeof(hvalue_t));
+                        (state->total - i) * sizeof(hvalue_t));
             }
             return;
         }
     }
     // TODO. this can happen with invariant contexts
     // panic("context_remove: can't find context");
+}
+
+// Add context 'ctx' to the state's stopbag.  May fail if there are too
+// many different contexts (i.e., >= MAX_CONTEXT_BAG).
+int stopped_context_add(struct state *state, hvalue_t ctx){
+    hvalue_t *ctxlist = state_ctxlist(state);
+
+    unsigned int i;
+    for (i = state->bagsize; i < state->total; i++) {
+        hvalue_t ctxi = ctxlist[i] & ~STATE_MULTIPLICITY;
+        if (ctxi == ctx) {
+            ctxlist[i] += (hvalue_t) 1 << STATE_M_SHIFT;
+            return i;
+        }
+        if (ctxi > ctx) {
+            break;
+        }
+    }
+
+    if (state->total >= MAX_CONTEXT_BAG) {
+        return -1;
+    }
+ 
+    // Move the last contexts
+    memmove(&ctxlist[i+1], &ctxlist[i],
+                    (state->total - i) * sizeof(hvalue_t));
+
+    state->total++;
+    ctxlist[i] = ctx | ((hvalue_t) 1 << STATE_M_SHIFT);
+    return i;
 }

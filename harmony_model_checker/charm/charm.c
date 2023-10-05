@@ -373,17 +373,19 @@ static void process_step(
     }
     for (unsigned int i = 0; i < so->nunstopped; i++) {
         hvalue_t ctx = step_unstopped(so)[i];
-        // TODO.  Write function (same code in op_Go)
-        hvalue_t count;
-        if (value_tryload(&w->allocator, sc->stopbag, ctx, &count)) {
-            assert(VALUE_TYPE(count) == VALUE_INT);
-            assert(count != VALUE_INT);
-            count -= 1 << VALUE_BITS;
-            if (count != VALUE_INT) {
-                sc->stopbag = value_dict_store(&w->allocator, sc->stopbag, ctx, count);
-            }
-            else {
-                sc->stopbag = value_dict_remove(&w->allocator, sc->stopbag, ctx);
+        hvalue_t *ctxlist = state_ctxlist(sc);
+        for (unsigned int i = sc->bagsize; i < sc->total; i++) {
+            hvalue_t ctxi = ctxlist[i] & ~STATE_MULTIPLICITY;
+            if (ctxi == ctx) {
+                if ((ctxlist[i] & STATE_MULTIPLICITY) > ((hvalue_t) 1 << STATE_M_SHIFT)) {
+                    ctxlist[i] -= ((hvalue_t) 1 << STATE_M_SHIFT);
+                }
+                else {
+                    assert(sc->total > sc->bagsize);
+                    sc->total--;
+                    memmove(&ctxlist[i], &ctxlist[i+1], (sc->total - i) * sizeof(hvalue_t));
+                }
+                break;
             }
         }
     }
@@ -391,7 +393,7 @@ static void process_step(
     // Add new context to state unless it's terminated.
     int new_index = -1;
     if (so->stopped) {
-        sc->stopbag = value_bag_add(&w->allocator, sc->stopbag, so->after, 1);
+        stopped_context_add(sc, so->after);
     }
     else if (!so->terminated) {
         new_index = context_add(sc, so->after);
@@ -920,8 +922,8 @@ static inline void context_remove_by_index(struct state *state, int i){
     }
     else {
         state->bagsize--;
-        memmove(&ctxlist[i], &ctxlist[i+1],
-                (state->bagsize - i) * sizeof(hvalue_t));
+        state->total--;
+        memmove(&ctxlist[i], &ctxlist[i+1], (state->total - i) * sizeof(hvalue_t));
     }
 }
 
@@ -1529,7 +1531,7 @@ static void twostep(
 
     // Add new context to state unless it's terminated or stopped
     if (step.ctx->stopped) {
-        sc->stopbag = value_bag_add(step.allocator, sc->stopbag, after, 1);
+        (void) stopped_context_add(sc, after);
     }
     else if (!step.ctx->terminated) {
         // TODO.  Check failure of context_add
@@ -2379,9 +2381,7 @@ void do_work1(struct worker *w, struct node *node){
         if (node->id != 0) {
             struct state *state = node_state(node);
             // TODO.  Make this check cheaper somehow
-            bool final = global.nfinals > 0
-                    && value_state_all_eternal(state)
-                    && value_ctx_all_eternal(state->stopbag);
+            bool final = global.nfinals > 0 && value_state_all_eternal(state);
             chk_invs(w, node, final);
         }
     }
@@ -3566,7 +3566,6 @@ int exec_model_checker(int argc, char **argv){
     state->chooser = -1;
     state->bagsize = 1;
     state_ctxlist(state)[0] = ictx | ((hvalue_t) 1 << STATE_M_SHIFT);
-    state->stopbag = VALUE_DICT;
     state->dfa_state = global.dfa == NULL ? 0 : dfa_initial(global.dfa);
 
     // Needed for second phase
@@ -3785,8 +3784,7 @@ int exec_model_checker(int argc, char **argv){
                 }
             }
             if (dead_end) {
-                bool final = value_state_all_eternal(state)
-                        && value_ctx_all_eternal(state->stopbag);
+                bool final = value_state_all_eternal(state);
                 if (final) {
                     // If an input dfa was specified, it should also be in the
                     // final state.
@@ -3863,12 +3861,10 @@ int exec_model_checker(int argc, char **argv){
             // this component.
             if (comp->size == 0) {
                 comp->rep = node;
-                comp->all_same = value_state_all_eternal(node_state(node))
-                    && value_ctx_all_eternal(node_state(node)->stopbag);
+                comp->all_same = value_state_all_eternal(node_state(node));
             }
             else if (node_state(node)->vars != node_state(comp->rep)->vars
-                        || !value_state_all_eternal(node_state(node))
-                        || !value_ctx_all_eternal(node_state(node)->stopbag)) {
+                        || !value_state_all_eternal(node_state(node))) {
                 comp->all_same = false;
             }
             comp->size++;
@@ -4040,6 +4036,7 @@ int exec_model_checker(int argc, char **argv){
                 for (unsigned int i = 0; i < state->bagsize; i++) {
                     fprintf(df, "      %"PRI_HVAL": %u\n", state_ctx(state, i), state_multiplicity(state, i));
                 }
+#ifdef TODO
                 if (state->stopbag != VALUE_DICT) {
                     fprintf(df, "    stopbag:\n");
                     unsigned int size;
@@ -4049,6 +4046,7 @@ int exec_model_checker(int argc, char **argv){
                         fprintf(df, "      %"PRI_HVAL": %d\n", vals[2*i], (int) VALUE_FROM_INT(vals[2*i+1]));;
                     }
                 }
+#endif
                 // fprintf(df, "    len: %u %u\n", node->len, node->steps);
                 if (node->failed) {
                     fprintf(df, "    failed\n");

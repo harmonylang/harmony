@@ -1373,16 +1373,21 @@ void op_Go(
 
     if (step->keep_callstack) {
         // Remove old context from stopbag if it's there
-        hvalue_t count;
-        if (value_tryload(step->allocator, state->stopbag, ctx, &count)) {
-            assert(VALUE_TYPE(count) == VALUE_INT);
-            assert(count != VALUE_INT);
-            count -= 1 << VALUE_BITS;
-            if (count != VALUE_INT) {
-                state->stopbag = value_dict_store(step->allocator, state->stopbag, ctx, count);
-            }
-            else {
-                state->stopbag = value_dict_remove(step->allocator, state->stopbag, ctx);
+        // TODO.  Can potentially be optimized when it's a matter of just moving it to
+        //        the context bag
+        hvalue_t *ctxlist = state_ctxlist(state);
+        for (unsigned int i = state->bagsize; i < state->total; i++) {
+            hvalue_t ctxi = ctxlist[i] & ~STATE_MULTIPLICITY;
+            if (ctxi == ctx) {
+                if ((ctxlist[i] & STATE_MULTIPLICITY) > ((hvalue_t) 1 << STATE_M_SHIFT)) {
+                    ctxlist[i] -= ((hvalue_t) 1 << STATE_M_SHIFT);
+                }
+                else {
+                    assert(state->total > state->bagsize);
+                    state->total--;
+                    memmove(&ctxlist[i], &ctxlist[i+1], (state->total - i) * sizeof(hvalue_t));
+                }
+                break;
             }
         }
 
