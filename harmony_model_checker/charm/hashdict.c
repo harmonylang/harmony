@@ -413,6 +413,10 @@ void dict_set_concurrent(struct dict *dict) {
 void dict_make_stable(struct dict *dict, unsigned int worker){
     assert(dict->concurrent);
 
+    // TODO.  How come the following doesn't seem to conflict with the stabilization
+    //        below?  It seems to me workers should be stepping on each other.  Maybe
+    //        it's just unlikely in practice?  My initial attempts at fixing it led
+    //        to significant slow down
     if (dict->length != dict->old_length) {
         unsigned int first = (uint64_t) worker * dict->old_length / dict->nworkers;
         unsigned int last = (uint64_t) (worker + 1) * dict->old_length / dict->nworkers;
@@ -427,6 +431,7 @@ void dict_make_stable(struct dict *dict, unsigned int worker){
         }
     }
 
+    // Stabilization: move all unstable entries into the stable lists.
     if (dict->table == dict->old_table) {
         for (unsigned int i = 0; i < dict->nworkers; i++) {
             struct dict_worker *dw = &dict->workers[i];
