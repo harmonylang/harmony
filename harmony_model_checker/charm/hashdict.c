@@ -143,7 +143,7 @@ static inline void dict_unstable(struct dict *dict, struct allocator *al,
         else {
             du->len *= 2;
         }
-        du->entries = realloc(du->entries, du->len);
+        du->entries = realloc(du->entries, du->len * sizeof(*du->entries));
     }
     du->entries[du->next++] = k;
     dw->count++;
@@ -414,7 +414,6 @@ void dict_make_stable(struct dict *dict, unsigned int worker){
     assert(dict->concurrent);
 
     if (dict->length != dict->old_length) {
-#ifdef OLD
         unsigned int first = (uint64_t) worker * dict->old_length / dict->nworkers;
         unsigned int last = (uint64_t) (worker + 1) * dict->old_length / dict->nworkers;
         for (unsigned i = first; i < last; i++) {
@@ -426,33 +425,38 @@ void dict_make_stable(struct dict *dict, unsigned int worker){
                 k = next;
             }
         }
-#endif
-        for (unsigned i = worker; i < dict->old_length; i += dict->nworkers) {
-            struct dict_bucket *b = &dict->old_table[i];
-            struct dict_assoc *k = b->stable;
-            while (k != NULL) {
-                struct dict_assoc *next = k->next;
-                dict_reinsert_when_resizing(dict, k);
-                k = next;
-            }
-        }
     }
 
-	for (unsigned int i = 0; i < dict->nworkers; i++) {
-        struct dict_worker *dw = &dict->workers[i];
-        struct dict_unstable *du = &dw->unstable[worker];
-        for (unsigned int j = 0; j < du->next; j++) {
-            struct dict_assoc *k = du->entries[j];
-            uint32_t hash = hash_func((char *) &k[1] + dict->value_len, k->len);
-            unsigned int index = hash % dict->length;
-            struct dict_bucket *db = &dict->table[index];
-            k->next = db->stable;
-            db->stable = k;
-            if (dict->table == dict->old_table) {   // Maybe place outside loops
+    if (dict->table == dict->old_table) {
+        for (unsigned int i = 0; i < dict->nworkers; i++) {
+            struct dict_worker *dw = &dict->workers[i];
+            struct dict_unstable *du = &dw->unstable[worker];
+            for (unsigned int j = 0; j < du->next; j++) {
+                struct dict_assoc *k = du->entries[j];
+                uint32_t hash = hash_func((char *) &k[1] + dict->value_len, k->len);
+                unsigned int index = hash % dict->length;
+                struct dict_bucket *db = &dict->table[index];
+                k->next = db->stable;
+                db->stable = k;
                 db->unstable = NULL;
             }
+            du->next = 0;
         }
-        du->next = 0;
+    }
+    else {
+        for (unsigned int i = 0; i < dict->nworkers; i++) {
+            struct dict_worker *dw = &dict->workers[i];
+            struct dict_unstable *du = &dw->unstable[worker];
+            for (unsigned int j = 0; j < du->next; j++) {
+                struct dict_assoc *k = du->entries[j];
+                uint32_t hash = hash_func((char *) &k[1] + dict->value_len, k->len);
+                unsigned int index = hash % dict->length;
+                struct dict_bucket *db = &dict->table[index];
+                k->next = db->stable;
+                db->stable = k;
+            }
+            du->next = 0;
+        }
     }
 }
 
