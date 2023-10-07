@@ -135,12 +135,9 @@ struct node {
     uint32_t id;            // nodes are numbered starting from 0
     uint16_t len;           // length of path to initial state
     bool on_stack : 1;      // for Tarjan
-    bool failed : 1;        // a thread has failed
-    bool final : 1;         // only eternal threads left (TODO: need this?)
-    bool visited : 1;       // for busy wait detection (TODO: need this?)
-
-    // NFA compression
-    bool reachable : 1;     // TODO.  Maybe obsolete at this time
+    bool failed : 1;        // state resulted from failed transition
+    bool final : 1;         // final state
+    bool visited : 1;       // for busy wait detection
 };
 
 // The state corresponding to a node, directly following the node

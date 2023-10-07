@@ -463,7 +463,6 @@ static void process_step(
     if (new) {
         assert(node->len == global.diameter);
         struct node *next = edge->dst;
-        next->reachable = true;         // TODO.  Do we need this?
         next->failed = (edge->flags & EDGE_FAILED) != 0;
         next->parent = node;
         next->len = node->len + 1;
@@ -3056,7 +3055,7 @@ static void destutter1(FILE *out, bool suppress){
     if (!global.printed_something) {
         graph->size = 1;
         struct node *n = graph->nodes[0];
-        n->final = 1;
+        n->final = true;
         n->fwd = NULL;
         return;
     }
@@ -3065,7 +3064,7 @@ static void destutter1(FILE *out, bool suppress){
     if (suppress && graph->size > 100000) {
         graph->size = 1;
         struct node *n = graph->nodes[0];
-        n->final = 1;
+        n->final = true;
         n->fwd = NULL;
         fprintf(out, "  \"suppressed\": \"True\",\n");
         return;
@@ -3125,9 +3124,6 @@ static struct dict *collect_symbols(struct graph *graph){
 
     for (unsigned int i = 0; i < graph->size; i++) {
         struct node *n = graph->nodes[i];
-        if (!n->reachable) {
-            continue;
-        }
         for (struct edge *e = n->fwd; e != NULL; e = e->fwdnext) {
             for (unsigned int j = 0; j < edge_output(e)->nlog; j++) {
                 bool new;
@@ -3681,7 +3677,6 @@ int exec_model_checker(int argc, char **argv){
     struct node *node = (struct node *) &hn[1];
     memset(node, 0, sizeof(*node));
     mutex_release(lock);
-    node->reachable = true;
     graph_add(&global.graph, node);
 
     // Compute how much table space is allocated
@@ -4169,38 +4164,36 @@ int exec_model_checker(int argc, char **argv){
         for (unsigned int i = 0; i < global.graph.size; i++) {
             struct node *node = global.graph.nodes[i];
             assert(node->id == i);
-            if (node->reachable) {
-                if (first) {
-                    first = false;
-                }
-                else {
-                    fprintf(out, ",\n");
-                }
-                fprintf(out, "    {\n");
-                fprintf(out, "      \"idx\": %d,\n", node->id);
-                if (computed_components) {
-                    fprintf(out, "      \"component\": %d,\n", scc[node->id].component);
-                }
-#ifdef notdef
-                if (node->parent != NULL) {
-                    fprintf(out, "      \"parent\": %d,\n", node->parent->id);
-                }
-                char *val = json_escape_value(node_state(node)->vars);
-                fprintf(out, "      \"value\": \"%s:%d\",\n", val, node_state(node)->choosing != 0);
-                free(val);
-#endif
-                print_transitions(out, symbols, node->fwd);
-                if (i == 0) {
-                    fprintf(out, "      \"type\": \"initial\"\n");
-                }
-                else if (node->final) {
-                    fprintf(out, "      \"type\": \"terminal\"\n");
-                }
-                else {
-                    fprintf(out, "      \"type\": \"normal\"\n");
-                }
-                fprintf(out, "    }");
+            if (first) {
+                first = false;
             }
+            else {
+                fprintf(out, ",\n");
+            }
+            fprintf(out, "    {\n");
+            fprintf(out, "      \"idx\": %d,\n", node->id);
+            if (computed_components) {
+                fprintf(out, "      \"component\": %d,\n", scc[node->id].component);
+            }
+#ifdef notdef
+            if (node->parent != NULL) {
+                fprintf(out, "      \"parent\": %d,\n", node->parent->id);
+            }
+            char *val = json_escape_value(node_state(node)->vars);
+            fprintf(out, "      \"value\": \"%s:%d\",\n", val, node_state(node)->choosing != 0);
+            free(val);
+#endif
+            print_transitions(out, symbols, node->fwd);
+            if (i == 0) {
+                fprintf(out, "      \"type\": \"initial\"\n");
+            }
+            else if (node->final) {
+                fprintf(out, "      \"type\": \"terminal\"\n");
+            }
+            else {
+                fprintf(out, "      \"type\": \"normal\"\n");
+            }
+            fprintf(out, "    }");
         }
         fprintf(out, "\n");
         fprintf(out, "  ],\n");
