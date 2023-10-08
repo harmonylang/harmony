@@ -789,8 +789,8 @@ static struct step_output *onestep(
             }
             
             // If we were lazily executing an atomic section in the hopes of
-            // not having to break, we need to restore the state.
-            // TODO.  Once we lose countLabel altogether, this is no longer the case
+            // not having to break, we need to restore the state.  This is
+            // needed to make the output understandable
             if (step->ctx->atomic > 0 && !step->ctx->atomicFlag) {
                 rollback = true;
             }
