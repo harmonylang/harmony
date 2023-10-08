@@ -1634,6 +1634,9 @@ class AtomicAST(AST):
     def compile(self, scope, code, stmt):
         stmt = self.range(self.atomically, self.colon)
         code.append(AtomicIncOp(False), self.token, self.endtoken, stmt=stmt)
+        if isinstance(self.stat, BlockAST) and len(self.stat.b) == 1 and isinstance(self.stat.b[0], LocationAST) and isinstance(self.stat.b[0].ast, LetWhenAST):
+            (lexeme, file, line, column) = self.token
+            print('Warning: you probably want to do "atomically when" rather than "atomically: when" in %s, line %d'%(file, line))
         self.stat.compile(scope, code, stmt)
         code.append(AtomicDecOp(), self.token, self.endtoken, stmt=stmt)
 

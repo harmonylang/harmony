@@ -725,13 +725,11 @@ static struct step_output *onestep(
                     // }
                     value_ctx_failure(step->ctx, step->allocator, "infinite loop");
                     infinite_loop = true;
-                    printf("INFINITE LOOP\n");
                     break;
                 }
 
                 // Otherwise start over to create the shortest counterexample.
                 else {
-                    printf("INFINITE LOOP RETRY\n");
                     return NULL;
                 }
             }
@@ -792,6 +790,7 @@ static struct step_output *onestep(
             
             // If we were lazily executing an atomic section in the hopes of
             // not having to break, we need to restore the state.
+            // TODO.  Once we lose countLabel altogether, this is no longer the case
             if (step->ctx->atomic > 0 && !step->ctx->atomicFlag) {
                 rollback = true;
             }
