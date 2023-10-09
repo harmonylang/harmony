@@ -74,7 +74,7 @@ struct step_output {
 struct edge_list {
     struct edge_list *next;
     struct node *node;      // source
-    struct edge *edge;
+    int edge_index;
 };
 
 struct step_condition {
@@ -95,16 +95,25 @@ struct step_comp {
 // information of how a program can get from the source state to the destination
 // state.
 struct edge {
-    struct edge *fwdnext;        // forward linked list maintenance
-    struct node *dst;            // destination node
+    // TODO.  There's only one field in struct edge, so why not union edge?
+    union {
+        struct {
+            unsigned int ctx_index;     // index into context bag
+            hvalue_t choice;
+        } before;
+        struct {
+            // struct edge *fwdnext;    // forward linked list maintenance
+            struct node *dst;           // destination node
 
-    // This field consists of the pointer to a step_condition (which contains the
-    // input and output of the computation) plus a few flags in the unused bits
-    // (see below).
-    uintptr_t flags;
+            // This field consists of the pointer to a step_condition (which contains the
+            // input and output of the computation) plus a few flags in the unused bits
+            // (see below).
+            uintptr_t flags;
+        } after;
+    } u;
 };
 #define EDGE_FLAGS           ((uintptr_t) 0xFF << 56)
-#define edge_sc(e)           ((struct step_condition *) ((e)->flags & ~EDGE_FLAGS))
+#define edge_sc(e)           ((struct step_condition *) ((e)->u.after.flags & ~EDGE_FLAGS))
 #define edge_input(e)        ((struct step_input *) &edge_sc(e)[1])
 #define edge_output(e)       (edge_sc(e)->u.completed)
 
@@ -127,21 +136,24 @@ enum fail_type {
     FAIL_RACE               // the program has a race condition
 };
 
-// This is information about a node in the Kripke structure.  The Harmony state
-// corresponding to this node is stored directly behind this node.
+// This is information about a node in the Kripke structure.  The node is directly followed
+// by the array of outgoing edges and then the Harmony state corresponding to this node.
 struct node {
-    struct edge *fwd;       // forward edges
+    // struct edge *fwd;       // forward edges
     struct node *parent;    // path to initial state
     uint32_t id;            // nodes are numbered starting from 0
     uint16_t len;           // length of path to initial state
+    uint8_t nedges;         // number of outgoing edges  // TODO also maintained by hash table
     bool on_stack : 1;      // for Tarjan
     bool failed : 1;        // state resulted from failed transition
     bool final : 1;         // final state
     bool visited : 1;       // for busy wait detection
+    // struct edge edges[nedges]
 };
 
-// The state corresponding to a node, directly following the node
-#define node_state(n)   ((struct state *) &(n)[1])
+// The state corresponding to a node
+#define node_edges(n)   ((struct edge *) &((n)[1]))
+#define node_state(n)   ((struct state *) &node_edges(n)[(n)->nedges])
 
 // Information about a failure.  Multiple failures may be detected, and these
 // are kept in a linked list.

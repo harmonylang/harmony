@@ -31,12 +31,13 @@ static inline uint32_t meiyan(const char *key, int count) {
 }
 
 static inline struct dict_assoc *dict_assoc_new(struct dict *dict,
-        struct allocator *al, char *key, unsigned int len){
-    unsigned int total = sizeof(struct dict_assoc) + dict->value_len + len;
+        struct allocator *al, char *key, unsigned int len, unsigned int extra){
+    unsigned int total = sizeof(struct dict_assoc) + dict->value_len + extra + len;
 	struct dict_assoc *k = al == NULL ?  malloc(total) :
                         (*al->alloc)(al->ctx, total, false, dict->align16);
-    k->flags = (uintptr_t) len << 48;
-	memcpy((char *) &k[1] + dict->value_len, key, len);
+    k->len = len;
+    k->extra = extra;
+	memcpy((char *) &k[1] + dict->value_len + extra, key, len);
 	return k;
 }
 
@@ -98,7 +99,7 @@ void dict_delete(struct dict *dict) {
 }
 
 static inline void dict_reinsert_when_resizing(struct dict *dict, struct dict_assoc *k) {
-    unsigned int n = hash_func((char *) &k[1] + dict->value_len, da_len(k)) % dict->length;
+    unsigned int n = hash_func((char *) &k[1] + dict->value_len + k->extra, da_len(k)) % dict->length;
 	struct dict_bucket *db = &dict->table[n];
     da_set(k, db->stable);
     db->stable = k;
@@ -161,7 +162,7 @@ struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
     struct dict_bucket *db = &dict->table[index];
 	struct dict_assoc *k = db->stable;
 	while (k != NULL) {
-		if (da_len(k) == keylen && memcmp((char *) &k[1] + dict->value_len, key, keylen) == 0) {
+		if (da_len(k) == keylen && memcmp((char *) &k[1] + dict->value_len + k->extra, key, keylen) == 0) {
             if (new != NULL) {
                 *new = false;
             }
@@ -179,7 +180,7 @@ struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
         // See if the item is in the unstable list
         k = db->unstable;
         while (k != NULL) {
-            if (da_len(k) == keylen && memcmp((char *) &k[1] + dict->value_len, key, keylen) == 0) {
+            if (da_len(k) == keylen && memcmp((char *) &k[1] + dict->value_len + k->extra, key, keylen) == 0) {
                 mutex_release(&dict->locks[index % dict->nlocks]);
                 if (new != NULL) {
                     *new = false;
@@ -205,7 +206,7 @@ struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
 #ifdef HASHDICT_STATS
     (void) atomic_fetch_add(&dict->nmisses, 1);
 #endif
-    k = dict_assoc_new(dict, al, (char *) key, keylen);
+    k = dict_assoc_new(dict, al, (char *) key, keylen, 0);
     if (dict->concurrent) {
         da_set(k, db->unstable);
         db->unstable = k;
@@ -236,7 +237,7 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
     struct dict_bucket *db = &dict->table[index];
 	struct dict_assoc *k = db->stable;
 	while (k != NULL) {
-		if (da_len(k) == keylen && memcmp((char *) &k[1] + dict->value_len, key, keylen) == 0) {
+		if (da_len(k) == keylen && memcmp((char *) &k[1] + dict->value_len + k->extra, key, keylen) == 0) {
             if (new != NULL) {
                 *new = false;
             }
@@ -253,7 +254,7 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
     // See if the item is in the unstable list
     k = db->unstable;
     while (k != NULL) {
-        if (da_len(k) == keylen && memcmp((char *) &k[1] + dict->value_len, key, keylen) == 0) {
+        if (da_len(k) == keylen && memcmp((char *) &k[1] + dict->value_len + k->extra, key, keylen) == 0) {
             if (new != NULL) {
                 *new = false;
             }
@@ -265,7 +266,7 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
         k = da_next(k);
     }
 
-    k = dict_assoc_new(dict, al, (char *) key, keylen);
+    k = dict_assoc_new(dict, al, (char *) key, keylen, 0);
     da_set(k, db->unstable);
     db->unstable = k;
     dict_unstable(dict, al, index, k);
@@ -280,8 +281,10 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
 }
 
 // Similar to dict_find_lock(), but gets a lock on the bucket only if it's a new node
+// 'extra' is an additional number of bytes added to the value.
 struct dict_assoc *dict_find_lock_new(struct dict *dict, struct allocator *al,
-                            const void *key, unsigned int keylen, bool *new, mutex_t **lock){
+                            const void *key, unsigned int keylen,
+                            unsigned int extra, bool *new, mutex_t **lock){
     assert(dict->concurrent);
     assert(al != NULL);
     uint32_t hash = hash_func(key, keylen);
@@ -291,7 +294,7 @@ struct dict_assoc *dict_find_lock_new(struct dict *dict, struct allocator *al,
     struct dict_bucket *db = &dict->table[index];
 	struct dict_assoc *k = db->stable;
 	while (k != NULL) {
-		if (da_len(k) == keylen && memcmp((char *) &k[1] + dict->value_len, key, keylen) == 0) {
+		if (da_len(k) == keylen && memcmp((char *) &k[1] + dict->value_len + k->extra, key, keylen) == 0) {
             *new = false;
 #ifdef HASHDICT_STATS
             (void) atomic_fetch_add(&dict->nstable_hits, 1);
@@ -305,7 +308,7 @@ struct dict_assoc *dict_find_lock_new(struct dict *dict, struct allocator *al,
     // See if the item is in the unstable list
     k = db->unstable;
     while (k != NULL) {
-        if (da_len(k) == keylen && memcmp((char *) &k[1] + dict->value_len, key, keylen) == 0) {
+        if (da_len(k) == keylen && memcmp((char *) &k[1] + dict->value_len + k->extra, key, keylen) == 0) {
             *new = false;
 #ifdef HASHDICT_STATS
             (void) atomic_fetch_add(&dict->nunstable_hits, 1);
@@ -316,7 +319,7 @@ struct dict_assoc *dict_find_lock_new(struct dict *dict, struct allocator *al,
         k = da_next(k);
     }
 
-    k = dict_assoc_new(dict, al, (char *) key, keylen);
+    k = dict_assoc_new(dict, al, (char *) key, keylen, extra);
     da_set(k, db->unstable);
     db->unstable = k;
     dict_unstable(dict, al, index, k);
@@ -354,7 +357,7 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keylen) {
     // First look in the stable list, which does not require a lock
 	struct dict_assoc *k = db->stable;
 	while (k != NULL) {
-		if (da_len(k) == keylen && !memcmp((char *) &k[1] + dict->value_len, key, keylen)) {
+		if (da_len(k) == keylen && !memcmp((char *) &k[1] + dict->value_len + k->extra, key, keylen)) {
             return * (void **) &k[1];
 		}
 		k = da_next(k);
@@ -365,7 +368,7 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keylen) {
         mutex_acquire(&dict->locks[index % dict->nlocks]);
         k = db->unstable;
         while (k != NULL) {
-            if (da_len(k) == keylen && !memcmp((char *) &k[1] + dict->value_len, key, keylen)) {
+            if (da_len(k) == keylen && !memcmp((char *) &k[1] + dict->value_len + k->extra, key, keylen)) {
                 mutex_release(&dict->locks[index % dict->nlocks]);
                 return * (void **) &k[1];
             }
@@ -382,14 +385,14 @@ void dict_iter(struct dict *dict, dict_enumfunc f, void *env) {
         struct dict_bucket *db = &dict->table[i];
         struct dict_assoc *k = db->stable;
         while (k != NULL) {
-            (*f)(env, (char *) &k[1] + dict->value_len, da_len(k), &k[1]);
+            (*f)(env, (char *) &k[1] + dict->value_len + k->extra, da_len(k), &k[1]);
             k = da_next(k);
         }
         if (dict->concurrent) {
             mutex_acquire(&dict->locks[i % dict->nlocks]);
             k = db->unstable;
             while (k != NULL) {
-                (*f)(env, (char *) &k[1] + dict->value_len, da_len(k), &k[1]);
+                (*f)(env, (char *) &k[1] + dict->value_len + k->extra, da_len(k), &k[1]);
                 k = da_next(k);
             }
             mutex_release(&dict->locks[i % dict->nlocks]);
@@ -429,7 +432,7 @@ void dict_make_stable(struct dict *dict, unsigned int worker){
             struct dict_unstable *du = &dw->unstable[worker];
             for (unsigned int j = 0; j < du->next; j++) {
                 struct dict_assoc *k = du->entries[j];
-                uint32_t hash = hash_func((char *) &k[1] + dict->value_len, da_len(k));
+                uint32_t hash = hash_func((char *) &k[1] + dict->value_len + k->extra, da_len(k));
                 unsigned int index = hash % dict->length;
                 struct dict_bucket *db = &dict->table[index];
                 da_set(k, db->stable);
@@ -445,7 +448,7 @@ void dict_make_stable(struct dict *dict, unsigned int worker){
             struct dict_unstable *du = &dw->unstable[worker];
             for (unsigned int j = 0; j < du->next; j++) {
                 struct dict_assoc *k = du->entries[j];
-                uint32_t hash = hash_func((char *) &k[1] + dict->value_len, da_len(k));
+                uint32_t hash = hash_func((char *) &k[1] + dict->value_len + k->extra, da_len(k));
                 unsigned int index = hash % dict->length;
                 struct dict_bucket *db = &dict->table[index];
                 da_set(k, db->stable);

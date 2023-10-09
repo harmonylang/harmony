@@ -12,18 +12,15 @@ typedef void (*dict_enumfunc)(void *env, const void *key, unsigned int key_size,
                                 void *value);
 
 // This header is followed directly by first the data and then the key.
-// We put the length in the top 16 bits and the pointer to the next
-// entry in the lower 48 bits.  Space is at a premium...
 struct dict_assoc {
-    uintptr_t flags;
-	// struct dict_assoc *next;
-	// unsigned int len;               // key length
-#define DA_LEN_BITS    ((uintptr_t) 0xFFFF << 48)
-#define da_next(k)     ((struct dict_assoc *) ((k)->flags & ~DA_LEN_BITS))
-#define da_len(k)      ((k)->flags >> 48)
+	struct dict_assoc *next;
+	uint16_t len;               // key length
+    uint16_t extra;             // extra data length in 8-byte words
+#define da_next(k)     ((k)->next)
+#define da_len(k)      ((k)->len)
 };
 
-#define da_set(k, next) do (k)->flags = (((k)->flags & DA_LEN_BITS) | (uintptr_t) (next)); while (0)
+#define da_set(k, n)   do (k)->next = (n); while (0)
 
 // TODO.  Split into two tables, one for stable, one for unstable.
 struct dict_bucket {
@@ -72,7 +69,7 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keylen);
 bool dict_remove(struct dict *dict, const void *key, unsigned int keylen);
 void *dict_insert(struct dict *dict, struct allocator *al, const void *key, unsigned int keylen, bool *is_new);
 struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al, const void *key, unsigned int keyn, bool *is_new, mutex_t **lock);
-struct dict_assoc *dict_find_lock_new(struct dict *dict, struct allocator *al, const void *key, unsigned int keyn, bool *is_new, mutex_t **lock);
+struct dict_assoc *dict_find_lock_new(struct dict *dict, struct allocator *al, const void *key, unsigned int keyn, unsigned int extra, bool *is_new, mutex_t **lock);
 struct dict_assoc *dict_find(struct dict *dict, struct allocator *al, const void *key, unsigned int keylen, bool *is_new);
 void *dict_retrieve(const void *p, unsigned int *psize);
 void dict_iter(struct dict *dict, dict_enumfunc f, void *user);
