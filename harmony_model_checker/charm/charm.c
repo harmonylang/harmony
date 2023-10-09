@@ -2048,9 +2048,8 @@ again:
         hvalue_t choice = edge_input(global.macrosteps[i]->edge)->choice;
         struct edge *e = node_edges(node);
         bool found = false;
-        for (unsigned int i = 0; i < node->nedges; i++, e++) {
+        for (unsigned int j = 0; j < node->nedges; j++, e++) {
             if (edge_input(e)->ctx == ctx && edge_input(e)->choice == choice) {
-                global.macrosteps[i]->edge = e;
                 found = true;
                 break;
             }
@@ -2060,8 +2059,9 @@ again:
         //        happen for the fake edges that are added at the
         //        end in the case of invariant or finally violations.
         if (!found) {
-            if (i != global.nmacrosteps - 1)
+            if (i != global.nmacrosteps - 1) {
                 printf("KLUDGE %d %d\n", i, global.nmacrosteps - 1);
+            }
             assert(i == global.nmacrosteps - 1);
             break;
         }
@@ -4298,7 +4298,7 @@ int exec_model_checker(int argc, char **argv){
 
         // The optimal path minimizes the number of context switches.  Here we
         // reorder steps in the path to do so.
-        // TODO path_optimize();
+        path_optimize();
 
         // During model checking much information is removed for memory efficiency.
         // Here we recompute the path to reconstruct that information.
