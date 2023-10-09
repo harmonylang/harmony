@@ -505,6 +505,7 @@ static unsigned int process_step(
         w->loops_possible = true;
     }
 
+    // TODO.  Unneeded
     return noutgoing;
 }
 
