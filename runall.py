@@ -120,6 +120,6 @@ for t in tests:
                 break
     else:
         print("Error code %d, aborting further tests" % cp.returncode)
-        print("Output: ", cp.stdout)
-        print("Error: ", cp.stderr)
+        print("Output: ", cp.stdout.decode())
+        print("Error: ", cp.stderr.decode())
         break

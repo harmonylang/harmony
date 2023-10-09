@@ -3053,18 +3053,16 @@ static void destutter1(FILE *out, bool suppress){
     // If nothing got printed, we can just return a single node
     if (!global.printed_something) {
         graph->size = 1;
-        struct node *n = graph->nodes[0];
+        struct node *n = global.graph.nodes[0] = calloc(1, sizeof(*n));
         n->final = true;
-        // TODO n->fwd = NULL;
         return;
     }
 
     // Also suppress very large outputs when checking behaviors.
     if (suppress && graph->size > 100000) {
         graph->size = 1;
-        struct node *n = graph->nodes[0];
+        struct node *n = global.graph.nodes[0] = calloc(1, sizeof(*n));
         n->final = true;
-        // TODO n->fwd = NULL;
         fprintf(out, "  \"suppressed\": \"True\",\n");
         return;
     }
