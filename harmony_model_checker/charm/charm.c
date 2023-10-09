@@ -355,7 +355,7 @@ void spawn_thread(struct state *state, struct context *ctx){
 // Apply the effect of evaluating a context (for a particular assignment
 // of shared variables and possibly some choice) to a state.  This leads
 // to a new edge in the Kripke structure, possibly to a new state.
-static void process_step(
+static unsigned int process_step(
     struct worker *w,
     struct step_output *so,
     struct node *node,
@@ -402,28 +402,39 @@ static void process_step(
         }
     }
 
-    // If choosing, save in state.  If some invariant uses "pre", then
-    // also keep track of "pre" state.
-    //
-    // The issue here is subtle.  Invariants are only checked when entering
-    // a normal state, not a choosing state, because choosing states can be
-    // in the middle of an atomic section.  So, we either need to keep track
-    // of the pre-state (as we do) or we need a much more complicated way of
-    // checking invariants with "pre" variables.  But always storing the
-    // pre-state in an old state can result in significant state explosion.
-    // So we only do it in case there are such invariant, and then only for
-    // choosing states.
+    // Determine the number of outgoing edges of the new state below
+    int noutgoing;
+
+    // If choosing, save in state.
     if (so->choosing) {
         sc->chooser = new_index;
         // sc->pre = global.inv_pre ? node_state(node)->pre : sc->vars;
+        // TODO.  Maybe more efficient to keep the following info in so
+        //        as it's already computed in onestep
+        struct context *ctx = value_get(so->after, NULL);
+        assert(ctx->sp > 0);
+        hvalue_t s = ctx_stack(ctx)[ctx->sp - 1];
+        assert(VALUE_TYPE(s) == VALUE_SET);
+        unsigned int size;
+        (void) value_get(s, &size);
+        noutgoing = size / sizeof(hvalue_t);
     }
     else {
         sc->chooser = -1;
         // sc->pre = sc->vars;
+        hvalue_t *ctxlist = state_ctxlist(sc);
+        noutgoing = sc->bagsize;
+        for (unsigned int i = 0; i < sc->bagsize; i++) {
+            struct context *ctx = value_get(ctxlist[i], NULL);
+            if (ctx->extended && ctx_trap_pc(ctx) != 0 && !ctx->interruptlevel) {
+                noutgoing++;
+            }
+        }
     }
 
     if (so->failed || so->infinite_loop) {
         edge->flags |= EDGE_FAILED;
+        noutgoing = 0;
     }
 
     if (global.dfa != NULL) {
@@ -493,6 +504,8 @@ static void process_step(
     if (edge->dst != node && edge->dst->len <= node->len) {
         w->loops_possible = true;
     }
+
+    return noutgoing;
 }
 
 // This is the main workhorse function of model checking: explore a state and
