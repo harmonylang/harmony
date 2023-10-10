@@ -1076,30 +1076,6 @@ static void trystep(
     }
 }
 
-static void chk_invs(
-    struct worker *w,
-    struct node *node,     // the state we're exploring
-    bool finally           // check finally predicate
-) {
-    struct step step;
-    memset(&step, 0, sizeof(step));
-    step.allocator = &w->allocator;
-
-    struct state *state = node_state(node);
-
-    // Check each invariant
-    for (unsigned int i = 0; i < global.ninvs; i++) {
-        trystep(w, node, -1, state, global.invs[i].context, &step, 0, -1);
-    }
-
-    if (finally) {
-        // Check each "finally" predicate
-        for (unsigned int i = 0; i < global.nfinals; i++) {
-            trystep(w, node, -1, state, global.finals[i], &step, 0, -1);
-        }
-    }
-}
-
 char *ctx_status(struct node *node, hvalue_t ctx) {
     struct state *state = node_state(node);
 
@@ -2287,7 +2263,8 @@ void do_work1(struct worker *w, struct node *node){
 
     // Explore the non-deterministic choices from this node
     struct edge *edges = node_edges(node);
-    struct state *state = node_state(node);
+    // struct state *state = node_state(node);
+    struct state *state = (struct state *) &edges[node->nedges];
     struct step step;
     for (int i = 0; i < node->nedges; i++) {
         unsigned int ctx_index = edges[i].u.before.ctx_index;
@@ -2299,10 +2276,20 @@ void do_work1(struct worker *w, struct node *node){
     }
 
     // Also check the invariants after initialization
-    if (node->id != 0) {
-        struct state *state = node_state(node);
-        bool final = global.nfinals > 0 && value_state_all_eternal(state);
-        chk_invs(w, node, final);
+    if (node->id != 0 && (global.ninvs > 0 || global.nfinals > 0)) {
+        memset(&step, 0, sizeof(step));
+
+        // Check each invariant
+        for (unsigned int i = 0; i < global.ninvs; i++) {
+            trystep(w, node, -1, state, global.invs[i].context, &step, 0, -1);
+        }
+
+        if (global.nfinals > 0 && value_state_all_eternal(state)) {
+            // Check each "finally" predicate
+            for (unsigned int i = 0; i < global.nfinals; i++) {
+                trystep(w, node, -1, state, global.finals[i], &step, 0, -1);
+            }
+        }
     }
 }
 

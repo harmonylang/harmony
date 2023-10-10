@@ -158,6 +158,10 @@ struct node {
 #define node_edges(n)   ((struct edge *) &((n)[1]))
 #define node_state(n)   ((struct state *) &node_edges(n)[(n)->nedges])
 
+// Equivalently...
+// #define node_assoc(n)   (((struct dict_assoc *) (n))[-1])
+// #define node_state(n)   ((struct state *) ((char *) (n) + node_assoc(n).val_len))
+
 // Information about a failure.  Multiple failures may be detected, and these
 // are kept in a linked list.
 struct failure {
