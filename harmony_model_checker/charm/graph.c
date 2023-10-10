@@ -96,7 +96,7 @@ void graph_check_for_data_race(
         for (struct access_info *ai = edge_output(edge)->ai; ai != NULL; ai = ai->next) {
             if (ai->indices != NULL) {
                 assert(ai->n > 0);
-                if ((edge->u.after.flags & EDGE_MULTIPLE) && !ai->load && !ai->atomic) {
+                if (edge->u.after.multiple && !ai->load && !ai->atomic) {
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_RACE;
                     f->edge = node_to_parent(node);

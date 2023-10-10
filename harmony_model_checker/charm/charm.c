@@ -372,8 +372,10 @@ static void process_step(
             f->node = node;
             f->edge = walloc_fast(w, sizeof(struct edge));
             f->edge->u.after.dst = node;
-            f->edge->u.after.flags =
-                (uintptr_t) stc | EDGE_FAILED | EDGE_INVARIANT_CHK;
+            f->edge->u.after.stc_id = stc->id;
+            f->edge->u.after.failed = so->failed;
+            f->edge->u.after.infloop = so->infinite_loop;
+            f->edge->u.after.invariant_chk = true;
             add_failure(&global.failures, f);
         }
         return;
@@ -451,8 +453,12 @@ static void process_step(
     }
 
     struct edge *edge = &node_edges(node)[edge_index];
-    if (so->failed || so->infinite_loop) {
-        edge->u.after.flags |= EDGE_FAILED;
+    if (so->failed) {
+        edge->u.after.failed = true;
+        noutgoing = 0;
+    }
+    if (so->infinite_loop) {
+        edge->u.after.infloop = true;
         noutgoing = 0;
     }
 
@@ -464,7 +470,7 @@ static void process_step(
                 f->type = FAIL_BEHAVIOR;
                 f->node = node;
                 f->edge = edge;
-                edge->u.after.flags |= EDGE_FAILED;
+                edge->u.after.failed = true;
                 add_failure(&global.failures, f);
                 break;
             }
@@ -473,9 +479,17 @@ static void process_step(
     }
 
     // If a failure has occurred, keep track of that too.
-    if (edge->u.after.flags & EDGE_FAILED) {
+    if (edge->u.after.infloop) {
         struct failure *f = new_alloc(struct failure);
-        f->type = edge_output(edge)->infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
+        f->type = FAIL_TERMINATION;
+        f->node = node;
+        f->edge = edge;
+        f->next = w->failures;
+        w->failures = f;
+    }
+    else if (edge->u.after.failed) {
+        struct failure *f = new_alloc(struct failure);
+        f->type = FAIL_SAFETY;
         f->node = node;
         f->edge = edge;
         f->next = w->failures;
@@ -501,7 +515,7 @@ static void process_step(
 
     if (new) {
         assert(node->len == global.diameter);
-        next->failed = (edge->u.after.flags & EDGE_FAILED) != 0;
+        next->failed = edge->u.after.failed;
         next->parent = node;
         next->len = node->len + 1;
         next->nedges = noutgoing;
@@ -976,12 +990,33 @@ static void trystep(
         stc = (struct step_condition *) &da[1];
     }
 
+    if (si_new) {
+        // Add to global array to create an id
+        mutex_acquire(&global.stc_lock);
+        if (global.nstc == global.stc_allocated) {
+            global.stc_allocated *= 4;
+            global.stc_table = realloc(global.stc_table,
+                global.stc_allocated * sizeof(*global.stc_table));
+        }
+        stc->id = global.nstc;
+        global.stc_table[global.nstc] = stc;
+        global.nstc++;
+        mutex_release(&global.stc_lock);
+    }
+
     if (edge_index >= 0) {
         struct edge *edge = &node_edges(node)[edge_index];
-        edge->u.after.flags = (uintptr_t) stc;
+        edge->u.after.stc_id = stc->id;
         if (ctx_index >= 0 && state_multiplicity(state, ctx_index) > 1) { 
-            edge->u.after.flags |= EDGE_MULTIPLE;
+            edge->u.after.multiple = true;
         }
+        else {
+            edge->u.after.multiple = false;
+        }
+        // TODO.  Don't know if C compiler generates efficient code...
+        edge->u.after.failed = false;
+        edge->u.after.infloop = false;
+        edge->u.after.invariant_chk = false;
     }
 
     if (si_new) {
@@ -1517,7 +1552,7 @@ void path_recompute(){
         struct edge *e = macro->edge;
         hvalue_t ctx = edge_input(e)->ctx;
 
-        if (e->u.after.flags & EDGE_INVARIANT_CHK) {
+        if (e->u.after.invariant_chk) {
             global.processes = realloc(global.processes, (global.nprocesses + 1) * sizeof(hvalue_t));
             global.callstacks = realloc(global.callstacks, (global.nprocesses + 1) * sizeof(struct callstack *));
             global.processes[global.nprocesses] = ctx;
@@ -1564,7 +1599,7 @@ void path_recompute(){
             ctx,
             global.callstacks[pid],
             edge_input(e)->choice,
-            e->u.after.flags & EDGE_INVARIANT_CHK,
+            e->u.after.invariant_chk,
             edge_output(e)->nsteps,
             pid,
             macro
@@ -3501,6 +3536,10 @@ int exec_model_checker(int argc, char **argv){
     global.failures = NULL;
     global.seqs = VALUE_SET;
 
+    mutex_init(&global.stc_lock);
+    global.stc_allocated = 4096;
+    global.stc_table = malloc(global.stc_allocated * sizeof(*global.stc_table));
+
     // First read and parse the DFA if any
     if (dfafile != NULL) {
         global.dfa = dfa_read(NULL, dfafile);
@@ -3748,7 +3787,7 @@ int exec_model_checker(int argc, char **argv){
         }
     }
     printf("    * %u/%u computations/edges\n", (si_total - si_hits), si_total);
-    printf("    * %llx - %llx\n", -mindiff, maxdiff);
+    printf("    * %lx - %lx\n", -mindiff, maxdiff);
 #ifdef HASHDICT_STATS
     float atotal = atomic_load(&visited->nstable_hits) + atomic_load(&visited->nunstable_hits) + atomic_load(&visited->nmisses);
     printf("    * hashtable %.2f/%.2f/%.2f\n", atomic_load(&visited->nstable_hits)/atotal, atomic_load(&visited->nunstable_hits)/atotal, atomic_load(&visited->nmisses)/atotal);
@@ -3991,7 +4030,7 @@ int exec_model_checker(int argc, char **argv){
                         }
                     }
                     assert(j < state->bagsize);
-                    if (edge->u.after.flags & EDGE_FAILED) {
+                    if (edge->u.after.failed) {
                         fprintf(df, " s%u -> s%u [style=%s label=\"F %u\"]\n",
                             node->id, edge->u.after.dst->id,
                             node_to_parent(edge->u.after.dst) == edge ? "solid" : "dashed",
@@ -4064,7 +4103,7 @@ int exec_model_checker(int argc, char **argv){
                     fprintf(df, "            context before: %"PRIx64" pc=%d\n", edge_input(edge)->ctx, ctx->pc);
                     ctx = value_get(edge_output(edge)->after, NULL);
                     fprintf(df, "            context after:  %"PRIx64" pc=%d\n", edge_output(edge)->after, ctx->pc);
-                    if (edge->u.after.flags & EDGE_FAILED) {
+                    if (edge->u.after.failed) {
                         fprintf(df, "            failed\n");
                     }
                     if (edge_input(edge)->choice != 0) {

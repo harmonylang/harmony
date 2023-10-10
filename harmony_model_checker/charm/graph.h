@@ -78,6 +78,7 @@ struct edge_list {
 };
 
 struct step_condition {
+    unsigned int id;
     enum { SC_IN_PROGRESS, SC_COMPLETED } type;
     union {
         struct edge_list *in_progress;
@@ -108,26 +109,18 @@ struct edge {
         struct {
             struct node *dst;           // destination node
 
-            // This field consists of the pointer to a step_condition (which contains the
-            // input and output of the computation) plus a few flags in the unused bits
-            // (see below).
-            uintptr_t flags;
+            unsigned int stc_id : 28;
+            bool multiple : 1;
+            bool failed : 1;
+            bool infloop : 1;
+            bool invariant_chk : 1;
         } after;
     } u;
 };
-#define EDGE_FLAGS           ((uintptr_t) 0xFF << 56)
-#define edge_sc(e)           ((struct step_condition *) ((e)->u.after.flags & ~EDGE_FLAGS))
+
+#define edge_sc(e)           (global.stc_table[(e)->u.after.stc_id])
 #define edge_input(e)        ((struct step_input *) &edge_sc(e)[1])
 #define edge_output(e)       (edge_sc(e)->u.completed)
-
-// Multiplicity > 1
-#define EDGE_MULTIPLE        ((uintptr_t) 1 << 63)
-
-// Something went wrong in computation
-#define EDGE_FAILED          ((uintptr_t) 1 << 62)
-
-// This is an invariant check computation
-#define EDGE_INVARIANT_CHK   ((uintptr_t) 1 << 61)
 
 // Charm can detect a variety of failure types:
 enum fail_type {
