@@ -357,11 +357,27 @@ void spawn_thread(struct state *state, struct context *ctx){
 // to a new edge in the Kripke structure, possibly to a new state.
 static void process_step(
     struct worker *w,
-    struct step_output *so,
+    struct step_condition *stc,
     struct node *node,
     int edge_index,
     struct state *sc
 ) {
+    struct step_output *so = stc->u.completed;
+
+    if (edge_index < 0) { // invariant
+        if (so->failed || so->infinite_loop) {
+            struct failure *f = new_alloc(struct failure);
+            f->type = so->failed ? FAIL_SAFETY : FAIL_TERMINATION;
+            f->node = node;
+            f->edge = walloc_fast(w, sizeof(struct edge));
+            f->edge->u.after.dst = node;
+            f->edge->u.after.flags =
+                (uintptr_t) stc | EDGE_FAILED | EDGE_INVARIANT_CHK;
+            add_failure(&global.failures, f);
+        }
+        return;
+    }
+
     w->process_step++;
     sc->vars = so->vars;
 
@@ -1098,14 +1114,14 @@ static void trystep(
         assert(state_ctx(sc, ctx_index) == ctx);
         context_remove_by_index(sc, ctx_index);
     }
-    process_step(w, stc->u.completed, node, edge_index, sc);
+    process_step(w, stc, node, edge_index, sc);
     while (el != NULL) {
         struct node *n = el->node;
         struct state *state = node_state(n);
         unsigned int statesz = state_size(state);
         memcpy(sc, state, statesz);
         context_remove(sc, ctx);
-        process_step(w, stc->u.completed, n, el->edge_index, sc);
+        process_step(w, stc, n, el->edge_index, sc);
         struct edge_list *next = el->next;
         el->next = w->el_free;
         w->el_free = el;
@@ -2374,15 +2390,12 @@ void do_work1(struct worker *w, struct node *node){
         make_step(w, node, i, edges[i].u.before.ctx_index, edges[i].u.before.choice);
     }
 
-#ifdef TODO
-        // Also check the invariants after initialization
-        if (node->id != 0) {
-            struct state *state = node_state(node);
-            // TODO.  Make this check cheaper somehow
-            bool final = global.nfinals > 0 && value_state_all_eternal(state);
-            chk_invs(w, node, final);
-        }
-#endif
+    // Also check the invariants after initialization
+    if (node->id != 0) {
+        struct state *state = node_state(node);
+        bool final = global.nfinals > 0 && value_state_all_eternal(state);
+        chk_invs(w, node, final);
+    }
 }
 
 // A worker thread executes this in "phase 1" of the worker loop, when all
