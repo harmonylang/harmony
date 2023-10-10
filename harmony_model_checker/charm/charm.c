@@ -990,7 +990,6 @@ static void trystep(
     int edge_index,          // edge index (-1 if an invariant)
     struct state *state,     // actual state
     hvalue_t ctx,            // context identifier
-    struct context *cc,      // value of context
     struct step *step,       // step info
     hvalue_t choice,         // if about to make a choice, which choice?
     int ctx_index            // -1 if not in the context bag (i.e., invariant)
@@ -1070,6 +1069,11 @@ static void trystep(
     // If this is a new step, perform it
     struct edge_list *el = NULL;
     if (si_new) {
+        // Get the context
+        unsigned int size;
+        struct context *cc = value_get(ctx, &size);
+        assert(ctx_size(cc) == size);
+
         // Make a copy of the context
         assert(!cc->terminated);
         assert(!cc->failed);
@@ -1143,10 +1147,12 @@ static void trystep(
 static void make_step(
     struct worker *w,
     struct node *node,       // the state we're exploring
-    unsigned int edge_index, // the edge we're exploring
-    unsigned int ctx_index,  // the context that we're running
-    hvalue_t choice          // if about to make a choice, which choice?
+    unsigned int edge_index  // the edge we're exploring
 ) {
+    struct edge *edges = node_edges(node);
+    unsigned int ctx_index = edges[edge_index].u.before.ctx_index;
+    hvalue_t choice = edges[edge_index].u.before.choice;
+
     struct step step;
     memset(&step, 0, sizeof(step));
     step.allocator = &w->allocator;
@@ -1154,12 +1160,7 @@ static void make_step(
     struct state *state = node_state(node);
     hvalue_t ctx = state_ctx(state, ctx_index);
 
-    // Get the context
-    unsigned int size;
-    struct context *cc = value_get(ctx, &size);
-    assert(ctx_size(cc) == size);
-
-    trystep(w, node, edge_index, state, ctx, cc, &step, choice, ctx_index);
+    trystep(w, node, edge_index, state, ctx, &step, choice, ctx_index);
 }
 
 static void chk_invs(
@@ -1175,26 +1176,14 @@ static void chk_invs(
 
     // Check each invariant
     for (unsigned int i = 0; i < global.ninvs; i++) {
-        // Get the context
-        unsigned int size;
-        struct context *cc = value_get(global.invs[i].context, &size);
-        assert(ctx_size(cc) == size);
-        assert(strcmp(global.code.instrs[cc->pc].oi->name, "Frame") == 0);
-        trystep(w, node, -1, state, global.invs[i].context, cc, &step, 0, -1);
+        trystep(w, node, -1, state, global.invs[i].context, &step, 0, -1);
     }
 
-    if (!finally) {
-        return;
-    }
-
-    // Check each "finally" predicate
-    for (unsigned int i = 0; i < global.nfinals; i++) {
-        // Get the context
-        unsigned int size;
-        struct context *cc = value_get(global.finals[i], &size);
-        assert(ctx_size(cc) == size);
-        assert(strcmp(global.code.instrs[cc->pc].oi->name, "Frame") == 0);
-        trystep(w, node, -1, state, global.finals[i], cc, &step, 0, -1);
+    if (finally) {
+        // Check each "finally" predicate
+        for (unsigned int i = 0; i < global.nfinals; i++) {
+            trystep(w, node, -1, state, global.finals[i], &step, 0, -1);
+        }
     }
 }
 
@@ -2386,9 +2375,8 @@ void do_work1(struct worker *w, struct node *node){
 #endif // OLD_PACIFIER
 
     // Explore the non-deterministic choices from this node
-    struct edge *edges = node_edges(node);
     for (int i = 0; i < node->nedges; i++) {
-        make_step(w, node, i, edges[i].u.before.ctx_index, edges[i].u.before.choice);
+        make_step(w, node, i);
     }
 
     // Also check the invariants after initialization
