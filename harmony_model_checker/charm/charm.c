@@ -487,10 +487,9 @@ static void process_step(
     bool new;
     struct dict_assoc *hn = dict_find_new(w->visited, &w->allocator,
                 sc, size, noutgoing * sizeof(struct edge), &new);
-    edge->u.after.dst = (struct node *) &hn[1];
+    struct node *next = edge->u.after.dst = (struct node *) &hn[1];
     if (new) {
         assert(node->len == global.diameter);
-        struct node *next = edge->u.after.dst;
         next->failed = (edge->u.after.flags & EDGE_FAILED) != 0;
         next->parent = node;
         next->len = node->len + 1;
@@ -545,7 +544,7 @@ static void process_step(
 
     // See if the node points sideways or backwards, in which
     // case cycles in the graph are possible
-    if (edge->u.after.dst != node && edge->u.after.dst->len <= node->len) {
+    else if (next != node && next->len <= node->len) {
         w->loops_possible = true;
     }
 }
