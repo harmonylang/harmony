@@ -284,12 +284,13 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
 // 'extra' is an additional number of bytes added to the value.
 struct dict_assoc *dict_find_new(struct dict *dict, struct allocator *al,
                             const void *key, unsigned int keylen,
-                            unsigned int extra, bool *new){
+                            unsigned int extra, bool *new, mutex_t **lock){
     assert(dict->concurrent);
     assert(al != NULL);
     uint32_t hash = hash_func(key, keylen);
     unsigned int index = hash % dict->length;
-    mutex_t *lock = &dict->locks[index % dict->nlocks];
+
+    *lock = &dict->locks[index % dict->nlocks];
 
     struct dict_bucket *db = &dict->table[index];
 	struct dict_assoc *k = db->stable;
@@ -304,7 +305,7 @@ struct dict_assoc *dict_find_new(struct dict *dict, struct allocator *al,
 		k = da_next(k);
 	}
 
-    mutex_acquire(lock);
+    mutex_acquire(*lock);
     // See if the item is in the unstable list
     k = db->unstable;
     while (k != NULL) {
@@ -313,7 +314,7 @@ struct dict_assoc *dict_find_new(struct dict *dict, struct allocator *al,
 #ifdef HASHDICT_STATS
             (void) atomic_fetch_add(&dict->nunstable_hits, 1);
 #endif
-            mutex_release(lock);
+            mutex_release(*lock);
             return k;
         }
         k = da_next(k);
@@ -323,7 +324,6 @@ struct dict_assoc *dict_find_new(struct dict *dict, struct allocator *al,
     da_set(k, db->unstable);
     db->unstable = k;
     dict_unstable(dict, al, index, k);
-    mutex_release(lock);
 
     *new = true;
 #ifdef HASHDICT_STATS

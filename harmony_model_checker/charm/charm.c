@@ -485,8 +485,9 @@ static void process_step(
     // or allocate if not.
     unsigned int size = state_size(sc);
     bool new;
+    mutex_t *lock;
     struct dict_assoc *hn = dict_find_new(w->visited, &w->allocator,
-                sc, size, noutgoing * sizeof(struct edge), &new);
+                sc, size, noutgoing * sizeof(struct edge), &new, &lock);
     struct node *next = edge->u.after.dst = (struct node *) &hn[1];
     if (new) {
         assert(node->len == global.diameter);
@@ -494,6 +495,7 @@ static void process_step(
         next->parent = node;
         next->len = node->len + 1;
         next->nedges = noutgoing;
+        mutex_release(lock);
 
 #ifdef PREFILL
         // Fill in the outgoing edges
@@ -1060,8 +1062,8 @@ static void trystep(
         assert(stc->type == SC_COMPLETED);
     }
 
-#ifdef TODO
-    // TODO I don't think ctx_index is necessarily valid anymore
+#ifndef TODO
+    // TODO check if ctx_index is still valid (ctxbag hasn't changed)
     if (ctx_index >= 0) {
         assert(state_ctx(sc, ctx_index) == ctx);
         context_remove_by_index(sc, ctx_index);
@@ -2280,8 +2282,12 @@ void do_work1(struct worker *w, struct node *node){
         unsigned int ctx_index = edges[i].u.before.ctx_index;
         hvalue_t ctx = state_ctx(state, ctx_index);
         hvalue_t choice = edges[i].u.before.choice;
-        memset(&step, 0, sizeof(step));
+        // memset(&step, 0, sizeof(step));
+        step.ctx = NULL;
+        step.ai = NULL;
+        step.nlog = step.nspawned = step.nunstopped = 0;
         step.allocator = &w->allocator;
+        step.keep_callstack = false;
         trystep(w, node, i, state, ctx, &step, choice, ctx_index);
     }
 #else
@@ -2301,8 +2307,12 @@ void do_work1(struct worker *w, struct node *node){
 
         // Explore each choice.
         for (unsigned int i = 0; i < size; i++) {
-            memset(&step, 0, sizeof(step));
+            // memset(&step, 0, sizeof(step));
+            step.ctx = NULL;
+            step.ai = NULL;
+            step.nlog = step.nspawned = step.nunstopped = 0;
             step.allocator = &w->allocator;
+            step.keep_callstack = false;
             trystep(w, node, i, state, chooser, &step, vals[i], state->chooser);
         }
     }
@@ -2313,8 +2323,12 @@ void do_work1(struct worker *w, struct node *node){
         hvalue_t *ctxlist = state_ctxlist(state);
         for (unsigned int i = 0; i < state->bagsize; i++) {
             assert(VALUE_TYPE(ctxlist[i]) == VALUE_CONTEXT);
-            memset(&step, 0, sizeof(step));
+            // memset(&step, 0, sizeof(step));
+            step.ctx = NULL;
+            step.ai = NULL;
+            step.nlog = step.nspawned = step.nunstopped = 0;
             step.allocator = &w->allocator;
+            step.keep_callstack = false;
             trystep(w, node, i, state, ctxlist[i] & ~STATE_MULTIPLICITY, &step, 0, i);
         }
     }
@@ -2322,8 +2336,12 @@ void do_work1(struct worker *w, struct node *node){
 
     // Also check the invariants after initialization
     if (node->id != 0 && state->chooser < 0 && (global.ninvs > 0 || global.nfinals > 0)) {
-        memset(&step, 0, sizeof(step));
+        // memset(&step, 0, sizeof(step));
+        step.ctx = NULL;
+        step.ai = NULL;
+        step.nlog = step.nspawned = step.nunstopped = 0;
         step.allocator = &w->allocator;
+        step.keep_callstack = false;
 
         // Check each invariant
         for (unsigned int i = 0; i < global.ninvs; i++) {
@@ -3672,10 +3690,12 @@ int exec_model_checker(int argc, char **argv){
 
     // Put the initial state in the visited map
     bool new;
-    struct dict_assoc *hn = dict_find_new(visited, &workers[0].allocator, state, state_size(state), sizeof(struct edge), &new);
+    mutex_t *lock;
+    struct dict_assoc *hn = dict_find_new(visited, &workers[0].allocator, state, state_size(state), sizeof(struct edge), &new, &lock);
     struct node *node = (struct node *) &hn[1];
     memset(node, 0, sizeof(*node));
     node->nedges = 1;
+    mutex_release(lock);
     memset(node_edges(node), 0, sizeof(struct edge));
     graph_add(&global.graph, node);
 
