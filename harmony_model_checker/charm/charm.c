@@ -517,9 +517,10 @@ static void process_step(
                 unsigned int j = sc->bagsize;
                 for (unsigned int i = 0; i < sc->bagsize; i++) {
                     struct context *ctx = value_get(choices[i], NULL);
+                    // TODO.  Perhaps ctx should also be non-atomic
                     if (ctx->extended && ctx_trap_pc(ctx) != 0 && !ctx->interruptlevel) {
                         edges[j].u.before.ctx_index = i;
-                        edges[j].u.before.choice = (hvalue_t) 1;    // signifies interrupt
+                        edges[j].u.before.choice = (hvalue_t) -1;  // signifies interrupt
                         j++;
                     }
                 }
