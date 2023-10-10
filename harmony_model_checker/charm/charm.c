@@ -127,7 +127,6 @@ struct results_block {
 
 // One of these per worker thread
 struct worker {
-    int64_t mindiff, maxdiff;
     double timeout;              // deadline for model checker (-t option)
     struct failure *failures;    // list of discovered failures (not data races)
     unsigned int index;          // index of worker
@@ -504,14 +503,6 @@ static void process_step(
     struct dict_assoc *hn = dict_find_new(w->visited, &w->allocator,
                 sc, size, noutgoing * sizeof(struct edge), &new, &lock);
     struct node *next = edge->u.after.dst = (struct node *) &hn[1];
-
-    int64_t diff = (uint64_t *) next - (uint64_t *) node;
-    if (diff < w->mindiff) {
-        w->mindiff = diff;
-    }
-    if (diff > w->maxdiff) {
-        w->maxdiff = diff;
-    }
 
     if (new) {
         assert(node->len == global.diameter);
@@ -3771,7 +3762,6 @@ int exec_model_checker(int argc, char **argv){
     printf("    * %u states (time %.2lfs, mem=%.3lfGB)\n", global.graph.size, gettime() - before, (double) allocated / (1L << 30));
     unsigned int si_hits = 0, si_total = 0;
     bool loops_possible = false;
-    int64_t mindiff = 0, maxdiff = 0;
     for (unsigned int i = 0; i < global.nworkers; i++) {
         struct worker *w = &workers[i];
         if (w->loops_possible) {
@@ -3779,15 +3769,8 @@ int exec_model_checker(int argc, char **argv){
         }
         si_hits += w->si_hits;
         si_total += w->si_total;
-        if (w->mindiff < mindiff) {
-            mindiff = w->mindiff;
-        }
-        if (w->maxdiff > maxdiff) {
-            maxdiff = w->maxdiff;
-        }
     }
     printf("    * %u/%u computations/edges\n", (si_total - si_hits), si_total);
-    printf("    * %lx - %lx\n", -mindiff, maxdiff);
 #ifdef HASHDICT_STATS
     float atotal = atomic_load(&visited->nstable_hits) + atomic_load(&visited->nunstable_hits) + atomic_load(&visited->nmisses);
     printf("    * hashtable %.2f/%.2f/%.2f\n", atomic_load(&visited->nstable_hits)/atotal, atomic_load(&visited->nunstable_hits)/atotal, atomic_load(&visited->nmisses)/atotal);

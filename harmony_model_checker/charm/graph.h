@@ -100,7 +100,7 @@ struct edge {
     union {
         // Before an edge is processed, we keep track of what defines the edge input
         struct {
-            unsigned int ctx_index;     // index into context bag
+            unsigned int ctx_index : 32;     // index into context bag
             hvalue_t choice;
         } before;
 
@@ -108,12 +108,11 @@ struct edge {
         // about the transition
         struct {
             struct node *dst;           // destination node
-
-            unsigned int stc_id : 28;
-            bool multiple : 1;
-            bool failed : 1;
-            bool infloop : 1;
-            bool invariant_chk : 1;
+            unsigned int stc_id : 28;   // id of step_condition
+            bool multiple : 1;          // multiplicity > 1
+            bool failed : 1;            // edge has failed (safety violation)
+            bool infloop : 1;           // infinite loop
+            bool invariant_chk : 1;     // this was an invariant check
         } after;
     } u;
 };
@@ -121,6 +120,7 @@ struct edge {
 #define edge_sc(e)           (global.stc_table[(e)->u.after.stc_id])
 #define edge_input(e)        ((struct step_input *) &edge_sc(e)[1])
 #define edge_output(e)       (edge_sc(e)->u.completed)
+#define edge_dst(e)          ((struct node *) ((uint64_t *) e + e->dest))
 
 // Charm can detect a variety of failure types:
 enum fail_type {
