@@ -498,7 +498,7 @@ static void process_step(
         next->parent = node;
         next->len = node->len + 1;
         next->nedges = noutgoing;
-        mutex_release(lock);
+        // mutex_release(lock);
 
         // Fill in the outgoing edges
         if (!so->failed && !so->infinite_loop) {
@@ -597,59 +597,6 @@ static struct step_output *onestep(
     bool terminated = false;
     for (;;) {
         int pc = step->ctx->pc;
-
-#ifdef OLD_PACIFIER
-        // Worker 0 periodically (every second) prints some stats for long runs.
-        // To avoid calling gettime() very often, which may involve an expensive
-        // system call, worker 0 only checks every 100 instructions.
-        if (w->index == 0 && w->timecnt-- == 0) {
-            double now = gettime();
-            if (now - global.lasttime > 1) {
-                if (global.lasttime != 0) {
-                    unsigned int enqueued = 0, dequeued = 0;
-                    unsigned long allocated = global.allocated;
-#ifdef FULL_REPORT
-                    unsigned long align_waste = 0, frag_waste = 0;
-#endif
-
-                    for (unsigned int i = 0; i < w->nworkers; i++) {
-                        struct worker *w2 = &w->workers[i];
-                        enqueued += w2->enqueued;
-                        dequeued += w2->dequeued;
-                        allocated += w2->allocated;
-#ifdef FULL_REPORT
-                        align_waste += w2->align_waste;
-                        frag_waste += w2->frag_waste;
-#endif
-                    }
-                    double gigs = (double) allocated / (1 << 30);
-#ifdef INCLUDE_RATE
-                    fprintf(stderr, "pc=%d states=%u diam=%u q=%d rate=%d mem=%.3lfGB\n",
-                            step->ctx->pc, enqueued, global.diameter, enqueued - dequeued,
-                            (unsigned int) ((enqueued - global.last_nstates) / (now - global.lasttime)),
-                            gigs);
-#else
-#ifdef FULL_REPORT
-                    fprintf(stderr, "pc=%d states=%u diam=%u q=%d mem=%.3lfGB %lu %lu %lu\n",
-                            step->ctx->pc, enqueued, global.diameter,
-                            enqueued - dequeued, gigs, align_waste, frag_waste, global.allocated);
-#else
-                    fprintf(stderr, "pc=%d states=%u diam=%u q=%d mem=%.3lfGB ph=%u\n",
-                            step->ctx->pc, enqueued, global.diameter,
-                            enqueued - dequeued, gigs, w->middle_count);
-#endif
-#endif
-                    global.last_nstates = enqueued;
-                }
-                global.lasttime = now;
-                if (now > w->timeout) {
-                    fprintf(stderr, "charm: timeout exceeded\n");
-                    exit(1);
-                }
-            }
-            w->timecnt = 100;
-        }
-#endif // OLD_PACIFIER
 
         // Each worker keeps track of how many times each instruction is executed.
         w->profile[pc]++;
@@ -2312,7 +2259,6 @@ void do_work1(struct worker *w, struct node *node){
         return;
     }
 
-#ifndef OLD_PACIFIER
     // Worker 0 periodically (every second) prints some stats for long runs.
     // To avoid calling gettime() very often, which may involve an expensive
     // system call, worker 0 only checks every 100 instructions.
@@ -2343,7 +2289,6 @@ void do_work1(struct worker *w, struct node *node){
         }
         w->timecnt = 1000;
     }
-#endif // OLD_PACIFIER
 
     // Explore the non-deterministic choices from this node
     struct edge *edges = node_edges(node);
@@ -3705,7 +3650,7 @@ int exec_model_checker(int argc, char **argv){
     memset(node, 0, sizeof(*node));
     node->nedges = 1;
     memset(node_edges(node), 0, sizeof(struct edge));
-    mutex_release(lock);
+    // mutex_release(lock);
     graph_add(&global.graph, node);
 
     // Compute how much table space is allocated
