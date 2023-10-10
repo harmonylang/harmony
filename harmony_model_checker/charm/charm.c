@@ -498,30 +498,29 @@ static void process_step(
 
         // Fill in the outgoing edges
         if (!so->failed && !so->infinite_loop) {
-            struct edge *edges = node_edges(next);
+            struct edge *edge = node_edges(next);
             if (so->choosing) {
-                for (unsigned int i = 0; i < noutgoing; i++) {
-                    edges[i].u.before.ctx_index = new_index;
-                    edges[i].u.before.choice = choices[i];
+                for (unsigned int i = 0; i < noutgoing; i++, edge++) {
+                    edge->u.before.ctx_index = new_index;
+                    edge->u.before.choice = choices[i];
                 }
             }
             else {
-                for (unsigned int i = 0; i < sc->bagsize; i++) {
-                    edges[i].u.before.ctx_index = i;
-                    edges[i].u.before.choice = 0;
+                for (unsigned int i = 0; i < sc->bagsize; i++, edge++) {
+                    edge->u.before.ctx_index = i;
+                    edge->u.before.choice = 0;
                 }
-                unsigned int j = sc->bagsize;
                 for (unsigned int i = 0; i < sc->bagsize; i++) {
                     struct context *ctx = value_get(choices[i], NULL);
                     // TODO.  Perhaps ctx should also be non-atomic
                     if (ctx->extended && ctx_trap_pc(ctx) != 0 && !ctx->interruptlevel) {
-                        edges[j].u.before.ctx_index = i;
-                        edges[j].u.before.choice = (hvalue_t) -1;  // signifies interrupt
-                        j++;
+                        edge->u.before.ctx_index = i;
+                        edge->u.before.choice = (hvalue_t) -1;  // signifies interrupt
+                        edge++;
                     }
                 }
-                assert(j == noutgoing);
             }
+            assert(edge == &node_edges(next)[next->nedges]);
         }
 
         // Add new node to results list kept per worker

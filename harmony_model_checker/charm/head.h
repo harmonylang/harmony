@@ -1,7 +1,7 @@
-#undef NDEBUG
-// #ifndef NDEBUG
-// #define NDEBUG
-// #endif
+// #undef NDEBUG
+#ifndef NDEBUG
+#define NDEBUG
+#endif
 
 // This file is included at the start of every C source.  It mostly deals with
 // architecture dependent stuff
