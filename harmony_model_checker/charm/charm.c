@@ -2278,6 +2278,7 @@ void do_work1(struct worker *w, struct node *node){
     // Also check the invariants after initialization
     if (node->id != 0 && (global.ninvs > 0 || global.nfinals > 0)) {
         memset(&step, 0, sizeof(step));
+        step.allocator = &w->allocator;
 
         // Check each invariant
         for (unsigned int i = 0; i < global.ninvs; i++) {
