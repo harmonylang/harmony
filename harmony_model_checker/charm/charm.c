@@ -2933,7 +2933,7 @@ static void worker(void *arg){
 
 struct node_edge {
     struct node *node;
-    struct edge *edge;
+    unsigned int edge_index;
 };
 
 // The stack contains pointers to nodes and, possibly, edges.
@@ -2943,7 +2943,7 @@ struct stack {
     unsigned int sp;
 };
 
-static void stack_push(struct stack **sp, struct node *n, struct edge *e) {
+static void stack_push(struct stack **sp, struct node *n, unsigned int ei) {
     // See if there's space in the current chunk
     struct stack *s = *sp;
     if (s->sp == STACK_CHUNK) {
@@ -2961,12 +2961,12 @@ static void stack_push(struct stack **sp, struct node *n, struct edge *e) {
         }
         *sp = s;
     }
-    s->ptrs[s->sp].edge = e;
+    s->ptrs[s->sp].edge_index = ei;
     s->ptrs[s->sp].node = n;
     s->sp++;
 }
 
-static struct node *stack_pop(struct stack **sp, struct edge **pe) {
+static struct node *stack_pop(struct stack **sp, unsigned int *pei) {
     // If the current chunk is empty, go to the previous one
     struct stack *s = *sp;
     if (s->sp == 0) {
@@ -2977,8 +2977,8 @@ static struct node *stack_pop(struct stack **sp, struct edge **pe) {
     }
 
     struct node_edge *ptr = &s->ptrs[--s->sp];
-    if (pe != NULL) {
-        *pe = ptr->edge;
+    if (pei != NULL) {
+        *pei = ptr->edge_index;
     }
     return ptr->node;
 }
@@ -2988,6 +2988,50 @@ static inline bool stack_empty(struct stack *s) {
 }
 
 // Tarjan SCC algorithm
+/* Python code:
+    i = 0
+    stack = []
+    call_stack = []
+    comps = []
+    for v in vs:
+        if v.index is None:
+            call_stack.append((v,0))
+            while call_stack:
+                v, pi = call_stack.pop()
+                # If this is first time we see v
+                if pi == 0:
+                    v.index = i
+                    v.lowlink = i
+                    i += 1
+                    stack.append(v)
+                    v.on_stack = True
+                # If we just recursed on something
+                if pi > 0:
+                    prev = v.adj[pi-1]
+                    v.lowlink = min(v.lowlink, prev.lowlink)
+                # Find the next thing to recurse on
+                while pi < len(v.adj) and v.adj[pi].index is not None:
+                    w = v.adj[pi]
+                    if w.on_stack:
+                        v.lowlink = min(v.lowlink, w.index)
+                    pi += 1
+                # If we found something with index=None, recurse
+                if pi < len(v.adj):
+                    w = v.adj[pi]
+                    call_stack.append((v,pi+1))
+                    call_stack.append((w,0))
+                    continue
+                # If v is the root of a connected component
+                if v.lowlink == v.index:
+                    comp = []
+                    while True:
+                        w = stack.pop()
+                        w.on_stack = False
+                        comp.append(w.name)
+                        if w is v:
+                            break
+                    comps.append(comp)
+*/
 static void tarjan(){
     scc = malloc(global.graph.size * sizeof(*scc));
     for (unsigned int v = 0; v < global.graph.size; v++) {
@@ -3002,25 +3046,26 @@ static void tarjan(){
     for (unsigned int v = 0; v < 1 /*global.graph.size*/; v++) {
         struct node *n = global.graph.nodes[v];
         if (scc[v].index == -1) {
-            stack_push(&call_stack, n, NULL);
+            stack_push(&call_stack, n, 0);
             while (!stack_empty(call_stack)) {
-                struct edge *e;
-                n = stack_pop(&call_stack, &e);
-                if (e == NULL) {
+                unsigned int pi;
+                n = stack_pop(&call_stack, &pi);
+                if (pi == 0) {
                     scc[n->id].index = i;
                     scc[n->id].lowlink = i;
                     i++;
-                    stack_push(&stack, n, NULL);
+                    stack_push(&stack, n, 0);
                     n->on_stack = true;
-                    // TODO e = n->fwd;
                 }
                 else {
-                    if (scc[e->u.after.dst->id].lowlink < scc[n->id].lowlink) {
-                        scc[n->id].lowlink = scc[e->u.after.dst->id].lowlink;
+                    assert(pi > 0);
+                    struct node *prev = node_edges(n)[pi - 1].u.after.dst;
+                    if (scc[prev->id].lowlink < scc[n->id].lowlink) {
+                        scc[n->id].lowlink = scc[prev->id].lowlink;
                     }
-                    // TODO e = e->fwdnext;
                 }
-                while (e != NULL) {
+                while (pi < n->nedges) {
+                    struct edge *e = &node_edges(n)[pi];
                     struct node *w = e->u.after.dst;
                     if (scc[w->id].index < 0) {
                         break;
@@ -3028,11 +3073,12 @@ static void tarjan(){
                     if (w->on_stack && scc[w->id].index < scc[n->id].lowlink) {
                         scc[n->id].lowlink = scc[w->id].index;
                     }
-                    // TODO e = e->fwdnext;
+                    pi += 1;
                 }
-                if (e != NULL) {
-                    stack_push(&call_stack, n, e);
-                    stack_push(&call_stack, e->u.after.dst, NULL);
+                if (pi < n->nedges) {
+                    struct edge *e = &node_edges(n)[pi];
+                    stack_push(&call_stack, n, pi + 1);
+                    stack_push(&call_stack, e->u.after.dst, 0);
                 }
                 else if (scc[n->id].lowlink == scc[n->id].index) {
                     for (;;) {
