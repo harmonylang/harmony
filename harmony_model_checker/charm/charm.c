@@ -1134,35 +1134,6 @@ static void trystep(
     }
 }
 
-// This function considers a state (pointed to by node) and a thread to run with
-// state ctx. If it is a "choosing state" (the thread is about to execute a
-// Choose instruction), then choice contains that choice to be tried.  Since
-// threads are anonymous and multiple threads can be in the same state,
-// multiplicity gives the number of threads that can make this step.  Any
-// resulting states should be buffered in w->results.
-//
-// The hard work of make_step is accomplished by function trystep().
-// make_step() may invoke trystep() twice to explore interrupts
-// (which can only happen in non-choosing states).
-static void make_step(
-    struct worker *w,
-    struct node *node,       // the state we're exploring
-    unsigned int edge_index  // the edge we're exploring
-) {
-    struct edge *edges = node_edges(node);
-    unsigned int ctx_index = edges[edge_index].u.before.ctx_index;
-    hvalue_t choice = edges[edge_index].u.before.choice;
-
-    struct step step;
-    memset(&step, 0, sizeof(step));
-    step.allocator = &w->allocator;
-
-    struct state *state = node_state(node);
-    hvalue_t ctx = state_ctx(state, ctx_index);
-
-    trystep(w, node, edge_index, state, ctx, &step, choice, ctx_index);
-}
-
 static void chk_invs(
     struct worker *w,
     struct node *node,     // the state we're exploring
@@ -2375,8 +2346,16 @@ void do_work1(struct worker *w, struct node *node){
 #endif // OLD_PACIFIER
 
     // Explore the non-deterministic choices from this node
+    struct edge *edges = node_edges(node);
+    struct state *state = node_state(node);
+    struct step step;
     for (int i = 0; i < node->nedges; i++) {
-        make_step(w, node, i);
+        unsigned int ctx_index = edges[i].u.before.ctx_index;
+        hvalue_t ctx = state_ctx(state, ctx_index);
+        hvalue_t choice = edges[i].u.before.choice;
+        memset(&step, 0, sizeof(step));
+        step.allocator = &w->allocator;
+        trystep(w, node, i, state, ctx, &step, choice, ctx_index);
     }
 
     // Also check the invariants after initialization
