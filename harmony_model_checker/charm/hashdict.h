@@ -15,7 +15,7 @@ typedef void (*dict_enumfunc)(void *env, const void *key, unsigned int key_size,
 struct dict_assoc {
 	struct dict_assoc *next;
 	uint16_t len;               // key length
-    uint16_t extra;             // extra data length in 8-byte words
+    uint16_t val_len;           // value length
 #define da_next(k)     ((k)->next)
 #define da_len(k)      ((k)->len)
 };
