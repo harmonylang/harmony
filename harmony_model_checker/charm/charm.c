@@ -497,7 +497,6 @@ static void process_step(
         next->nedges = noutgoing;
         mutex_release(lock);
 
-#ifdef PREFILL
         // Fill in the outgoing edges
         if (!so->failed && !so->infinite_loop) {
             struct edge *edge = node_edges(next);
@@ -524,7 +523,6 @@ static void process_step(
             }
             assert(edge == &node_edges(next)[next->nedges]);
         }
-#endif // PREFILL
 
         // Add new node to results list kept per worker
         struct results_block *rb = w->results;
@@ -2277,7 +2275,6 @@ void do_work1(struct worker *w, struct node *node){
     // struct state *state = node_state(node);
     struct state *state = (struct state *) &edges[node->nedges];
     struct step step;
-#ifdef PREFILL
     for (int i = 0; i < node->nedges; i++) {
         unsigned int ctx_index = edges[i].u.before.ctx_index;
         hvalue_t ctx = state_ctx(state, ctx_index);
@@ -2290,59 +2287,6 @@ void do_work1(struct worker *w, struct node *node){
         step.keep_callstack = false;
         trystep(w, node, i, state, ctx, &step, choice, ctx_index);
     }
-#else
-    if (state->chooser >= 0) {
-        // The actual set of choices is on top of its stack
-        hvalue_t chooser = state_ctx(state, state->chooser);
-        struct context *cc = value_get(chooser, NULL);
-        assert(cc != NULL);
-        assert(cc->sp > 0);
-        hvalue_t s = ctx_stack(cc)[cc->sp - 1];
-        assert(VALUE_TYPE(s) == VALUE_SET);
-        unsigned int size;
-        hvalue_t *vals = value_get(s, &size);
-        size /= sizeof(hvalue_t);
-        assert(size > 0);
-        assert(size == node->nedges);
-
-        // Explore each choice.
-        for (unsigned int i = 0; i < size; i++) {
-            // memset(&step, 0, sizeof(step));
-            step.ctx = NULL;
-            step.ai = NULL;
-            step.nlog = step.nspawned = step.nunstopped = 0;
-            step.allocator = &w->allocator;
-            step.keep_callstack = false;
-            trystep(w, node, i, state, chooser, &step, vals[i], state->chooser);
-        }
-    }
-    else {
-        // Explore each thread that can make a step.
-        hvalue_t *ctxlist = state_ctxlist(state);
-        unsigned int j = 0;
-        for (unsigned int i = 0; i < state->bagsize; i++) {
-            assert(VALUE_TYPE(ctxlist[i]) == VALUE_CONTEXT);
-            // memset(&step, 0, sizeof(step));
-            step.ctx = NULL;
-            step.ai = NULL;
-            step.nlog = step.nspawned = step.nunstopped = 0;
-            step.allocator = &w->allocator;
-            step.keep_callstack = false;
-            hvalue_t ctx = ctxlist[i] & ~STATE_MULTIPLICITY;
-            trystep(w, node, j, state, ctx, &step, 0, i);
-            j++;
-
-            // See if interrupt should be tried
-            struct context *cc = value_get(ctx, NULL);
-            // TODO.  Perhaps ctx should also be non-atomic
-            if (cc->extended && ctx_trap_pc(cc) != 0 && !cc->interruptlevel) {
-                trystep(w, node, j, state, ctx, &step, (hvalue_t) -1, i);
-                j++;
-            }
-        }
-        assert(j == node->nedges);
-    }
-#endif // PREFILL
 
     // Also check the invariants after initialization
     if (node->id != 0 && state->chooser < 0 && (global.ninvs > 0 || global.nfinals > 0)) {
