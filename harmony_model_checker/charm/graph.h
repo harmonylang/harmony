@@ -97,12 +97,15 @@ struct step_comp {
 struct edge {
     // TODO.  There's only one field in struct edge, so why not union edge?
     union {
+        // Before an edge is processed, we keep track of what defines the edge input
         struct {
             unsigned int ctx_index;     // index into context bag
             hvalue_t choice;
         } before;
+
+        // After an edge is processed, we know the destination state and have info
+        // about the transition
         struct {
-            // struct edge *fwdnext;    // forward linked list maintenance
             struct node *dst;           // destination node
 
             // This field consists of the pointer to a step_condition (which contains the
