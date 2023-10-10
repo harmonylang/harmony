@@ -2318,9 +2318,8 @@ void do_work1(struct worker *w, struct node *node){
     }
     else {
         // Explore each thread that can make a step.
-        // TODO.  Interrupts
-        assert(state->bagsize == node->nedges);
         hvalue_t *ctxlist = state_ctxlist(state);
+        unsigned int j = 0;
         for (unsigned int i = 0; i < state->bagsize; i++) {
             assert(VALUE_TYPE(ctxlist[i]) == VALUE_CONTEXT);
             // memset(&step, 0, sizeof(step));
@@ -2329,8 +2328,19 @@ void do_work1(struct worker *w, struct node *node){
             step.nlog = step.nspawned = step.nunstopped = 0;
             step.allocator = &w->allocator;
             step.keep_callstack = false;
-            trystep(w, node, i, state, ctxlist[i] & ~STATE_MULTIPLICITY, &step, 0, i);
+            hvalue_t ctx = ctxlist[i] & ~STATE_MULTIPLICITY;
+            trystep(w, node, j, state, ctx, &step, 0, i);
+            j++;
+
+            // See if interrupt should be tried
+            struct context *cc = value_get(ctx, NULL);
+            // TODO.  Perhaps ctx should also be non-atomic
+            if (cc->extended && ctx_trap_pc(cc) != 0 && !cc->interruptlevel) {
+                trystep(w, node, j, state, ctx, &step, (hvalue_t) -1, i);
+                j++;
+            }
         }
+        assert(j == node->nedges);
     }
 #endif // PREFILL
 
