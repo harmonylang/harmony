@@ -484,21 +484,17 @@ static void process_step(
     // See if this state has been computed before by looking up the node,
     // or allocate if not.
     unsigned int size = state_size(sc);
-    mutex_t *lock;
     bool new;
-    struct dict_assoc *hn = dict_find_lock_new(w->visited, &w->allocator,
-                sc, size, noutgoing * sizeof(struct edge), &new, &lock);
+    struct dict_assoc *hn = dict_find_new(w->visited, &w->allocator,
+                sc, size, noutgoing * sizeof(struct edge), &new);
     edge->u.after.dst = (struct node *) &hn[1];
     if (new) {
-        // TODO.  Do we actually need the lock here?  I think we just need to make
-        //        sure that it is ``new''.
         assert(node->len == global.diameter);
         struct node *next = edge->u.after.dst;
         next->failed = (edge->u.after.flags & EDGE_FAILED) != 0;
         next->parent = node;
         next->len = node->len + 1;
         next->nedges = noutgoing;
-        // mutex_release(lock);
 
         // Fill in the outgoing edges
         if (!so->failed && !so->infinite_loop) {
@@ -3643,14 +3639,12 @@ int exec_model_checker(int argc, char **argv){
     dict_set_concurrent(global.computations);
 
     // Put the initial state in the visited map
-    mutex_t *lock;
     bool new;
-    struct dict_assoc *hn = dict_find_lock_new(visited, &workers[0].allocator, state, state_size(state), sizeof(struct edge), &new, &lock);
+    struct dict_assoc *hn = dict_find_new(visited, &workers[0].allocator, state, state_size(state), sizeof(struct edge), &new);
     struct node *node = (struct node *) &hn[1];
     memset(node, 0, sizeof(*node));
     node->nedges = 1;
     memset(node_edges(node), 0, sizeof(struct edge));
-    // mutex_release(lock);
     graph_add(&global.graph, node);
 
     // Compute how much table space is allocated
