@@ -310,12 +310,12 @@ void interrupt_invoke(struct step *step){
         cs->vars = step->ctx->vars;
         cs->return_address = ((step->ctx->pc + 1) << CALLTYPE_BITS) | CALLTYPE_INTERRUPT;
         step->callstack = cs;
+        strbuf_printf(&step->explain, "operation aborted; interrupt invoked");
     }
     ctx_push(step->ctx, ctx_trap_arg(step->ctx));
     step->ctx->pc = VALUE_FROM_PC(ctx_trap_pc(step->ctx));
     ctx_trap_pc(step->ctx) = 0;
     step->ctx->interruptlevel = true;
-    strbuf_printf(&step->explain, "operation aborted; interrupt invoked");
 }
 
 // This function tries to load as much as possible of a given address
