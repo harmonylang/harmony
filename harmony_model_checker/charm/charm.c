@@ -495,7 +495,6 @@ static void process_step(
         next->len = node->len + 1;
         next->nedges = noutgoing;
 
-#define PREFILL
 #ifdef PREFILL
         // Fill in the outgoing edges
         if (!so->failed && !so->infinite_loop) {
