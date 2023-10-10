@@ -426,7 +426,7 @@ static void process_step(
     if (so->choosing) {
         sc->chooser = new_index;
         // sc->pre = global.inv_pre ? node_state(node)->pre : sc->vars;
-        // TODO.  Maybe more efficient to keep the following info in so
+        // TODO.  Maybe more efficient to keep the following info
         //        as it's already computed in onestep
         struct context *ctx = value_get(so->after, NULL);
         assert(ctx->sp > 0);
@@ -495,6 +495,7 @@ static void process_step(
         next->len = node->len + 1;
         next->nedges = noutgoing;
 
+#ifdef PREFILL
         // Fill in the outgoing edges
         if (!so->failed && !so->infinite_loop) {
             struct edge *edge = node_edges(next);
@@ -521,6 +522,7 @@ static void process_step(
             }
             assert(edge == &node_edges(next)[next->nedges]);
         }
+#endif // PREFILL
 
         // Add new node to results list kept per worker
         struct results_block *rb = w->results;
@@ -935,6 +937,8 @@ static void trystep(
     hvalue_t choice,         // if about to make a choice, which choice?
     int ctx_index            // -1 if not in the context bag (i.e., invariant)
 ) {
+    assert(state_ctx(state, ctx_index) == ctx);
+    assert(state->chooser < 0 || choice != 0);
     struct step_condition *stc;
     bool si_new;
     mutex_t *si_lock;
@@ -1056,10 +1060,16 @@ static void trystep(
         assert(stc->type == SC_COMPLETED);
     }
 
+#ifdef TODO
+    // TODO I don't think ctx_index is necessarily valid anymore
     if (ctx_index >= 0) {
         assert(state_ctx(sc, ctx_index) == ctx);
         context_remove_by_index(sc, ctx_index);
     }
+#else
+    context_remove(sc, ctx);
+#endif
+
     process_step(w, stc, node, edge_index, sc);
     while (el != NULL) {
         struct node *n = el->node;
@@ -2265,6 +2275,7 @@ void do_work1(struct worker *w, struct node *node){
     // struct state *state = node_state(node);
     struct state *state = (struct state *) &edges[node->nedges];
     struct step step;
+#ifdef PREFILL
     for (int i = 0; i < node->nedges; i++) {
         unsigned int ctx_index = edges[i].u.before.ctx_index;
         hvalue_t ctx = state_ctx(state, ctx_index);
@@ -2273,9 +2284,44 @@ void do_work1(struct worker *w, struct node *node){
         step.allocator = &w->allocator;
         trystep(w, node, i, state, ctx, &step, choice, ctx_index);
     }
+#else
+    if (state->chooser >= 0) {
+        // The actual set of choices is on top of its stack
+        hvalue_t chooser = state_ctx(state, state->chooser);
+        struct context *cc = value_get(chooser, NULL);
+        assert(cc != NULL);
+        assert(cc->sp > 0);
+        hvalue_t s = ctx_stack(cc)[cc->sp - 1];
+        assert(VALUE_TYPE(s) == VALUE_SET);
+        unsigned int size;
+        hvalue_t *vals = value_get(s, &size);
+        size /= sizeof(hvalue_t);
+        assert(size > 0);
+        assert(size == node->nedges);
+
+        // Explore each choice.
+        for (unsigned int i = 0; i < size; i++) {
+            memset(&step, 0, sizeof(step));
+            step.allocator = &w->allocator;
+            trystep(w, node, i, state, chooser, &step, vals[i], state->chooser);
+        }
+    }
+    else {
+        // Explore each thread that can make a step.
+        // TODO.  Interrupts
+        assert(state->bagsize == node->nedges);
+        hvalue_t *ctxlist = state_ctxlist(state);
+        for (unsigned int i = 0; i < state->bagsize; i++) {
+            assert(VALUE_TYPE(ctxlist[i]) == VALUE_CONTEXT);
+            memset(&step, 0, sizeof(step));
+            step.allocator = &w->allocator;
+            trystep(w, node, i, state, ctxlist[i] & ~STATE_MULTIPLICITY, &step, 0, i);
+        }
+    }
+#endif // PREFILL
 
     // Also check the invariants after initialization
-    if (node->id != 0 && (global.ninvs > 0 || global.nfinals > 0)) {
+    if (node->id != 0 && state->chooser < 0 && (global.ninvs > 0 || global.nfinals > 0)) {
         memset(&step, 0, sizeof(step));
         step.allocator = &w->allocator;
 

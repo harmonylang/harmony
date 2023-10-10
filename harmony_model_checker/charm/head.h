@@ -1,6 +1,11 @@
-// #undef NDEBUG
-#ifndef NDEBUG
-#define NDEBUG
+// #define DEBUGGING
+
+#ifdef DEBUGGING
+# undef NDEBUG
+#else
+# ifndef NDEBUG
+#  define NDEBUG
+# endif
 #endif
 
 // This file is included at the start of every C source.  It mostly deals with
