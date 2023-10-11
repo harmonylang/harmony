@@ -96,34 +96,24 @@ struct step_comp {
 // information of how a program can get from the source state to the destination
 // state.
 struct edge {
-    // TODO.  There's only one field in struct edge, so why not union edge?
-    union {
-#ifdef PREFILL
-        // Before an edge is processed, we keep track of what defines the edge input
-        struct {
-            unsigned int ctx_index : 32;     // index into context bag
-            hvalue_t choice;
-        } before;
-
-        // After an edge is processed, we know the destination state and have info
-        // about the transition
+#ifdef SHORT_POINTER
+    int64_t dest : 36;          // "short" pointer to dst node
+    uint32_t stc_id : 24;       // id of step_condition
+#define edge_dst(e)          ((struct node *) ((uint64_t *) (e) + (e)->dest))
+#else
+    struct node *dst;           // pointer to destination node
+    uint32_t stc_id : 28;       // id of step_condition
+#define edge_dst(e)          ((e)->dst)
 #endif
-
-        struct {
-            int64_t dest : 36;          // "short" pointer to dst node
-            uint32_t stc_id : 24;       // id of step_condition
-            bool multiple : 1;          // multiplicity > 1
-            bool failed : 1;            // edge has failed (safety violation)
-            bool infloop : 1;           // infinite loop
-            bool invariant_chk : 1;     // this was an invariant check
-        } after;
-    } u;
+    bool multiple : 1;          // multiplicity > 1
+    bool failed : 1;            // edge has failed (safety violation)
+    bool infloop : 1;           // infinite loop
+    bool invariant_chk : 1;     // this was an invariant check
 };
 
-#define edge_sc(e)           (global.stc_table[(e)->u.after.stc_id])
+#define edge_sc(e)           (global.stc_table[(e)->stc_id])
 #define edge_input(e)        ((struct step_input *) &edge_sc(e)[1])
 #define edge_output(e)       (edge_sc(e)->u.completed)
-#define edge_dst(e)          ((struct node *) ((uint64_t *) (e) + (e)->u.after.dest))
 
 // Charm can detect a variety of failure types:
 enum fail_type {

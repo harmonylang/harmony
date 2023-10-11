@@ -1,5 +1,7 @@
 // #define DEBUGGING
 
+#define SHORT_POINTER
+
 #ifdef DEBUGGING
 # undef NDEBUG
 #else
