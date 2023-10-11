@@ -98,11 +98,13 @@ struct step_comp {
 struct edge {
     // TODO.  There's only one field in struct edge, so why not union edge?
     union {
+#ifdef PREFILL
         // Before an edge is processed, we keep track of what defines the edge input
         struct {
             unsigned int ctx_index : 32;     // index into context bag
             hvalue_t choice;
         } before;
+#endif
 
         // After an edge is processed, we know the destination state and have info
         // about the transition
