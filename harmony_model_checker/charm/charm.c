@@ -3054,7 +3054,8 @@ static void tarjan(){
                 }
                 else {
                     assert(pi > 0);
-                    struct node *prev = edge_dst(&node_edges(n)[pi - 1]);
+                    struct edge *e = &node_edges(n)[pi - 1];
+                    struct node *prev = edge_dst(e);
                     if (scc[prev->id].lowlink < scc[n->id].lowlink) {
                         scc[n->id].lowlink = scc[prev->id].lowlink;
                     }

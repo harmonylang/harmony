@@ -110,8 +110,8 @@ struct edge {
 #endif
 
         struct {
-            uintptr_t dest : 36;        // "short" pointer to dst node
-            unsigned int stc_id : 24;   // id of step_condition
+            int64_t dest : 36;          // "short" pointer to dst node
+            uint32_t stc_id : 24;       // id of step_condition
             bool multiple : 1;          // multiplicity > 1
             bool failed : 1;            // edge has failed (safety violation)
             bool infloop : 1;           // infinite loop
