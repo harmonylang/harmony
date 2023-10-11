@@ -43,7 +43,7 @@ unsigned int graph_add_multiple(struct graph *graph, unsigned int n) {
 struct edge *find_edge(struct node *src, struct node *dst){
     struct edge *e = node_edges(src);
     for (unsigned int i = 0; i < src->nedges; i++, e++) {
-        if (e->u.after.dst == dst) {
+        if (edge_dst(e) == dst) {
             return e;
         }
     }

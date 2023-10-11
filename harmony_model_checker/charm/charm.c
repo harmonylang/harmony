@@ -370,7 +370,8 @@ static void process_step(
             f->type = so->failed ? FAIL_SAFETY : FAIL_TERMINATION;
             f->node = node;
             f->edge = walloc_fast(w, sizeof(struct edge));
-            f->edge->u.after.dst = node;
+            // edge_dst(f->edge) = node;
+            f->edge->u.after.dest = (uint64_t *) node - (uint64_t *) f->edge;
             f->edge->u.after.stc_id = stc->id;
             f->edge->u.after.failed = so->failed;
             f->edge->u.after.infloop = so->infinite_loop;
@@ -502,7 +503,8 @@ static void process_step(
     mutex_t *lock;
     struct dict_assoc *hn = dict_find_new(w->visited, &w->allocator,
                 sc, size, noutgoing * sizeof(struct edge), &new, &lock);
-    struct node *next = edge->u.after.dst = (struct node *) &hn[1];
+    struct node *next = (struct node *) &hn[1];
+    edge->u.after.dest = (uint64_t *) next - (uint64_t *) edge;
 
     if (new) {
         assert(node->len == global.diameter);
@@ -1136,7 +1138,7 @@ char *ctx_status(struct node *node, hvalue_t ctx) {
     struct edge *edge = node_edges(node);
     for (unsigned int i = 0; i < node->nedges; i++, edge++) {
         if (edge_input(edge)->ctx == ctx) {
-            if (edge->u.after.dst == node) {
+            if (edge_dst(edge) == node) {
                 return "blocked";
             }
             break;
@@ -1777,8 +1779,8 @@ static void path_output_microstep(
 
 static void path_output_macrostep(FILE *file, struct macrostep *macro, struct state *oldstate){
     fprintf(file, "    {\n");
-    fprintf(file, "      \"id\": \"%d\",\n", macro->edge->u.after.dst->id);
-    // fprintf(file, "      \"len\": \"%d\",\n", macro->edge->u.after.dst->len);
+    fprintf(file, "      \"id\": \"%d\",\n", edge_dst(macro->edge)->id);
+    // fprintf(file, "      \"len\": \"%d\",\n", edge_dst(macro->edge)->len);
     fprintf(file, "      \"tid\": \"%d\",\n", macro->tid);
 
     fprintf(file, "      \"shared\": ");
@@ -1813,7 +1815,7 @@ static void path_output_macrostep(FILE *file, struct macrostep *macro, struct st
     }
 
     fprintf(file, "      \"context\": {\n");
-    print_context(file, edge_input(macro->edge)->ctx, macro->cs, macro->tid, macro->edge->u.after.dst, "        ");
+    print_context(file, edge_input(macro->edge)->ctx, macro->cs, macro->tid, edge_dst(macro->edge), "        ");
     fprintf(file, "      },\n");
 
     if (macro->trim != NULL && macro->value != 0) {
@@ -1841,7 +1843,7 @@ static void path_output_macrostep(FILE *file, struct macrostep *macro, struct st
     fprintf(file, "\n      ],\n");
   
     fprintf(file, "      \"ctxbag\": {\n");
-    struct state *state = node_state(macro->edge->u.after.dst);
+    struct state *state = node_state(edge_dst(macro->edge));
     for (unsigned int i = 0; i < state->bagsize; i++) {
         if (i > 0) {
             fprintf(file, ",\n");
@@ -1855,7 +1857,7 @@ static void path_output_macrostep(FILE *file, struct macrostep *macro, struct st
     fprintf(file, "      \"contexts\": [\n");
     for (unsigned int i = 0; i < macro->nprocesses; i++) {
         fprintf(file, "        {\n");
-        print_context(file, macro->processes[i], macro->callstacks[i], i, macro->edge->u.after.dst, "          ");
+        print_context(file, macro->processes[i], macro->callstacks[i], i, edge_dst(macro->edge), "          ");
         fprintf(file, "        }");
         if (i < macro->nprocesses - 1) {
             fprintf(file, ",");
@@ -2008,7 +2010,7 @@ again:
             break;
         }
         global.macrosteps[i]->edge = e;
-        node = e->u.after.dst;
+        node = edge_dst(e);
     }
 }
 
@@ -2215,11 +2217,11 @@ static enum busywait is_stuck(
     struct edge *edge = node_edges(node);
     for (unsigned int i = 0; i < node->nedges; i++, edge++) {
         if (edge_input(edge)->ctx == ctx) {
-            if (edge->u.after.dst == node) {
+            if (edge_dst(edge) == node) {
                 node->visited = false;
                 return BW_ESCAPE;
             }
-            if (edge->u.after.dst == start) {
+            if (edge_dst(edge) == start) {
                 if (!change) {
                     node->visited = false;
                     return BW_ESCAPE;
@@ -2227,7 +2229,7 @@ static enum busywait is_stuck(
                 result = BW_RETURN;
             }
             else {
-                enum busywait bw = is_stuck(start, edge->u.after.dst, edge_output(edge)->after, change);
+                enum busywait bw = is_stuck(start, edge_dst(edge), edge_output(edge)->after, change);
                 switch (bw) {
                 case BW_ESCAPE:
                     node->visited = false;
@@ -3052,14 +3054,14 @@ static void tarjan(){
                 }
                 else {
                     assert(pi > 0);
-                    struct node *prev = node_edges(n)[pi - 1].u.after.dst;
+                    struct node *prev = edge_dst(&node_edges(n)[pi - 1]);
                     if (scc[prev->id].lowlink < scc[n->id].lowlink) {
                         scc[n->id].lowlink = scc[prev->id].lowlink;
                     }
                 }
                 while (pi < n->nedges) {
                     struct edge *e = &node_edges(n)[pi];
-                    struct node *w = e->u.after.dst;
+                    struct node *w = edge_dst(e);
                     if (scc[w->id].index < 0) {
                         break;
                     }
@@ -3071,7 +3073,7 @@ static void tarjan(){
                 if (pi < n->nedges) {
                     struct edge *e = &node_edges(n)[pi];
                     stack_push(&call_stack, n, pi + 1);
-                    stack_push(&call_stack, e->u.after.dst, 0);
+                    stack_push(&call_stack, edge_dst(e), 0);
                 }
                 else if (scc[n->id].lowlink == scc[n->id].index) {
                     for (;;) {
@@ -3250,10 +3252,10 @@ static void print_transitions(FILE *out, struct dict *symbols, struct node *node
         struct strbuf *sb = dict_insert(d, NULL, step_log(edge_output(e)), edge_output(e)->nlog * sizeof(hvalue_t), &new);
         if (new) {
             strbuf_init(sb);
-            strbuf_printf(sb, "%d", e->u.after.dst->id);
+            strbuf_printf(sb, "%d", edge_dst(e)->id);
         }
         else {
-            strbuf_printf(sb, ",%d", e->u.after.dst->id);
+            strbuf_printf(sb, ",%d", edge_dst(e)->id);
         }
     }
     struct print_trans_env pte = {
@@ -3846,7 +3848,7 @@ int exec_model_checker(int argc, char **argv){
             bool dead_end = true;
             struct edge *e = node_edges(node);
             for (unsigned int j = 0; j < node->nedges; j++, e++) {
-                if (e->u.after.dst != node) {
+                if (edge_dst(e) != node) {
                     dead_end = false;
                     break;
                 }
@@ -3946,7 +3948,7 @@ int exec_model_checker(int argc, char **argv){
             // If this component has a way out, it is good
             struct edge *edge = node_edges(node);
             for (unsigned int i = 0; i < node->nedges && !comp->good; i++, edge++) {
-                if (scc[edge->u.after.dst->id].component != scc[node->id].component) {
+                if (scc[edge_dst(edge)->id].component != scc[node->id].component) {
                     comp->good = true;
                     break;
                 }
@@ -4059,14 +4061,14 @@ int exec_model_checker(int argc, char **argv){
                     assert(j < state->bagsize);
                     if (edge->u.after.failed) {
                         fprintf(df, " s%u -> s%u [style=%s label=\"F %u\"]\n",
-                            node->id, edge->u.after.dst->id,
-                            node_to_parent(edge->u.after.dst) == edge ? "solid" : "dashed",
+                            node->id, edge_dst(edge)->id,
+                            node_to_parent(edge_dst(edge)) == edge ? "solid" : "dashed",
                             state_multiplicity(state, j));
                     }
                     else {
                         fprintf(df, " s%u -> s%u [style=%s label=\"%u\"]\n",
-                            node->id, edge->u.after.dst->id,
-                            node_to_parent(edge->u.after.dst) == edge ? "solid" : "dashed",
+                            node->id, edge_dst(edge)->id,
+                            node_to_parent(edge_dst(edge)) == edge ? "solid" : "dashed",
                             state_multiplicity(state, j));
                     }
                 }
@@ -4126,7 +4128,7 @@ int exec_model_checker(int argc, char **argv){
                 for (unsigned int i = 0; i < node->nedges; i++, edge++) {
                     fprintf(df, "        %d:\n", eno);
                     struct context *ctx = value_get(edge_input(edge)->ctx, NULL);
-                    fprintf(df, "            node: %d (%d)\n", edge->u.after.dst->id, scc[edge->u.after.dst->id].component);
+                    fprintf(df, "            node: %d (%d)\n", edge_dst(edge)->id, scc[edge_dst(edge)->id].component);
                     fprintf(df, "            context before: %"PRIx64" pc=%d\n", edge_input(edge)->ctx, ctx->pc);
                     ctx = value_get(edge_output(edge)->after, NULL);
                     fprintf(df, "            context after:  %"PRIx64" pc=%d\n", edge_output(edge)->after, ctx->pc);
@@ -4283,7 +4285,7 @@ int exec_model_checker(int argc, char **argv){
         // the number of steps but by the number of context switches.
         struct failure *bad = NULL;
         for (struct failure *f = global.failures; f != NULL; f = f->next) {
-            if (bad == NULL || bad->edge->u.after.dst->len < f->edge->u.after.dst->len) {
+            if (bad == NULL || edge_dst(bad->edge)->len < edge_dst(f->edge)->len) {
                 bad = f;
             }
         }
