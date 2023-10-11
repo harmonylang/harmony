@@ -2266,6 +2266,15 @@ static void detect_busywait(struct node *node){
     }
 }
 
+// Initialize the given step
+static inline void step_init(struct worker *w, struct step *step){
+    step->ctx = NULL;
+    step->ai = NULL;
+    step->nlog = step->nspawned = step->nunstopped = 0;
+    step->allocator = &w->allocator;
+    step->keep_callstack = false;
+}
+
 // This function evaluates a node just taken from the todo list by the worker.
 // Any new nodes that are found are kept in w->workers and not yet added to
 // the todo list or the graph.
@@ -2316,22 +2325,14 @@ void do_work1(struct worker *w, struct node *node){
         hvalue_t ctx = state_ctx(state, ctx_index);
         hvalue_t choice = edges[i].u.before.choice;
         // memset(&step, 0, sizeof(step));
-        step.ctx = NULL;
-        step.ai = NULL;
-        step.nlog = step.nspawned = step.nunstopped = 0;
-        step.allocator = &w->allocator;
-        step.keep_callstack = false;
+        step_init(w, &step);
         trystep(w, node, i, state, ctx, &step, choice, ctx_index);
     }
 
     // Also check the invariants after initialization
     if (node->id != 0 && state->chooser < 0 && (global.ninvs > 0 || global.nfinals > 0)) {
         // memset(&step, 0, sizeof(step));
-        step.ctx = NULL;
-        step.ai = NULL;
-        step.nlog = step.nspawned = step.nunstopped = 0;
-        step.allocator = &w->allocator;
-        step.keep_callstack = false;
+        step_init(w, &step);
 
         // Check each invariant
         for (unsigned int i = 0; i < global.ninvs; i++) {
