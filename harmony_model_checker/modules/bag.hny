@@ -50,9 +50,10 @@ builtin remove "bag$remove"
 def remove(bg, elt) returns result:
     result = bg
     if elt in result:
+        assert result[elt] > 0
         result[elt] -= 1
-    if result[elt] <= 0:
-        del result[elt]
+        if result[elt] == 0:
+            del result[elt]
 
 # Return set of all subbags of bg of size k
 def combinations(bg, k) returns result:

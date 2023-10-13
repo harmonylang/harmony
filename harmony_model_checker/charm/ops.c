@@ -930,10 +930,12 @@ void op_Bag_Remove(const void *env, struct state *state, struct step *step){
     }
     hvalue_t result = value_bag_remove(step->allocator, args[0], args[1]);
     if (result == 0) {
-        value_ctx_failure(step->ctx, step->allocator, "bag.remove: not an element");
-        return;
+        // element was not in the bag
+        do_return(state, step, args[0]);
     }
-    do_return(state, step, result);
+    else {
+        do_return(state, step, result);
+    }
 }
 
 // Built-in bag.multiplicity method
