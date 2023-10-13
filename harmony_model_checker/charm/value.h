@@ -7,30 +7,34 @@
 #include "charm.h"
 
 #define MAX_CONTEXT_STACK   250        // maximum size of context stack
-#define MAX_CONTEXT_BAG       32        // maximum number of distinct contexts
+#define MAX_CONTEXT_BAG      32        // maximum number of distinct contexts
 
 // This contains the state in a Harmony execution.
 //
 // TODO.  State can be reduced in size in various ways;
-//  - pre and stopbag are not always used
 //  - contexts could be represented more efficiently
 //  - the entire thing could be replaced with a collision-resistant hash
 typedef struct state {
     hvalue_t vars;        // shared variables
-    // hvalue_t pre;         // "pre" state (same as vars in non-choosing states)
-    hvalue_t stopbag;     // bag of stopped contexts (to detect deadlock)
     uint32_t dfa_state;   // state of input dfa
     int8_t chooser;       // context that is choosing, -1 if none
 
-    // The state includes a variable-size bag of contexts.  This is represented
-    // by an array of contexts of type hvalue_t, which is followed by an array
-    // of multiplicities (of type uint8_t) with the same number of elements.
-    uint8_t bagsize;
+    // The state includes two variable-sized bag of contexts.  A context is
+    // of type hvalue_t.  We use bits 48..55 (8 bits total) to contain the
+    // multiplicity of the context.  The context bag is of size bagsize,
+    // while the stopbag is of size total - bagsize.
+    // TODO.  Currently the stopbag is behind the context bag, but if we want
+    //        to support more than 256 contexts, maybe the other way around is better
+    uint8_t bagsize;      // size of context bag
+    uint16_t total;       // bagsize + size of bag of stopped contexts
     // hvalue_t contexts[VAR_SIZE];   // context/multiplicity pairs
 } state;
-#define state_contexts(s)   ((hvalue_t *) ((s) + 1))
-#define multiplicities(s)   ((uint8_t *) &state_contexts(s)[(s)->bagsize])
-#define state_size(s)       (sizeof(struct state) + (s)->bagsize * (sizeof(hvalue_t) + 1))
+#define state_size(s)            (sizeof(struct state) + (s)->total * sizeof(hvalue_t))
+#define state_ctxlist(s)         ((hvalue_t *) ((s) + 1))
+#define STATE_M_SHIFT            48
+#define STATE_MULTIPLICITY       ((hvalue_t) 0xFF << STATE_M_SHIFT)
+#define state_ctx(s, i)          (state_ctxlist(s)[i] & ~STATE_MULTIPLICITY)
+#define state_multiplicity(s, i) ((unsigned int) ((state_ctxlist(s)[i] & STATE_MULTIPLICITY) >> STATE_M_SHIFT))
 
 // A context is the state of a Harmony thread.  The state, which is part of the
 // state of a thread, immediately follows this structure.
@@ -89,7 +93,7 @@ void strbuf_value_json(strbuf *sb, hvalue_t v);
 //
 // TODO.  Perhaps we should put everything in the top 16 bits.
 #define VALUE_BITS      4
-#define VALUE_HIBITS    ((hvalue_t) 0xFF << 48)
+#define VALUE_HIBITS    ((hvalue_t) 0xFFFF << 48)
 #define VALUE_LOBITS    ((hvalue_t) ((1 << VALUE_BITS) - 1))
 #define VALUE_MASK      (VALUE_HIBITS | VALUE_LOBITS)
 
@@ -105,7 +109,7 @@ void strbuf_value_json(strbuf *sb, hvalue_t v);
 #define VALUE_ADDRESS_PRIVATE   9
 #define VALUE_CONTEXT  10
 
-#define VALUE_CONTEXT_ETERNAL   ((hvalue_t) 1 << 48)
+#define VALUE_CONTEXT_ETERNAL   ((hvalue_t) 1 << 56)
 
 #define VALUE_FALSE     VALUE_BOOL
 #define VALUE_TRUE      ((1 << VALUE_BITS) | VALUE_BOOL)
@@ -139,10 +143,10 @@ bool value_ctx_push(struct context *ctx, hvalue_t v);
 hvalue_t value_ctx_pop(struct context *ctx);
 void value_ctx_extend(struct context *ctx);
 hvalue_t value_ctx_failure(struct context *ctx, struct allocator *allocator, char *fmt, ...);
-bool value_ctx_all_eternal(hvalue_t ctxbag);
 bool value_state_all_eternal(struct state *state);
 void context_remove(struct state *state, hvalue_t ctx);
 int context_add(struct state *state, hvalue_t ctx);
+int stopped_context_add(struct state *state, hvalue_t ctx);
 char *json_escape_value(hvalue_t v);
 void value_trace(FILE *file, struct callstack *cs, unsigned int pc, hvalue_t vars, char *prefix);
 void print_vars(FILE *file, hvalue_t v);

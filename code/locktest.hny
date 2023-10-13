@@ -1,0 +1,21 @@
+import lock
+
+thelock = lock.Lock()
+
+count = 0
+invariant 0 <= count <= 1
+
+def thread():
+    lock.acquire(?thelock)
+
+    atomically count += 1
+
+    # critical section is here
+    assert count == 1
+
+    atomically count -= 1
+
+    lock.release(?thelock)
+
+for i in {1..5}:
+    spawn thread()

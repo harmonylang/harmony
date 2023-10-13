@@ -37,8 +37,8 @@ def leader(self, proposal):
 def acceptor():
     var ballot, last_accepted, received = 0, None, {}
     while True:
-        atomically when exists b,p,e in { (b,p,e) for b,p,t,e:_ in network
-                    where ((b,p) not in received) and (t == "A") }:
+        atomically when exists b,p,e in { (bb,pp,ee) for bb,pp,tt,ee:_ in network
+                    where ((bb,pp) not in received) and (tt == "A") }:
             received |= { (b, p) }
             if b >= ballot:
                 ballot = b

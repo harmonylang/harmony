@@ -50,8 +50,8 @@ def transfer(self, b1, b2, amt):
 
 def check(self, total):
     let allbanks = { (.bank, i) for i in { 0 .. NBANKS - 1} }:
-        for bank in allbanks:
-            send({ .dst: bank, .src: self, .request: "withdraw", .amount: 0 })
+        for b in allbanks:
+            send({ .dst: b, .src: self, .request: "withdraw", .amount: 0 })
         atomically let msgs = { m for m in network where m.dst == self }
         when { m.src for m in msgs } == allbanks:
             assert all(m.response == "yes" for m in msgs) =>

@@ -8,7 +8,6 @@ tests = [
     { "args": "code/prog1.hny", "issue": "No issues", "nstates": 2 },
     { "args": "code/prog2.hny", "issue": "Safety violation", "nstates": 11 },
     { "args": "code/Up.hny", "issue": "Safety violation", "nstates": 44 },
-#    { "args": "code/Upf.hny", "issue": "Finally predicate violation", "nstates": 13 },
     { "args": "code/Upf.hny", "issue": "Safety violation", "nstates": 13 },
     { "args": "code/UpEnter.hny", "issue": "Non-terminating state", "nstates": 59 },
     { "args": "code/csbarebones.hny", "issue": "Non-terminating state", "nstates": 3 },
@@ -23,6 +22,9 @@ tests = [
     { "args": "code/PetersonMethod.hny", "issue": "No issues", "nstates": 118 },
     { "args": "code/hanoi.hny", "issue": "Safety violation", "nstates": 28 },
     { "args": "code/clock.hny", "issue": "Safety violation", "nstates": 5462 },
+    { "args": "-mlock=lockspec code/locktest.hny", "issue": "No issues", "nstates": 82 },
+    { "args": "-mlock=taslock code/locktest.hny", "issue": "No issues", "nstates": 82 },
+    { "args": "-mlock=ticket code/locktest.hny", "issue": "No issues", "nstates": 197 },
     { "args": "code/cssynch.hny", "issue": "No issues", "nstates": 22 },
     { "args": "-msynch=synchS code/cssynch.hny", "issue": "No issues", "nstates": 29 },
     { "args": "-msynch=ticket code/cssynch.hny", "issue": "No issues", "nstates": 226 },
@@ -30,7 +32,6 @@ tests = [
     { "args": "-msynch=synchS code/UpLock.hny", "issue": "No issues", "nstates": 58 },
     { "args": "code/spinlock.hny", "issue": "No issues", "nstates": 617 },
     { "args": "code/xy.hny", "issue": "Safety violation", "nstates": 19 },
-#    { "args": "code/atm.hny", "issue": "Invariant violation", "nstates": 1832 },
     { "args": "code/atm.hny", "issue": "Safety violation", "nstates": 1832 },
     { "args": "code/queuedemo.hny", "issue": "No issues", "nstates": 80 },
     { "args": "code/setobjtest.hny", "issue": "No issues", "nstates": 217 },
@@ -77,8 +78,9 @@ tests = [
     { "args": "-msynch=synchS code/barriertest.hny", "issue": "No issues", "nstates": 7425 },
     { "args": "code/barriertest2.hny", "issue": "No issues", "nstates": 5711 },
     { "args": "-msynch=synchS code/barriertest2.hny", "issue": "No issues", "nstates": 16511 },
+    { "args": "-o file.hfa code/filetest.hny", "issue": "No issues", "nstates": 5593 },
+    { "args": "-B file.hfa -m file=fs code/filetest.hny", "issue": "No issues", "nstates": 17352427 },
     { "args": "code/trap.hny", "issue": "No issues", "nstates": 8 },
-#    { "args": "code/trap2.hny", "issue": "Finally predicate violation", "nstates": 21 },
     { "args": "code/trap2.hny", "issue": "Safety violation", "nstates": 21 },
     { "args": "code/trap3.hny", "issue": "Non-terminating state", "nstates": 26 },
     { "args": "code/trap4.hny", "issue": "No issues", "nstates": 16 },
@@ -88,6 +90,10 @@ tests = [
     { "args": "code/hw.hny", "issue": "No issues", "nstates": 23864 },
     { "args": "code/abptest.hny", "issue": "No issues", "nstates": 2778 },
     { "args": "code/leader.hny", "issue": "No issues", "nstates": 33005 },
+    { "args": "code/2pc.hny", "issue": "No issues", "nstates": 666316 },
+    { "args": "-o rsm.hfa code/rsm.hny", "issue": "No issues", "nstates": 1952 },
+    { "args": "-B rsm.hfa code/chain.hny", "issue": "No issues", "nstates": 201408 },
+    { "args": "code/needhamschroeder.hny", "issue": "Safety violation", "nstates": 558 },
     { "args": "-mstack=stack1 code/stacktest.hny", "issue": "No issues", "nstates": 2 },
     { "args": "-mstack=stack2 code/stacktest.hny", "issue": "No issues", "nstates": 2 },
     { "args": "-mstack=stack3 code/stacktest.hny", "issue": "No issues", "nstates": 2 },
@@ -111,8 +117,9 @@ for t in tests:
                 break
             if t["issue"] != "Safety violation" and min(t["nstates"], hco["nstates"]) / max(t["nstates"], hco["nstates"]) < .9:
                 print("#states very different (was %d)???" % t["nstates"])
+                break
     else:
         print("Error code %d, aborting further tests" % cp.returncode)
-        print("Output: ", cp.stdout)
-        print("Error: ", cp.stderr)
+        print("Output: ", cp.stdout.decode())
+        print("Error: ", cp.stderr.decode())
         break

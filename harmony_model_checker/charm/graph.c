@@ -40,6 +40,20 @@ unsigned int graph_add_multiple(struct graph *graph, unsigned int n) {
     return node_id;
 }
 
+struct edge *find_edge(struct node *src, struct node *dst){
+    struct edge *e = node_edges(src);
+    for (unsigned int i = 0; i < src->nedges; i++, e++) {
+        if (edge_dst(e) == dst) {
+            return e;
+        }
+    }
+    return NULL;
+}
+
+struct edge *node_to_parent(struct node *n){
+    return n->parent == NULL ? NULL : find_edge(n->parent, n);
+}
+
 static bool graph_edge_conflict(
     struct failure **failures,
     struct allocator *allocator,
@@ -77,11 +91,12 @@ void graph_check_for_data_race(
     // First check whether any edges conflict with themselves.  That could
     // happen if more than one thread is in the same state and (all) write
     // the same variable
-    for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
+    struct edge *edge = node_edges(node);
+    for (unsigned int i = 0; i < node->nedges; i++, edge++) {
         for (struct access_info *ai = edge_output(edge)->ai; ai != NULL; ai = ai->next) {
             if (ai->indices != NULL) {
                 assert(ai->n > 0);
-                if ((edge->flags & EDGE_MULTIPLE) && !ai->load && !ai->atomic) {
+                if (edge->multiple && !ai->load && !ai->atomic) {
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_RACE;
                     f->edge = node_to_parent(node);
@@ -92,9 +107,11 @@ void graph_check_for_data_race(
         }
     }
 
-    // TODO.  We're checking both if x and y conflict and y and x conflict for any two x and y, which is redundant
-    for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
-        for (struct edge *edge2 = edge->fwdnext; edge2 != NULL; edge2 = edge2->fwdnext) {
+    // Now check if different edges conflict with one another
+    edge = node_edges(node);
+    for (unsigned int i = 0; i < node->nedges; i++, edge++) {
+        struct edge *edge2 = edge + 1;
+        for (unsigned int j = i + 1; j < node->nedges; j++, edge2++) {
             if (graph_edge_conflict(failures, allocator, node, edge, edge2)) {
                 break;
             }

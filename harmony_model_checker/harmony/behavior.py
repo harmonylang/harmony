@@ -448,6 +448,9 @@ def behavior_parse(js, minify, outputfiles, behavior):
 
     if behavior is not None:
         if got_automata:
-            read_hfa(behavior, dfa, nfa)
+            if "suppressed" in js:
+                print("behavior subset checking suppressed; use -b flag to enable")
+            else:
+                read_hfa(behavior, dfa, nfa)
         else:
             print("Can't check behavior subset because automata-lib is not available")

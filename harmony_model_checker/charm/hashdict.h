@@ -12,22 +12,30 @@ typedef void (*dict_enumfunc)(void *env, const void *key, unsigned int key_size,
                                 void *value);
 
 // This header is followed directly by first the data and then the key.
-// The value is of length dict->value_len.
 struct dict_assoc {
 	struct dict_assoc *next;
-    struct dict_assoc *unstable_next;
-	unsigned int len;               // key length
+	uint16_t len;               // key length
+    uint16_t val_len;           // value length
+#define da_next(k)     ((k)->next)
+#define da_len(k)      ((k)->len)
 };
+
+#define da_set(k, n)   do (k)->next = (n); while (0)
 
 // TODO.  Split into two tables, one for stable, one for unstable.
 struct dict_bucket {
     struct dict_assoc *stable, *unstable;
 };
 
+struct dict_unstable {
+    unsigned int next;               // points into array of entries
+    unsigned int len;
+    struct dict_assoc **entries;     // array of len entries
+};
+
 struct dict_worker {
-    struct dict_assoc **unstable;   // one for each of the workers
-    unsigned int count;             // #unstable entries added
-    unsigned int clashes;           // some profiling
+    struct dict_unstable *unstable;  // one for each of the workers
+    unsigned int count;              // #unstable entries added
 };
 		
 struct dict {
@@ -43,8 +51,15 @@ struct dict {
     unsigned int nlocks;
 	double growth_threshold;
 	unsigned int growth_factor;
-    bool concurrent;         // 0 = not concurrent
+    bool concurrent;
     bool align16;            // entries must be aligned to 16 bytes
+
+#ifdef HASHDICT_STATS
+    // stats
+    hAtomic(unsigned int) nmisses;
+    hAtomic(unsigned int) nunstable_hits;
+    hAtomic(unsigned int) nstable_hits;
+#endif
 };
 
 struct dict *dict_new(char *whoami, unsigned int value_len, unsigned int initial_size,
@@ -54,7 +69,7 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keylen);
 bool dict_remove(struct dict *dict, const void *key, unsigned int keylen);
 void *dict_insert(struct dict *dict, struct allocator *al, const void *key, unsigned int keylen, bool *is_new);
 struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al, const void *key, unsigned int keyn, bool *is_new, mutex_t **lock);
-struct dict_assoc *dict_find_lock_new(struct dict *dict, struct allocator *al, const void *key, unsigned int keyn, bool *is_new, mutex_t **lock);
+struct dict_assoc *dict_find_new(struct dict *dict, struct allocator *al, const void *key, unsigned int keyn, unsigned int extra, bool *is_new, mutex_t **lock);
 struct dict_assoc *dict_find(struct dict *dict, struct allocator *al, const void *key, unsigned int keylen, bool *is_new);
 void *dict_retrieve(const void *p, unsigned int *psize);
 void dict_iter(struct dict *dict, dict_enumfunc f, void *user);

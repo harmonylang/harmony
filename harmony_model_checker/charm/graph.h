@@ -73,10 +73,12 @@ struct step_output {
 
 struct edge_list {
     struct edge_list *next;
-    struct edge *edge;
+    struct node *node;      // source
+    int edge_index;
 };
 
 struct step_condition {
+    unsigned int id;
     enum { SC_IN_PROGRESS, SC_COMPLETED } type;
     union {
         struct edge_list *in_progress;
@@ -94,28 +96,24 @@ struct step_comp {
 // information of how a program can get from the source state to the destination
 // state.
 struct edge {
-    struct edge *fwdnext;        // forward linked list maintenance
-    struct node *dst;            // destination node
-    struct node *src;            // source node
-
-    // This field consists of the pointer to a step_condition (which contains the
-    // input and output of the computation) plus a few flags in the unused bits
-    // (see below).
-    uintptr_t flags;
+#ifdef SHORT_POINTER
+    int64_t dest : 36;          // "short" pointer to dst node
+    uint32_t stc_id : 24;       // id of step_condition
+#define edge_dst(e)          ((struct node *) ((uint64_t *) (e) + (e)->dest))
+#else
+    struct node *dst;           // pointer to destination node
+    uint32_t stc_id : 28;       // id of step_condition
+#define edge_dst(e)          ((e)->dst)
+#endif
+    bool multiple : 1;          // multiplicity > 1
+    bool failed : 1;            // edge has failed (safety violation)
+    bool infloop : 1;           // infinite loop
+    bool invariant_chk : 1;     // this was an invariant check
 };
-#define EDGE_FLAGS           ((uintptr_t) 0xFF << 56)
-#define edge_sc(e)           ((struct step_condition *) ((e)->flags & ~EDGE_FLAGS))
+
+#define edge_sc(e)           (global.stc_table[(e)->stc_id])
 #define edge_input(e)        ((struct step_input *) &edge_sc(e)[1])
 #define edge_output(e)       (edge_sc(e)->u.completed)
-
-// Multiplicity > 1
-#define EDGE_MULTIPLE        ((uintptr_t) 1 << 63)
-
-// Something went wrong in computation
-#define EDGE_FAILED          ((uintptr_t) 1 << 62)
-
-// This is an invariant check computation
-#define EDGE_INVARIANT_CHK   ((uintptr_t) 1 << 61)
 
 // Charm can detect a variety of failure types:
 enum fail_type {
@@ -127,25 +125,28 @@ enum fail_type {
     FAIL_RACE               // the program has a race condition
 };
 
-// This is information about a node in the Kripke structure.  The Harmony state
-// corresponding to this node is stored directly behind this node.
+// This is information about a node in the Kripke structure.  The node is directly followed
+// by the array of outgoing edges and then the Harmony state corresponding to this node.
 struct node {
-    struct edge *fwd;       // forward edges
-    struct edge *to_parent; // path to initial state
+    // struct edge *fwd;       // forward edges
+    struct node *parent;    // path to initial state
     uint32_t id;            // nodes are numbered starting from 0
     uint16_t len;           // length of path to initial state
+    uint8_t nedges;         // number of outgoing edges  // TODO also maintained by hash table
     bool on_stack : 1;      // for Tarjan
-    bool failed : 1;        // a thread has failed
-    bool final : 1;         // only eternal threads left (TODO: need this?)
-    bool visited : 1;       // for busy wait detection (TODO: need this?)
-
-    // NFA compression
-    bool reachable : 1;     // TODO.  Maybe obsolete at this time
+    bool failed : 1;        // state resulted from failed transition
+    bool final : 1;         // final state
+    bool visited : 1;       // for busy wait detection
+    // struct edge edges[nedges]
 };
-#define node_to_parent(n)       ((n)->to_parent)
 
-// The state corresponding to a node, directly following the node
-#define node_state(n)   ((struct state *) &(n)[1])
+// The state corresponding to a node
+#define node_edges(n)   ((struct edge *) &((n)[1]))
+#define node_state(n)   ((struct state *) &node_edges(n)[(n)->nedges])
+
+// Equivalently...
+// #define node_assoc(n)   (((struct dict_assoc *) (n))[-1])
+// #define node_state(n)   ((struct state *) ((char *) (n) + node_assoc(n).val_len))
 
 // Information about a failure.  Multiple failures may be detected, and these
 // are kept in a linked list.
@@ -153,6 +154,7 @@ struct failure {
     struct failure *next;   // for linked list maintenance
     enum fail_type type;    // failure type
     struct edge *edge;      // edge->dst is the faulty state
+    struct node *node;      // source node of edge
     hvalue_t address;       // in case of data race or invariant failure
 };
 
@@ -172,5 +174,6 @@ void graph_check_for_data_race(
 );
 void graph_add(struct graph *graph, struct node *node);
 unsigned int graph_add_multiple(struct graph *graph, unsigned int n);
+struct edge *node_to_parent(struct node *n);
 
 #endif //SRC_GRAPH_H

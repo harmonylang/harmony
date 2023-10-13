@@ -37,8 +37,8 @@ def release(binsema):
         if binsema->suspended == []:
             binsema->acquired = False
         else:
-            go (list.head(binsema->suspended)) ()
-            binsema->suspended = list.tail(binsema->suspended)
+            go (binsema->suspended[0]) ()
+            del binsema->suspended[0]
 
 def held(binsema):
     result = binsema->acquired

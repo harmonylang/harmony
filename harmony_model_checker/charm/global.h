@@ -28,6 +28,7 @@
 #define PRI_HVAL            PRIx64
 
 // Harmony values are 64 bit values described in more details in value.c.
+// TODO.  This should probably be uintptr_t
 typedef uint64_t            hvalue_t;
 
 void panic(char *s);
