@@ -929,6 +929,10 @@ void op_Bag_Remove(const void *env, struct state *state, struct step *step){
         return;
     }
     hvalue_t result = value_bag_remove(step->allocator, args[0], args[1]);
+    if (result == 0) {
+        value_ctx_failure(step->ctx, step->allocator, "bag.remove: not an element");
+        return;
+    }
     do_return(state, step, result);
 }
 

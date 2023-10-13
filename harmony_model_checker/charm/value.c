@@ -1616,6 +1616,9 @@ hvalue_t value_bag_add(struct allocator *allocator, hvalue_t bag, hvalue_t v, in
 hvalue_t value_bag_remove(struct allocator *allocator, hvalue_t bag, hvalue_t v){
     assert(VALUE_TYPE(bag) == VALUE_DICT);
     hvalue_t count = value_dict_load(bag, v);
+    if (count == 0) {
+        return 0;
+    }
     assert(VALUE_TYPE(count) == VALUE_INT);
     count -= 1 << VALUE_BITS;
     if (count == VALUE_INT) {
