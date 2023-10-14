@@ -77,8 +77,8 @@ struct edge_list {
 };
 
 struct step_condition {
-    unsigned int id;
-    enum { SC_IN_PROGRESS, SC_COMPLETED } type : 1;
+    unsigned int id : 30;
+    bool completed : 1;
     bool invariant_chk : 1;
     union {
         struct edge_list *in_progress;

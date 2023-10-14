@@ -983,6 +983,8 @@ static void trystep(
                 global.stc_allocated * sizeof(*global.stc_table));
         }
         stc->id = global.nstc;
+        stc->completed = false;
+        stc->u.in_progress = NULL;
         global.stc_table[global.nstc] = stc;
         global.nstc++;
         mutex_release(&global.stc_lock);
@@ -1000,13 +1002,9 @@ static void trystep(
         stc->invariant_chk = true;
     }
 
-    if (si_new) {
-        stc->type = SC_IN_PROGRESS;
-        stc->u.in_progress = NULL;
-    }
-    else {
+    if (!si_new) {
         w->si_hits++;
-        if (stc->type == SC_IN_PROGRESS) {
+        if (!stc->completed) {
             struct edge_list *el;
             if ((el = w->el_free) == NULL) {
                 el = walloc_fast(w, sizeof(struct edge_list));
@@ -1021,7 +1019,7 @@ static void trystep(
             mutex_release(si_lock);
             return;
         }
-        assert(stc->type == SC_COMPLETED);
+        assert(stc->completed);
     }
 
     if (!has_countLabel) {
@@ -1067,23 +1065,23 @@ static void trystep(
         }
 
         if (has_countLabel) {
-            assert(stc->type == SC_IN_PROGRESS);
+            assert(!stc->completed);
             assert(stc->u.in_progress == NULL);
             el = stc->u.in_progress;
-            stc->type = SC_COMPLETED;
+            stc->completed = true;
             stc->u.completed = so;
         }
         else {
             mutex_acquire(si_lock);
-            assert(stc->type == SC_IN_PROGRESS);
+            assert(!stc->completed);
             el = stc->u.in_progress;
-            stc->type = SC_COMPLETED;
+            stc->completed = true;
             stc->u.completed = so;
             mutex_release(si_lock);
         }
     }
     else {
-        assert(stc->type == SC_COMPLETED);
+        assert(stc->completed);
     }
 
 #ifndef TODO
