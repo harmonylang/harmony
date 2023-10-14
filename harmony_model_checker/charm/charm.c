@@ -377,7 +377,6 @@ static void process_step(
 #endif
             f->edge->stc_id = stc->id;
             f->edge->failed = true;
-            f->edge->invariant_chk = true;
             add_failure(&global.failures, f);
         }
         return;
@@ -895,7 +894,6 @@ static struct step_output *onestep(
     so->ai = step->ai;     step->ai = NULL;
     so->nsteps = instrcnt;
 
-    // TODO.  The following 4 can be captured in just 2 bits I think
     so->choosing = choosing;
     so->terminated = terminated;
     so->stopped = stopped;
@@ -993,14 +991,13 @@ static void trystep(
     if (edge_index >= 0) {
         struct edge *edge = &node_edges(node)[edge_index];
         edge->stc_id = stc->id;
-        if (ctx_index >= 0 && state_multiplicity(state, ctx_index) > 1) { 
-            edge->multiple = true;
-        }
-        else {
-            edge->multiple = false;
-        }
+        edge->multiple = ctx_index >= 0 &&
+                            state_multiplicity(state, ctx_index) > 1;
         edge->failed = false;
-        edge->invariant_chk = false;
+        stc->invariant_chk = false;
+    }
+    else {
+        stc->invariant_chk = true;
     }
 
     if (si_new) {
@@ -1335,7 +1332,6 @@ static void twostep(
     hvalue_t ctx,
     struct callstack *cs,
     hvalue_t choice,
-    bool invariant,
     unsigned int nsteps,
     unsigned int pid,
     struct macrostep *macro
@@ -1364,15 +1360,6 @@ static void twostep(
         interrupt_invoke(&step);
         make_microstep(sc, step.ctx, step.callstack, true, false, 0, 0, &step, macro);
     }
-
-#ifdef XYZ
-    if (invariant) {
-        hvalue_t args[2];
-        args[0] = args[1] = sc->vars;
-        (void) value_ctx_pop(step.ctx); // HACK
-        value_ctx_push(step.ctx, value_put_list(step.allocator, args, sizeof(args)));
-    }
-#endif
 
     struct dict *infloop = NULL;        // infinite loop detector
     unsigned int instrcnt = 0;
@@ -1536,7 +1523,7 @@ void path_recompute(){
         struct edge *e = macro->edge;
         hvalue_t ctx = edge_input(e)->ctx;
 
-        if (e->invariant_chk) {
+        if (edge_invariant(e)) {
             global.processes = realloc(global.processes, (global.nprocesses + 1) * sizeof(hvalue_t));
             global.callstacks = realloc(global.callstacks, (global.nprocesses + 1) * sizeof(struct callstack *));
             global.processes[global.nprocesses] = ctx;
@@ -1583,7 +1570,6 @@ void path_recompute(){
             ctx,
             global.callstacks[pid],
             edge_input(e)->choice,
-            e->invariant_chk,
             edge_output(e)->nsteps,
             pid,
             macro
