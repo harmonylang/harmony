@@ -35,7 +35,7 @@ struct access_info {
     bool load : 1;                   // store or del if false
 };
 
-// Codomain of onestep()
+// Inputs to onestep
 struct step_input {
     hvalue_t vars;           // initial shared variables
     hvalue_t choice;         // choice (-1 for interrupt)
@@ -53,7 +53,6 @@ struct step_output {
     struct access_info *ai;  // to detect data races
     uint16_t nsteps;         // # microsteps
 
-    // TODO.  The following 4 can be capture in 3 bits, I think
     bool choosing : 1;       // destination state is choosing
     bool terminated : 1;     // thread has terminated
     bool stopped : 1;        // thread has stopped
@@ -78,8 +77,9 @@ struct edge_list {
 };
 
 struct step_condition {
-    unsigned int id;
-    enum { SC_IN_PROGRESS, SC_COMPLETED } type;
+    unsigned int id : 30;
+    bool completed : 1;
+    bool invariant_chk : 1;
     union {
         struct edge_list *in_progress;
         struct step_output *completed;
@@ -97,23 +97,22 @@ struct step_comp {
 // state.
 struct edge {
 #ifdef SHORT_POINTER
-    int64_t dest : 36;          // "short" pointer to dst node
-    uint32_t stc_id : 24;       // id of step_condition
+    int64_t dest : 37;          // "short" pointer to dst node
+    uint32_t stc_id : 25;       // id of step_condition
 #define edge_dst(e)          ((struct node *) ((uint64_t *) (e) + (e)->dest))
 #else
     struct node *dst;           // pointer to destination node
-    uint32_t stc_id : 28;       // id of step_condition
+    uint32_t stc_id : 30;       // id of step_condition
 #define edge_dst(e)          ((e)->dst)
 #endif
     bool multiple : 1;          // multiplicity > 1
     bool failed : 1;            // edge has failed (safety violation)
-    bool infloop : 1;           // infinite loop
-    bool invariant_chk : 1;     // this was an invariant check
 };
 
 #define edge_sc(e)           (global.stc_table[(e)->stc_id])
 #define edge_input(e)        ((struct step_input *) &edge_sc(e)[1])
 #define edge_output(e)       (edge_sc(e)->u.completed)
+#define edge_invariant(e)    (edge_sc(e)->invariant_chk)
 
 // Charm can detect a variety of failure types:
 enum fail_type {

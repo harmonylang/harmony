@@ -376,9 +376,7 @@ static void process_step(
             f->edge->dst = node;
 #endif
             f->edge->stc_id = stc->id;
-            f->edge->failed = so->failed;
-            f->edge->infloop = so->infinite_loop;
-            f->edge->invariant_chk = true;
+            f->edge->failed = true;
             add_failure(&global.failures, f);
         }
         return;
@@ -455,14 +453,17 @@ static void process_step(
         }
     }
 
+    // If a failure has occurred, keep track of that too.
     struct edge *edge = &node_edges(node)[edge_index];
-    if (so->failed) {
+    if (so->failed || so->infinite_loop) {
         edge->failed = true;
         noutgoing = 0;
-    }
-    if (so->infinite_loop) {
-        edge->infloop = true;
-        noutgoing = 0;
+        struct failure *f = new_alloc(struct failure);
+        f->type = so->infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
+        f->node = node;
+        f->edge = edge;
+        f->next = w->failures;
+        w->failures = f;
     }
 
     if (global.dfa != NULL) {
@@ -479,24 +480,6 @@ static void process_step(
             }
             sc->dfa_state = nstate;
         }
-    }
-
-    // If a failure has occurred, keep track of that too.
-    if (edge->infloop) {
-        struct failure *f = new_alloc(struct failure);
-        f->type = FAIL_TERMINATION;
-        f->node = node;
-        f->edge = edge;
-        f->next = w->failures;
-        w->failures = f;
-    }
-    else if (edge->failed) {
-        struct failure *f = new_alloc(struct failure);
-        f->type = FAIL_SAFETY;
-        f->node = node;
-        f->edge = edge;
-        f->next = w->failures;
-        w->failures = f;
     }
 
     // See if this state has been computed before by looking up the node,
@@ -911,7 +894,6 @@ static struct step_output *onestep(
     so->ai = step->ai;     step->ai = NULL;
     so->nsteps = instrcnt;
 
-    // TODO.  The following 4 can be captured in just 2 bits I think
     so->choosing = choosing;
     so->terminated = terminated;
     so->stopped = stopped;
@@ -1001,6 +983,8 @@ static void trystep(
                 global.stc_allocated * sizeof(*global.stc_table));
         }
         stc->id = global.nstc;
+        stc->completed = false;
+        stc->u.in_progress = NULL;
         global.stc_table[global.nstc] = stc;
         global.nstc++;
         mutex_release(&global.stc_lock);
@@ -1009,25 +993,18 @@ static void trystep(
     if (edge_index >= 0) {
         struct edge *edge = &node_edges(node)[edge_index];
         edge->stc_id = stc->id;
-        if (ctx_index >= 0 && state_multiplicity(state, ctx_index) > 1) { 
-            edge->multiple = true;
-        }
-        else {
-            edge->multiple = false;
-        }
-        // TODO.  Don't know if C compiler generates efficient code...
+        edge->multiple = ctx_index >= 0 &&
+                            state_multiplicity(state, ctx_index) > 1;
         edge->failed = false;
-        edge->infloop = false;
-        edge->invariant_chk = false;
-    }
-
-    if (si_new) {
-        stc->type = SC_IN_PROGRESS;
-        stc->u.in_progress = NULL;
+        stc->invariant_chk = false;
     }
     else {
+        stc->invariant_chk = true;
+    }
+
+    if (!si_new) {
         w->si_hits++;
-        if (stc->type == SC_IN_PROGRESS) {
+        if (!stc->completed) {
             struct edge_list *el;
             if ((el = w->el_free) == NULL) {
                 el = walloc_fast(w, sizeof(struct edge_list));
@@ -1042,7 +1019,7 @@ static void trystep(
             mutex_release(si_lock);
             return;
         }
-        assert(stc->type == SC_COMPLETED);
+        assert(stc->completed);
     }
 
     if (!has_countLabel) {
@@ -1088,23 +1065,23 @@ static void trystep(
         }
 
         if (has_countLabel) {
-            assert(stc->type == SC_IN_PROGRESS);
+            assert(!stc->completed);
             assert(stc->u.in_progress == NULL);
             el = stc->u.in_progress;
-            stc->type = SC_COMPLETED;
+            stc->completed = true;
             stc->u.completed = so;
         }
         else {
             mutex_acquire(si_lock);
-            assert(stc->type == SC_IN_PROGRESS);
+            assert(!stc->completed);
             el = stc->u.in_progress;
-            stc->type = SC_COMPLETED;
+            stc->completed = true;
             stc->u.completed = so;
             mutex_release(si_lock);
         }
     }
     else {
-        assert(stc->type == SC_COMPLETED);
+        assert(stc->completed);
     }
 
 #ifndef TODO
@@ -1353,7 +1330,6 @@ static void twostep(
     hvalue_t ctx,
     struct callstack *cs,
     hvalue_t choice,
-    bool invariant,
     unsigned int nsteps,
     unsigned int pid,
     struct macrostep *macro
@@ -1382,15 +1358,6 @@ static void twostep(
         interrupt_invoke(&step);
         make_microstep(sc, step.ctx, step.callstack, true, false, 0, 0, &step, macro);
     }
-
-#ifdef XYZ
-    if (invariant) {
-        hvalue_t args[2];
-        args[0] = args[1] = sc->vars;
-        (void) value_ctx_pop(step.ctx); // HACK
-        value_ctx_push(step.ctx, value_put_list(step.allocator, args, sizeof(args)));
-    }
-#endif
 
     struct dict *infloop = NULL;        // infinite loop detector
     unsigned int instrcnt = 0;
@@ -1554,7 +1521,7 @@ void path_recompute(){
         struct edge *e = macro->edge;
         hvalue_t ctx = edge_input(e)->ctx;
 
-        if (e->invariant_chk) {
+        if (edge_invariant(e)) {
             global.processes = realloc(global.processes, (global.nprocesses + 1) * sizeof(hvalue_t));
             global.callstacks = realloc(global.callstacks, (global.nprocesses + 1) * sizeof(struct callstack *));
             global.processes[global.nprocesses] = ctx;
@@ -1601,7 +1568,6 @@ void path_recompute(){
             ctx,
             global.callstacks[pid],
             edge_input(e)->choice,
-            e->invariant_chk,
             edge_output(e)->nsteps,
             pid,
             macro
