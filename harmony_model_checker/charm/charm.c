@@ -376,8 +376,7 @@ static void process_step(
             f->edge->dst = node;
 #endif
             f->edge->stc_id = stc->id;
-            f->edge->failed = so->failed;
-            f->edge->infloop = so->infinite_loop;
+            f->edge->failed = true;
             f->edge->invariant_chk = true;
             add_failure(&global.failures, f);
         }
@@ -455,14 +454,17 @@ static void process_step(
         }
     }
 
+    // If a failure has occurred, keep track of that too.
     struct edge *edge = &node_edges(node)[edge_index];
-    if (so->failed) {
+    if (so->failed || so->infinite_loop) {
         edge->failed = true;
         noutgoing = 0;
-    }
-    if (so->infinite_loop) {
-        edge->infloop = true;
-        noutgoing = 0;
+        struct failure *f = new_alloc(struct failure);
+        f->type = so->infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
+        f->node = node;
+        f->edge = edge;
+        f->next = w->failures;
+        w->failures = f;
     }
 
     if (global.dfa != NULL) {
@@ -479,24 +481,6 @@ static void process_step(
             }
             sc->dfa_state = nstate;
         }
-    }
-
-    // If a failure has occurred, keep track of that too.
-    if (edge->infloop) {
-        struct failure *f = new_alloc(struct failure);
-        f->type = FAIL_TERMINATION;
-        f->node = node;
-        f->edge = edge;
-        f->next = w->failures;
-        w->failures = f;
-    }
-    else if (edge->failed) {
-        struct failure *f = new_alloc(struct failure);
-        f->type = FAIL_SAFETY;
-        f->node = node;
-        f->edge = edge;
-        f->next = w->failures;
-        w->failures = f;
     }
 
     // See if this state has been computed before by looking up the node,
@@ -1015,9 +999,7 @@ static void trystep(
         else {
             edge->multiple = false;
         }
-        // TODO.  Don't know if C compiler generates efficient code...
         edge->failed = false;
-        edge->infloop = false;
         edge->invariant_chk = false;
     }
 

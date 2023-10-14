@@ -97,17 +97,16 @@ struct step_comp {
 // state.
 struct edge {
 #ifdef SHORT_POINTER
-    int64_t dest : 36;          // "short" pointer to dst node
+    int64_t dest : 37;          // "short" pointer to dst node
     uint32_t stc_id : 24;       // id of step_condition
 #define edge_dst(e)          ((struct node *) ((uint64_t *) (e) + (e)->dest))
 #else
     struct node *dst;           // pointer to destination node
-    uint32_t stc_id : 28;       // id of step_condition
+    uint32_t stc_id : 29;       // id of step_condition
 #define edge_dst(e)          ((e)->dst)
 #endif
     bool multiple : 1;          // multiplicity > 1
     bool failed : 1;            // edge has failed (safety violation)
-    bool infloop : 1;           // infinite loop
     bool invariant_chk : 1;     // this was an invariant check
 };
 
