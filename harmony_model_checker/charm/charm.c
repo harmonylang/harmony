@@ -1094,6 +1094,8 @@ static void trystep(
     context_remove(sc, ctx);
 #endif
 
+    // Process the effect of the step, and then see if any other
+    // edges were waiting for the result of this computation as well.
     process_step(w, stc, node, edge_index, sc);
     while (el != NULL) {
         struct node *n = el->node;
