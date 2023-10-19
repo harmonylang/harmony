@@ -2549,7 +2549,12 @@ void op_StoreVar(const void *env, struct state *state, struct step *step){
         }
 
         else {
-            result = ind_trystore(step->ctx->vars, indices + 1, size - 1, v, step->allocator, &step->ctx->vars);
+            if (indices[1] == underscore) {
+                result = step->ctx->vars;
+            }
+            else {
+                result = ind_trystore(step->ctx->vars, indices + 1, size - 1, v, step->allocator, &step->ctx->vars);
+            }
         }
         if (!result) {
             char *x = indices_string(indices, size);

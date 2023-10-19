@@ -324,8 +324,7 @@ class NameAST(AST):
             code.append(NaryOp(("Closure", file, line, column), 1), self.token, self.endtoken, stmt=stmt)
         elif t == "local-var":
             (lexeme, file, line, column) = v
-            if lexeme != "_":
-                code.append(PushOp((AddressValue(PcValue(-2), [lexeme]), file, line, column)), self.token, self.endtoken, stmt=stmt)
+            code.append(PushOp((AddressValue(PcValue(-2), [lexeme]), file, line, column)), self.token, self.endtoken, stmt=stmt)
         else:
             assert t == "global"
             (lexeme, file, line, column) = self.name
@@ -359,6 +358,8 @@ class NameAST(AST):
         (t, v) = scope.lookup(self.name)
         if t == "local-var":
             if self.name[0] == "_":
+                # Pop address and value
+                code.append(PopOp(), start, stop, stmt=stmt)
                 code.append(PopOp(), start, stop, stmt=stmt)
             else:
                 code.append(StoreVarOp(None, self.name[0]), start, stop, stmt=stmt)
@@ -933,7 +934,7 @@ class AssignmentAST(AST):
 
         # Compute the addresses of lhs expressions
         for lvs in self.lhslist:
-            # handled separately for better assembly code readability
+            # NameAST handled separately for better assembly code readability
             if not isinstance(lvs, NameAST):
                 lvs.ph1(scope, code, stmt)
 
@@ -944,7 +945,10 @@ class AssignmentAST(AST):
         for i in range(len(self.lhslist) - 1):
             code.append(DupOp(), self.ops[i], self.ops[i], stmt=stmt)
 
-        # Now assign to the left-hand side in reverse order
+        # Now assign to the left-hand side in reverse order.  We assign
+        # in reverse order because the right-hand-side was evaluated in
+        # forward order and the values appear in that way on the stack.
+        # TODO.  Could change this by reversing the semantics of Split.
         skip = len(self.lhslist)
         for lvs in reversed(self.lhslist):
             skip -= 1
@@ -969,15 +973,12 @@ class AssignmentAST(AST):
                     )
                 assert t in {"local-var", "global"}, (t, lvs.name)
                 if v[0] == "_":
+                    assert False
                     code.append(PopOp(), lvs.token, self.ops[skip], stmt=stmt)
                 else:
                     st = StoreOp(lvs.name, lvs.name, scope.prefix) if t == "global" else StoreVarOp(lvs.name)
                     code.append(st, lvs.token, self.ops[skip], stmt=stmt)
             else:
-                # if skip > 0:
-                #     code.append(MoveOp(skip + 2), self.token, self.endtoken, stmt=stmt)
-                #     code.append(MoveOp(2), self.token, self.endtoken, stmt=stmt)
-                # code.append(StoreOp(None, self.token, None), lvs.token, self.ops[skip], stmt=stmt)
                 lvs.ph2(scope, code, skip, lvs.token, self.ops[skip], stmt)
 
         if self.atomically:

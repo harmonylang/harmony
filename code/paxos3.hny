@@ -2,7 +2,7 @@ import synch
 
 const F = 1
 const N = (2*F) + 1
-const MAX_BALLOT = 2*N
+const MAX_BALLOT = N
 
 channels = [[],] * N
 
@@ -54,7 +54,7 @@ def process(self, proposal):
         if ballot == leader_ballot:
             if phase1:
                 if max_accepted != ():
-                    estimate, _ = max_accepted
+                    _, estimate = max_accepted
                 phase1 = False
             else:
                 phase1 = True
