@@ -1,0 +1,67 @@
+import synch
+
+const F = 1
+const N = (2*F) + 1
+const MAX_BALLOT = 2*N
+
+channels = [[],] * N
+
+def send(p, m):
+    channels[p][len channels[p]] = m
+
+def process(self, proposal):
+    var leader_ballot = self
+    var last_accepted = ()
+    var ballot = 0
+    var phase1 = True
+    var estimate = proposal
+    var max_accepted = ()
+
+    while leader_ballot < MAX_BALLOT:
+        for i in { 0 .. N-1 }:
+            if phase1:
+                atomically send(i, { .type: "p1a", .src: self, .ballot: leader_ballot })
+            else:
+                atomically send(i, { .type: "p2a", .src: self, .ballot: leader_ballot, .value: estimate })
+
+        var responses = {}
+        while len(responses) < (N - F):
+            atomically let msgs = channels[self] when msgs != []:
+                channels[self] = []
+                for msg in msgs:
+                    if msg.type == "p1a":
+                        if msg.ballot > ballot:
+                            ballot = msg.ballot
+                        send(msg.src, { .type: "p1b", .src: self, .ballot: ballot, .last: last_accepted })
+                    elif msg.type == "p1b":
+                        if phase1 and (msg.ballot >= ballot):
+                            responses |= { msg.src }
+                            if (max_accepted == ()) or (msg.last > max_accepted):
+                                max_accepted = msg.last
+                    elif msg.type == "p2a":
+                        assert msg.ballot <= ballot, (msg.ballot, ballot)
+                        if msg.ballot == ballot:
+                            last_accepted = (ballot, msg.value)
+                        send(msg.src, { .type: "p2b", .src: self, .ballot: ballot })
+                    else:
+                        assert msg.type == "p2b"
+                        if msg.ballot >= ballot:
+                            ballot = msg.ballot
+                            if not phase1:
+                                responses |= { msg.src }
+
+        # See if my ballot succeeded
+        if ballot == leader_ballot:
+            if phase1:
+                if max_accepted != ():
+                    estimate, _ = max_accepted
+                phase1 = False
+            else:
+                phase1 = True
+                leader_ballot += N
+        else:
+            phase1 = True
+            leader_ballot += N
+
+for i in { 0 .. N-1 }:
+    spawn eternal process(i, choose { "red", "blue" })
