@@ -1,0 +1,40 @@
+# Mutual exclusion based on Dijkstra's "Solution of a Problem in
+# Concurrent Programming Control"
+
+sequential flags, turn, ready
+
+def Lock(n) returns lock:
+    lock = {
+        .flags: [False,] * n,
+        .ready: [False,] * n,
+        .turn: choose { 0 .. n - 1 }
+    }
+
+def acquire(self, lk):
+    lk->flags[self] = lk->ready[self] = True
+    while any(lk->ready[i]
+            for i in { 0 .. len(lk->ready) - 1 } where i != self):
+        while (lk->turn != self) or not lk->flags[lk->turn]:
+            lk->ready[self] = False
+            if not lk->flags[lk->turn]:
+                lk->turn = self
+        lk->ready[self] = True
+
+def release(self, lk):
+    lk->flags[self] = lk->ready[self] = False
+
+########
+
+const N = 3
+
+sequential thelock
+thelock = Lock(N)
+
+def process(self):
+    while choose { False, True }:
+        acquire(self, ?thelock)
+        cs: assert countLabel(cs) == 1
+        release(self, ?thelock)
+
+for x in { 0 .. N - 1 }:
+    spawn process(x)

@@ -1493,8 +1493,10 @@ static void *copy(void *p, unsigned int size){
 // Take the path and put it in an array
 void path_serialize(struct node *parent, struct edge *e){
     // First recurse to the previous step
+    assert(parent != NULL);
     struct edge *to_grandparent = node_to_parent(parent);
     if (to_grandparent != NULL) {
+        assert(parent->parent != NULL);
         path_serialize(parent->parent, to_grandparent);
     }
 
@@ -4326,6 +4328,7 @@ int exec_model_checker(int argc, char **argv){
         fprintf(out, "  \"macrosteps\": [");
 
         // First copy the path to the bad state into an array for easier sorting
+        assert(bad->node != NULL);
         path_serialize(bad->node, bad->edge);
 
         // The optimal path minimizes the number of context switches.  Here we
