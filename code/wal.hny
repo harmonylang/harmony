@@ -1,0 +1,21 @@
+import disk
+
+const BITS_PER_BLOCK = 4
+
+# Read a block from the disk
+def read(d, bno) returns block:
+    block = disk.read(d, bno)
+
+# All-or-nothing update of the disk
+# allocated is a set of block numbers that were allocated.
+# write_write is a set of (block number, data) pairs.
+def update(d, allocated, write_set):
+    for alloc in allocated:
+        let bno = alloc / BITS_PER_BLOCK
+        let off = alloc % BITS_PER_BLOCK:
+            var blk = disk.read(d, 1 + bno)
+            assert not blk[off]
+            blk[off] = True
+            disk.write(d, 1 + bno, blk)
+    for bno, data in write_set:
+        disk.write(d, bno, data)
