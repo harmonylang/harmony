@@ -806,8 +806,9 @@ class ApplyAST(AST):
                 code.append(ApplyOp(v), self.token, self.endtoken, stmt=stmt)
                 return
         if self.varcompile(scope, code, stmt):
-            (lexeme, file, line, column) = self.token
-            code.append(NaryOp(("Closure", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
+            # (lexeme, file, line, column) = self.token
+            # code.append(NaryOp(("Closure", file, line, column), 2), self.token, self.endtoken, stmt=stmt)
+            pass
         else:
             code.append(LoadOp(None, self.token, None), self.token, self.endtoken, stmt=stmt)
 

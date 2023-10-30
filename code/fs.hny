@@ -6,7 +6,6 @@ import disk                     # disk interface
 import wal                      # write-ahead-log
 
 const N_BLOCKS = 10             # total number of disk blocks
-const BITS_PER_BLOCK   = 4      # number of bits in a block
 const INODES_PER_BLOCK = 2      # number of inodes that fit in a block
 const INDIR_PER_BLOCK  = 4      # number of block pointers per block
 
@@ -43,7 +42,7 @@ def fs_init(d, n_bitmap_blocks, n_inode_blocks):
 
     # Initialize the bitmap blocks
     for bno in { 1 .. n_bitmap_blocks }:
-        disk.write(d, bno, [ False, ] * BITS_PER_BLOCK)
+        disk.write(d, bno, [ False, ] * disk.BITS_PER_BLOCK)
 
     # Initialize the i-node blocks
     for i in { 1 .. n_inode_blocks }:
@@ -157,7 +156,7 @@ def file_init(n_files) returns req_q:
     let n_inode_blocks = (n_files + (INODES_PER_BLOCK - 1)) / INODES_PER_BLOCK
     let n_workers = 2
     let d = disk.new(N_BLOCKS)
-    let n_bitmap_blocks = (N_BLOCKS + (BITS_PER_BLOCK - 1)) / BITS_PER_BLOCK:
+    let n_bitmap_blocks = (N_BLOCKS + (disk.BITS_PER_BLOCK - 1)) / disk.BITS_PER_BLOCK:
         # Initialize the file system on disk
         fs_init(d, n_bitmap_blocks, n_inode_blocks)
 
