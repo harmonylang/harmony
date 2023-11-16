@@ -70,16 +70,22 @@ struct step_output {
 #define step_spawned(x)      ((hvalue_t *) ((x) + 1) + (x)->nlog)
 #define step_unstopped(x)    ((hvalue_t *) ((x) + 1) + (x)->nlog + (x)->nspawned)
 
+// List of node/edge-index pairs that are waiting for a step computation
+// to complete.
 struct edge_list {
-    struct edge_list *next;
-    struct node *node;      // source
-    int edge_index;
+    struct edge_list *next; // linked list
+    struct node *node;      // source node
+    int edge_index;         // index into edges of the source node
 };
 
+// Each edge points to one of these (by id).  It describes either a
+// step in progress or a completed step.  When the step is in progress,
+// multiple edges may be ``waiting'' for it to complete in order to
+// compute the next state.
 struct step_condition {
-    unsigned int id : 30;
-    bool completed : 1;
-    bool invariant_chk : 1;
+    unsigned int id : 30;    // index into global.stc_table
+    bool completed : 1;      // step has been computed
+    bool invariant_chk : 1;  // step is part of invariant check
     union {
         struct edge_list *in_progress;
         struct step_output *completed;

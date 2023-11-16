@@ -2512,6 +2512,9 @@ void op_StoreVar(const void *env, struct state *state, struct step *step){
     assert(VALUE_TYPE(step->ctx->vars) == VALUE_DICT);
     if (es == NULL) {
         hvalue_t av = ctx_pop(step->ctx);
+        if (VALUE_TYPE(av) != VALUE_ADDRESS_PRIVATE) {
+            printf("===> %u %s\n", step->ctx->pc, value_string(av));
+        }
         assert(VALUE_TYPE(av) == VALUE_ADDRESS_PRIVATE);
         assert(av != VALUE_ADDRESS_PRIVATE);
 
@@ -2546,7 +2549,12 @@ void op_StoreVar(const void *env, struct state *state, struct step *step){
         }
 
         else {
-            result = ind_trystore(step->ctx->vars, indices + 1, size - 1, v, step->allocator, &step->ctx->vars);
+            if (indices[1] == underscore) {
+                result = step->ctx->vars;
+            }
+            else {
+                result = ind_trystore(step->ctx->vars, indices + 1, size - 1, v, step->allocator, &step->ctx->vars);
+            }
         }
         if (!result) {
             char *x = indices_string(indices, size);

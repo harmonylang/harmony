@@ -71,6 +71,7 @@ static bool graph_edge_conflict(
                                    min * sizeof(hvalue_t)) == 0) {
                         struct failure *f = new_alloc(struct failure);
                         f->type = FAIL_RACE;
+                        f->node = node->parent;
                         f->edge = node_to_parent(node);
                         f->address = value_put_address(allocator, ai->indices, min * sizeof(hvalue_t));
                         add_failure(failures, f);

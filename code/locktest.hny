@@ -1,21 +1,17 @@
-import lock
+from lock import Lock, acquire, release
 
-thelock = lock.Lock()
+const NTHREADS = 5
 
+thelock = Lock()
 count = 0
-invariant 0 <= count <= 1
 
 def thread():
-    lock.acquire(?thelock)
+    while choose { False, True }:
+        acquire(?thelock)
+        atomically count += 1
+        assert count == 1
+        atomically count -= 1
+        release(?thelock)
 
-    atomically count += 1
-
-    # critical section is here
-    assert count == 1
-
-    atomically count -= 1
-
-    lock.release(?thelock)
-
-for i in {1..5}:
+for i in {1..NTHREADS}:
     spawn thread()
