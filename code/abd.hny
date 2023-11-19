@@ -10,8 +10,8 @@ def send(m): atomically network = bag.add(network, m)
 def server():
     var t, v, received = (0, None), None, {}
     while True:
-        atomically when exists m in { m for m in keys network - received
-                            where m.type in {"read", "write"} }:
+        atomically when exists m in { k for k in keys network - received
+                            where k.type in {"read", "write"} }:
             received |= { m }
             if (m.type == "write") and (m.value[0] > t):
                 t, v = m.value
