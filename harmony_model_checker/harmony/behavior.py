@@ -231,6 +231,7 @@ def eps_closure(states: Set[str], transitions: Transitions_t, current: str):
 minified_dfa = None
 
 def do_minify(intermediate_dfa):
+    global minified_dfa
     minified_dfa = intermediate_dfa.minify(retain_names = True)
 
 def behavior_parse(js, minify, outputfiles, behavior):
@@ -318,6 +319,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
                 print("    * minify: taking too long and giving up")
                 dfa = intermediate_dfa
             else:
+                global minified_dfa
                 dfa = minified_dfa
                 if len(intermediate_dfa.states) > 100: 
                     print("    * minify done #states=%d"%len(dfa.states))
