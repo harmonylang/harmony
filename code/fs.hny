@@ -24,7 +24,7 @@ const INDIR_PER_BLOCK  = 4      # number of block pointers per block
 # bitmap on disk, which is done through the WAL.
 def fs_alloc(fs_state) returns bno:
     acquire(?fs_state->bitmap_lock)
-    bno = fs_state->n_bitmap_blocks + len(fs_state->ib_locks)
+    bno = fs_state->n_bitmap_blocks + fs_state->n_inode_blocks
     var found = False
     while not found:
         bno += 1
@@ -170,6 +170,7 @@ def file_init(n_files) returns req_q:
         let fs_state = malloc({
                 .disk: d, .req_q: req_q, .bitmap_lock: Lock(),
                 .n_bitmap_blocks: n_bitmap_blocks,
+                .n_inode_blocks: n_inode_blocks,
                 .bitmap: [ i <= (1 + n_bitmap_blocks + n_inode_blocks)
                                         for i in { 0 .. N_BLOCKS - 1 } ],
                 .ib_locks: [ RWlock(), ] * n_inode_blocks }):
