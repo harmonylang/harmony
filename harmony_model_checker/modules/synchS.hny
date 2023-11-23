@@ -85,18 +85,19 @@ def V(sema):
 def Queue():
     result = { .list: [], .waiters: [] }
 
-def get(q):
+def get(q) returns next:
     atomically:
         if q->list == []:
-            stop ?q->waiters[len q->waiters]
-        
-        result = list.head(q->list)
-        q->list = list.tail(q->list)
+            next = stop ?q->waiters[len q->waiters]
+        else:
+            next = list.head(q->list)
+            q->list = list.tail(q->list)
 
 def put(q, item):
     atomically:
-        q->list = list.append(q->list, item)
         let waiters = q->waiters:
-            if waiters != []:
+            if waiters == []:
+                q->list = list.append(q->list, item)
+            else:
                 go (waiters[0]) item
                 q->waiters = list.tail(waiters)
