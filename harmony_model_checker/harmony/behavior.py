@@ -455,7 +455,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
             if got_pydot and got_automata:
                 behavior_show_diagram(dfa, path=outputfiles["png"])
             else:
-                printf("RUNNING DOT", len(dfa.states))
+                print("    * running dot", len(dfa.states))
                 assert outputfiles["gv"] is not None
                 try:
                     subprocess.run(["dot", "-Tpng", "-o", outputfiles["png"],
