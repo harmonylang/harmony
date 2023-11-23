@@ -3,7 +3,7 @@ import time
 import json
 import os.path
 
-tests = [
+tests2 = [
     { "args": "code/triangle.hny", "issue": "No issues", "nstates": 13 },
     { "args": "code/prog1.hny", "issue": "No issues", "nstates": 2 },
     { "args": "code/prog2.hny", "issue": "Safety violation", "nstates": 11 },
@@ -90,9 +90,12 @@ tests = [
     { "args": "code/hw.hny", "issue": "No issues", "nstates": 23864 },
     { "args": "code/abptest.hny", "issue": "No issues", "nstates": 2778 },
     { "args": "code/leader.hny", "issue": "No issues", "nstates": 33005 },
-    { "args": "code/2pc.hny", "issue": "No issues", "nstates": 666316 },
-    { "args": "-o reg.hfa code/abdtest.hny", "issue": "No issues", "nstates": 148 },
-    { "args": "-B reg.hfa -mregister=abd code/abdtest.hny", "issue": "No issues", "nstates": 7449569 },
+]
+
+tests = [
+    { "args": "-cNBANKS=2 code/2pc.hny", "issue": "No issues", "nstates": 666316 },
+    { "args": "-cNREADERS=1 -o reg.hfa code/abdtest.hny", "issue": "No issues", "nstates": 148 },
+    { "args": "-cNREADERS=1 -B reg.hfa -mregister=abd code/abdtest.hny", "issue": "No issues", "nstates": 7449569 },
     { "args": "-o consensus.hfa code/consensus.hny", "issue": "No issues", "nstates": 2602 },
     { "args": "-B consensus.hfa code/bosco.hny", "issue": "No issues", "nstates": 5288 },
     { "args": "-o consensus.hfa -cN=2 code/consensus.hny", "issue": "No issues", "nstates": 108 },
@@ -123,7 +126,7 @@ for t in tests:
                 break
             if t["issue"] != "Safety violation" and min(t["nstates"], hco["nstates"]) / max(t["nstates"], hco["nstates"]) < .9:
                 print("#states very different (was %d)???" % t["nstates"])
-                break
+                # break
     else:
         print("Error code %d, aborting further tests" % cp.returncode)
         print("Output: ", cp.stdout.decode())

@@ -145,7 +145,7 @@ norm_diners = normalize(diners)
 plt.figure(figsize=(5,2))
 # plt.xscale("log")
 # plt.xticks([1, 2, 4, 8, 16, 32, 64], ["1", "2", "4", "8", "16", "32", "64"])
-plt.xlabel("#threads")
+plt.xlabel("#worker threads")
 plt.ylabel("speed-up")
 dim = np.arange(1, 65)
 
