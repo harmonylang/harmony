@@ -2,6 +2,7 @@ import subprocess
 import sys
 import json
 from typing import Any, Dict, List, Optional, Set, Tuple
+from threading import Thread
 
 from harmony_model_checker.harmony.jsonstring import json_string
 from harmony_model_checker.iface import Transitions_t
@@ -227,6 +228,11 @@ def eps_closure(states: Set[str], transitions: Transitions_t, current: str):
     eps_closure_rec(states, transitions, current, x)
     return frozenset(x)
 
+minified_dfa = None
+
+def do_minify(intermediate_dfa):
+    minified_dfa = intermediate_dfa.minify(retain_names = True)
+
 def behavior_parse(js, minify, outputfiles, behavior):
     if outputfiles["hfa"] is None and outputfiles["png"] is None and outputfiles["gv"] is None and behavior is None:
         return
@@ -305,9 +311,16 @@ def behavior_parse(js, minify, outputfiles, behavior):
         if minify and len(final_states) != 0:
             if len(intermediate_dfa.states) > 100: 
                 print("    * minify #states=%d"%len(intermediate_dfa.states))
-            dfa = intermediate_dfa.minify(retain_names = True)
-            if len(intermediate_dfa.states) > 100: 
-                print("    * minify done #states=%d"%len(dfa.states))
+            thread = Thread(target=do_minify, args=(intermediate_dfa,))
+            thread.start()
+            thread.join(10)
+            if thread.is_alive():
+                print("    * minify: taking too long and giving up")
+                dfa = intermediate_dfa
+            else:
+                dfa = minified_dfa
+                if len(intermediate_dfa.states) > 100: 
+                    print("    * minify done #states=%d"%len(dfa.states))
         else:
             dfa = intermediate_dfa
         dfa_states = dfa.states
@@ -436,15 +449,19 @@ def behavior_parse(js, minify, outputfiles, behavior):
             print("}", file=fd)
 
     if outputfiles["png"] is not None:
-        if got_pydot and got_automata:
-            behavior_show_diagram(dfa, path=outputfiles["png"])
+        if len(dfa.states) > 100:
+            print("    * output of png file suppressed (too many states)") 
         else:
-            assert outputfiles["gv"] is not None
-            try:
-                subprocess.run(["dot", "-Tpng", "-o", outputfiles["png"],
-                                outputfiles["gv"] ])
-            except FileNotFoundError:
-                print("install graphviz (www.graphviz.org) to see output DFAs")
+            if got_pydot and got_automata:
+                behavior_show_diagram(dfa, path=outputfiles["png"])
+            else:
+                printf("RUNNING DOT", len(dfa.states))
+                assert outputfiles["gv"] is not None
+                try:
+                    subprocess.run(["dot", "-Tpng", "-o", outputfiles["png"],
+                                    outputfiles["gv"] ])
+                except FileNotFoundError:
+                    print("install graphviz (www.graphviz.org) to see output DFAs")
 
     if behavior is not None:
         if got_automata:
