@@ -3,6 +3,7 @@ import json
 import pathlib
 import webbrowser
 import sys
+import os
 import argparse
 
 from antlr4 import * # type: ignore
@@ -170,6 +171,7 @@ def handle_hco(ns, output_files):
         print("open " + url + " for detailed information, or use the HarmonyGUI", file=sys.stderr)
         if not disable_browser:
             webbrowser.open(url)
+    os._exit(0)     # exit as minify may still be running
     
 def handle_version(_: argparse.Namespace):
     print("Version:", harmony_model_checker.__package__,

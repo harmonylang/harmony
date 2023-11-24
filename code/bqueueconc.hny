@@ -1,4 +1,5 @@
 import list
+from alloc import malloc, free
 
 def atomic_load(p):
     atomically result = !p
@@ -82,22 +83,28 @@ def V(sema):
         else:
             sema->count = cnt + 1
 
-def Queue():
-    result = { .list: [], .waiters: [] }
+def Queue() returns empty:
+    empty = { .head: None, .tail: None, .lock: Lock(), .cv: Condition() }
 
-def get(q) returns next:
-    atomically:
-        if q->list == []:
-            next = stop ?q->waiters[len q->waiters]
+def put(q, v):
+    let node = malloc({ .value: v, .next: None }):
+        acquire(?q->lock)
+        if q->tail == None:
+            q->tail = q->head = node
         else:
-            next = list.head(q->list)
-            q->list = list.tail(q->list)
-
-def put(q, item):
-    atomically:
-        let waiters = q->waiters:
-            if waiters == []:
-                q->list = list.append(q->list, item)
-            else:
-                go (waiters[0]) item
-                q->waiters = list.tail(waiters)
+            q->tail->next = node
+            q->tail = node
+        notify(?q->cv)
+        release(?q->lock)
+    
+def get(q) returns next:
+    acquire(?q->lock)
+    while q->head == None:
+        wait(?q->cv, ?q->lock)
+    let node = q->head:
+        next = node->value
+        q->head = node->next
+        if q->head == None:
+            q->tail = None
+        free(node)
+    release(?q->lock)
