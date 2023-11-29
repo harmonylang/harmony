@@ -124,7 +124,8 @@ struct edge {
 enum fail_type {
     FAIL_NONE,
     FAIL_SAFETY,            // assertion failure, divide by zero, etc.
-    FAIL_BEHAVIOR,          // output behavior not allowed by input DFA
+    FAIL_BEHAVIOR_BAD,      // output behavior not allowed by input DFA
+    FAIL_BEHAVIOR_FINAL,    // DFA should end up in final state
     FAIL_TERMINATION,       // a non-terminating state exists
     FAIL_BUSYWAIT,          // the program allows busy waiting
     FAIL_RACE               // the program has a race condition

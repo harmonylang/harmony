@@ -471,7 +471,7 @@ static void process_step(
             int nstate = dfa_step(global.dfa, sc->dfa_state, step_log(so)[i]);
             if (nstate < 0) {
                 struct failure *f = new_alloc(struct failure);
-                f->type = FAIL_BEHAVIOR;
+                f->type = FAIL_BEHAVIOR_BAD;
                 f->node = node;
                 f->edge = edge;
                 edge->failed = true;
@@ -3839,7 +3839,7 @@ int exec_model_checker(int argc, char **argv){
                     if (global.dfa != NULL &&
                             !dfa_is_final(global.dfa, state->dfa_state)) {
                         struct failure *f = new_alloc(struct failure);
-                        f->type = FAIL_BEHAVIOR;
+                        f->type = FAIL_BEHAVIOR_FINAL;
                         f->node = node->parent;
                         f->edge = node_to_parent(node);
                         add_failure(&global.failures, f);
@@ -3963,7 +3963,7 @@ int exec_model_checker(int argc, char **argv){
                 if (global.dfa != NULL &&
                             !dfa_is_final(global.dfa, node_state(node)->dfa_state)) {
                     struct failure *f = new_alloc(struct failure);
-                    f->type = FAIL_BEHAVIOR;
+                    f->type = FAIL_BEHAVIOR_FINAL;
                     f->node = node->parent;
                     f->edge = node_to_parent(node);
                     add_failure(&global.failures, f);
@@ -4287,7 +4287,11 @@ int exec_model_checker(int argc, char **argv){
             fprintf(out, "  \"finpc\": %d,\n", (int) VALUE_FROM_PC(bad->address));
             break;
 #endif
-        case FAIL_BEHAVIOR:
+        case FAIL_BEHAVIOR_BAD:
+            printf("    * **Behavior Violation**: unexpected output\n");
+            fprintf(out, "  \"issue\": \"Behavior violation: unexpected output\",\n");
+            break;
+        case FAIL_BEHAVIOR_FINAL:
             printf("    * **Behavior Violation**: terminal state not final\n");
             fprintf(out, "  \"issue\": \"Behavior violation: terminal state not final\",\n");
             break;
