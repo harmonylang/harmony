@@ -18,7 +18,7 @@ def receive(ballot, phase) returns quorum:
         quorum = bag.combinations(msgs, NACCEPTORS - F)
 
 def leader(self, proposal):
-    var ballot, estimate = self, proposal
+    var ballot, estimate, decided = self, proposal, False
     send(ballot, 1, "A", None)
     while ballot <= NBALLOTS:
         atomically when exists quorum in receive(ballot, 1):
@@ -29,7 +29,9 @@ def leader(self, proposal):
         atomically when exists quorum in receive(ballot, 2):
             if bag.multiplicity(quorum, (ballot, estimate)) == (NACCEPTORS - F):
                 assert estimate in proposals    # validity
-                print estimate
+                if not decided:
+                    print estimate
+                    decided = True
             ballot += NLEADERS
             if ballot <= NBALLOTS:
                 send(ballot, 1, "A", None)
