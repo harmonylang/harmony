@@ -1,26 +1,26 @@
-import RW
+import rwlock
 
 const NOPS = 3
 
-rw = RW.RWlock()
+rw = rwlock.RWlock()
 
 def thread(self):
     while choose({ False, True }):
         if choose({ "read", "write" }) == "read":
             print(self, "enter ra")
-            RW.read_acquire(?rw)
+            rwlock.read_acquire(?rw)
             print(self, "exit ra")
 
             print(self, "enter rr")
-            RW.read_release(?rw)
+            rwlock.read_release(?rw)
             print(self, "exit rr")
         else:                       # write
             print(self, "enter wa")
-            RW.write_acquire(?rw)
+            rwlock.write_acquire(?rw)
             print(self, "exit wa")
 
             print(self, "enter wr")
-            RW.write_release(?rw)
+            rwlock.write_release(?rw)
             print(self, "enter wr")
 
 for i in {1..NOPS}:

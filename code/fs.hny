@@ -1,6 +1,6 @@
 from synch import *             # shared queue for file server and lock for superblock
+from rwlock import *            # read/write locks for inode blocks
 from alloc import *             # malloc/free
-from RW import *                # read/write locks for inode blocks
 from list import subseq         # list slicing
 import disk                     # disk interface
 import wal                      # write-ahead-log

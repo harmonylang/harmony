@@ -1,4 +1,4 @@
-import RW
+import rwlock
 
 nreaders = nwriters = 0
 invariant ((nreaders >= 0) and (nwriters == 0)) or
@@ -6,20 +6,20 @@ invariant ((nreaders >= 0) and (nwriters == 0)) or
 
 const NOPS = 3
 
-rw = RW.RWlock()
+rw = rwlock.RWlock()
 
 def thread():
     while choose({ False, True }):
         if choose({ "read", "write" }) == "read":
-            RW.read_acquire(?rw)
+            rwlock.read_acquire(?rw)
             atomically nreaders += 1
             atomically nreaders -= 1
-            RW.read_release(?rw)
+            rwlock.read_release(?rw)
         else:                       # write
-            RW.write_acquire(?rw)
+            rwlock.write_acquire(?rw)
             atomically nwriters += 1
             atomically nwriters -= 1
-            RW.write_release(?rw)
+            rwlock.write_release(?rw)
 
 for i in {1..NOPS}:
     spawn thread()
