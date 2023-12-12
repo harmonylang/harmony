@@ -1,0 +1,80 @@
+import list, action
+
+const NREPLICAS = 3
+const NOPS = 2
+
+# Global state
+let immortal = choose {1..NREPLICAS}:
+    replicas = { p: { .immortal: immortal == p, .crashed: False,
+                .requests: {}, .hist: [], .config: {1..NREPLICAS},
+                .received: {}, .delivered: 0 } for p in {1..NREPLICAS} }
+clients = { c: { .sent_request: False } for c in {1..NOPS} }
+
+const is_head = lambda(p): p == min(replicas[p].config) end
+const is_tail = lambda(p): p == max(replicas[p].config) end
+
+def is_successor(self, p) returns result:
+    let succ = { q for q in replicas[self].config where q > self }:
+        result = False if succ == {} else (p == min(succ))
+
+def do_sendOperation(c):
+    print(c)
+    clients[c].sent_request = True
+    for p in {1..NREPLICAS}:
+        replicas[p].requests |= { c }
+
+const sendOperation = lambda(): { ?do_sendOperation(c)
+    for c in {1..NOPS} where not clients[c].sent_request } end
+
+def do_gotOperation(self, op):
+    replicas[self].hist += [op,]
+
+const gotOperation = lambda(): { ?do_gotOperation(p, op)
+    for p in {1..NREPLICAS}
+      where not replicas[p].crashed and is_head(p)
+    for op in replicas[p].requests
+      where op not in replicas[p].hist } end
+
+def do_sendHist(self, p):
+    replicas[p].received |= { replicas[self].hist }
+
+const sendHist = lambda(): { ?do_sendHist(p, q)
+    for p in {1..NREPLICAS}
+      where not replicas[p].crashed
+    for q in {1..NREPLICAS}
+      where is_successor(p, q) and (replicas[p].hist not in replicas[q].received)
+  } end
+
+def do_gotHist(self, hist):
+    replicas[self].hist = hist
+
+const gotHist = lambda(): { ?do_gotHist(p, hist)
+    for p in {1..NREPLICAS} where not replicas[p].crashed
+    for hist in replicas[p].received where (len(replicas[p].hist) < len(hist))
+                        and list.startswith(hist, replicas[p].hist) } end
+
+def do_deliver(self):
+    print(self, replicas[self].hist[replicas[self].delivered])
+    replicas[self].delivered += 1
+
+const deliver = lambda(): { ?do_deliver(p)
+    for p in {1..NREPLICAS} where not replicas[p].crashed and
+        is_tail(p) and (len(replicas[p].hist) > replicas[p].delivered) } end
+
+def do_crash(self):
+    replicas[self].crashed = True
+
+const crash = lambda(): { ?do_crash(p)
+    for p in {1..NREPLICAS}
+        where not replicas[p].crashed and not replicas[p].immortal } end
+
+def do_detect(self, p):
+    replicas[self].config -= { p }
+
+const detect = lambda(): { ?do_detect(p, q)
+    for p in {1..NREPLICAS} where not replicas[p].crashed
+    for q in {1..NREPLICAS} where replicas[q].crashed and
+                (q in replicas[p].config) } end
+
+action.explore({sendOperation, gotOperation, sendHist,
+                    gotHist, deliver, crash, detect})
