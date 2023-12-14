@@ -1,0 +1,13 @@
+from lock import Lock, acquire, release
+
+const NTHREADS = 5
+
+thelock = Lock()
+
+def thread():
+    acquire(?thelock)
+    pass             # critical section is here
+    release(?thelock)
+
+for i in {1..NTHREADS}:
+    spawn thread()

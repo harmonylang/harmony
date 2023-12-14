@@ -1,399 +1,188 @@
 set -e
 HARMONY=./harmony
 
-echo ==============
-echo triangle
-echo ==============
 $HARMONY --noweb code/triangle.hny
 
-echo ==============
-echo prog1
-echo ==============
 $HARMONY --noweb code/prog1.hny
 
-echo ==============
-echo prog2
-echo ==============
 $HARMONY --noweb code/prog2.hny
 
-echo ==============
-echo Up
-echo ==============
 $HARMONY --noweb code/Up.hny
 
-echo ==============
-echo Upf
-echo ==============
 $HARMONY --noweb code/Upf.hny
 
-echo ==============
-echo UpEnter
-echo ==============
 $HARMONY --noweb code/UpEnter.hny
 
-echo ==============
-echo csbarebones
-echo ==============
 $HARMONY --noweb code/csbarebones.hny
 
-echo ==============
-echo cs
-echo ==============
 $HARMONY --noweb code/cs.hny
 
-echo ==============
-echo naiveLock
-echo ==============
 $HARMONY --noweb code/naiveLock.hny
 
-echo ==============
-echo naiveFlags
-echo ==============
 $HARMONY --noweb code/naiveFlags.hny
 
-echo ==============
-echo naiveTurn
-echo ==============
 $HARMONY --noweb code/naiveTurn.hny
 
-echo ==============
-echo Peterson
-echo ==============
 $HARMONY --noweb code/Peterson.hny
 
-echo ==============
-echo PetersonBroken
-echo ==============
 $HARMONY --noweb code/PetersonBroken.hny
 
-echo ==============
-echo PetersonInductive
-echo ==============
-$HARMONY --noweb code/PetersonInductive.hny
-
-echo ==============
-echo csonebit
-echo ==============
 $HARMONY --noweb code/csonebit.hny
 
-echo ==============
-echo PetersonMethod
-echo ==============
 $HARMONY --noweb code/PetersonMethod.hny
 
-echo ==============
-echo hanoi
-echo ==============
 $HARMONY --noweb code/hanoi.hny
 
-echo ==============
-echo clock
-echo ==============
 $HARMONY --noweb code/clock.hny
 
-echo ==============
-echo cssynch
-echo ==============
-$HARMONY --noweb code/cssynch.hny
+$HARMONY --noweb code/lock_test1.hny
 
-echo ==============
-echo cssynch synchS
-echo ==============
-$HARMONY --noweb -msynch=synchS code/cssynch.hny
+$HARMONY --noweb -mlock=lock_tas code/lock_test1.hny
 
-echo ==============
-echo cssynch ticket
-echo ==============
-$HARMONY --noweb -msynch=ticket code/cssynch.hny
+$HARMONY --noweb -mlock=lock_ticket code/lock_test1.hny
 
-echo ==============
-echo UpLock
-echo ==============
+$HARMONY --noweb -mlock=lock_susp code/lock_test1.hny
+
+$HARMONY --noweb -mlock=synch code/lock_test1.hny
+
+$HARMONY --noweb -mlock=synchS code/lock_test1.hny
+
 $HARMONY --noweb code/UpLock.hny
 
-echo ==============
-echo UpLock synchS
-echo ==============
 $HARMONY --noweb -msynch=synchS code/UpLock.hny
 
-echo ==============
-echo spinlock
-echo ==============
 $HARMONY --noweb code/spinlock.hny
 
-echo ==============
-echo xy
-echo ==============
 $HARMONY --noweb code/xy.hny
 
-echo ==============
-echo atm
-echo ==============
 $HARMONY --noweb code/atm.hny
 
-echo ==============
-echo queuedemo
-echo ==============
-$HARMONY --noweb code/queuedemo.hny
+$HARMONY --noweb code/queue_test2.hny
 
-echo ==============
-echo setobj
-echo ==============
-$HARMONY --noweb code/setobjtest.hny
+$HARMONY --noweb code/setobj_test1.hny
 
-echo ==============
-echo setobj linkedlist
-echo ==============
-$HARMONY --noweb -msetobj=linkedlist code/setobjtest.hny
+$HARMONY --noweb -msetobj=setobj_linkedlist code/setobj_test1.hny
 
-echo ==============
-echo qtestseq
-echo ==============
-$HARMONY --noweb code/qtestseq.hny
+$HARMONY --noweb -mqueueconc=queue_lock code/queue_test_seq.hny
 
-echo ==============
-echo qtestseq queueMS
-echo ==============
-$HARMONY --noweb -mqueueconc=queueMS code/qtestseq.hny
+$HARMONY --noweb -mqueueconc=queue_MS code/queue_test_seq.hny
 
-echo ==============
-echo qtest1
-echo ==============
-$HARMONY --noweb code/qtest1.hny
+$HARMONY --noweb -o queue4.hfa code/queue_btest1.hny
 
-echo ==============
-echo qtest2
-echo ==============
-$HARMONY --noweb code/qtest2.hny
+$HARMONY --noweb -B queue4.hfa -m queue=queue_lock code/queue_btest1.hny
 
-echo ==============
-echo qtest3
-echo ==============
-$HARMONY --noweb code/qtest3.hny
+$HARMONY --noweb -o queue4.hfa code/queue_btest1.hny
 
-echo ==============
-echo qtest4
-echo ==============
-$HARMONY --noweb code/qtest4.hny
+$HARMONY --noweb -B queue4.hfa -m queue=queue_MS code/queue_btest1.hny
 
-echo ==============
-echo qtestconc.hny
-echo ==============
-$HARMONY --noweb code/qtestconc.hny
+$HARMONY --noweb -mqueue=queue_broken code/queue_btest1.hny
 
-echo ==============
-echo qtestconc.hny synchS
-echo ==============
-$HARMONY --noweb -msynch=synchS code/qtestconc.hny
+$HARMONY --noweb code/rwlock_test1.hny
 
-echo ==============
-echo qtestpar.hny
-echo ==============
-$HARMONY --noweb -o queue4.hfa code/qtestpar.hny
-$HARMONY --noweb -B queue4.hfa -m queue=queueconc code/qtestpar.hny
+$HARMONY --noweb -mrwlock=rwlock_sbs code/rwlock_test1.hny
 
-echo ==============
-echo qtestpar.hny queueMS
-echo ==============
-$HARMONY --noweb -o queue4.hfa code/qtestpar.hny
-$HARMONY --noweb -B queue4.hfa -m queue=queueMS code/qtestpar.hny
+$HARMONY --noweb -mrwlock=rwlock_cv code/rwlock_test1.hny
 
-echo ==============
-echo qtestpar.hny queuebroken
-echo ==============
-$HARMONY --noweb -mqueue=queuebroken code/qtestpar.hny
+$HARMONY --noweb -mrwlock=rwlock_cv -msynch=synchS code/rwlock_test1.hny
 
-echo ==============
-echo RWtest
-echo ==============
-$HARMONY --noweb code/RWtest.hny
+$HARMONY --noweb -mrwlock=rwlock_fair code/rwlock_test1.hny
 
-echo ==============
-echo RWtest RWsbs
-echo ==============
-$HARMONY --noweb -mRW=RWsbs code/RWtest.hny
+$HARMONY --noweb -mrwlock=rwlock_fair -msynch=synchS code/rwlock_test1.hny
 
-echo ==============
-echo RWtest RWcv
-echo ==============
-$HARMONY --noweb -mRW=RWcv code/RWtest.hny
+$HARMONY --noweb -o rw.hfa -cNOPS=2 code/rwlock_btest.hny
 
-echo ==============
-echo RWtest RWcv synchS
-echo ==============
-$HARMONY --noweb -mRW=RWcv -msynch=synchS code/RWtest.hny
+$HARMONY --noweb -B rw.hfa -cNOPS=2 -m rwlock=rwlock_sbs code/rwlock_btest.hny
 
-echo ==============
-echo RWtest RWfair
-echo ==============
-$HARMONY --noweb -mRW=RWfair code/RWtest.hny
+$HARMONY --noweb -o rw.hfa -cNOPS=2 code/rwlock_btest.hny
 
-echo ==============
-echo RWtest RWfair synchS
-echo ==============
-$HARMONY --noweb -mRW=RWfair -msynch=synchS code/RWtest.hny
+$HARMONY --noweb -B rw.hfa -cNOPS=2 -m rwlock=rwlock_cv code/rwlock_btest.hny
 
-echo ==============
-echo RWbtest RWsbs
-echo ==============
-$HARMONY --noweb -o rw.hfa -cNOPS=2 code/RWbtest.hny
-$HARMONY --noweb -B rw.hfa -cNOPS=2 -m RW=RWsbs code/RWbtest.hny
+$HARMONY --noweb -B rw.hfa -cNOPS=2 -m rwlock=rwlock_fair code/rwlock_btest.hny
 
-echo ==============
-echo RWbtest RWcv
-echo ==============
-$HARMONY --noweb -o rw.hfa -cNOPS=2 code/RWbtest.hny
-$HARMONY --noweb -B rw.hfa -cNOPS=2 -m RW=RWcv code/RWbtest.hny
+$HARMONY --noweb -B rw.hfa -cNOPS=2 -m rwlock=rwlock_cheat code/rwlock_btest.hny
 
-echo ==============
-echo rw RWbtest RWfair
-echo ==============
-$HARMONY --noweb -B rw.hfa -cNOPS=2 -m RW=RWfair code/RWbtest.hny
+$HARMONY --noweb -mboundedbuffer=boundedbuffer_hoare code/boundedbuffer_test1.hny
 
-echo ==============
-echo rw RWbtest RWcheat
-echo ==============
-$HARMONY --noweb -B rw.hfa -cNOPS=2 -m RW=RWcheat code/RWbtest.hny
+$HARMONY --noweb -mboundedbuffer=boundedbuffer_hoare -msynch=synchS code/boundedbuffer_test1.hny
 
-echo ==============
-echo BBtest
-echo ==============
-$HARMONY --noweb -mboundedbuffer=BBhoare code/BBtest.hny
-
-echo ==============
-echo BBtest synchS
-echo ==============
-$HARMONY --noweb -mboundedbuffer=BBhoare -msynch=synchS code/BBtest.hny
-
-echo ==============
-echo qsorttest
-echo ==============
 $HARMONY --noweb code/qsorttest.hny
 
-echo ==============
-echo Diners
-echo ==============
 $HARMONY --noweb code/Diners.hny
 
-echo ==============
-echo Diners synchS
-echo ==============
 $HARMONY --noweb -msynch=synchS code/Diners.hny
 
-echo ==============
-echo DinersCV
-echo ==============
 $HARMONY --noweb code/DinersCV.hny
 
-echo ==============
-echo DinersCV synchS
-echo ==============
 $HARMONY --noweb -msynch=synchS code/DinersCV.hny
 
-echo ==============
-echo DinersAvoid
-echo ==============
 $HARMONY --noweb code/DinersAvoid.hny
 
-echo ==============
-echo DinersAvoid synchS
-echo ==============
 $HARMONY --noweb -msynch=synchS code/DinersAvoid.hny
 
-echo ==============
-echo bank
-echo ==============
 $HARMONY --noweb code/bank.hny
 
-echo ==============
-echo counter
-echo ==============
 $HARMONY --noweb code/counter.hny
 
-echo ==============
-echo qbarrier
-echo ==============
 $HARMONY --noweb code/qbarrier.hny
 
-echo ==============
-echo qbarrier synchS
-echo ==============
 $HARMONY --noweb -msynch=synchS code/qbarrier.hny
 
-echo ==============
-echo barriertest
-echo ==============
-$HARMONY --noweb code/barriertest.hny
+$HARMONY --noweb code/barrier_test1.hny
 
-echo ==============
-echo barriertest synchS
-echo ==============
-$HARMONY --noweb -msynch=synchS code/barriertest.hny
+$HARMONY --noweb -msynch=synchS code/barrier_test1.hny
 
-echo ==============
-echo barriertest2
-echo ==============
-$HARMONY --noweb code/barriertest2.hny
+$HARMONY --noweb code/barrier_test2.hny
 
-echo ==============
-echo barriertest2 synchS
-echo ==============
-$HARMONY --noweb -msynch=synchS code/barriertest2.hny
+$HARMONY --noweb -msynch=synchS code/barrier_test2.hny
 
-echo ==============
-echo trap
-echo ==============
+$HARMONY --noweb -o file.hfa code/file_btest.hny
+
+$HARMONY --noweb -B file.hfa -m file=fs code/file_btest.hny
+
 $HARMONY --noweb code/trap.hny
 
-echo ==============
-echo trap2
-echo ==============
 $HARMONY --noweb code/trap2.hny
 
-echo ==============
-echo trap3
-echo ==============
 $HARMONY --noweb code/trap3.hny
 
-echo ==============
-echo trap4
-echo ==============
 $HARMONY --noweb code/trap4.hny
 
-echo ==============
-echo trap5
-echo ==============
 $HARMONY --noweb code/trap5.hny
 
-echo ==============
-echo trap6
-echo ==============
 $HARMONY --noweb code/trap6.hny
 
-echo ==============
-echo trap6 synchS
-echo ==============
 $HARMONY --noweb -msynch=synchS code/trap6.hny
 
-echo ==============
-echo hw
-echo ==============
 $HARMONY --noweb code/hw.hny
 
-echo ==============
-echo abptest
-echo ==============
 $HARMONY --noweb code/abptest.hny
 
-echo ==============
-echo leader
-echo ==============
 $HARMONY --noweb code/leader.hny
 
-echo ==============
-echo stacktest
-echo ==============
+$HARMONY --noweb code/2pc.hny
+
+$HARMONY --noweb -o reg.hfa code/abdtest.hny
+
+$HARMONY --noweb -B reg.hfa -mregister=abd code/abdtest.hny
+
+$HARMONY --noweb -o consensus.hfa code/consensus.hny
+
+$HARMONY --noweb -B consensus.hfa code/bosco.hny
+
+$HARMONY --noweb -o consensus.hfa -cN=2 code/consensus.hny
+
+$HARMONY --noweb -B consensus.hfa code/paxos.hny
+
+$HARMONY --noweb -o rsm.hfa code/rsm.hny
+
+$HARMONY --noweb -B rsm.hfa code/chain.hny
+
+$HARMONY --noweb code/needhamschroeder.hny
+
 $HARMONY --noweb -mstack=stack1 code/stacktest.hny
+
 $HARMONY --noweb -mstack=stack2 code/stacktest.hny
+
 $HARMONY --noweb -mstack=stack3 code/stacktest.hny
+
 $HARMONY --noweb -mstack=stack4 code/stacktest.hny
