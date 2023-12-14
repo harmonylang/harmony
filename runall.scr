@@ -137,7 +137,7 @@ $HARMONY --noweb -msynch=synchS code/barrier_test2.hny
 
 $HARMONY --noweb -o file.hfa code/file_btest.hny
 
-$HARMONY --noweb -B file.hfa -m file=fs code/file_btest.hny
+$HARMONY --noweb -B file.hfa -m file=file_inode code/file_btest.hny
 
 $HARMONY --noweb code/trap.hny
 
