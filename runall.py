@@ -32,7 +32,7 @@ tests = [
     { "args": "code/spinlock.hny", "issue": "No issues", "nstates": 617 },
     { "args": "code/xy.hny", "issue": "Safety violation", "nstates": 19 },
     { "args": "code/atm.hny", "issue": "Safety violation", "nstates": 1832 },
-    { "args": "code/queue_test2.hny", "issue": "No issues", "nstates": 80 },
+    { "args": "code/queue_test1.hny", "issue": "No issues", "nstates": 80 },
     { "args": "code/setobj_test1.hny", "issue": "No issues", "nstates": 217 },
     { "args": "-msetobj=setobj_linkedlist code/setobj_test1.hny", "issue": "No issues", "nstates": 9495 },
     { "args": "-mqueueconc=queue_lock code/queue_test_seq.hny", "issue": "No issues", "nstates": 600 },

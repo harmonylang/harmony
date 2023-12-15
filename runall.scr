@@ -57,7 +57,7 @@ $HARMONY --noweb code/xy.hny
 
 $HARMONY --noweb code/atm.hny
 
-$HARMONY --noweb code/queue_test2.hny
+$HARMONY --noweb code/queue_test1.hny
 
 $HARMONY --noweb code/setobj_test1.hny
 

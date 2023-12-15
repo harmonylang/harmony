@@ -1,14 +1,15 @@
 import queue
 
-def sender(q, v):
-    queue.put(q, v)
+const NTHREADS = 4
 
-def receiver(q):
-    let v = queue.get(q):
-        assert v in { None, 1, 2 }
+myq = queue.Queue()
 
-demoq = queue.Queue()
-spawn sender(?demoq, 1)
-spawn sender(?demoq, 2)
-spawn receiver(?demoq)
-spawn receiver(?demoq)
+def thread(v):
+    if choose({.put, .get}) == .put:
+        queue.put(?myq, v)
+    else:
+        let v = queue.get(?myq):
+            assert (v == None) or (v in {1..NTHREADS})
+
+for i in {1..NTHREADS}:
+    spawn thread(i)
