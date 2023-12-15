@@ -1,3 +1,4 @@
+#/ SERVER
 const NBANKS = 3
 const NCOORDS = 2
 const MAX_BALANCE = 1
@@ -33,6 +34,8 @@ def bank(self, _balance):
             else:
                 assert (status != ()) and (req.request == "abort")
                 balance, status = status, ()
+
+#/ CLIENT
 
 import list
 

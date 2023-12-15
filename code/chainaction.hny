@@ -1,3 +1,5 @@
+#/ PART1
+
 import list, action
 
 const NREPLICAS = 3
@@ -37,6 +39,8 @@ const gotOperation = lambda(): { ?do_gotOperation(p, op)
 
 def do_sendHist(self, p):
     replicas[p].received |= { replicas[self].hist }
+
+#/ PART2
 
 const sendHist = lambda(): { ?do_sendHist(p, q)
     for p in {1..NREPLICAS}
