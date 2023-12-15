@@ -155,8 +155,8 @@ def file_init(n_files) returns req_q:
     let n_inode_blocks = (n_files + (INODES_PER_BLOCK - 1)) / INODES_PER_BLOCK
     let n_workers = 2
     let d = disk.new(N_BLOCKS)
-    let n_bitmap_blocks =
-            (N_BLOCKS + (disk.BITS_PER_BLOCK - 1)) / disk.BITS_PER_BLOCK:
+    let n_bitmap_blocks = (N_BLOCKS + (disk.BITS_PER_BLOCK - 1)) /
+                                                disk.BITS_PER_BLOCK:
         # Initialize the file system on disk
         fs_init(d, n_bitmap_blocks, n_inode_blocks)
 
