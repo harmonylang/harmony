@@ -1,15 +1,15 @@
 from alloc import malloc
 
-def file_init(n_files) returns fs:
+def File(n_files) returns fs:
     fs = malloc([ [], ] * n_files)
 
-def file_getsize(fs, ino) returns size:
+def getsize(fs, ino) returns size:
     atomically size = len (!fs)[ino] 
 
-def file_read(fs, ino, offset) returns data:
+def read(fs, ino, offset) returns data:
     atomically data = (!fs)[ino][offset] if 0 <= offset < len (!fs)[ino] else None
 
-def file_write(fs, ino, offset, data):
+def write(fs, ino, offset, data):
     atomically:
         let n = len (!fs)[ino]:
             if 0 <= offset <= n:

@@ -150,7 +150,7 @@ def fs_worker(fs_state):
 
 #/ INTERFACE
 
-def file_init(n_files) returns req_q:
+def File(n_files) returns req_q:
     req_q = malloc(Queue())
     let n_inode_blocks = (n_files + (INODES_PER_BLOCK - 1)) / INODES_PER_BLOCK
     let n_workers = 2
@@ -173,19 +173,19 @@ def file_init(n_files) returns req_q:
             for i in { 1 .. n_workers }:
                 spawn eternal fs_worker(fs_state)
 
-def file_getsize(req_q, ino) returns size:
+def getsize(req_q, ino) returns size:
     let res_q = malloc(Queue()):
         put(req_q, { .type: "getsize", .ino: ino, .q: res_q })
         size = get(res_q)
         free(res_q)
 
-def file_read(req_q, ino, offset) returns data:
+def read(req_q, ino, offset) returns data:
     let res_q = malloc(Queue()):
         put(req_q, { .type: "read", .ino: ino, .offset: offset, .q: res_q })
         data = get(res_q)
         free(res_q)
 
-def file_write(req_q, ino, offset, data):
+def write(req_q, ino, offset, data):
     let res_q = malloc(Queue()):
         put(req_q, { .type: "write", .ino: ino, .offset: offset, .data: data, .q: res_q })
         let status = get(res_q):

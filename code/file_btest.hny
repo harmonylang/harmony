@@ -7,31 +7,31 @@ const N_READ = 1
 const N_WRITE = 1
 const N_GETSIZE = 1
 
-file_system = file_init(N_FILES)
+system = File(N_FILES)
 
-def getsize(i):
+def getsize_test(i):
     let ino = choose { 0 .. N_FILES - 1 }:
         print(i, "getsize", ino)
-        let size = file_getsize(file_system, ino):
+        let size = getsize(system, ino):
             print(i, "getsize done", ino, size)
 
-def read(i):
+def read_test(i):
     let ino = choose { 0 .. N_FILES - 1 }
     let offset = choose { 0 .. MAX_FILE_SIZE - 1 }:
         print(i, "read", ino, offset)
-        let data = file_read(file_system, ino, offset):
+        let data = read(system, ino, offset):
             print(i, "read done", ino, offset, data)
 
-def write(i):
+def write_test(i):
     let ino = choose { 0 .. N_FILES - 1 }
     let offset = choose { 0 .. MAX_FILE_SIZE - 1 }:
         print(i, "write", ino, offset)
-        file_write(file_system, ino, offset, i)
+        write(system, ino, offset, i)
         print(i, "write done", ino, offset)
 
 for i in { 1 .. N_GETSIZE }:
-    spawn getsize(i)
+    spawn getsize_test(i)
 for i in { 1 .. N_READ }:
-    spawn read(i)
+    spawn read_test(i)
 for i in { 1 .. N_WRITE }:
-    spawn write(i)
+    spawn write_test(i)
