@@ -1,5 +1,3 @@
-import list
-
 def atomic_load(p):
     atomically result = !p
 
@@ -54,14 +52,14 @@ def wait(c, lk):
 
 def notify(c):
     atomically if !c != []:
-        go (list.head(!c)) ()
-        !c = list.tail(!c)
+        go ((!c)[0]) ()
+        del (!c)[0]
         
 def notifyAll(c):
     atomically:
-        while !c != []:
-            go (list.head(!c)) ()
-            !c = list.tail(!c)
+        for ctx in !c:
+            go ctx ()
+        !c = []
         
 def Semaphore(cnt):
     result = { .count: cnt, .waiters: [] }
@@ -74,13 +72,13 @@ def P(sema):
             stop ?sema->waiters[len sema->waiters]
         
 def V(sema):
-    atomically let cnt, waiters = sema->count, sema->waiters:
-        if waiters != []:
-            assert cnt == 0
-            go (waiters[0]) ()
-            sema->waiters = list.tail(waiters)
+    atomically:
+        if sema->waiters != []:
+            assert sema->count == 0
+            go (sema->waiters[0]) ()
+            del sema->waiters[0]
         else:
-            sema->count = cnt + 1
+            sema->count += 1
 
 def Queue():
     result = { .list: [], .waiters: [] }
@@ -90,14 +88,13 @@ def get(q) returns next:
         if q->list == []:
             next = stop ?q->waiters[len q->waiters]
         else:
-            next = list.head(q->list)
-            q->list = list.tail(q->list)
+            next = q->list[0]
+            del q->list[0]
 
 def put(q, item):
     atomically:
-        let waiters = q->waiters:
-            if waiters == []:
-                q->list = list.append(q->list, item)
-            else:
-                go (waiters[0]) item
-                q->waiters = list.tail(waiters)
+        if q->waiters == []:
+            q->list += [item,]
+        else:
+            go (q->waiters[0]) item
+            del q->waiters[0]
