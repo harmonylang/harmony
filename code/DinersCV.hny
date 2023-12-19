@@ -21,7 +21,7 @@ def diner(which):
             # dine
             synch.acquire(?mutex)
             forks[left] = forks[right] = False
-            synch.notify(?conds[left]);
+            synch.notify(?conds[left])
             synch.notify(?conds[right])
             synch.release(?mutex)
             # think

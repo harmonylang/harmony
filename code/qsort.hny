@@ -2,7 +2,7 @@ def Qsort(arr) returns state:
     state = { .arr: arr, .todo: { (0, len(arr) - 1) } }
 
 def swap(p, q):               # swap !p and !q
-    !p, !q = !q, !p; 
+    !p, !q = !q, !p
 
 def partition(qs, lo, hi) returns pivot:
     pivot = lo
@@ -10,7 +10,7 @@ def partition(qs, lo, hi) returns pivot:
         if qs->arr[i] <= qs->arr[hi]:
             swap(?qs->arr[pivot], ?qs->arr[i])
             pivot += 1
-    swap(?qs->arr[pivot], ?qs->arr[hi]); 
+    swap(?qs->arr[pivot], ?qs->arr[hi])
 
 def sortrange(qs, range):
     let lo, hi = range let pivot = partition(qs, lo, hi):
