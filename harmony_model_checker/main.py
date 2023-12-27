@@ -171,7 +171,10 @@ def handle_hco(ns, output_files):
         print("open " + url + " for detailed information, or use the HarmonyGUI", file=sys.stderr)
         if not disable_browser:
             webbrowser.open(url)
-    os._exit(0)     # exit as minify may still be running
+    # exit as minify may still be running
+    print(flush=True)
+    print(file=sys.stderr, flush=True)
+    os._exit(0)
     
 def handle_version(_: argparse.Namespace):
     print("Version:", harmony_model_checker.__package__,
