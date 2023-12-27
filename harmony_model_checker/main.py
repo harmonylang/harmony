@@ -172,8 +172,8 @@ def handle_hco(ns, output_files):
         if not disable_browser:
             webbrowser.open(url)
     # exit as minify may still be running
-    print(flush=True)
-    print(file=sys.stderr, flush=True)
+    print(flush=True, end="")
+    print(file=sys.stderr, flush=True, end="")
     os._exit(0)
     
 def handle_version(_: argparse.Namespace):
