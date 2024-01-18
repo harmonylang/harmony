@@ -1456,25 +1456,29 @@ hvalue_t value_dict_remove(struct allocator *allocator, hvalue_t dict, hvalue_t 
     return dict;
 }
 
-// Remove the given key from either a dictionary or a list.
-// TODO.  Should perhaps also support removing characters from a string.
-hvalue_t value_remove(struct allocator *allocator, hvalue_t root, hvalue_t key){
-    assert(VALUE_TYPE(root) == VALUE_DICT || VALUE_TYPE(root) == VALUE_LIST);
-
-    unsigned int size;
-    hvalue_t *vals = value_get(root, &size);
-    if (size == 0) {
-        return root;
-    }
-    unsigned int n = size / sizeof(hvalue_t);
+// Remove the given key from a dictionary, a list, or a string.
+hvalue_t value_remove(struct context *ctx, struct allocator *allocator, hvalue_t root, hvalue_t key){
+    // TODO.  Is the following assertion warranted?
+    assert(VALUE_TYPE(root) == VALUE_DICT || VALUE_TYPE(root) == VALUE_LIST || VALUE_TYPE(root) == VALUE_ATOM);
 
     if (VALUE_TYPE(root) == VALUE_DICT) {
+        unsigned int size;
+        hvalue_t *vals = value_get(root, &size);
+        if (size == 0) {
+            value_ctx_failure(ctx, allocator, "can't delete from an empty dictionary");
+            return root;
+        }
+        unsigned int n = size / sizeof(hvalue_t);
         assert(size % 2 == 0);
 
         // Special case: if there is only one key value pair, the result
         // is either unchanged or an empty dictionary.
         if (n == 2) {
-            return vals[0] == key ? VALUE_DICT : root;
+            if (vals[0] == key) {
+                return VALUE_DICT;
+            }
+            value_ctx_failure(ctx, allocator, "no such key");
+            return root;
         }
 
         assert(n > 2);
@@ -1495,30 +1499,37 @@ hvalue_t value_remove(struct allocator *allocator, hvalue_t root, hvalue_t key){
 #endif
                 return v;
             }
-            /* Not worth it
+            /* Not worth it, because value_cmp is very expensive
                 if (value_cmp(vals[i], key) > 0) {
                     assert(false);
                 }
             */
         }
     }
-    else {
-        assert(VALUE_TYPE(root) == VALUE_LIST);
+    else if (VALUE_TYPE(root) == VALUE_LIST) {
         if (VALUE_TYPE(key) != VALUE_INT) {
-            fprintf(stderr, "value_remove: not an int\n");
+            value_ctx_failure(ctx, allocator, "index into list must be an integer");
             return root;
         }
-        unsigned int index = (unsigned int) VALUE_FROM_INT(key);
-
-        // TODO.  Should perhaps return an error in this case?
-        if (index >= n) {
+        int index = (int) VALUE_FROM_INT(key);
+        if (index < 0) {
+            value_ctx_failure(ctx, allocator, "negative index into list");
             return root;
         }
+        unsigned int size;
+        hvalue_t *vals = value_get(root, &size);
+        unsigned int n = size / sizeof(hvalue_t);
 
-        // TODO. For efficiency should perhaps special case removing entry 0
-        //       from a list of size 1 (which will be the empty list).
+        if ((unsigned int) index >= n) {
+            value_ctx_failure(ctx, allocator, "list index too high");
+            return root;
+        }
 
         size -= sizeof(hvalue_t);
+        if (size == 0) {
+            return VALUE_LIST;
+        }
+
 #ifdef HEAP_ALLOC
         hvalue_t *copy = malloc(size);
 #else
@@ -1533,7 +1544,45 @@ hvalue_t value_remove(struct allocator *allocator, hvalue_t root, hvalue_t key){
 #endif
         return v;
     }
+    else {
+        assert(VALUE_TYPE(root) == VALUE_ATOM);
+        if (VALUE_TYPE(key) != VALUE_INT) {
+            value_ctx_failure(ctx, allocator, "index into string must be an integer");
+            return root;
+        }
+        int index = (int) VALUE_FROM_INT(key);
+        if (index < 0) {
+            value_ctx_failure(ctx, allocator, "negative index into string");
+            return root;
+        }
+        unsigned int size;
+        char *chars = value_get(root, &size);
 
+        if ((unsigned int) index >= size) {
+            value_ctx_failure(ctx, allocator, "string index too high");
+            return root;
+        }
+
+        size -= 1;
+        if (size == 0) {
+            return VALUE_ATOM;
+        }
+
+#ifdef HEAP_ALLOC
+        char *copy = malloc(size);
+#else
+        char copy[size / sizeof(hvalue_t)];
+#endif
+        memcpy(copy, chars, index);
+        memcpy(&copy[index], &chars[index+1], size - index);
+        hvalue_t v = value_put_atom(allocator, copy, size);
+#ifdef HEAP_ALLOC
+        free(copy);
+#endif
+        return v;
+    }
+
+    value_ctx_failure(ctx, allocator, "no such key");
     return root;
 }
 

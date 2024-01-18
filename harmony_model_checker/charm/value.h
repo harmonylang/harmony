@@ -135,7 +135,7 @@ hvalue_t value_dict_store(struct allocator *allocator, hvalue_t dict, hvalue_t k
 bool value_dict_trystore(struct allocator *allocator, hvalue_t dict, hvalue_t key, hvalue_t value, bool allow_inserts, hvalue_t *result);
 hvalue_t value_dict_load(hvalue_t dict, hvalue_t key);
 bool value_tryload(struct allocator *allocator, hvalue_t dict, hvalue_t key, hvalue_t *result);
-hvalue_t value_remove(struct allocator *allocator, hvalue_t root, hvalue_t key);
+hvalue_t value_remove(struct context *ctx, struct allocator *allocator, hvalue_t root, hvalue_t key);
 hvalue_t value_dict_remove(struct allocator *allocator, hvalue_t dict, hvalue_t key);
 hvalue_t value_bag_add(struct allocator *allocator, hvalue_t bag, hvalue_t v, int multiplicity);
 hvalue_t value_bag_remove(struct allocator *allocator, hvalue_t bag, hvalue_t v);

@@ -431,13 +431,14 @@ static bool ind_trystore(hvalue_t root, hvalue_t *indices, int n, hvalue_t value
 // Remove a variable from 'root' identified by the given indices of length n.
 // The updated 'root' is returned in *result.  The function returns whether
 // the operation was successful.
-bool ind_remove(hvalue_t root, hvalue_t *indices, int n, struct allocator *allocator,
+static bool ind_remove(struct context *ctx, hvalue_t root, hvalue_t *indices, int n, struct allocator *allocator,
                                         hvalue_t *result) {
-    assert(VALUE_TYPE(root) == VALUE_DICT || VALUE_TYPE(root) == VALUE_LIST);
+    // TODO.  Is this assertion warranted?
+    assert(VALUE_TYPE(root) == VALUE_DICT || VALUE_TYPE(root) == VALUE_LIST || VALUE_TYPE(root) == VALUE_ATOM);
     assert(n > 0);
 
     if (n == 1) {
-        *result = value_remove(allocator, root, indices[0]);
+        *result = value_remove(ctx, allocator, root, indices[0]);
         return true;
     }
 
@@ -451,11 +452,11 @@ bool ind_remove(hvalue_t root, hvalue_t *indices, int n, struct allocator *alloc
         for (unsigned i = 0; i < size; i += 2) {
             if (vals[i] == indices[0]) {
                 hvalue_t d = vals[i+1];
-                if (VALUE_TYPE(d) != VALUE_DICT && VALUE_TYPE(d) != VALUE_LIST) {
+                if (VALUE_TYPE(d) != VALUE_DICT && VALUE_TYPE(d) != VALUE_LIST && VALUE_TYPE(d) != VALUE_ATOM) {
                     return false;
                 }
                 hvalue_t nd;
-                if (!ind_remove(d, indices + 1, n - 1, allocator, &nd)) {
+                if (!ind_remove(ctx, d, indices + 1, n - 1, allocator, &nd)) {
                     return false;
                 }
                 if (d == nd) {
@@ -485,7 +486,8 @@ bool ind_remove(hvalue_t root, hvalue_t *indices, int n, struct allocator *alloc
         }
     }
     else {
-        assert(VALUE_TYPE(root) == VALUE_LIST);
+        // TODO.  Is this assertion warranted?  Should it return an error?
+        assert (VALUE_TYPE(root) == VALUE_LIST);
         if (VALUE_TYPE(indices[0]) != VALUE_INT) {
             return false;
         }
@@ -494,11 +496,11 @@ bool ind_remove(hvalue_t root, hvalue_t *indices, int n, struct allocator *alloc
             return false;
         }
         hvalue_t d = vals[index];
-        if (VALUE_TYPE(d) != VALUE_DICT && VALUE_TYPE(d) != VALUE_LIST) {
+        if (VALUE_TYPE(d) != VALUE_DICT && VALUE_TYPE(d) != VALUE_LIST && VALUE_TYPE(d) != VALUE_ATOM) {
             return false;
         }
         hvalue_t nd;
-        if (!ind_remove(d, indices + 1, n - 1, allocator, &nd)) {
+        if (!ind_remove(ctx, d, indices + 1, n - 1, allocator, &nd)) {
             return false;
         }
         if (d == nd) {
@@ -1215,7 +1217,7 @@ void op_Del(const void *env, struct state *state, struct step *step){
         size /= sizeof(hvalue_t);
         ai_add(step, indices, size, false);
         hvalue_t nd;
-        if (!ind_remove(state->vars, indices + 1, size - 1, step->allocator, &nd)) {
+        if (!ind_remove(step->ctx, state->vars, indices + 1, size - 1, step->allocator, &nd)) {
             value_ctx_failure(step->ctx, step->allocator, "Del: no such variable");
         }
         else {
@@ -1226,7 +1228,7 @@ void op_Del(const void *env, struct state *state, struct step *step){
     else {
         ai_add(step, ed->indices, ed->n, false);
         hvalue_t nd;
-        if (!ind_remove(state->vars, ed->indices + 1, ed->n - 1, step->allocator, &nd)) {
+        if (!ind_remove(step->ctx, state->vars, ed->indices + 1, ed->n - 1, step->allocator, &nd)) {
             value_ctx_failure(step->ctx, step->allocator, "Del: bad variable");
         }
         else {
@@ -1265,10 +1267,10 @@ void op_DelVar(const void *env, struct state *state, struct step *step){
                 value_ctx_failure(step->ctx, step->allocator, "DelVar: 'this' is not a dictionary");
                 return;
             }
-		    result = ind_remove(ctx_this(step->ctx), &indices[2], size - 2, step->allocator, &ctx_this(step->ctx));
+		    result = ind_remove(step->ctx, ctx_this(step->ctx), &indices[2], size - 2, step->allocator, &ctx_this(step->ctx));
         }
         else {
-		    result = ind_remove(step->ctx->vars, indices + 1, size - 1, step->allocator, &step->ctx->vars);
+		    result = ind_remove(step->ctx, step->ctx->vars, indices + 1, size - 1, step->allocator, &step->ctx->vars);
         }
         if (!result) {
             char *x = indices_string(indices, size);
@@ -3519,29 +3521,54 @@ hvalue_t f_keys(struct state *state, struct step *step, hvalue_t *args, unsigned
         strbuf_printf(&step->explain, "extract the keys; ");
     }
     hvalue_t v = args[0];
-    if (VALUE_TYPE(v) != VALUE_DICT) {
-        return value_ctx_failure(step->ctx, step->allocator, "keys() can only be applied to dictionaries");
+    if (VALUE_TYPE(v) == VALUE_DICT) {
+        if (v == VALUE_DICT) {
+            return VALUE_SET;
+        }
+
+        unsigned int size;
+        hvalue_t *vals = value_get(v, &size);
+#ifdef HEAP_ALLOC
+        hvalue_t *keys = malloc(size / 2);
+#else
+        hvalue_t keys[size / 2 / sizeof(hvalue_t)];
+#endif
+        size /= 2 * sizeof(hvalue_t);
+        for (unsigned int i = 0; i < size; i++) {
+            keys[i] = vals[2*i];
+        }
+        hvalue_t result = value_put_set(step->allocator, keys, size * sizeof(hvalue_t));
+#ifdef HEAP_ALLOC
+        free(keys);
+#endif
+        return result;
     }
-    if (v == VALUE_DICT) {
-        return VALUE_SET;
+    if (VALUE_TYPE(v) == VALUE_LIST || VALUE_TYPE(v) == VALUE_ATOM) {
+        if (v == VALUE_DICT || v == VALUE_ATOM) {
+            return VALUE_SET;
+        }
+
+        unsigned int size;
+        (void) value_get(v, &size);
+        if (VALUE_TYPE(v) == VALUE_LIST) {
+            size /= sizeof(hvalue_t);
+        }
+#ifdef HEAP_ALLOC
+        hvalue_t *keys = malloc(size);
+#else
+        hvalue_t keys[size];
+#endif
+        for (unsigned int i = 0; i < size; i++) {
+            keys[i] = VALUE_TO_INT(i);
+        }
+        hvalue_t result = value_put_set(step->allocator, keys, size * sizeof(hvalue_t));
+#ifdef HEAP_ALLOC
+        free(keys);
+#endif
+        return result;
     }
 
-    unsigned int size;
-    hvalue_t *vals = value_get(v, &size);
-#ifdef HEAP_ALLOC
-    hvalue_t *keys = malloc(size / 2);
-#else
-    hvalue_t keys[size / 2 / sizeof(hvalue_t)];
-#endif
-    size /= 2 * sizeof(hvalue_t);
-    for (unsigned int i = 0; i < size; i++) {
-        keys[i] = vals[2*i];
-    }
-    hvalue_t result = value_put_set(step->allocator, keys, size * sizeof(hvalue_t));
-#ifdef HEAP_ALLOC
-    free(keys);
-#endif
-    return result;
+    return value_ctx_failure(step->ctx, step->allocator, "keys() can only be applied to dictionaries");
 }
 
 hvalue_t f_str(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
