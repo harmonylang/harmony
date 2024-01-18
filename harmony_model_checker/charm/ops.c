@@ -355,7 +355,7 @@ static bool ind_trystore(hvalue_t root, hvalue_t *indices, int n, hvalue_t value
         for (unsigned i = 0; i < size; i += 2) {
             if (vals[i] == indices[0]) {
                 hvalue_t d = vals[i+1];
-                if (VALUE_TYPE(d) != VALUE_DICT && VALUE_TYPE(d) != VALUE_LIST) {
+                if (VALUE_TYPE(d) != VALUE_DICT && VALUE_TYPE(d) != VALUE_LIST && VALUE_TYPE(d) != VALUE_ATOM) {
                     return false;
                 }
                 hvalue_t nd;
@@ -2415,7 +2415,7 @@ static bool store_match(struct state *state, struct step *step,
         if (indices[0] != v || size != 1) {
             char *addr = value_string(av);
             char *val = value_string(v);
-            value_ctx_failure(step->ctx, step->allocator, "Store bad address %s: value is %s", addr, val);
+            value_ctx_failure(step->ctx, step->allocator, "Store: bad address %s: value is %s", addr, val);
             free(addr);
             free(val);
             return false;

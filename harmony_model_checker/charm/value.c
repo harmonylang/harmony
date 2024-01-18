@@ -1265,21 +1265,22 @@ hvalue_t value_dict_store(struct allocator *allocator, hvalue_t dict, hvalue_t k
     return result;
 }
 
-// "root" should be either a dictionary or a key.  This function stores "value"
+// "root" should be either a dictionary or a list.  This function stores "value"
 // under "key" in "root" (i.e., it computes "root[key] = value"), and returns
 // a new dictionary or list.  "allow_inserts" specifies if a new value is allowed
 // to be inserted, or if only overwrites are allowed.
 //
 // For a list of size n, note that you can store in root[n] and extend the length
 // of the list by 1.
+//
+// TODO.  Maybe should also support strings.
 bool value_trystore(struct allocator *allocator, hvalue_t root, hvalue_t key, hvalue_t value, bool allow_inserts, hvalue_t *result){
     assert(VALUE_TYPE(root) == VALUE_DICT || VALUE_TYPE(root) == VALUE_LIST);
 
-    unsigned int size;
-    hvalue_t *vals = value_get(root, &size);
-    unsigned int n = size / sizeof(hvalue_t);
-
     if (VALUE_TYPE(root) == VALUE_DICT) {
+        unsigned int size;
+        hvalue_t *vals = value_get(root, &size);
+        unsigned int n = size / sizeof(hvalue_t);
         assert(n % 2 == 0);
         unsigned int i;
         for (i = 0; i < n; i += 2) {
@@ -1328,11 +1329,13 @@ bool value_trystore(struct allocator *allocator, hvalue_t root, hvalue_t key, hv
         *result = v;
         return true;
     }
-    else {
-        assert(VALUE_TYPE(root) == VALUE_LIST);
+    else if (VALUE_TYPE(root) == VALUE_LIST) {
         if (VALUE_TYPE(key) != VALUE_INT) {
             return false;
         }
+        unsigned int size;
+        hvalue_t *vals = value_get(root, &size);
+        unsigned int n = size / sizeof(hvalue_t);
         unsigned int index = (unsigned int) VALUE_FROM_INT(key);
         if (index > n) {
             return false;
@@ -1359,6 +1362,57 @@ bool value_trystore(struct allocator *allocator, hvalue_t root, hvalue_t key, hv
         memcpy(nvals, vals, size);
         nvals[index] = value;
         hvalue_t v = value_put_list(allocator, nvals, nsize);
+#ifdef HEAP_ALLOC
+        free(nvals);
+#endif
+        *result = v;
+        return true;
+    }
+    else {
+        assert(VALUE_TYPE(root) == VALUE_ATOM);
+        if (VALUE_TYPE(key) != VALUE_INT) {
+            return false;
+        }
+        unsigned int size;
+        char *vals = value_get(root, &size);
+        unsigned int index = (unsigned int) VALUE_FROM_INT(key);
+        if (index > size) {
+            return false;
+        }
+        if (VALUE_TYPE(value) != VALUE_ATOM) {
+            return false;
+        }
+
+        // Get the value, which must be a string.
+        unsigned int vsize;
+        char *vvals = value_get(value, &vsize);
+
+        unsigned int nsize;
+        if (index == size) {
+            if (!allow_inserts) {
+                return false;
+            }
+            nsize = size + vsize;
+        }
+        else {
+            nsize = size + vsize - 1;
+        }
+
+#ifdef HEAP_ALLOC
+        char *nvals = malloc(nsize);
+#else
+        char nvals[nsize];
+#endif
+
+        memcpy(nvals, vals, index);
+        if (index == size) {
+            memcpy(&nvals[index], vvals, vsize);
+        }
+        else {
+            memcpy(&nvals[index], vvals, vsize);
+            memcpy(&nvals[index + vsize], &vals[index + 1], size - index - 1);
+        }
+        hvalue_t v = value_put_atom(allocator, nvals, nsize);
 #ifdef HEAP_ALLOC
         free(nvals);
 #endif
