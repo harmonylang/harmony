@@ -68,12 +68,6 @@
 // All global variables should be here
 struct global global;
 
-// For -d option
-// TODO: this is still experimental and not fully fleshed out
-unsigned int run_count;  // counter of #threads
-mutex_t run_mutex;       // to protect count
-mutex_t run_waiting;     // for main thread to wait on
-
 extern bool has_countLabel;     // TODO.  Hack for backward compatibility
 
 // TODO.  Move into global
@@ -295,7 +289,7 @@ static void wfree(void *ctx, void *last, bool align16){
 }
 
 // Part of experimental -d option, running Harmony programs "for real".
-static void run_thread(struct state *state, struct context *ctx){
+static void run_direct(struct state *state, struct context *ctx){
     struct step step;
     memset(&step, 0, sizeof(step));
     step.ctx = ctx;
@@ -326,30 +320,6 @@ static void run_thread(struct state *state, struct context *ctx){
         assert(step.ctx->pc >= 0);
         assert(step.ctx->pc < global.code.len);
     }
-
-    mutex_acquire(&run_mutex);
-    if (--run_count == 0) {
-        mutex_release(&run_waiting);
-    }
-    mutex_release(&run_mutex);
-}
-
-// Part of experimental -d option, running Harmony programs "for real".
-static void wrap_thread(void *arg){
-    struct spawn_info *si = arg;
-    run_thread(si->state, si->ctx);
-}
-
-// Part of experimental -d option, running Harmony programs "for real".
-void spawn_thread(struct state *state, struct context *ctx){
-    mutex_acquire(&run_mutex);
-    run_count++;
-    mutex_release(&run_mutex);
-
-    struct spawn_info *si = new_alloc(struct spawn_info);
-    si->state = state;
-    si->ctx = ctx;
-    thread_create(wrap_thread, si);
 }
 
 // Apply the effect of evaluating a context (for a particular assignment
@@ -3523,8 +3493,12 @@ int exec_model_checker(int argc, char **argv){
     vproc_tree_create();
     // vproc_tree_dump(vproc_root, 0);
 
-    // Determine how many worker threads to use
-    printf("* Phase 2: run the model checker (nworkers = %d)\n", global.nworkers);
+    if (dflag) {
+        printf("* Phase 2: execute directly\n");
+    }
+    else {
+        printf("* Phase 2: run the model checker (nworkers = %d)\n", global.nworkers);
+    }
 
     // Initialize barriers for the three phases (see struct worker definition)
     barrier_t start_barrier, middle_barrier, end_barrier;
@@ -3627,22 +3601,7 @@ int exec_model_checker(int argc, char **argv){
     // This is an experimental feature: run code directly (don't model check)
     if (dflag) {
         global.run_direct = true;
-        mutex_init(&run_mutex);
-        mutex_init(&run_waiting);
-        mutex_acquire(&run_waiting);
-        run_count = 1;
-
-        // Run the initializing thread to completion
-        // TODO.  spawned threads should wait...
-        run_thread(state, init_ctx);
-
-        // Wait for other threads
-        mutex_acquire(&run_mutex);
-        if (run_count > 0) {
-            mutex_release(&run_mutex);
-            mutex_acquire(&run_waiting);
-        }
-        mutex_release(&run_mutex);
+        run_direct(state, init_ctx);
         exit(0);
     }
 

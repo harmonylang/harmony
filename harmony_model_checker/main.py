@@ -130,7 +130,8 @@ def handle_hvm(ns, output_files, parse_code_only, code, scope):
         exit()
 
     if ns.direct:
-        print("* Phase 2: run", flush=True)
+        # print("* Phase 2: run", flush=True)
+        charm_options.append("-d")
         r = charm.run_model_checker(
             *charm_options,
             output_files["hvm"]

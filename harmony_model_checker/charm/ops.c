@@ -2201,39 +2201,28 @@ void op_Spawn(
     ctx->interruptlevel = false;
     ctx->eternal = se->eternal;
     ctx_push(ctx, arg);
-    if (global.run_direct) {
-        unsigned int size = sizeof(*ctx) + (ctx->sp * sizeof(hvalue_t));
-        if (ctx->extended) {
-            size += ctx_extent * sizeof(hvalue_t);
+    hvalue_t cc = value_put_context(step->allocator, ctx);
+    if (step->keep_callstack) {
+        if (context_add(state, cc) < 0) {
+            value_ctx_failure(step->ctx, step->allocator, "spawn: too many threads");
+            return;
         }
-        struct context *copy = malloc(size + 4096);      // TODO.  How much
-        memcpy(copy, ctx, size);
-        spawn_thread(state, copy);
+        // Called in second phase, so sequential
+        global.processes = realloc(global.processes, (global.nprocesses + 1) * sizeof(hvalue_t));
+        global.callstacks = realloc(global.callstacks, (global.nprocesses + 1) * sizeof(struct callstack *));
+        global.processes[global.nprocesses] = cc;
+        // printf("Add %d %p\n", global.nprocesses, (void *) cc);
+        struct callstack *cs = new_alloc(struct callstack);
+        cs->pc = pc;
+        cs->arg = arg;
+        cs->vars = VALUE_DICT;
+        // TODO.  What's the purpose of the next line exactly
+        cs->return_address = (step->ctx->pc << CALLTYPE_BITS) | CALLTYPE_PROCESS;
+        global.callstacks[global.nprocesses] = cs;
+        global.nprocesses++;
     }
     else {
-        hvalue_t context = value_put_context(step->allocator, ctx);
-        if (step->keep_callstack) {
-            if (context_add(state, context) < 0) {
-                value_ctx_failure(step->ctx, step->allocator, "spawn: too many threads");
-                return;
-            }
-            // Called in second phase, so sequential
-            global.processes = realloc(global.processes, (global.nprocesses + 1) * sizeof(hvalue_t));
-            global.callstacks = realloc(global.callstacks, (global.nprocesses + 1) * sizeof(struct callstack *));
-            global.processes[global.nprocesses] = context;
-            // printf("Add %d %p\n", global.nprocesses, (void *) context);
-            struct callstack *cs = new_alloc(struct callstack);
-            cs->pc = pc;
-            cs->arg = arg;
-            cs->vars = VALUE_DICT;
-            // TODO.  What's the purpose of the next line exactly
-            cs->return_address = (step->ctx->pc << CALLTYPE_BITS) | CALLTYPE_PROCESS;
-            global.callstacks[global.nprocesses] = cs;
-            global.nprocesses++;
-        }
-        else {
-            step->spawned[step->nspawned++] = context;
-        }
+        step->spawned[step->nspawned++] = cc;
     }
 
     step->ctx->pc++;
