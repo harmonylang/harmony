@@ -289,36 +289,57 @@ static void wfree(void *ctx, void *last, bool align16){
 }
 
 // Part of experimental -d option, running Harmony programs "for real".
-static void run_direct(struct state *state, struct context *ctx){
+static void run_direct(struct state *state){
+    struct {
+        struct context ctx;
+        hvalue_t stack[MAX_CONTEXT_STACK];
+    } fullctx;
+
     struct step step;
     memset(&step, 0, sizeof(step));
-    step.ctx = ctx;
+    step.ctx = &fullctx.ctx;
 
-    for (;;) {
-        int pc = step.ctx->pc;
-        struct instr *instrs = global.code.instrs;
-        struct op_info *oi = instrs[pc].oi;
-        (*oi->op)(instrs[pc].env, state, &step);
-        if (step.ctx->terminated) {
-            break;
-        }
-        if (step.ctx->failed) {
-            char *s = value_string(ctx_failure(step.ctx));
-            printf("Failure: %s\n", s);
-            free(s);
-            break;
-        }
-        if (step.ctx->stopped) {
-            printf("Context has stopped\n");
-            break;
-        }
+    while (state->bagsize > 0) {
+        hvalue_t pick = state_ctx(state, 0);
+        printf("pick %p\n", (void *) pick);
 
-        if (step.ctx->pc == pc) {
-            fprintf(stderr, ">>> %s\n", oi->name);
+        // Get and copy the context
+        unsigned int size;
+        struct context *cc = value_get(pick, &size);
+        assert(ctx_size(cc) == size);
+        assert(!cc->terminated);
+        assert(!cc->failed);
+        memcpy(&fullctx, cc, ctx_size(cc));
+
+        printf("copied %p\n", (void *) pick);
+
+        for (;;) {
+            int pc = step.ctx->pc;
+            printf("--> %d\n", pc);
+            struct instr *instrs = global.code.instrs;
+            struct op_info *oi = instrs[pc].oi;
+            (*oi->op)(instrs[pc].env, state, &step);
+            if (step.ctx->terminated) {
+                break;
+            }
+            if (step.ctx->failed) {
+                char *s = value_string(ctx_failure(step.ctx));
+                printf("Failure: %s\n", s);
+                free(s);
+                break;
+            }
+            if (step.ctx->stopped) {
+                printf("Context has stopped\n");
+                break;
+            }
+
+            if (step.ctx->pc == pc) {
+                fprintf(stderr, ">>> %s\n", oi->name);
+            }
+            assert(step.ctx->pc != pc);
+            assert(step.ctx->pc >= 0);
+            assert(step.ctx->pc < global.code.len);
         }
-        assert(step.ctx->pc != pc);
-        assert(step.ctx->pc >= 0);
-        assert(step.ctx->pc < global.code.len);
     }
 }
 
@@ -3601,7 +3622,7 @@ int exec_model_checker(int argc, char **argv){
     // This is an experimental feature: run code directly (don't model check)
     if (dflag) {
         global.run_direct = true;
-        run_direct(state, init_ctx);
+        run_direct(state);
         exit(0);
     }
 
