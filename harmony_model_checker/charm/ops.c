@@ -620,9 +620,16 @@ void op_Print(const void *env, struct state *state, struct step *step){
     }
     hvalue_t symbol = ctx_pop(step->ctx);
     if (global.run_direct) {
-        char *s = value_string(symbol);
-        printf("%s\n", s);
-        free(s);
+        if (VALUE_TYPE(symbol) == VALUE_ATOM) {
+            unsigned int size;
+            char *s = value_get(symbol, &size);
+            printf("%.*s\n", size, s);
+        }
+        else {
+            char *s = value_string(symbol);
+            printf("%s\n", s);
+            free(s);
+        }
     }
     if (step->nlog == MAX_PRINT) {
         value_ctx_failure(step->ctx, step->allocator, "Print: too many prints");
@@ -2202,7 +2209,16 @@ void op_Spawn(
     ctx->eternal = se->eternal;
     ctx_push(ctx, arg);
     hvalue_t cc = value_put_context(step->allocator, ctx);
-    if (step->keep_callstack) {
+    if (global.run_direct) {
+        if (context_add(state, cc) < 0) {
+            value_ctx_failure(step->ctx, step->allocator, "spawn: too many threads");
+        }
+        else {
+            step->ctx->pc++;
+        }
+        return;
+    }
+    else if (step->keep_callstack) {
         if (context_add(state, cc) < 0) {
             value_ctx_failure(step->ctx, step->allocator, "spawn: too many threads");
             return;

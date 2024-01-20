@@ -288,6 +288,19 @@ static void wfree(void *ctx, void *last, bool align16){
     }
 }
 
+// Remove context 'ctx' from the state by index.
+static inline void context_remove_by_index(struct state *state, int i){
+    hvalue_t *ctxlist = state_ctxlist(state);
+    if ((ctxlist[i] & STATE_MULTIPLICITY) > ((hvalue_t) 1 << STATE_M_SHIFT)) {
+        ctxlist[i] -= (hvalue_t) 1 << STATE_M_SHIFT;
+    }
+    else {
+        state->bagsize--;
+        state->total--;
+        memmove(&ctxlist[i], &ctxlist[i+1], (state->total - i) * sizeof(hvalue_t));
+    }
+}
+
 // Part of experimental -d option, running Harmony programs "for real".
 static void run_direct(struct state *state){
     struct {
@@ -300,8 +313,22 @@ static void run_direct(struct state *state){
     step.ctx = &fullctx.ctx;
 
     while (state->bagsize > 0) {
-        hvalue_t pick = state_ctx(state, 0);
-        printf("pick %p\n", (void *) pick);
+        unsigned int total = 0, ctx_index = 0;
+        for (int i = 0; i < state->bagsize; i++) {
+            total += state_multiplicity(state, i);
+        }
+        unsigned int select = random() % total;
+        // printf("--> %u %u\n", total, select);
+        for (int i = 0; i < state->bagsize; i++) {
+            if (state_multiplicity(state, i) > select) {
+                ctx_index = i;
+                break;
+            }
+            select -= state_multiplicity(state, i);
+        }
+
+        // printf("pick %u\n", ctx_index);
+        hvalue_t pick = state_ctx(state, ctx_index);
 
         // Get and copy the context
         unsigned int size;
@@ -311,11 +338,8 @@ static void run_direct(struct state *state){
         assert(!cc->failed);
         memcpy(&fullctx, cc, ctx_size(cc));
 
-        printf("copied %p\n", (void *) pick);
-
         for (;;) {
             int pc = step.ctx->pc;
-            printf("--> %d\n", pc);
             struct instr *instrs = global.code.instrs;
             struct op_info *oi = instrs[pc].oi;
             (*oi->op)(instrs[pc].env, state, &step);
@@ -339,6 +363,46 @@ static void run_direct(struct state *state){
             assert(step.ctx->pc != pc);
             assert(step.ctx->pc >= 0);
             assert(step.ctx->pc < global.code.len);
+
+            // If not in atomic mode, see if we should give another
+            // context a shot
+            if (step.ctx->atomic == 0) {
+                struct instr *next_instr = &global.code.instrs[step.ctx->pc];
+                bool breakable = next_instr->breakable;
+
+                // If this is a Load operation, it's only breakable if it
+                // accesses a global variable
+                // TODO.  Can this be made more efficient?
+                if (next_instr->load && next_instr->env == NULL) {
+                    hvalue_t addr = ctx_stack(step.ctx)[step.ctx->sp - 1];
+                    if (VALUE_TYPE(addr) != VALUE_ADDRESS_SHARED && VALUE_TYPE(addr) != VALUE_ADDRESS_PRIVATE) {
+                        value_ctx_failure(step.ctx, step.allocator, "Load: not an address");
+                        break;
+                    }
+                    if ((VALUE_TYPE(addr)) == VALUE_ADDRESS_PRIVATE) {
+                        breakable = false;
+                    }
+                }
+
+                if (breakable) {
+                    break;
+                }
+            }
+        }
+
+        // If context has failed, we're done
+        if (step.ctx->failed) {
+            break;
+        }
+
+        // Remove the original context from the state
+        assert(state_ctx(state, ctx_index) == ctx);
+        context_remove_by_index(state, ctx_index);
+
+        // Add updated context to state unless terminated
+        if (!step.ctx->terminated) {
+            hvalue_t after = value_put_context(step.allocator, step.ctx);
+            context_add(state, after);
         }
     }
 }
@@ -811,15 +875,6 @@ static struct step_output *onestep(
             // TODO.  Can this be made more efficient?
             if (next_instr->load && next_instr->env == NULL) {
                 hvalue_t addr = ctx_stack(step->ctx)[step->ctx->sp - 1];
-#ifdef VALUE_ADDRESS
-                assert(false);
-                assert(VALUE_TYPE(addr) == VALUE_ADDRESS);
-                assert(addr != VALUE_ADDRESS);
-                hvalue_t *func = value_get(addr, NULL);
-                if (*func != VALUE_PC_SHARED) {
-                    breakable = false;
-                }
-#else
                 if (VALUE_TYPE(addr) != VALUE_ADDRESS_SHARED && VALUE_TYPE(addr) != VALUE_ADDRESS_PRIVATE) {
                     value_ctx_failure(step->ctx, step->allocator, "Load: not an address");
                     instrcnt++;
@@ -828,7 +883,6 @@ static struct step_output *onestep(
                 if ((VALUE_TYPE(addr)) == VALUE_ADDRESS_PRIVATE) {
                     breakable = false;
                 }
-#endif
             }
 
             // Deal with interrupts if enabled
@@ -902,19 +956,6 @@ static struct step_output *onestep(
     step->nlog = 0;
     step->nunstopped = 0;
     return so;
-}
-
-// Remove context 'ctx' from the state by index.
-static inline void context_remove_by_index(struct state *state, int i){
-    hvalue_t *ctxlist = state_ctxlist(state);
-    if ((ctxlist[i] & STATE_MULTIPLICITY) > ((hvalue_t) 1 << STATE_M_SHIFT)) {
-        ctxlist[i] -= (hvalue_t) 1 << STATE_M_SHIFT;
-    }
-    else {
-        state->bagsize--;
-        state->total--;
-        memmove(&ctxlist[i], &ctxlist[i+1], (state->total - i) * sizeof(hvalue_t));
-    }
 }
 
 // Run the given context ctx in the given state, possibly making the given
@@ -3622,6 +3663,7 @@ int exec_model_checker(int argc, char **argv){
     // This is an experimental feature: run code directly (don't model check)
     if (dflag) {
         global.run_direct = true;
+        srandom((unsigned) gettime());
         run_direct(state);
         exit(0);
     }
