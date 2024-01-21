@@ -613,6 +613,19 @@ void next_Print(const void *env, struct context *ctx, FILE *fp){
     free(s);
 }
 
+static void do_print(hvalue_t symbol){
+    if (VALUE_TYPE(symbol) == VALUE_ATOM) {
+        unsigned int size;
+        char *s = value_get(symbol, &size);
+        printf("%.*s", size, s);
+    }
+    else {
+        char *s = value_string(symbol);
+        printf("%s", s);
+        free(s);
+    }
+}
+
 void op_Print(const void *env, struct state *state, struct step *step){
     if (step->ctx->readonly > 0) {
         value_ctx_failure(step->ctx, step->allocator, "Can't print in read-only mode");
@@ -620,16 +633,21 @@ void op_Print(const void *env, struct state *state, struct step *step){
     }
     hvalue_t symbol = ctx_pop(step->ctx);
     if (global.run_direct) {
-        if (VALUE_TYPE(symbol) == VALUE_ATOM) {
+        if (VALUE_TYPE(symbol) == VALUE_LIST) {
             unsigned int size;
-            char *s = value_get(symbol, &size);
-            printf("%.*s\n", size, s);
+            hvalue_t *vals = value_get(symbol, &size);
+            size /= sizeof(hvalue_t);
+            for (unsigned int i = 0; i < size; i++) {
+                if (i != 0) {
+                    printf(" ");
+                }
+                do_print(vals[i]);
+            }
         }
         else {
-            char *s = value_string(symbol);
-            printf("%s\n", s);
-            free(s);
+            do_print(symbol);
         }
+        printf("\n");
     }
     if (step->nlog == MAX_PRINT) {
         value_ctx_failure(step->ctx, step->allocator, "Print: too many prints");
@@ -717,17 +735,32 @@ void op_Choose(const void *env, struct state *state, struct step *step){
             printf("   %u: %s\n", i + 1, s);
             free(s);
         }
+        printf("   <newline>: random choice\n");
         for (;;) {
             printf("--> "); fflush(stdout);
-            unsigned int selection;
-            if (scanf("%u", &selection) == 1) {
-                selection -= 1;
-                if (selection < size) {
-                    step->ctx->pc++;
-                    ctx_push(step->ctx, vals[selection]);
-                    return;
+            char line[128];
+            if (fgets(line, sizeof(line), stdin) == NULL || feof(stdin)) {
+                printf("EOF\n");
+                exit(1);
+            }
+            if (line[0] == '\n') {
+                unsigned int selection = random() % size;
+                ctx_push(step->ctx, vals[selection]);
+                step->ctx->pc++;
+                return;
+            }
+            else {
+                unsigned int selection;
+                if (sscanf(line, "%u", &selection) == 1) {
+                    selection -= 1;
+                    if (selection < size) {
+                        ctx_push(step->ctx, vals[selection]);
+                        step->ctx->pc++;
+                        return;
+                    }
                 }
             }
+            fflush(stdin);
             printf("Bad selection. Try again\n");
         }
     }
