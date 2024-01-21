@@ -1419,7 +1419,31 @@ void op_Go(
 #endif
     step->ctx->pc++;
 
-    if (step->keep_callstack) {
+    if (global.run_direct) {
+        // Remove old context from stopbag if it's there
+        // TODO.  Can potentially be optimized when it's a matter of just moving it to
+        //        the context bag
+        // TODO.  Duplicated from else part below.  Make subroutine
+        hvalue_t *ctxlist = state_ctxlist(state);
+        for (unsigned int i = state->bagsize; i < state->total; i++) {
+            hvalue_t ctxi = ctxlist[i] & ~STATE_MULTIPLICITY;
+            if (ctxi == ctx) {
+                if ((ctxlist[i] & STATE_MULTIPLICITY) > ((hvalue_t) 1 << STATE_M_SHIFT)) {
+                    ctxlist[i] -= ((hvalue_t) 1 << STATE_M_SHIFT);
+                }
+                else {
+                    assert(state->total > state->bagsize);
+                    state->total--;
+                    memmove(&ctxlist[i], &ctxlist[i+1], (state->total - i) * sizeof(hvalue_t));
+                }
+                break;
+            }
+        }
+        if (context_add(state, context) < 0) {
+            value_ctx_failure(step->ctx, step->allocator, "go: too many threads");
+        }
+    }
+    else if (step->keep_callstack) {
         // Remove old context from stopbag if it's there
         // TODO.  Can potentially be optimized when it's a matter of just moving it to
         //        the context bag
@@ -2369,6 +2393,7 @@ void op_Stop(const void *env, struct state *state, struct step *step){
         }
     }
     else {
+        // TODO.  Can it even get here???
         step->ctx->stopped = true;
         step->ctx->pc++;
         hvalue_t v = value_put_context(step->allocator, step->ctx);

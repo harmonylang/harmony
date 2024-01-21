@@ -399,8 +399,8 @@ static void run_direct(struct state *state){
         assert(state_ctx(state, ctx_index) == ctx);
         context_remove_by_index(state, ctx_index);
 
-        // Add updated context to state unless terminated
-        if (!step.ctx->terminated) {
+        // Add updated context to state unless terminated or stopped
+        if (!step.ctx->terminated && !step.ctx->stopped) {
             hvalue_t after = value_put_context(step.allocator, step.ctx);
             context_add(state, after);
         }
