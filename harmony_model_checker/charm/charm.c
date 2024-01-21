@@ -311,6 +311,7 @@ static void run_direct(struct state *state){
     struct step step;
     memset(&step, 0, sizeof(step));
     step.ctx = &fullctx.ctx;
+    unsigned int interrupt_count = 1;
 
     while (state->bagsize > 0) {
         unsigned int total = 0, ctx_index = 0;
@@ -337,6 +338,14 @@ static void run_direct(struct state *state){
         assert(!cc->terminated);
         assert(!cc->failed);
         memcpy(&fullctx, cc, ctx_size(cc));
+
+        // Check if an interrupt is in order
+        if (cc->extended && ctx_trap_pc(cc) != 0 && !cc->interruptlevel) {
+            interrupt_count += 1;
+            if (random() % interrupt_count == 0) {
+                interrupt_invoke(&step);
+            }
+        }
 
         for (;;) {
             int pc = step.ctx->pc;
