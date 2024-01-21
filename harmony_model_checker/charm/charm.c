@@ -353,7 +353,6 @@ static void run_direct(struct state *state){
                 break;
             }
             if (step.ctx->stopped) {
-                printf("Context has stopped\n");
                 break;
             }
 
