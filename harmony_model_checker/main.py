@@ -43,7 +43,7 @@ args.add_argument("-R", action="store_true",
 args.add_argument("--module", "-m", action="append", type=str,
                   metavar="module=version", help="select a module version")
 args.add_argument("-i", "--intf", type=str, metavar="expr",
-                  help="specify in interface function")
+                  help="specify an interface function")
 args.add_argument("-s", action="store_true",
                   help="silent (do not print periodic status updates)")
 args.add_argument("-v", "--version", action="store_true",
