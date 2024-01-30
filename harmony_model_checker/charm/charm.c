@@ -3648,8 +3648,9 @@ int exec_model_checker(int argc, char **argv){
     init_ctx->atomicFlag = true;
     value_ctx_push(init_ctx, VALUE_LIST);
 
-    // Now create the state
-    struct state *state = calloc(1, sizeof(struct state) + sizeof(hvalue_t) + 1);
+    // Now create the state.  If running direct, keep room to grow.
+    struct state *state = calloc(1, sizeof(struct state) +
+            (dflag ? 256 : 1) * (sizeof(hvalue_t) + 1));
     state->vars = VALUE_DICT;
     hvalue_t ictx = value_put_context(NULL, init_ctx);
     state->chooser = -1;
