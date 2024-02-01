@@ -744,7 +744,7 @@ void op_Choose(const void *env, struct state *state, struct step *step){
                 exit(1);
             }
             if (line[0] == '\n') {
-                unsigned int selection = random() % size;
+                unsigned int selection = rand() % size;
                 ctx_push(step->ctx, vals[selection]);
                 step->ctx->pc++;
                 return;

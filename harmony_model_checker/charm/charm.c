@@ -318,7 +318,7 @@ static void run_direct(struct state *state){
         for (int i = 0; i < state->bagsize; i++) {
             total += state_multiplicity(state, i);
         }
-        unsigned int select = random() % total;
+        unsigned int select = rand() % total;
         // printf("--> %u %u\n", total, select);
         for (int i = 0; i < state->bagsize; i++) {
             if (state_multiplicity(state, i) > select) {
@@ -342,7 +342,7 @@ static void run_direct(struct state *state){
         // Check if an interrupt is in order
         if (cc->extended && ctx_trap_pc(cc) != 0 && !cc->interruptlevel) {
             interrupt_count += 1;
-            if (random() % interrupt_count == 0) {
+            if (rand() % interrupt_count == 0) {
                 interrupt_invoke(&step);
             }
         }
@@ -3672,7 +3672,7 @@ int exec_model_checker(int argc, char **argv){
     // This is an experimental feature: run code directly (don't model check)
     if (dflag) {
         global.run_direct = true;
-        srandom((unsigned) gettime());
+        srand((unsigned) gettime());
         run_direct(state);
         exit(0);
     }
