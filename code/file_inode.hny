@@ -32,7 +32,7 @@ def fs_alloc(fs_state) returns bno:
     var found = False
     while not found:
         bno += 1
-        assert bno < N_BLOCKS
+        assert bno < N_BLOCKS   # TODO.  Do better error handling here
         found = not fs_state->bitmap[bno]
     fs_state->bitmap[bno] = True
     release(?fs_state->bitmap_lock)
@@ -165,7 +165,7 @@ def File(n_files) returns req_q:
                 .disk: d, .req_q: req_q, .bitmap_lock: Lock(),
                 .n_bitmap_blocks: n_bitmap_blocks,
                 .n_inode_blocks: n_inode_blocks,
-                .bitmap: [ i <= (1 + n_bitmap_blocks + n_inode_blocks)
+                .bitmap: [ i <= (n_bitmap_blocks + n_inode_blocks)
                                         for i in { 0 .. N_BLOCKS - 1 } ],
                 .ib_locks: [ RWlock(), ] * n_inode_blocks }):
 
