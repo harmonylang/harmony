@@ -4,8 +4,8 @@ const N_FILES = 2
 const MAX_FILE_SIZE = 2
 
 const N_READ = 1
-const N_WRITE = 1
-const N_GETSIZE = 1
+const N_WRITE = 2
+const N_GETSIZE = 0
 
 system = File(N_FILES)
 

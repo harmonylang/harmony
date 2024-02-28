@@ -1,5 +1,3 @@
-import list
-
 def Lock() returns result:
     result = { .acquired: False, .suspended: [] }
 
@@ -17,5 +15,5 @@ def release(lk):
         if lk->suspended == []:
             lk->acquired = False
         else:
-            go (list.head(lk->suspended)) ()
-            lk->suspended = list.tail(lk->suspended)
+            go (lk->suspended[0]) ()
+            del lk->suspended[0]
