@@ -1,0 +1,193 @@
+#/ PREAMBLE
+
+from synch import *             # shared queue for file server and lock for superblock
+from rwlock import *            # read/write locks for inode blocks
+from alloc import *             # malloc/free
+from list import subseq         # list slicing
+import disk                     # disk interface
+import wal                      # write-ahead-log
+
+const N_BLOCKS = 10             # total number of disk blocks
+const INODES_PER_BLOCK = 2      # number of inodes that fit in a block
+const INDIR_PER_BLOCK  = 4      # number of block pointers per block
+
+#/ FREELIST
+
+# The file system consists of a superblock, an array of bitmap blocks
+# (to track the free blocks), an array of inode blocks, and the
+# remaining blocks.  The remaining blocks are dynamic and can be of
+# the following types:
+#   - free: not in use (marked False in the bitmap blocks)
+#   - data: a data block
+#   - indir: an indirect block, with pointers to other blocks
+# An inode has a pointer to a direct block and a pointer to an indirect block,
+# so the maximum file size is 1 + INDIR_PER_BLOCK.
+
+# Allocate a disk block.  Currently uses first available strategy,
+# which is not very efficient but easy.  Note, this does not update the
+# bitmap on disk, which is done through the WAL.
+def fs_alloc(fs_state) returns bno:
+    acquire(?fs_state->bitmap_lock)
+    bno = fs_state->n_bitmap_blocks + fs_state->n_inode_blocks
+    var found = False
+    while not found:
+        bno += 1
+        assert bno < N_BLOCKS
+        found = not fs_state->bitmap[bno]
+    fs_state->bitmap[bno] = True
+    release(?fs_state->bitmap_lock)
+
+#/ INIT
+
+# Initialize the file system by writing the superblock, the bitmap blocks, and
+# the i-node blocks,
+def fs_init(d, n_bitmap_blocks, n_inode_blocks):
+    # Initialize the superblock
+    disk.write(d, 0,
+        { .n_bitmap_block: n_bitmap_blocks, .n_inode_blocks: n_inode_blocks })
+
+    # Initialize the bitmap blocks
+    for bno in { 1 .. n_bitmap_blocks }:
+        disk.write(d, bno, [ False, ] * disk.BITS_PER_BLOCK)
+
+    # Initialize the i-node blocks
+    for i in { 1 .. n_inode_blocks }:
+        disk.write(d, n_bitmap_blocks + i, [
+            { .direct: None, .indir: None, .size: 0 }, ] * INODES_PER_BLOCK)
+
+#/ QUERY
+
+# Handle a read-only request.  A read lock on i-node block ib has been acquired.
+def fs_query_request(fs_state, req, ib) returns result:
+    # Read the inode block and extract the inode
+    let inode_block = wal.read(fs_state->disk, 1 + fs_state->n_bitmap_blocks + ib)
+    let inode = inode_block[req.ino % INODES_PER_BLOCK]:
+        if req.type == "getsize":
+            result = inode.size
+        else:
+            assert req.type == "read"
+
+            # Read the direct block.  Return None if there is no direct block.
+            if req.offset == 0:
+                if inode.direct == None:
+                    result = None
+                else:
+                    result = wal.read(fs_state->disk, inode.direct)
+
+            # Read indirectly.  If there is no indirect block return None
+            elif inode.indir == None:
+                result = None
+
+            # Read the indirect block and get the pointer to the data block,
+            # which may be None.
+            else:
+                let indir = wal.read(fs_state->disk, inode.indir):
+                    if indir[req.offset - 1] == None:
+                        result = None
+                    else:
+                        result = wal.read(fs_state->disk, indir[req.offset - 1])
+
+#/ UPDATE
+
+# Handle a write request.  A write lock on i-node block ib has been acquired.
+def fs_update_request(fs_state, req, ib):
+    assert req.type == "write"
+    var allocated = {}      # set of allocated blocks (on disk bitmap not yet updated)
+    var write_set = {}      # set of (block number, data) pairs to be written
+    var inode_block = wal.read(fs_state->disk, 1 + fs_state->n_bitmap_blocks + ib)
+    var inode = inode_block[req.ino % INODES_PER_BLOCK]
+
+    if req.offset == 0:
+        if inode.direct == None:
+            inode.direct = fs_alloc(fs_state)
+            allocated |= { inode.direct } 
+            inode.size = max(inode.size, 1)
+            inode_block[req.ino % INODES_PER_BLOCK] = inode
+            write_set |= { (1 + fs_state->n_bitmap_blocks + ib, inode_block) }
+        write_set |= { (inode.direct, req.data) }
+    else:
+        if inode.indir == None:
+            inode.indir = fs_alloc(fs_state)
+            allocated |= { inode.indir } 
+            inode.size = max(inode.size, req.offset + 1)
+            inode_block[req.ino % INODES_PER_BLOCK] = inode
+            write_set |= { (1 + fs_state->n_bitmap_blocks + ib, inode_block) }
+            let bno = fs_alloc(fs_state)
+            let indir = [ bno if i == (req.offset - 1) else None
+                            for i in { 0 .. INODES_PER_BLOCK - 1 } ]:
+                allocated |= { bno }
+                write_set |= { (bno, req.data), (inode.indir, indir) }
+        else:
+            var indir = wal.read(fs_state->disk, inode.indir)
+            if indir[req.offset - 1] == None:
+                indir[req.offset - 1] = fs_alloc(fs_state)
+                allocated |= { indir[req.offset - 1] }
+                write_set |= { (inode.indir, indir) }
+            write_set |= { (indir[req.offset - 1], req.data) }
+            if inode.size <= req.offset:
+                inode.size = req.offset + 1
+                inode_block[req.ino % INODES_PER_BLOCK] = inode
+                write_set |= { (1 + fs_state->n_bitmap_blocks + ib, inode_block) }
+    wal.update(fs_state->disk, allocated, write_set)
+
+#/ WORKER
+
+# A worker thread handles client requests
+def fs_worker(fs_state):
+    while True:
+        let req = get(fs_state->req_q)
+        let ib = req.ino / INODES_PER_BLOCK:
+            if req.type == "write":
+                write_acquire(?fs_state->ib_locks[ib])
+                fs_update_request(fs_state, req, ib)
+                write_release(?fs_state->ib_locks[ib])
+                put(req.q, "ok")
+            else:
+                read_acquire(?fs_state->ib_locks[ib])
+                let response = fs_query_request(fs_state, req, ib):
+                    read_release(?fs_state->ib_locks[ib])
+                    put(req.q, response)
+
+#/ INTERFACE
+
+def File(n_files) returns req_q:
+    req_q = malloc(Queue())
+    let n_inode_blocks = (n_files + (INODES_PER_BLOCK - 1)) / INODES_PER_BLOCK
+    let n_workers = 2
+    let d = disk.new(N_BLOCKS)
+    let n_bitmap_blocks = (N_BLOCKS + (disk.BITS_PER_BLOCK - 1)) /
+                                                disk.BITS_PER_BLOCK:
+        # Initialize the file system on disk
+        fs_init(d, n_bitmap_blocks, n_inode_blocks)
+
+        # Allocate the in-memory shared state of the file server
+        let fs_state = malloc({
+                .disk: d, .req_q: req_q, .bitmap_lock: Lock(),
+                .n_bitmap_blocks: n_bitmap_blocks,
+                .n_inode_blocks: n_inode_blocks,
+                .bitmap: [ i <= (1 + n_bitmap_blocks + n_inode_blocks)
+                                        for i in { 0 .. N_BLOCKS - 1 } ],
+                .ib_locks: [ RWlock(), ] * n_inode_blocks }):
+
+            # Start worker threads to handle client requests
+            for i in { 1 .. n_workers }:
+                spawn eternal fs_worker(fs_state)
+
+def getsize(req_q, ino) returns size:
+    let res_q = malloc(Queue()):
+        put(req_q, { .type: "getsize", .ino: ino, .q: res_q })
+        size = get(res_q)
+        free(res_q)
+
+def read(req_q, ino, offset) returns data:
+    let res_q = malloc(Queue()):
+        put(req_q, { .type: "read", .ino: ino, .offset: offset, .q: res_q })
+        data = get(res_q)
+        free(res_q)
+
+def write(req_q, ino, offset, data):
+    let res_q = malloc(Queue()):
+        put(req_q, { .type: "write", .ino: ino, .offset: offset, .data: data, .q: res_q })
+        let status = get(res_q):
+            assert status == "ok"
+        free(res_q)

@@ -47,6 +47,10 @@
 #include <string.h>
 #include <ctype.h>
 #include <assert.h>
+#include <limits.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <stdint.h>
 
 #include "value.h"
 #include "ops.h"
@@ -54,9 +58,13 @@
 #include "dfa.h"
 #include "hashdict.h"
 #include "spawn.h"
+#include "../../fuse/fuse_queue.c"
 
 // Maximum number of arguments of the Nary (N-Ary) HVM operation
 #define MAX_ARITY   16
+
+// Size of pointer converted to string
+#define PTR_STR_SIZE         36
 
 // It is often useful to unpack an aggregate value such as a list, set,
 // or dict.
@@ -97,6 +105,8 @@ static hvalue_t type_bool, type_int, type_str, type_pc, type_list;
 static hvalue_t type_dict, type_set, type_address, type_context;
 
 bool has_countLabel;            // TODO.  Hack for backward compatibility
+
+static struct fuse_queue *fuse_queue;
 
 // Helper function for vt_string()
 static void vt_string_recurse(struct strbuf *sb, const struct var_tree *vt){
@@ -1078,6 +1088,167 @@ void op_Bag_Bmin(const void *env, struct state *state, struct step *step){
         }
     }
     do_return(state, step, result);
+}
+
+// Attach to shared memory fuse queue
+void op_Fuse_Fuseinit(const void *env, struct state *state, struct step *step){
+    hvalue_t arg = ctx_pop(step->ctx); // TODO: without this charm will panic
+    key_t key = ftok("./hny_fuse.c", 'q');
+    if (key == -1) {
+        panic("op_Fuse_Tryfuse: ftok");
+    }
+    // Create a shared memory segment
+    int shmid = shmget(key, sizeof(struct fuse_queue), 0666);
+    if (shmid == -1) {
+        panic("op_Fuse_Tryfuse: shmget");
+    }
+    // Attach to the shared memory segment
+    fuse_queue = (struct fuse_queue *)shmat(shmid, NULL, 0);
+    if (fuse_queue == (struct fuse_queue *)(-1)) {
+        panic("op_Fuse_Tryfuse: shmat");
+    }
+    do_return(state, step, (hvalue_t) VALUE_ADDRESS_SHARED); // TODO: without this charm will panic
+}
+
+// convert *req to a Harmony value:
+// { "ptr": int, "type": atom, "data": { "ino": int } }
+static hvalue_t convert_getsize(struct allocator *allocator, struct request *req){
+    hvalue_t v_res = VALUE_DICT;
+    hvalue_t v_data = VALUE_DICT;
+
+    // used to convert pointer req to a string
+    char ptr_str[PTR_STR_SIZE];
+
+    v_data = value_dict_store(allocator, v_data, value_put_atom(allocator, "ino", 3), VALUE_TO_INT(req->data.getsize.ino));
+    
+    // convert pointer to string and later back to pointer
+    // can be improved???
+    sprintf(ptr_str, "%p", (void *)req);
+
+    v_res = value_dict_store(allocator, v_res, value_put_atom(allocator, "ptr", 3), value_put_atom(allocator, ptr_str, strlen(ptr_str)));
+    v_res = value_dict_store(allocator, v_res, value_put_atom(allocator, "type", 4), value_put_atom(allocator, "getsize", 7));
+    v_res = value_dict_store(allocator, v_res, value_put_atom(allocator, "data", 4), v_data);
+    return v_res;
+}
+
+// If exist pending request from fuse queue, return the request as a Harmony value
+// Otherwise, return None
+void op_Fuse_Fusegetreq(const void *env, struct state *state, struct step *step){
+    hvalue_t arg = ctx_pop(step->ctx);
+    hvalue_t result;
+    struct request *req;
+    if (fuse_queue_get_req(fuse_queue, &req) == 0) {
+        // exist pending request from fuse queue
+        switch (req->type) {
+        case GETSIZE:
+            result = convert_getsize(step->allocator, req);
+            break;
+        case READ:
+            // TODO
+            panic("op_Fuse_Fusegetreq: read not implemented");
+            break;
+        case WRITE:
+            // TODO
+            panic("op_Fuse_Fusegetreq: write not implemented");
+            break;
+        default:
+            panic("op_Fuse_FuseGetReq");
+        }
+    }
+    else {
+        // no pending request - return none
+        assert(req == NULL);
+        result = (hvalue_t) VALUE_ADDRESS_SHARED;
+    }
+    do_return(state, step, result);
+}
+
+// Helper function to remove surrounding double quotes from a string
+static void trim_quote(char* s) {
+    int len = strlen(s);
+    int new_len = len - 2;
+    assert(len >= 2 && s[0] == '\"' && s[len - 1] == '\"');
+    memmove(s, s + 1, new_len);
+    s[new_len] = '\0';
+}
+
+// Given Harmony value response v_res, fill in the response field in *req
+// v_res = { "size": int }
+static void reply_getsize(struct allocator *allocator, hvalue_t v_res, struct request *req) {
+    hvalue_t v_size = value_dict_load(v_res, value_put_atom(allocator, "size", 4));
+    assert(v_type != 0);
+    assert(VALUE_TYPE(v_size) == VALUE_INT);
+    req->data.getsize.res_n_blocks = VALUE_FROM_INT(v_size);
+}
+
+
+// Put a Harmony value reply into fuse queue
+// A reply in Harmony value looks like:
+// { "ptr": str, "type": str, "res": dict }
+void op_Fuse_Fuseputreply(const void *env, struct state *state, struct step *step){
+    hvalue_t arg = ctx_pop(step->ctx); // Harmony value reply
+    assert(VALUE_TYPE(arg) == VALUE_DICT);
+    // store pointer value
+    hvalue_t v_ptr;
+    struct strbuf ptr_sb;
+    strbuf_init(&ptr_sb);
+    struct request *req;
+    // store type value
+    hvalue_t v_type;
+    struct strbuf type_sb;
+    strbuf_init(&type_sb);
+    // store res value
+    hvalue_t v_res;
+
+    // convert pointer from Harmony value to string and then to pointer
+    v_ptr = value_dict_load(arg, value_put_atom(step->allocator, "ptr", 3));
+    assert(v_ptr != 0);
+    assert(VALUE_TYPE(v_ptr) == VALUE_ATOM);
+    strbuf_value_string(&ptr_sb, v_ptr);
+    trim_quote(strbuf_getstr(&ptr_sb));
+    sscanf(strbuf_getstr(&ptr_sb), "%p", (void **)&req);
+
+    // convert type from Harmony value to string
+    v_type = value_dict_load(arg, value_put_atom(step->allocator, "type", 4));
+    assert(v_type != 0);
+    assert(VALUE_TYPE(v_type) == VALUE_ATOM);
+    strbuf_value_string(&type_sb, v_type);
+    trim_quote(strbuf_getstr(&type_sb));
+
+    assert(req->status == UNHANDLED);
+    if (strcmp(strbuf_getstr(&type_sb), "getsize") == 0) 
+        assert(req->type == GETSIZE);
+    else if (strcmp(strbuf_getstr(&type_sb), "read") == 0)
+        assert(req->type == READ);
+    else if (strcmp(strbuf_getstr(&type_sb), "write") == 0)
+        assert(req->type == WRITE);
+    else
+        panic("op_Fuse_Fuseputreply: match failure");
+    
+    strbuf_deinit(&ptr_sb);
+    strbuf_deinit(&type_sb);
+
+    v_res = value_dict_load(arg, value_put_atom(step->allocator, "res", 3));
+    assert(v_type != 0);
+
+    // fill in reply data in req's field
+    switch (req->type) {
+    case GETSIZE:
+        reply_getsize(step->allocator, v_res, req);
+        break;
+    case READ:
+        // TODO
+        panic("op_Fuse_Fuseputreply: read not implemented");
+        break;
+    case WRITE:
+        // TODO
+        panic("op_Fuse_Fuseputreply: write not implemented");
+        break;
+    default:
+        panic("op_Fuse_Fuseputreply");
+    }
+    fuse_queue_reply_ready(req); // reply is ready to be retrieved by client
+    do_return(state, step, (hvalue_t) VALUE_ADDRESS_SHARED); // TODO: without this charm will panic
 }
 
 // This operation expects on the top of the stack an enumerable value
@@ -4655,6 +4826,9 @@ struct op_info op_table[] = {
     { "bag$remove", NULL, op_Bag_Remove },
     { "bag$size", NULL, op_Bag_Size },
     { "list$tail", NULL, op_List_Tail },
+    { "fuse$fuseinit", NULL, op_Fuse_Fuseinit},
+    { "fuse$fusegetreq", NULL, op_Fuse_Fusegetreq},
+    { "fuse$fuseputreply", NULL, op_Fuse_Fuseputreply},
 
     { NULL, NULL, NULL }
 };

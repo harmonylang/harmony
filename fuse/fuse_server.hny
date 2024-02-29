@@ -1,0 +1,50 @@
+from fuse import *
+from file_inode import *
+
+const N_FILES = 2
+const N_WORKERS = 2
+ct = [0,] * N_WORKERS # hack for a bug in Harmony
+
+system = File(N_FILES)
+fuseinit(None)
+
+# data = { "ino": int }
+# res = { "size": int }
+def handle_getsize(data) returns res:
+  let size = getsize(system, data["ino"]):
+    res = { "size": size }
+
+# data = { "ino": int, "offset": int }
+# res = { "data": atom }
+def handle_read(data) returns res:
+  let res_data = read(system, data["ino"], data["offset"]):
+    res = { "data": res_data }
+
+# data = { "ino": int, "offset": int, "data": atom }
+# res = {}
+def handle_write(data) returns res:
+  write(system, data["ino"], data["offset"], data["data"])
+  res = {}
+
+# req = { "ptr": int, "type": atom, "data": dict }
+def handle_req(req):
+  if req["type"] == 'getsize':
+    fuseputreply({ "ptr": req["ptr"], "type": req["type"], "res": handle_getsize(req["data"]) })
+  elif req["type"] == 'read':
+    fuseputreply({ "ptr": req["ptr"], "type": req["type"], "res": handle_read(req["data"]) })
+  elif req["type"] == 'write':
+    fuseputpeply({ "ptr": req["ptr"], "type": req["type"], "res": handle_write(req["data"]) })
+  else:
+    print("handle_req: match failure")
+    assert False
+
+def fuse_server_worker(i):
+  while True:
+    ct[i - 1] += 1 # Hack for a bug in Harmony
+    let req = fusegetreq(None):
+      if req != None:
+        handle_req(req)
+
+for i in { 1 .. N_WORKERS }:
+  spawn eternal fuse_server_worker(i)
+

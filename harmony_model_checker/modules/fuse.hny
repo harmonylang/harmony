@@ -1,0 +1,17 @@
+builtin fuseinit "fuse$fuseinit"
+def fuseinit(x):
+    # this function is C-only
+    print("fuseinit is C-only!")
+    assert False
+
+builtin fusegetreq "fuse$fusegetreq"
+def fusegetreq(x) returns req:
+    # this function is C-only
+    print("fusegetreq is C-only!")
+    assert False
+
+builtin fuseputreply "fuse$fuseputreply"
+def fuseputreply(reply):
+    # this function is C-only
+    print("fuseputreply is C-only!")
+    assert False
