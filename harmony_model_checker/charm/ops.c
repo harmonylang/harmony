@@ -1131,6 +1131,51 @@ static hvalue_t convert_getsize(struct allocator *allocator, struct request *req
     return v_res;
 }
 
+// convert *req to a Harmony value:
+// { "ptr": int, "type": atom, "data": { "ino": int, "offset": int } }
+static hvalue_t convert_read(struct allocator *allocator, struct request *req){
+    hvalue_t v_res = VALUE_DICT;
+    hvalue_t v_data = VALUE_DICT;
+
+    // used to convert pointer req to a string
+    char ptr_str[PTR_STR_SIZE];
+
+    v_data = value_dict_store(allocator, v_data, value_put_atom(allocator, "ino", 3), VALUE_TO_INT(req->data.read.ino));
+    v_data = value_dict_store(allocator, v_data, value_put_atom(allocator, "offset", 6), VALUE_TO_INT(req->data.read.offset));
+    
+    // convert pointer to string and later back to pointer
+    // can be improved???
+    sprintf(ptr_str, "%p", (void *)req);
+
+    v_res = value_dict_store(allocator, v_res, value_put_atom(allocator, "ptr", 3), value_put_atom(allocator, ptr_str, strlen(ptr_str)));
+    v_res = value_dict_store(allocator, v_res, value_put_atom(allocator, "type", 4), value_put_atom(allocator, "read", 4));
+    v_res = value_dict_store(allocator, v_res, value_put_atom(allocator, "data", 4), v_data);
+    return v_res;
+}
+
+// convert *req to a Harmony value:
+// { "ptr": int, "type": atom, "data": { "ino": int, "offset": int, "data": atom } }
+static hvalue_t convert_write(struct allocator *allocator, struct request *req){
+    hvalue_t v_res = VALUE_DICT;
+    hvalue_t v_data = VALUE_DICT;
+
+    // used to convert pointer req to a string
+    char ptr_str[PTR_STR_SIZE];
+
+    v_data = value_dict_store(allocator, v_data, value_put_atom(allocator, "ino", 3), VALUE_TO_INT(req->data.write.ino));
+    v_data = value_dict_store(allocator, v_data, value_put_atom(allocator, "offset", 6), VALUE_TO_INT(req->data.write.offset));
+    v_data = value_dict_store(allocator, v_data, value_put_atom(allocator, "data", 4), value_put_atom(allocator, req->data.write.block_data, BLOCK_SIZE));
+    
+    // convert pointer to string and later back to pointer
+    // can be improved???
+    sprintf(ptr_str, "%p", (void *)req);
+
+    v_res = value_dict_store(allocator, v_res, value_put_atom(allocator, "ptr", 3), value_put_atom(allocator, ptr_str, strlen(ptr_str)));
+    v_res = value_dict_store(allocator, v_res, value_put_atom(allocator, "type", 4), value_put_atom(allocator, "write", 5));
+    v_res = value_dict_store(allocator, v_res, value_put_atom(allocator, "data", 4), v_data);
+    return v_res;
+}
+
 // If exist pending request from fuse queue, return the request as a Harmony value
 // Otherwise, return None
 void op_Fuse_Fusegetreq(const void *env, struct state *state, struct step *step){
@@ -1144,12 +1189,10 @@ void op_Fuse_Fusegetreq(const void *env, struct state *state, struct step *step)
             result = convert_getsize(step->allocator, req);
             break;
         case READ:
-            // TODO
-            panic("op_Fuse_Fusegetreq: read not implemented");
+            result = convert_read(step->allocator, req);
             break;
         case WRITE:
-            // TODO
-            panic("op_Fuse_Fusegetreq: write not implemented");
+            result = convert_write(step->allocator, req);
             break;
         default:
             panic("op_Fuse_FuseGetReq");
@@ -1179,6 +1222,34 @@ static void reply_getsize(struct allocator *allocator, hvalue_t v_res, struct re
     assert(v_type != 0);
     assert(VALUE_TYPE(v_size) == VALUE_INT);
     req->data.getsize.res_n_blocks = VALUE_FROM_INT(v_size);
+}
+
+// Given Harmony value response v_res, fill in the response field in *req
+// v_res = { "data": atom/None }
+static void reply_read(struct allocator *allocator, hvalue_t v_res, struct request *req) {
+    hvalue_t v_data = value_dict_load(v_res, value_put_atom(allocator, "data", 4));
+    assert(v_data != 0);
+    if (v_data == VALUE_ADDRESS_SHARED) {
+        // Harmony read returned None
+        req->data.read.res_code = -1;
+    }
+    else if (VALUE_TYPE(v_data) == VALUE_ATOM) {
+        // Harmony read returned block data
+        req->data.read.res_code = 0;
+        unsigned int size;
+        char *b = value_get(v_data, &size);
+        assert(size == BLOCK_SIZE);
+        memcpy(req->data.read.res_block_data, b, size);
+    }
+    else 
+        panic("reply_read: match failure");
+}
+
+// Given Harmony value response v_res, fill in the response field in *req
+// v_res = {}
+static void reply_write(struct allocator *allocator, hvalue_t v_res, struct request *req) {
+    assert(v_res = VALUE_DICT);
+    // no response needed for write
 }
 
 
@@ -1237,12 +1308,10 @@ void op_Fuse_Fuseputreply(const void *env, struct state *state, struct step *ste
         reply_getsize(step->allocator, v_res, req);
         break;
     case READ:
-        // TODO
-        panic("op_Fuse_Fuseputreply: read not implemented");
+        reply_read(step->allocator, v_res, req);
         break;
     case WRITE:
-        // TODO
-        panic("op_Fuse_Fuseputreply: write not implemented");
+        reply_write(step->allocator, v_res, req);
         break;
     default:
         panic("op_Fuse_Fuseputreply");

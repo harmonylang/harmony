@@ -15,7 +15,7 @@ def handle_getsize(data) returns res:
     res = { "size": size }
 
 # data = { "ino": int, "offset": int }
-# res = { "data": atom }
+# res = { "data": atom/None }
 def handle_read(data) returns res:
   let res_data = read(system, data["ino"], data["offset"]):
     res = { "data": res_data }
@@ -33,7 +33,7 @@ def handle_req(req):
   elif req["type"] == 'read':
     fuseputreply({ "ptr": req["ptr"], "type": req["type"], "res": handle_read(req["data"]) })
   elif req["type"] == 'write':
-    fuseputpeply({ "ptr": req["ptr"], "type": req["type"], "res": handle_write(req["data"]) })
+    fuseputreply({ "ptr": req["ptr"], "type": req["type"], "res": handle_write(req["data"]) })
   else:
     print("handle_req: match failure")
     assert False

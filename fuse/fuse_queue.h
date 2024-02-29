@@ -13,10 +13,13 @@ struct getsize {
     blkcnt_t res_n_blocks;
 };
 
-// Returns the block of file ino at the given offset in res_block_data
+// Returns the block of file ino at the given offset in res_block_data and 
+// set res_code to 0
+// Otherwise, if block does not exist and Harmony returns None, set res_code to -1
 struct read {
     unsigned int ino;
     unsigned int offset;
+    char res_code;
     char res_block_data[BLOCK_SIZE];
 };
 

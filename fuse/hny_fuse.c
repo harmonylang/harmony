@@ -357,36 +357,120 @@ static int hny_open(const char* path, struct fuse_file_info* fi)
 // bytes into the file. See read(2) for full details. Returns the number of 
 // bytes transferred, or 0 if offset was at or beyond the end of the file. 
 // Required for any sensible filesystem.
-static int hny_read( const char *path, char *buffer, size_t size, off_t offset, struct fuse_file_info *fi )
+static int hny_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
-	printf( "--> Trying to read %s, %lu, %lu\n", path, offset, size );
+	// only support reading n contiguous blocks
+	// TODO lots of room for improvement - e.g in POSIX, the entire read() call 
+	// should be atomic, but here it is not - only each block read is atomic
+
+	// translate byte read to block read
+	assert(offset % BLOCK_SIZE == 0);
+	assert(size % BLOCK_SIZE == 0);
+	printf("--> [Trying to read] path: %s; size: %lu; offset: %lu\n", path, size, offset);
 	
-	char file54Text[] = "Hello World From File54!";
-	char file349Text[] = "Hello World From File349!";
-	char *selectedText = NULL;
-	
-	// ... //
-	
-	if ( strcmp( path, "/file0" ) == 0 )
-		selectedText = file54Text;
-	else if ( strcmp( path, "/file1" ) == 0 )
-		selectedText = file349Text;
-	else
-		return -1;
-	
-	// ... //
-	
-	memcpy( buffer, selectedText + offset, size );
-		
-	return strlen( selectedText ) - offset;
+	if (strcmp(path, "/file0") == 0) {
+		size_t total_read = 0;
+		struct request *req;
+		while (size > 0) {
+			fuse_queue_alloc_req(fuse_queue, &req);
+			req->type = READ;
+			req->data.read.ino = 0;
+			req->data.read.offset = (offset / BLOCK_SIZE);
+			fuse_queue_req_ready(fuse_queue, req);
+			fuse_queue_get_reply(fuse_queue, req);
+			assert(req->data.read.ino == 0);
+			if (req->data.read.res_code == 0) {
+				// block exists
+				memcpy(buf, req->data.read.res_block_data, BLOCK_SIZE);
+				fuse_queue_reply_done(fuse_queue, req);
+			}
+			else {
+				// block does not exist
+				fuse_queue_reply_done(fuse_queue, req);
+				break;
+			}
+			offset += BLOCK_SIZE;
+			size -= BLOCK_SIZE;
+			buf += BLOCK_SIZE;
+			total_read += BLOCK_SIZE;
+		}
+		return total_read;
+	}
+	else if (strcmp(path, "/file1") == 0) {
+		size_t total_read = 0;
+		struct request *req;
+		while (size > 0) {
+			fuse_queue_alloc_req(fuse_queue, &req);
+			req->type = READ;
+			req->data.read.ino = 1;
+			req->data.read.offset = (offset / BLOCK_SIZE);
+			fuse_queue_req_ready(fuse_queue, req);
+			fuse_queue_get_reply(fuse_queue, req);
+			assert(req->data.read.ino == 1);
+			if (req->data.read.res_code == 0) {
+				// block exists
+				memcpy(buf, req->data.read.res_block_data, BLOCK_SIZE);
+				fuse_queue_reply_done(fuse_queue, req);
+			}
+			else {
+				// block does not exist
+				fuse_queue_reply_done(fuse_queue, req);
+				break;
+			}
+			offset += BLOCK_SIZE;
+			size -= BLOCK_SIZE;
+			buf += BLOCK_SIZE;
+			total_read += BLOCK_SIZE;
+		}
+		return total_read;
+	}
+	else {
+		printf("hny_read: file does not exist!");
+		return 0;
+	}
 }
 
 // As for read above, except that it can't return 0.
 static int hny_write(const char* path, const char *buf, size_t size, off_t offset, struct fuse_file_info* fi)
 {
-	fprintf(stderr, "hny_write: Not implemented\n");
-	errno = ENOSYS;
-	return -errno;
+	// only support writing an entire block
+	// translate byte write to block write
+	assert(offset % BLOCK_SIZE == 0);
+	assert(size == BLOCK_SIZE);
+	assert(strlen(buf) == BLOCK_SIZE);
+	printf("--> [Trying to write] path: %s; buf: %s; size: %lu; offset: %lu\n", path, buf, size, offset);
+	if (strcmp(path, "/file0") == 0) {
+		struct request *req;
+		fuse_queue_alloc_req(fuse_queue, &req);
+		req->type = WRITE;
+		req->data.write.ino = 0;
+		req->data.write.offset = (offset / BLOCK_SIZE);
+		memcpy(req->data.write.block_data, buf, size);
+		fuse_queue_req_ready(fuse_queue, req);
+		fuse_queue_get_reply(fuse_queue, req);
+		assert(req->data.write.ino == 0);
+		fuse_queue_reply_done(fuse_queue, req);
+		return size;
+	}
+	else if (strcmp(path, "/file1") == 0) {
+		struct request *req;
+		fuse_queue_alloc_req(fuse_queue, &req);
+		req->type = WRITE;
+		req->data.write.ino = 1;
+		req->data.write.offset = (offset / BLOCK_SIZE);
+		memcpy(req->data.write.block_data, buf, size);
+		fuse_queue_req_ready(fuse_queue, req);
+		fuse_queue_get_reply(fuse_queue, req);
+		assert(req->data.write.ino == 1);
+		fuse_queue_reply_done(fuse_queue, req);
+		return size;
+	}
+	else
+	{
+		fprintf(stderr, "hny_write: Wrong path\n");
+		errno = ENOSYS;
+		return -errno;
+	}
 }
 
 // Return statistics about the filesystem. See statvfs(2) for a description of 
