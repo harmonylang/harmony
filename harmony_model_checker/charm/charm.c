@@ -347,7 +347,7 @@ static void run_direct(struct state *state){
             }
         }
 
-        for (;;) {
+        for (int i = 0; i < 100; i++) {     // Limit partial order reduction
             int pc = step.ctx->pc;
             struct instr *instrs = global.code.instrs;
             struct op_info *oi = instrs[pc].oi;
