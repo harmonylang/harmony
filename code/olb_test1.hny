@@ -1,0 +1,24 @@
+import olb
+
+n_eb = n_wb = 0
+invariant ((n_eb >= 0) and (n_wb == 0)) or ((n_wb >= 0) and (n_eb == 0))
+
+const NOPS = 3
+
+bridge = olb.OLB()
+
+def thread():
+    while choose({ False, True }):
+        if choose({ "eb", "wb" }) == "eb":
+            olb.eb_acquire(?bridge)
+            atomically n_eb += 1
+            atomically n_eb -= 1
+            olb.eb_release(?bridge)
+        else:                       # wb
+            olb.wb_acquire(?bridge)
+            atomically n_wb += 1
+            atomically n_wb -= 1
+            olb.wb_release(?bridge)
+
+for i in {1..NOPS}:
+    spawn thread()
