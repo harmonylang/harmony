@@ -1,0 +1,18 @@
+# one lane bridge (east-bound or west-bound only)
+
+def OLB() returns lock:
+    lock = { .n_wb: 0, .n_eb: 0 }
+
+def wb_acquire(olb):
+    atomically when olb->n_eb == 0:
+        olb->n_wb += 1
+
+def wb_release(olb):
+    atomically olb->n_wb -= 1
+
+def eb_acquire(olb):
+    atomically when olb->n_wb == 0:
+        olb->n_eb += 1
+
+def eb_release(olb):
+    atomically olb->n_eb -= 1

@@ -1,0 +1,36 @@
+from synch import Lock, acquire, release
+
+def OLB() returns lock:
+    lock = {
+        .lock: Lock(),
+        .eb: { .lock: Lock(), .n: 0 },
+        .wb: { .lock: Lock(), .n: 0 }
+    }
+
+def wb_acquire(olb):
+    acquire(?olb->wb.lock)
+    if olb->wb.n == 0:
+        acquire(?olb->lock)
+    olb->wb.n += 1
+    release(?olb->wb.lock)
+
+def wb_release(olb):
+    acquire(?olb->wb.lock)
+    olb->wb.n -= 1
+    if olb->wb.n == 0:
+        release(?olb->lock)
+    release(?olb->wb.lock)
+
+def eb_acquire(olb):
+    acquire(?olb->eb.lock)
+    if olb->eb.n == 0:
+        acquire(?olb->lock)
+    olb->eb.n += 1
+    release(?olb->eb.lock)
+
+def eb_release(olb):
+    acquire(?olb->eb.lock)
+    olb->eb.n -= 1
+    if olb->eb.n == 0:
+        release(?olb->lock)
+    release(?olb->eb.lock)
