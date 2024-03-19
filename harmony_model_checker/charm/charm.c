@@ -313,6 +313,8 @@ static void run_direct(struct state *state){
     step.ctx = &fullctx.ctx;
     unsigned int interrupt_count = 1;
 
+    setbuf(stdout, NULL);
+
     while (state->bagsize > 0) {
         unsigned int total = 0, ctx_index = 0;
         for (int i = 0; i < state->bagsize; i++) {
