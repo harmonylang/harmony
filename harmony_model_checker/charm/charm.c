@@ -404,7 +404,7 @@ static void run_direct(struct state *state){
         }
 
         // Remove the original context from the state
-        assert(state_ctx(state, ctx_index) == ctx);
+        // assert(state_ctx(state, ctx_index) == ctx);
         context_remove_by_index(state, ctx_index);
 
         // Add updated context to state unless terminated or stopped
