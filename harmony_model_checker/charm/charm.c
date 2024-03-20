@@ -2900,15 +2900,15 @@ static void worker(void *arg){
             global.allocated = global.graph.size * sizeof(struct node *) +
                 dict_allocated(w->visited) + dict_allocated(global.values);
 
+#ifdef SHORT_PTR
             {
                 struct node *root = global.graph.nodes[0];
                 struct edge *re = node_edges(root);
                 struct node *rd = edge_dst(re);
-#ifdef SHORT_PTR
                 printf("N0: %d %d %p (%ld)\n", (int) root->id, root->nedges, rd, (int64_t) re->dest);
                 printf("N0...: %d %d %p (%d)\n", (int) root->id, root->nedges, rd, (int) rd->id);
-#endif
             }
+#endif
         }
 
         // Start the final phase (and keep stats).
