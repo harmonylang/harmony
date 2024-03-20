@@ -435,7 +435,7 @@ static void process_step(
             f->type = so->failed ? FAIL_SAFETY : FAIL_TERMINATION;
             f->node = node;
             f->edge = walloc_fast(w, sizeof(struct edge));
-#ifdef SHORT_POINTER
+#ifdef SHORT_PTR
             f->edge->dest = (int64_t *) node - (int64_t *) f->edge;
             printf("SET DST 1: %p\n", node);
 #else
@@ -556,7 +556,7 @@ static void process_step(
     struct dict_assoc *hn = dict_find_new(w->visited, &w->allocator,
                 sc, size, noutgoing * sizeof(struct edge), &new, &lock);
     struct node *next = (struct node *) &hn[1];
-#ifdef SHORT_POINTER
+#ifdef SHORT_PTR
     edge->dest = (int64_t *) next - (int64_t *) edge;
     printf("SET DST 2: next=%p edge=%p diff=%ld(%ld,%ld) %p\n", next, edge, (int64_t) edge->dest,
     (int64_t *) next - (int64_t *) edge,
@@ -2904,7 +2904,7 @@ static void worker(void *arg){
                 struct node *root = global.graph.nodes[0];
                 struct edge *re = node_edges(root);
                 struct node *rd = edge_dst(re);
-#ifdef SHORT_POINTER
+#ifdef SHORT_PTR
                 printf("N0: %d %d %p (%ld)\n", (int) root->id, root->nedges, rd, (int64_t) re->dest);
                 printf("N0...: %d %d %p (%d)\n", (int) root->id, root->nedges, rd, (int) rd->id);
 #endif

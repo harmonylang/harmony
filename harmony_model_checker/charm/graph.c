@@ -40,7 +40,7 @@ unsigned int graph_add_multiple(struct graph *graph, unsigned int n) {
     return node_id;
 }
 
-#ifndef notdef
+#ifdef SHORT_PTR
 void dump_edges(struct node *src){
     struct edge *e = node_edges(src);
     for (unsigned int i = 0; i < src->nedges; i++, e++) {
@@ -48,7 +48,7 @@ void dump_edges(struct node *src){
             edge_dst(e), (int64_t) e->dest, e->stc_id, e->multiple, e->failed);
     }
 }
-#endif // notdef
+#endif
 
 struct edge *find_edge(struct node *src, struct node *dst){
     struct edge *e = node_edges(src);
