@@ -406,7 +406,7 @@ static void run_direct(struct state *state){
         }
 
         // Remove the original context from the state
-        assert(state_ctx(state, ctx_index) == ctx);
+        // assert(state_ctx(state, ctx_index) == ctx);
         context_remove_by_index(state, ctx_index);
 
         // Add updated context to state unless terminated or stopped
@@ -436,7 +436,8 @@ static void process_step(
             f->node = node;
             f->edge = walloc_fast(w, sizeof(struct edge));
 #ifdef SHORT_POINTER
-            f->edge->dest = (uint64_t *) node - (uint64_t *) f->edge;
+            f->edge->dest = (int64_t *) node - (int64_t *) f->edge;
+            printf("SET DST 1: %p\n", node);
 #else
             f->edge->dst = node;
 #endif
@@ -556,7 +557,11 @@ static void process_step(
                 sc, size, noutgoing * sizeof(struct edge), &new, &lock);
     struct node *next = (struct node *) &hn[1];
 #ifdef SHORT_POINTER
-    edge->dest = (uint64_t *) next - (uint64_t *) edge;
+    edge->dest = (int64_t *) next - (int64_t *) edge;
+    printf("SET DST 2: next=%p edge=%p diff=%ld(%ld,%ld) %p\n", next, edge, (int64_t) edge->dest,
+    (int64_t *) next - (int64_t *) edge,
+    ((int64_t *) next - (int64_t *) edge) >> 37,
+    edge_dst(edge));
 #else
     edge->dst = next;
 #endif
@@ -2894,6 +2899,16 @@ static void worker(void *arg){
             // Compute how much table space is in use (reported in stats)
             global.allocated = global.graph.size * sizeof(struct node *) +
                 dict_allocated(w->visited) + dict_allocated(global.values);
+
+            {
+                struct node *root = global.graph.nodes[0];
+                struct edge *re = node_edges(root);
+                struct node *rd = edge_dst(re);
+#ifdef SHORT_POINTER
+                printf("N0: %d %d %p (%ld)\n", (int) root->id, root->nedges, rd, (int64_t) re->dest);
+                printf("N0...: %d %d %p (%d)\n", (int) root->id, root->nedges, rd, (int) rd->id);
+#endif
+            }
         }
 
         // Start the final phase (and keep stats).
@@ -3316,6 +3331,103 @@ unsigned int str_split(const char *s, char sep, char ***parts){
     }
 
     return n;
+}
+
+static void charm_dump(bool computed_components){
+    FILE *df = fopen("charm.dump", "w");
+    if (df == NULL) {
+        fprintf(stderr, "Can't create charm.dump\n");
+    }
+    else {
+        // setbuf(df, NULL);
+        for (unsigned int i = 0; i < global.graph.size; i++) {
+            struct node *node = global.graph.nodes[i];
+            assert(node->id == i);
+            fprintf(df, "\nNode %d:\n", node->id);
+            if (computed_components) {
+                fprintf(df, "    component: %d\n", scc[i].component);
+            }
+            fprintf(df, "    len to parent: %d\n", node->len);
+            if (node_to_parent(node) != NULL) {
+                fprintf(df, "    ancestors:");
+                for (struct node *n = node->parent;; n = n->parent) {
+                    fprintf(df, " %u", n->id);
+                    if (node_to_parent(n) == NULL) {
+                        break;
+                    }
+                }
+                fprintf(df, "\n");
+            }
+            struct state *state = node_state(node);
+            fprintf(df, "    vars: %s\n", value_string(state->vars));
+            fprintf(df, "    contexts:\n");
+            for (unsigned int i = 0; i < state->bagsize; i++) {
+                fprintf(df, "      %"PRI_HVAL": %u\n", state_ctx(state, i), state_multiplicity(state, i));
+            }
+#ifdef TODO
+            if (state->stopbag != VALUE_DICT) {
+                fprintf(df, "    stopbag:\n");
+                unsigned int size;
+                hvalue_t *vals = value_get(state->stopbag, &size);
+                size /= 2 * sizeof(hvalue_t);
+                for (unsigned int i = 0; i < size; i++) {
+                    fprintf(df, "      %"PRI_HVAL": %d\n", vals[2*i], (int) VALUE_FROM_INT(vals[2*i+1]));;
+                }
+            }
+#endif
+            // fprintf(df, "    len: %u %u\n", node->len, node->steps);
+            if (node->failed) {
+                fprintf(df, "    failed\n");
+            }
+            fprintf(df, "    fwd:\n");
+            int eno = 0;
+            struct edge *edge = node_edges(node);
+            for (unsigned int i = 0; i < node->nedges; i++, edge++) {
+                fprintf(df, "        %d:\n", eno);
+                struct context *ctx = value_get(edge_input(edge)->ctx, NULL);
+                struct node *dst = edge_dst(edge);
+                if (computed_components) {
+                    fprintf(df, "            node: %d (%d)\n", dst->id, scc[dst->id].component);
+                }
+                else {
+                    fprintf(df, "            node: %d\n", dst->id);
+                }
+                fprintf(df, "            context before: %"PRIx64" pc=%d\n", edge_input(edge)->ctx, ctx->pc);
+                ctx = value_get(edge_output(edge)->after, NULL);
+                fprintf(df, "            context after:  %"PRIx64" pc=%d\n", edge_output(edge)->after, ctx->pc);
+                if (edge->failed) {
+                    fprintf(df, "            failed\n");
+                }
+                if (edge_input(edge)->choice != 0) {
+                    fprintf(df, "            choice: %s\n",
+                            value_string(edge_input(edge)->choice));
+                }
+                if (edge_output(edge)->nlog > 0) {
+                    fprintf(df, "            log:");
+                    for (unsigned int j = 0; j < edge_output(edge)->nlog; j++) {
+                        char *p = value_string(step_log(edge_output(edge))[j]);
+                        fprintf(df, " %s", p);
+                        free(p);
+                    }
+                    fprintf(df, "\n");
+                }
+                if (edge_output(edge)->ai != NULL) {
+                    fprintf(df, "            ai:\n");
+                    for (struct access_info *ai = edge_output(edge)->ai; ai != NULL; ai = ai->next) {
+                        char *p = indices_string(ai->indices, ai->n);
+                        if (ai->load) {
+                            fprintf(df, "              load %s\n", p);
+                        }
+                        else {
+                            fprintf(df, "              store %s\n", p);
+                        }
+                        free(p);
+                    }
+                }
+            }
+        }
+        fclose(df);
+    }
 }
 
 #ifndef _WIN32
@@ -3846,6 +3958,8 @@ int exec_model_checker(int argc, char **argv){
 
     bool computed_components = false;
 
+    // charm_dump(computed_components);
+
     // Do a cheap check for deadlock if no other errors have been detected
     // TODO.  Could be parallelized
     if (global.failures == NULL) {
@@ -4088,94 +4202,7 @@ int exec_model_checker(int argc, char **argv){
             fclose(df);
         }
 
-        df = fopen("charm.dump", "w");
-        if (df == NULL) {
-            fprintf(stderr, "Can't create charm.dump\n");
-        }
-        else {
-            // setbuf(df, NULL);
-            for (unsigned int i = 0; i < global.graph.size; i++) {
-                struct node *node = global.graph.nodes[i];
-                assert(node->id == i);
-                fprintf(df, "\nNode %d:\n", node->id);
-                if (computed_components) {
-                    fprintf(df, "    component: %d\n", scc[i].component);
-                }
-                fprintf(df, "    len to parent: %d\n", node->len);
-                if (node_to_parent(node) != NULL) {
-                    fprintf(df, "    ancestors:");
-                    for (struct node *n = node->parent;; n = n->parent) {
-                        fprintf(df, " %u", n->id);
-                        if (node_to_parent(n) == NULL) {
-                            break;
-                        }
-                    }
-                    fprintf(df, "\n");
-                }
-                struct state *state = node_state(node);
-                fprintf(df, "    vars: %s\n", value_string(state->vars));
-                fprintf(df, "    contexts:\n");
-                for (unsigned int i = 0; i < state->bagsize; i++) {
-                    fprintf(df, "      %"PRI_HVAL": %u\n", state_ctx(state, i), state_multiplicity(state, i));
-                }
-#ifdef TODO
-                if (state->stopbag != VALUE_DICT) {
-                    fprintf(df, "    stopbag:\n");
-                    unsigned int size;
-                    hvalue_t *vals = value_get(state->stopbag, &size);
-                    size /= 2 * sizeof(hvalue_t);
-                    for (unsigned int i = 0; i < size; i++) {
-                        fprintf(df, "      %"PRI_HVAL": %d\n", vals[2*i], (int) VALUE_FROM_INT(vals[2*i+1]));;
-                    }
-                }
-#endif
-                // fprintf(df, "    len: %u %u\n", node->len, node->steps);
-                if (node->failed) {
-                    fprintf(df, "    failed\n");
-                }
-                fprintf(df, "    fwd:\n");
-                int eno = 0;
-                struct edge *edge = node_edges(node);
-                for (unsigned int i = 0; i < node->nedges; i++, edge++) {
-                    fprintf(df, "        %d:\n", eno);
-                    struct context *ctx = value_get(edge_input(edge)->ctx, NULL);
-                    fprintf(df, "            node: %d (%d)\n", edge_dst(edge)->id, scc[edge_dst(edge)->id].component);
-                    fprintf(df, "            context before: %"PRIx64" pc=%d\n", edge_input(edge)->ctx, ctx->pc);
-                    ctx = value_get(edge_output(edge)->after, NULL);
-                    fprintf(df, "            context after:  %"PRIx64" pc=%d\n", edge_output(edge)->after, ctx->pc);
-                    if (edge->failed) {
-                        fprintf(df, "            failed\n");
-                    }
-                    if (edge_input(edge)->choice != 0) {
-                        fprintf(df, "            choice: %s\n",
-                                value_string(edge_input(edge)->choice));
-                    }
-                    if (edge_output(edge)->nlog > 0) {
-                        fprintf(df, "            log:");
-                        for (unsigned int j = 0; j < edge_output(edge)->nlog; j++) {
-                            char *p = value_string(step_log(edge_output(edge))[j]);
-                            fprintf(df, " %s", p);
-                            free(p);
-                        }
-                        fprintf(df, "\n");
-                    }
-                    if (edge_output(edge)->ai != NULL) {
-                        fprintf(df, "            ai:\n");
-                        for (struct access_info *ai = edge_output(edge)->ai; ai != NULL; ai = ai->next) {
-                            char *p = indices_string(ai->indices, ai->n);
-                            if (ai->load) {
-                                fprintf(df, "              load %s\n", p);
-                            }
-                            else {
-                                fprintf(df, "              store %s\n", p);
-                            }
-                            free(p);
-                        }
-                    }
-                }
-            }
-            fclose(df);
-        }
+        charm_dump(computed_components);
     }
 
     // Look for data races
