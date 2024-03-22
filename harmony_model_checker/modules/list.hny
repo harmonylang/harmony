@@ -8,9 +8,9 @@ def append(s, e) returns result:
 def head(s) returns result:
     result = s[0]
 
-builtin tail "list$tail"
 def tail(s) returns result:
-    result = subseq(s, 1, len(s))
+    result = s
+    del result[0]
 
 # sum of a list or set
 def sum(a) returns accu:
