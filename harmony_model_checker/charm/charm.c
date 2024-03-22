@@ -302,7 +302,7 @@ static inline void context_remove_by_index(struct state *state, int i){
 }
 
 // Part of experimental -d option, running Harmony programs "for real".
-static void run_direct(struct state *state){
+static void direct_run(struct state *state){
     struct {
         struct context ctx;
         hvalue_t stack[MAX_CONTEXT_STACK];
@@ -315,7 +315,12 @@ static void run_direct(struct state *state){
 
     setbuf(stdout, NULL);
 
-    while (state->bagsize > 0) {
+    while (state->total > 0) {
+        direct_check(state, &step);
+        if (state->bagsize == 0) {
+            continue;
+        }
+
         unsigned int total = 0, ctx_index = 0;
         for (int i = 0; i < state->bagsize; i++) {
             total += state_multiplicity(state, i);
@@ -354,7 +359,7 @@ static void run_direct(struct state *state){
             struct instr *instrs = global.code.instrs;
             struct op_info *oi = instrs[pc].oi;
             (*oi->op)(instrs[pc].env, state, &step);
-            if (step.ctx->terminated) {
+            if (step.ctx->terminated || step.ctx->stopped) {
                 break;
             }
             if (step.ctx->failed) {
@@ -410,7 +415,11 @@ static void run_direct(struct state *state){
         context_remove_by_index(state, ctx_index);
 
         // Add updated context to state unless terminated or stopped
-        if (!step.ctx->terminated && !step.ctx->stopped) {
+        if (step.ctx->stopped) {
+            hvalue_t after = value_put_context(step.allocator, step.ctx);
+            stopped_context_add(state, after);
+        }
+        else if (!step.ctx->terminated) {
             hvalue_t after = value_put_context(step.allocator, step.ctx);
             context_add(state, after);
         }
@@ -3787,7 +3796,7 @@ int exec_model_checker(int argc, char **argv){
     if (dflag) {
         global.run_direct = true;
         srand((unsigned) gettime());
-        run_direct(state);
+        direct_run(state);
         exit(0);
     }
 

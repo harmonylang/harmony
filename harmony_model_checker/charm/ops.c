@@ -960,7 +960,7 @@ static void direct_completed(hvalue_t ctx, hvalue_t result){
 }
 
 // See if any external activities completed.
-static void direct_check(struct state *state, struct step *step){
+void direct_check(struct state *state, struct step *step){
     mutex_acquire(&direct_mutex);
 
     struct direct_done *dd;
@@ -1006,7 +1006,7 @@ static void direct_check(struct state *state, struct step *step){
 
         // Add new context to the context bag
         if (context_add(state, context) < 0) {
-            value_ctx_failure(step->ctx, step->allocator, "direct_check: too many threads");
+            panic("direct_check: too many threads");
         }
         free(dd);
     }
@@ -1032,6 +1032,8 @@ void op_Bogus_Bogus(const void *env, struct state *state, struct step *step){
 
     step->ctx->pc++;
     step->ctx->stopped = true;
+
+    printf("op_Bogus\n");
 
     // Save the context
     hvalue_t v = value_put_context(step->allocator, step->ctx);
