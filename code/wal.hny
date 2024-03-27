@@ -1,19 +1,21 @@
-import disk
+from alloc import malloc
 
-# Read a block from the disk
-def read(d, bno) returns block:
-    block = disk.read(d, bno)
+const BITS_PER_BLOCK = 16
 
-# All-or-nothing update of the disk
-# allocated is a set of block numbers that were allocated.
-# write_write is a set of (block number, data) pairs.
-def update(d, allocated, write_set):
-    for alloc in allocated:
-        let bno = alloc / disk.BITS_PER_BLOCK
-        let off = alloc % disk.BITS_PER_BLOCK:
-            var blk = disk.read(d, 1 + bno)
-            assert not blk[off]
-            blk[off] = True
-            disk.write(d, 1 + bno, blk)
-    for bno, data in write_set:
-        disk.write(d, bno, data)
+def new(n_blocks) returns wal:
+    wal = malloc([ None, ] * n_blocks)
+
+def getsize(wal) returns size:
+    atomically size = len !wal
+
+def read(wal, bno) returns block:
+    atomically block = (!wal)[bno]
+
+def write(wal, bno, block):
+    atomically (!wal)[bno] = block
+
+def txbegin(wal, id):
+    pass
+
+def txend(wal, id):
+    pass
