@@ -1,6 +1,6 @@
 from file import *
 
-const N_FILES = 2
+const N_FILES = 3
 const MAX_FILE_SIZE = 2
 
 const N_READ = 1

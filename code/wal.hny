@@ -1,18 +1,18 @@
 from alloc import malloc
 
-const BITS_PER_BLOCK = 16
+const BITS_PER_BLOCK = 3
 
 def new(n_blocks) returns wal:
     wal = malloc([ None, ] * n_blocks)
 
 def getsize(wal) returns size:
-    atomically size = len !wal
+    size = len !wal
 
 def read(wal, bno) returns block:
-    atomically block = (!wal)[bno]
+    block = (!wal)[bno]
 
 def write(wal, bno, block):
-    atomically (!wal)[bno] = block
+    (!wal)[bno] = block
 
 def txbegin(wal, id):
     pass

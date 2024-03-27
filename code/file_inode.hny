@@ -6,8 +6,8 @@ from alloc import *             # malloc/free
 from list import subseq         # list slicing
 import wal                      # disk with a write-ahead-log
 
-const N_BLOCKS = 10             # total number of disk blocks
-const INODES_PER_BLOCK = 1      # number of inodes that fit in a block
+const N_BLOCKS = 12             # total number of disk blocks
+const INODES_PER_BLOCK = 2      # number of inodes that fit in a block
 const INDIR_PER_BLOCK  = 4      # number of block pointers per block
 
 #/ FREELIST
