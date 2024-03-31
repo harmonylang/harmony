@@ -977,6 +977,7 @@ void direct_check(struct state *state, struct step *step){
 #endif
         memcpy(buffer, orig, size);
         struct context *copy = (struct context *) buffer;
+        printf("RESUME %p\n", (void *) dd->result);
         ctx_push(copy, dd->result);
         copy->stopped = false;
         hvalue_t context = value_put_context(step->allocator, copy);
@@ -1013,36 +1014,203 @@ void direct_check(struct state *state, struct step *step){
     mutex_release(&direct_mutex);
 }
 
-static void bogus_run(void *arg){
-    printf("BOGUS\n");
-    direct_completed((hvalue_t) arg, (hvalue_t) arg);
+struct iqueue {
+    hvalue_t *vals;
+    unsigned int nvals;
+};
+
+struct bogus_op {
+    enum { IQ_NEW, IQ_ENQUEUE, IQ_DEQUEUE } type;
+    struct allocator *allocator;
+    hvalue_t context;
+    struct iqueue *iq;  // only for enqueue and dequeue;
+    hvalue_t arg;       // only for enqueue
+};
+
+static void iq_print(struct strbuf *sb, void *ref){
+    panic("iq_print");
 }
 
-// Built-in bogus.bogus method
-void op_Bogus_Bogus(const void *env, struct state *state, struct step *step){
+static int iq_compare(void *ref1, void *ref2){
+    panic("iq_compare");
+    return 0;
+}
+
+struct external_descriptor iq_descr = {
+    .type_name = "IQueue",
+    .print = iq_print,
+    .compare = iq_compare
+};
+
+static void bogus_run(void *arg){
+    struct bogus_op *bop = arg;
+
+    printf("BOGUS %d\n", bop->type);
+
+    hvalue_t result = 0;
+    switch (bop->type) {
+    case IQ_NEW:
+        {
+            struct iqueue *iq = calloc(1, sizeof(*iq));
+            result = value_put_external(bop->allocator, &iq_descr, iq);
+        }
+        break;
+    case IQ_ENQUEUE:
+        {
+            struct iqueue *iq = bop->iq;
+            iq->vals = realloc(iq->vals,
+                            (iq->nvals + 1) * sizeof(hvalue_t));
+            iq->vals[iq->nvals++] = bop->arg;
+            result = VALUE_ADDRESS_SHARED;  // None
+        }
+        break;
+    case IQ_DEQUEUE:
+        {
+            struct iqueue *iq = bop->iq;
+            if (iq->nvals == 0) {
+                result = VALUE_ADDRESS_SHARED;  // None
+            }
+            else {
+                result = iq->vals[0];
+                iq->nvals--;
+                memmove(iq->vals, &iq->vals[1],
+                                iq->nvals * sizeof(hvalue_t));
+            }
+        }
+        break;
+    default:
+        panic("bogus_run: unknown type");
+    }
+
+    printf("completed %p\n", (void *) result);
+    direct_completed(bop->context, result);
+    printf("completed done\n");
+}
+
+// Built-in bogus.iq_new method
+void op_Bogus_iq_new(const void *env, struct state *state, struct step *step){
     hvalue_t arg = ctx_pop(step->ctx);
-    if (VALUE_TYPE(arg) != VALUE_INT) {
-        value_ctx_failure(step->ctx, step->allocator, "bogus.bogus: not an int");
+    if (arg != VALUE_LIST) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.iq_new: must have no argument");
         return;
     }
     if (step->ctx->readonly > 0) {
-        value_ctx_failure(step->ctx, step->allocator, "bogus.bogus: in read-only mode");
+        value_ctx_failure(step->ctx, step->allocator, "bogus.iq_new: in read-only mode");
+        return;
+    }
+
+printf("Pop callval\n");
+    // See if it's a normal call.
+    hvalue_t callval = ctx_pop(step->ctx);
+    assert(VALUE_TYPE(callval) == VALUE_INT);
+    unsigned int call = VALUE_FROM_INT(callval);
+    assert((call & CALLTYPE_MASK) == CALLTYPE_NORMAL);
+    unsigned int pc = call >> CALLTYPE_BITS;
+    assert(pc != step->ctx->pc);
+
+printf("Pop args\n");
+    // Get the remaining arguments
+    hvalue_t args = ctx_pop(step->ctx);
+    assert(args == VALUE_LIST);
+
+    // Go on to the next instruction after resuming
+    step->ctx->pc = pc + 1;
+    step->ctx->stopped = true;
+
+    printf("op_Bogus_iq_new %d %d\n", (int) step->ctx->pc, step->ctx->sp);
+
+    struct bogus_op *bop = calloc(1, sizeof(*bop));
+    bop->type = IQ_NEW;
+    bop->allocator = step->allocator;
+    bop->context = value_put_context(step->allocator, step->ctx);
+
+    // Note that an external activity is outstanding
+    direct_outstanding();
+
+    // Start a native thread to execute the operation.
+    thread_create(bogus_run, bop);
+}
+
+// Built-in bogus.iq_enqueue method
+void op_Bogus_iq_enqueue(const void *env, struct state *state, struct step *step){
+    hvalue_t arg = ctx_pop(step->ctx);
+    if (VALUE_TYPE(arg) != VALUE_LIST) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.iq_enqueue: must have arguments");
+        return;
+    }
+    if (step->ctx->readonly > 0) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.iq_enqueue: in read-only mode");
+        return;
+    }
+
+    unsigned int size;
+    hvalue_t *args = value_get(arg, &size);
+    if (size != 2 * sizeof(hvalue_t)) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.iq_enqueue: must have two arguments");
+        return;
+    }
+    if (VALUE_TYPE(args[0]) != VALUE_EXTERNAL) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.iq_enqueue: first arg must be external");
+        return;
+    }
+    struct val_external *ve = value_get_external(args[0]);
+    if (ve->descr != &iq_descr) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.iq_enqueue: first arg must be an iqueue");
         return;
     }
 
     step->ctx->pc++;
     step->ctx->stopped = true;
 
-    printf("op_Bogus\n");
+    printf("op_Bogus_iq_enqueue\n");
 
-    // Save the context
-    hvalue_t v = value_put_context(step->allocator, step->ctx);
+    struct bogus_op *bop = calloc(1, sizeof(*bop));
+    bop->type = IQ_ENQUEUE;
+    bop->allocator = step->allocator;
+    bop->context = value_put_context(step->allocator, step->ctx);
+    bop->iq = ve->ref;
+    bop->arg = args[1];
 
     // Note that an external activity is outstanding
     direct_outstanding();
 
     // Start a native thread to execute the operation.
-    thread_create(bogus_run, (void *) v);
+    thread_create(bogus_run, bop);
+}
+
+// Built-in bogus.iq_dequeue method
+void op_Bogus_iq_dequeue(const void *env, struct state *state, struct step *step){
+    hvalue_t arg = ctx_pop(step->ctx);
+    if (VALUE_TYPE(arg) != VALUE_EXTERNAL) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.iq_dequeue: must have external argument");
+        return;
+    }
+    struct val_external *ve = value_get_external(arg);
+    if (ve->descr != &iq_descr) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.iq_dequeue: arg must be an iqueue");
+        return;
+    }
+    if (step->ctx->readonly > 0) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.iq_dequeue: in read-only mode");
+        return;
+    }
+
+    step->ctx->pc++;
+    step->ctx->stopped = true;
+
+    printf("op_Bogus_iq_dequeue\n");
+
+    struct bogus_op *bop = calloc(1, sizeof(*bop));
+    bop->type = IQ_DEQUEUE;
+    bop->allocator = step->allocator;
+    bop->context = value_put_context(step->allocator, step->ctx);
+    bop->iq = ve->ref;
+
+    // Note that an external activity is outstanding
+    direct_outstanding();
+
+    // Start a native thread to execute the operation.
+    thread_create(bogus_run, bop);
 }
 
 // Built-in bag.add method
@@ -4768,7 +4936,9 @@ struct op_info op_table[] = {
     { "bag$remove", NULL, op_Bag_Remove },
     { "bag$size", NULL, op_Bag_Size },
     { "list$tail", NULL, op_List_Tail },
-    { "bogus$bogus", NULL, op_Bogus_Bogus },
+    { "bogus$iq_new", NULL, op_Bogus_iq_new },
+    { "bogus$iq_enqueue", NULL, op_Bogus_iq_enqueue },
+    { "bogus$iq_dequeue", NULL, op_Bogus_iq_dequeue },
 
     { NULL, NULL, NULL }
 };

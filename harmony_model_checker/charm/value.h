@@ -38,7 +38,7 @@ typedef struct state {
 
 // A context is the state of a Harmony thread.  The state, which is part of the
 // state of a thread, immediately follows this structure.
-typedef struct context {   // context value
+struct context {   // context value
     hvalue_t vars;            // method-local variables
     uint16_t pc;              // program counter
     uint16_t id;              // thread identifier
@@ -63,14 +63,28 @@ typedef struct context {   // context value
 #define ctx_trap_arg(c) (context_stack(c)[3])
 #define ctx_extent      4
 
-} context;
+};
 #define context_stack(c)    ((hvalue_t *) ((c) + 1))
 #define ctx_size(c)     (sizeof(struct context) + (c)->sp * sizeof(hvalue_t) + ((c)->extended ? (ctx_extent*sizeof(hvalue_t)) : 0))
 #define ctx_stack(c)    ((c)->extended ? &context_stack(c)[ctx_extent] : context_stack(c))
 
+// Descriptor for external values.
+struct external_descriptor {
+    char *type_name;
+    void (*print)(struct strbuf *sb, void *ref);
+    int (*compare)(void *ref1, void *ref2);
+};
+
+// External value
+struct val_external {
+    struct external_descriptor *descr;
+    void *ref;
+};
+
 hvalue_t value_from_json(struct allocator *allocator, struct dict *map);
 int value_cmp(hvalue_t v1, hvalue_t v2);
 void *value_get(hvalue_t v, unsigned int *size);
+struct val_external *value_get_external(hvalue_t v);
 void *value_copy(hvalue_t v, unsigned int *size);
 void *value_copy_extend(hvalue_t v, unsigned int inc, unsigned int *psize);
 hvalue_t value_put_atom(struct allocator *allocator, const void *p, unsigned int size);
@@ -79,6 +93,7 @@ hvalue_t value_put_dict(struct allocator *allocator, void *p, unsigned int size)
 hvalue_t value_put_list(struct allocator *allocator, void *p, unsigned int size);
 hvalue_t value_put_address(struct allocator *allocator, void *p, unsigned int size);
 hvalue_t value_put_context(struct allocator *allocator, struct context *ctx);
+hvalue_t value_put_external(struct allocator *allocator, struct external_descriptor *descr, void *ref);
 char *value_string(hvalue_t v);
 char *indices_string(const hvalue_t *vec, int size);
 char *value_json(hvalue_t v);
@@ -108,6 +123,7 @@ void strbuf_value_json(strbuf *sb, hvalue_t v);
 #define VALUE_ADDRESS_SHARED    8
 #define VALUE_ADDRESS_PRIVATE   9
 #define VALUE_CONTEXT  10
+#define VALUE_EXTERNAL 11
 
 #define VALUE_CONTEXT_ETERNAL   ((hvalue_t) 1 << 56)
 
