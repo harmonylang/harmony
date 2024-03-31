@@ -1159,7 +1159,22 @@ void op_Bogus_iq_enqueue(const void *env, struct state *state, struct step *step
         return;
     }
 
-    step->ctx->pc++;
+printf("Pop callval\n");
+    // See if it's a normal call.
+    hvalue_t callval = ctx_pop(step->ctx);
+    assert(VALUE_TYPE(callval) == VALUE_INT);
+    unsigned int call = VALUE_FROM_INT(callval);
+    assert((call & CALLTYPE_MASK) == CALLTYPE_NORMAL);
+    unsigned int pc = call >> CALLTYPE_BITS;
+    assert(pc != step->ctx->pc);
+
+printf("Pop args\n");
+    // Get the remaining arguments
+    hvalue_t rem = ctx_pop(step->ctx);
+    assert(rem == VALUE_LIST);
+
+    // Go on to the next instruction after resuming
+    step->ctx->pc = pc + 1;
     step->ctx->stopped = true;
 
     printf("op_Bogus_iq_enqueue\n");
@@ -1195,7 +1210,22 @@ void op_Bogus_iq_dequeue(const void *env, struct state *state, struct step *step
         return;
     }
 
-    step->ctx->pc++;
+printf("Pop callval\n");
+    // See if it's a normal call.
+    hvalue_t callval = ctx_pop(step->ctx);
+    assert(VALUE_TYPE(callval) == VALUE_INT);
+    unsigned int call = VALUE_FROM_INT(callval);
+    assert((call & CALLTYPE_MASK) == CALLTYPE_NORMAL);
+    unsigned int pc = call >> CALLTYPE_BITS;
+    assert(pc != step->ctx->pc);
+
+printf("Pop args\n");
+    // Get the remaining arguments
+    hvalue_t args = ctx_pop(step->ctx);
+    assert(args == VALUE_LIST);
+
+    // Go on to the next instruction after resuming
+    step->ctx->pc = pc + 1;
     step->ctx->stopped = true;
 
     printf("op_Bogus_iq_dequeue\n");
