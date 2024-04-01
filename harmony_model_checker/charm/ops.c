@@ -135,12 +135,14 @@ static char *vt_string(struct var_tree *vt){
 
 // Push a value onto the context stack of the current thread
 static inline void ctx_push(struct context *ctx, hvalue_t v){
+    assert(v != 0);
     ctx_stack(ctx)[ctx->sp++] = v;
 }
 
 // Pop a value from the context stack of the current thread
 static inline hvalue_t ctx_pop(struct context *ctx){
     assert(ctx->sp > 0);
+    assert(ctx_stack(ctx)[ctx->sp - 1] != 0);
     return ctx_stack(ctx)[--ctx->sp];
 }
 
@@ -648,6 +650,13 @@ void op_Print(const void *env, struct state *state, struct step *step){
             do_print(symbol);
         }
         printf("\n");
+        if (global.dfa != NULL) {
+            int nstate = dfa_step(global.dfa, state->dfa_state, symbol);
+            if (nstate < 0) {
+                panic("bad behavior");
+            }
+            state->dfa_state = nstate;
+        }
     }
     else {
         if (step->nlog == MAX_PRINT) {
@@ -951,6 +960,7 @@ static void direct_outstanding(){
 
 // Add ctx/result to the done list
 static void direct_completed(hvalue_t ctx, hvalue_t result){
+    assert(result != 0);
     mutex_acquire(&direct_mutex);
     direct_count--;
     struct direct_done *dd = calloc(1, sizeof(*dd));
@@ -967,6 +977,7 @@ void direct_check(struct state *state, struct step *step){
 
     struct direct_done *dd;
     while ((dd = direct_done) != NULL) {
+        assert(dd->result != 0);
         direct_done = dd->next;
 
         // Copy the context and reserve an extra hvalue_t
@@ -1016,6 +1027,7 @@ void direct_check(struct state *state, struct step *step){
 }
 
 struct iqueue {
+    mutex_t lock;
     hvalue_t *vals;
     unsigned int nvals;
 };
@@ -1052,30 +1064,36 @@ static void bogus_run(void *arg){
     case IQ_NEW:
         {
             struct iqueue *iq = calloc(1, sizeof(*iq));
+            mutex_init(&iq->lock);
             result = value_put_external(bop->allocator, &iq_descr, iq);
         }
         break;
     case IQ_ENQUEUE:
         {
             struct iqueue *iq = bop->iq;
+            mutex_acquire(&iq->lock);
             iq->vals = realloc(iq->vals,
                             (iq->nvals + 1) * sizeof(hvalue_t));
             iq->vals[iq->nvals++] = bop->arg;
+            mutex_release(&iq->lock);
             result = VALUE_ADDRESS_SHARED;  // None
         }
         break;
     case IQ_DEQUEUE:
         {
             struct iqueue *iq = bop->iq;
+            mutex_acquire(&iq->lock);
             if (iq->nvals == 0) {
                 result = VALUE_ADDRESS_SHARED;  // None
             }
             else {
                 result = iq->vals[0];
+                assert(result != 0);
                 iq->nvals--;
-                // memmove(iq->vals, &iq->vals[1],
-                //                 iq->nvals * sizeof(hvalue_t));
+                memmove(iq->vals, &iq->vals[1],
+                                iq->nvals * sizeof(hvalue_t));
             }
+            mutex_release(&iq->lock);
         }
         break;
     default:

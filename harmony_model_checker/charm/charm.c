@@ -371,6 +371,7 @@ static void direct_run(struct state *state){
             if (step.ctx->failed) {
                 char *s = value_string(ctx_failure(step.ctx));
                 printf("Failure: %s\n", s);
+                printf("pc = %d\n", (int) step.ctx->pc);
                 free(s);
                 break;
             }
@@ -413,7 +414,7 @@ static void direct_run(struct state *state){
 
         // If context has failed, we're done
         if (step.ctx->failed) {
-            break;
+            return;
         }
 
         // Add updated context to state unless terminated or stopped
@@ -425,6 +426,10 @@ static void direct_run(struct state *state){
             hvalue_t after = value_put_context(step.allocator, step.ctx);
             context_add(state, after);
         }
+    }
+
+    if (global.dfa != NULL && !dfa_is_final(global.dfa, state->dfa_state)) {
+        printf("Error: not in the final DFA state\n");
     }
 }
 
