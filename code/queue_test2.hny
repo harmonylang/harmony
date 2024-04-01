@@ -8,8 +8,8 @@ def thread(v):
     if choose({.put, .get}) == .put:
         queue.put(?myq, v)
     else:
-        let v = queue.get(?myq):
-            assert (v == None) or (v in {1..NTHREADS})
+        let w = queue.get(?myq):
+            assert (w == None) or (w in {1..NTHREADS})
 
 for i in {1..NTHREADS}:
     spawn thread(i)

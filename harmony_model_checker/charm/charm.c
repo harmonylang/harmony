@@ -338,6 +338,12 @@ static void direct_run(struct state *state){
         // printf("pick %u\n", ctx_index);
         hvalue_t pick = state_ctx(state, ctx_index);
 
+        // Remove the original context from the state
+        // assert(state_ctx(state, ctx_index) == ctx);
+        context_remove_by_index(state, ctx_index);
+
+        // printf("RUN %p\n", (void *) pick);
+
         // Get and copy the context
         unsigned int size;
         struct context *cc = value_get(pick, &size);
@@ -409,10 +415,6 @@ static void direct_run(struct state *state){
         if (step.ctx->failed) {
             break;
         }
-
-        // Remove the original context from the state
-        // assert(state_ctx(state, ctx_index) == ctx);
-        context_remove_by_index(state, ctx_index);
 
         // Add updated context to state unless terminated or stopped
         if (step.ctx->stopped) {

@@ -5,7 +5,7 @@
 // each operation Y.
 //
 // The prototype for init_X is as follows:
-//      void *init_Assert(struct dict *map, struct allocator *allocator);
+//      void *init_X(struct dict *map, struct allocator *allocator);
 //
 //  It is invoked for each such HVM instruction in the code during
 //  initialization of this module for any preprocessing that can happen
@@ -649,11 +649,13 @@ void op_Print(const void *env, struct state *state, struct step *step){
         }
         printf("\n");
     }
-    if (step->nlog == MAX_PRINT) {
-        value_ctx_failure(step->ctx, step->allocator, "Print: too many prints");
-        return;
+    else {
+        if (step->nlog == MAX_PRINT) {
+            value_ctx_failure(step->ctx, step->allocator, "Print: too many prints");
+            return;
+        }
+        step->log[step->nlog++] = symbol;
     }
-    step->log[step->nlog++] = symbol;
     global.printed_something = true;
     if (step->keep_callstack) {
         strbuf_printf(&step->explain, "pop value (#+) and add to print log");
@@ -977,7 +979,6 @@ void direct_check(struct state *state, struct step *step){
 #endif
         memcpy(buffer, orig, size);
         struct context *copy = (struct context *) buffer;
-        printf("RESUME %p\n", (void *) dd->result);
         ctx_push(copy, dd->result);
         copy->stopped = false;
         hvalue_t context = value_put_context(step->allocator, copy);
@@ -1028,11 +1029,12 @@ struct bogus_op {
 };
 
 static void iq_print(struct strbuf *sb, void *ref){
-    panic("iq_print");
+    strbuf_printf(sb, "IQueue<%p>", ref);
 }
 
 static int iq_compare(void *ref1, void *ref2){
-    panic("iq_compare");
+    if (ref1 < ref2) return -1;
+    if (ref1 > ref2) return 1;
     return 0;
 }
 
@@ -1044,8 +1046,6 @@ struct external_descriptor iq_descr = {
 
 static void bogus_run(void *arg){
     struct bogus_op *bop = arg;
-
-    printf("BOGUS %d\n", bop->type);
 
     hvalue_t result = 0;
     switch (bop->type) {
@@ -1073,8 +1073,8 @@ static void bogus_run(void *arg){
             else {
                 result = iq->vals[0];
                 iq->nvals--;
-                memmove(iq->vals, &iq->vals[1],
-                                iq->nvals * sizeof(hvalue_t));
+                // memmove(iq->vals, &iq->vals[1],
+                //                 iq->nvals * sizeof(hvalue_t));
             }
         }
         break;
@@ -1082,24 +1082,13 @@ static void bogus_run(void *arg){
         panic("bogus_run: unknown type");
     }
 
-    printf("completed %p\n", (void *) result);
     direct_completed(bop->context, result);
-    printf("completed done\n");
+    free(bop);
 }
 
-// Built-in bogus.iq_new method
-void op_Bogus_iq_new(const void *env, struct state *state, struct step *step){
+static hvalue_t direct_getarg(struct step *step){
     hvalue_t arg = ctx_pop(step->ctx);
-    if (arg != VALUE_LIST) {
-        value_ctx_failure(step->ctx, step->allocator, "bogus.iq_new: must have no argument");
-        return;
-    }
-    if (step->ctx->readonly > 0) {
-        value_ctx_failure(step->ctx, step->allocator, "bogus.iq_new: in read-only mode");
-        return;
-    }
 
-printf("Pop callval\n");
     // See if it's a normal call.
     hvalue_t callval = ctx_pop(step->ctx);
     assert(VALUE_TYPE(callval) == VALUE_INT);
@@ -1108,7 +1097,6 @@ printf("Pop callval\n");
     unsigned int pc = call >> CALLTYPE_BITS;
     assert(pc != step->ctx->pc);
 
-printf("Pop args\n");
     // Get the remaining arguments
     hvalue_t args = ctx_pop(step->ctx);
     assert(args == VALUE_LIST);
@@ -1117,7 +1105,20 @@ printf("Pop args\n");
     step->ctx->pc = pc + 1;
     step->ctx->stopped = true;
 
-    printf("op_Bogus_iq_new %d %d\n", (int) step->ctx->pc, step->ctx->sp);
+    return arg;
+}
+
+// Built-in bogus.iq_new method
+void op_Bogus_iq_new(const void *env, struct state *state, struct step *step){
+    if (step->ctx->readonly > 0) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.iq_new: in read-only mode");
+        return;
+    }
+    hvalue_t arg = direct_getarg(step);
+    if (arg != VALUE_LIST) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.iq_new: must have no argument");
+        return;
+    }
 
     struct bogus_op *bop = calloc(1, sizeof(*bop));
     bop->type = IQ_NEW;
@@ -1133,15 +1134,11 @@ printf("Pop args\n");
 
 // Built-in bogus.iq_enqueue method
 void op_Bogus_iq_enqueue(const void *env, struct state *state, struct step *step){
-    hvalue_t arg = ctx_pop(step->ctx);
-    if (VALUE_TYPE(arg) != VALUE_LIST) {
-        value_ctx_failure(step->ctx, step->allocator, "bogus.iq_enqueue: must have arguments");
-        return;
-    }
     if (step->ctx->readonly > 0) {
-        value_ctx_failure(step->ctx, step->allocator, "bogus.iq_enqueue: in read-only mode");
+        value_ctx_failure(step->ctx, step->allocator, "bogus.iq_new: in read-only mode");
         return;
     }
+    hvalue_t arg = direct_getarg(step);
 
     unsigned int size;
     hvalue_t *args = value_get(arg, &size);
@@ -1159,26 +1156,6 @@ void op_Bogus_iq_enqueue(const void *env, struct state *state, struct step *step
         return;
     }
 
-printf("Pop callval\n");
-    // See if it's a normal call.
-    hvalue_t callval = ctx_pop(step->ctx);
-    assert(VALUE_TYPE(callval) == VALUE_INT);
-    unsigned int call = VALUE_FROM_INT(callval);
-    assert((call & CALLTYPE_MASK) == CALLTYPE_NORMAL);
-    unsigned int pc = call >> CALLTYPE_BITS;
-    assert(pc != step->ctx->pc);
-
-printf("Pop args\n");
-    // Get the remaining arguments
-    hvalue_t rem = ctx_pop(step->ctx);
-    assert(rem == VALUE_LIST);
-
-    // Go on to the next instruction after resuming
-    step->ctx->pc = pc + 1;
-    step->ctx->stopped = true;
-
-    printf("op_Bogus_iq_enqueue\n");
-
     struct bogus_op *bop = calloc(1, sizeof(*bop));
     bop->type = IQ_ENQUEUE;
     bop->allocator = step->allocator;
@@ -1195,11 +1172,11 @@ printf("Pop args\n");
 
 // Built-in bogus.iq_dequeue method
 void op_Bogus_iq_dequeue(const void *env, struct state *state, struct step *step){
-    hvalue_t arg = ctx_pop(step->ctx);
-    if (VALUE_TYPE(arg) != VALUE_EXTERNAL) {
-        value_ctx_failure(step->ctx, step->allocator, "bogus.iq_dequeue: must have external argument");
+    if (step->ctx->readonly > 0) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.iq_new: in read-only mode");
         return;
     }
+    hvalue_t arg = direct_getarg(step);
     struct val_external *ve = value_get_external(arg);
     if (ve->descr != &iq_descr) {
         value_ctx_failure(step->ctx, step->allocator, "bogus.iq_dequeue: arg must be an iqueue");
@@ -1209,26 +1186,6 @@ void op_Bogus_iq_dequeue(const void *env, struct state *state, struct step *step
         value_ctx_failure(step->ctx, step->allocator, "bogus.iq_dequeue: in read-only mode");
         return;
     }
-
-printf("Pop callval\n");
-    // See if it's a normal call.
-    hvalue_t callval = ctx_pop(step->ctx);
-    assert(VALUE_TYPE(callval) == VALUE_INT);
-    unsigned int call = VALUE_FROM_INT(callval);
-    assert((call & CALLTYPE_MASK) == CALLTYPE_NORMAL);
-    unsigned int pc = call >> CALLTYPE_BITS;
-    assert(pc != step->ctx->pc);
-
-printf("Pop args\n");
-    // Get the remaining arguments
-    hvalue_t args = ctx_pop(step->ctx);
-    assert(args == VALUE_LIST);
-
-    // Go on to the next instruction after resuming
-    step->ctx->pc = pc + 1;
-    step->ctx->stopped = true;
-
-    printf("op_Bogus_iq_dequeue\n");
 
     struct bogus_op *bop = calloc(1, sizeof(*bop));
     bop->type = IQ_DEQUEUE;
