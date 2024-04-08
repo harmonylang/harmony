@@ -37,6 +37,7 @@
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#include <unistd.h>
 #endif
 
 #include "head.h"
@@ -974,6 +975,11 @@ static void direct_completed(hvalue_t ctx, hvalue_t result){
 // See if any external activities completed.
 void direct_check(struct state *state, struct step *step){
     mutex_acquire(&direct_mutex);
+
+    while (direct_count > 0) {
+        mutex_release(&direct_mutex);
+        mutex_acquire(&direct_mutex);
+    }
 
     struct direct_done *dd;
     while ((dd = direct_done) != NULL) {

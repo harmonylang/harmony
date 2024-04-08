@@ -321,21 +321,116 @@ static void direct_run(struct state *state){
             continue;
         }
 
-        unsigned int total = 0, ctx_index = 0;
+        // Collect info about the various possible
+        // contexts to run next
+        struct ctx_info {
+            hvalue_t ctx;
+            struct context *cc;
+            enum {
+                CI_NO_TRANSITION,
+                CI_OLD_TRANSITION,
+                CI_NEW_TRANSITION,
+                CI_POT_TRANSITION,
+            } trans;
+        } *ci = calloc( state->bagsize, sizeof(*ci));
+        unsigned int no_trans = 0;
+        unsigned int old_trans = 0;
+        unsigned int new_trans = 0;
+        unsigned int pot_trans = 0;
         for (int i = 0; i < state->bagsize; i++) {
-            total += state_multiplicity(state, i);
-        }
-        unsigned int select = rand() % total;
-        // printf("--> %u %u\n", total, select);
-        for (int i = 0; i < state->bagsize; i++) {
-            if (state_multiplicity(state, i) > select) {
-                ctx_index = i;
-                break;
+            ci[i].ctx = state_ctx(state, i);
+            unsigned int size;
+            ci[i].cc = value_get(ci[i].ctx, &size);
+            assert(ctx_size(ci[i].cc) == size);
+            assert(!ci[i].cc->terminated);
+            assert(!ci[i].cc->failed);
+
+            // See if it's about to print something
+            struct instr *instrs = global.code.instrs;
+            if (instrs[ci[i].cc->pc].print) {
+                assert(ci[i].cc->sp > 0);
+                hvalue_t symbol = ctx_stack(ci[i].cc)[ci[i].cc->sp - 1];
+                int cnt = dfa_visited(global.dfa, state->dfa_state, symbol);
+                if (cnt == 0) {
+                    ci[i].trans = CI_NEW_TRANSITION;
+                    new_trans++;
+                }
+                else if (cnt < 0) {
+                    panic("bad transition");
+                }
+                else if (dfa_potential(global.dfa, state->dfa_state, symbol) < 0) {
+                    ci[i].trans = CI_OLD_TRANSITION;
+                    old_trans++;
+                }
+                else {
+                    ci[i].trans = CI_POT_TRANSITION;
+                    pot_trans++;
+                }
             }
-            select -= state_multiplicity(state, i);
+            else {
+                ci[i].trans = CI_NO_TRANSITION;
+                no_trans++;
+            }
+        }
+        assert(no_trans + old_trans + new_trans + pot_trans== state->bagsize);
+
+        int ctx_index = -1;
+        if (0 && ctx_index < 0) {
+            ctx_index = 0;
+            unsigned int total = 0;
+            for (int i = 0; i < state->bagsize; i++) {
+                total += state_multiplicity(state, i);
+            }
+            unsigned int select = rand() % total;
+            // printf("--> %u %u\n", total, select);
+            for (int i = 0; i < state->bagsize; i++) {
+                if (state_multiplicity(state, i) > select) {
+                    ctx_index = i;
+                    break;
+                }
+                select -= state_multiplicity(state, i);
+            }
         }
 
-        // printf("pick %u\n", ctx_index);
+        if (no_trans + new_trans > 0) {
+            unsigned int r = rand() % (no_trans + new_trans);
+            for (unsigned int i = 0; i < state->bagsize; i++) {
+                if (ci[i].trans == CI_NO_TRANSITION || ci[i].trans == CI_NEW_TRANSITION) {
+                    if (r == 0) {
+                        ctx_index = i;
+                        break;
+                    }
+                    r--;
+                }
+            }
+        }
+        else if (pot_trans > 0) {
+            unsigned int r = rand() % pot_trans;
+            for (unsigned int i = 0; i < state->bagsize; i++) {
+                if (ci[i].trans == CI_POT_TRANSITION) {
+                    if (r == 0) {
+                        ctx_index = i;
+                        break;
+                    }
+                    r--;
+                }
+            }
+        }
+        else {
+            assert(old_trans > 0);
+            unsigned int r = rand() % old_trans;
+            for (unsigned int i = 0; i < state->bagsize; i++) {
+                if (ci[i].trans == CI_OLD_TRANSITION) {
+                    if (r == 0) {
+                        ctx_index = i;
+                        break;
+                    }
+                    r--;
+                }
+            }
+        }
+        free(ci);
+        assert(ctx_index >= 0);
         hvalue_t pick = state_ctx(state, ctx_index);
 
         // Remove the original context from the state
@@ -3803,7 +3898,17 @@ int exec_model_checker(int argc, char **argv){
     if (dflag) {
         global.run_direct = true;
         srand((unsigned) gettime());
-        direct_run(state);
+
+        struct state *sc = calloc(1, sizeof(struct state) +
+                    256 * (sizeof(hvalue_t) + 1));
+        for (int i = 0; i < 100000; i++) {
+            printf("TIME %d\n", i);
+            memcpy(sc, state, state_size(state));
+            direct_run(sc);
+        }
+        if (global.dfa != NULL) {
+            dfa_dump(global.dfa);
+        }
         exit(0);
     }
 
