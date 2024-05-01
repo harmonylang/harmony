@@ -326,7 +326,7 @@ class NameAST(AST):
             (lexeme, file, line, column) = v
             code.append(PushOp((AddressValue(PcValue(-2), [lexeme]), file, line, column)), self.token, self.endtoken, stmt=stmt)
         else:
-            assert t == "global"
+            assert t == "global", t
             (lexeme, file, line, column) = self.name
             if scope.prefix is None:
                 code.append(PushOp((AddressValue(PcValue(-1), [lexeme]), file, line, column)), self.token, self.endtoken, stmt=stmt)

@@ -1,0 +1,18 @@
+from synch import *
+
+thelock = Lock()
+thecond = Condition()
+x = False
+
+def f():
+    acquire(?thelock)
+    wait(?thecond, ?thelock)
+    release(?thelock)
+    x = True
+
+def g():
+    acquire(?thelock)
+    notify(?thecond)
+    release(?thelock)
+
+finally x
