@@ -942,6 +942,119 @@ void op_List_Tail(const void *env, struct state *state, struct step *step){
     do_return(state, step, result);
 }
 
+static unsigned int direct_count;
+static mutex_t direct_mutex;
+struct direct_done {
+    struct direct_done *next;
+    hvalue_t ctx, result;
+};
+static struct direct_done *direct_done;
+
+// Increment the number of outstanding activities.
+static void direct_outstanding(){
+    mutex_acquire(&direct_mutex);
+    direct_count++;
+    mutex_release(&direct_mutex);
+}
+
+// Add ctx/result to the done list
+static void direct_completed(hvalue_t ctx, hvalue_t result){
+    mutex_acquire(&direct_mutex);
+    direct_count--;
+    struct direct_done *dd = calloc(1, sizeof(*dd));
+    dd->ctx = ctx;
+    dd->result = result;
+    dd->next = direct_done;
+    direct_done = dd;
+    mutex_release(&direct_mutex);
+}
+
+// See if any external activities completed.
+void direct_check(struct state *state, struct step *step){
+    mutex_acquire(&direct_mutex);
+
+    struct direct_done *dd;
+    while ((dd = direct_done) != NULL) {
+        direct_done = dd->next;
+
+        // Copy the context and reserve an extra hvalue_t
+        unsigned int size;
+        struct context *orig = value_get(dd->ctx, &size);
+#ifdef HEAP_ALLOC
+        char *buffer = malloc(size + sizeof(hvalue_t));
+#else
+        char buffer[size + sizeof(hvalue_t)];
+#endif
+        memcpy(buffer, orig, size);
+        struct context *copy = (struct context *) buffer;
+        ctx_push(copy, dd->result);
+        copy->stopped = false;
+        hvalue_t context = value_put_context(step->allocator, copy);
+#ifdef HEAP_ALLOC
+        free(buffer);
+#endif
+
+        // Remove old context from stopbag if it's there
+        // TODO.  Can potentially be optimized when it's a matter of just moving it to
+        //        the context bag
+        // TODO.  Duplicated from else part below.  Make subroutine
+        hvalue_t *ctxlist = state_ctxlist(state);
+        for (unsigned int i = state->bagsize; i < state->total; i++) {
+            hvalue_t ctxi = ctxlist[i] & ~STATE_MULTIPLICITY;
+            if (ctxi == dd->ctx) {
+                if ((ctxlist[i] & STATE_MULTIPLICITY) > ((hvalue_t) 1 << STATE_M_SHIFT)) {
+                    ctxlist[i] -= ((hvalue_t) 1 << STATE_M_SHIFT);
+                }
+                else {
+                    assert(state->total > state->bagsize);
+                    state->total--;
+                    memmove(&ctxlist[i], &ctxlist[i+1], (state->total - i) * sizeof(hvalue_t));
+                }
+                break;
+            }
+        }
+
+        // Add new context to the context bag
+        if (context_add(state, context) < 0) {
+            panic("direct_check: too many threads");
+        }
+        free(dd);
+    }
+    mutex_release(&direct_mutex);
+}
+
+static void bogus_run(void *arg){
+    printf("BOGUS\n");
+    direct_completed((hvalue_t) arg, (hvalue_t) arg);
+}
+
+// Built-in bogus.bogus method
+void op_Bogus_Bogus(const void *env, struct state *state, struct step *step){
+    hvalue_t arg = ctx_pop(step->ctx);
+    if (VALUE_TYPE(arg) != VALUE_INT) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.bogus: not an int");
+        return;
+    }
+    if (step->ctx->readonly > 0) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.bogus: in read-only mode");
+        return;
+    }
+
+    step->ctx->pc++;
+    step->ctx->stopped = true;
+
+    printf("op_Bogus\n");
+
+    // Save the context
+    hvalue_t v = value_put_context(step->allocator, step->ctx);
+
+    // Note that an external activity is outstanding
+    direct_outstanding();
+
+    // Start a native thread to execute the operation.
+    thread_create(bogus_run, (void *) v);
+}
+
 // Built-in bag.add method
 void op_Bag_Add(const void *env, struct state *state, struct step *step){
     hvalue_t arg = ctx_pop(step->ctx);
@@ -4895,6 +5008,7 @@ struct op_info op_table[] = {
     { "bag$remove", NULL, op_Bag_Remove },
     { "bag$size", NULL, op_Bag_Size },
     { "list$tail", NULL, op_List_Tail },
+    { "bogus$bogus", NULL, op_Bogus_Bogus },
     { "fuse$fuseinit", NULL, op_Fuse_Fuseinit},
     { "fuse$fusegetreq", NULL, op_Fuse_Fusegetreq},
     { "fuse$fuseputreply", NULL, op_Fuse_Fuseputreply},
@@ -4967,6 +5081,7 @@ void ops_init(struct allocator *allocator) {
     type_context = value_put_atom(allocator, "context", 7);
 	alloc_pool_atom = value_put_atom(allocator, "alloc$pool", 10);
 	alloc_next_atom = value_put_atom(allocator, "alloc$next", 10);
+    mutex_init(&direct_mutex);
 
     for (struct op_info *oi = op_table; oi->name != NULL; oi++) {
         struct op_info **p = dict_insert(ops_map, NULL, oi->name, strlen(oi->name), NULL);

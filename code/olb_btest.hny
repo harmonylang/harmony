@@ -1,0 +1,27 @@
+import olb
+
+const NOPS = 3
+
+bridge = olb.OLB()
+
+def thread(self):
+    while choose({ False, True }):
+        if choose({ "eb", "wb" }) == "eb":
+            print(str(self) + ": eb ae")
+            olb.eb_acquire(?bridge)
+            print(str(self) + ": eb ad")
+
+            print(str(self) + ": eb re")
+            olb.eb_release(?bridge)
+            print(str(self) + ": eb rd")
+        else:                       # wb
+            print(str(self) + ": wb ae")
+            olb.wb_acquire(?bridge)
+            print(str(self) + ": wb ad")
+
+            print(str(self) + ": wb re")
+            olb.wb_release(?bridge)
+            print(str(self) + ": wb rd")
+
+for i in {1..NOPS}:
+    spawn thread(i)

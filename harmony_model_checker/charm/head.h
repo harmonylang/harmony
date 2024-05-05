@@ -1,6 +1,6 @@
 // #define DEBUGGING
 
-#define SHORT_POINTER
+// #define SHORT_PTR
 
 #ifdef DEBUGGING
 # undef NDEBUG
