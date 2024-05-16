@@ -2443,6 +2443,10 @@ void do_work1(struct worker *w, struct node *node){
                 fprintf(stderr, "    states=%u diam=%u q=%d mem=%.3lfGB\n",
                         enqueued, global.diameter,
                         enqueued - dequeued, gigs);
+                struct state *state = node_state(node);
+                char *v = value_string(state->vars);
+                fprintf(stderr, "    --> %s\n", v);
+                free(v);
                 global.last_nstates = enqueued;
             }
             global.lasttime = now;
