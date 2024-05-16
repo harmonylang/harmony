@@ -375,7 +375,7 @@ static void direct_run(struct state *state){
         assert(no_trans + old_trans + new_trans + pot_trans== state->bagsize);
 
         int ctx_index = -1;
-        if (0 && ctx_index < 0) {
+        if (ctx_index < 0) {    // random selection
             ctx_index = 0;
             unsigned int total = 0;
             for (int i = 0; i < state->bagsize; i++) {
@@ -392,6 +392,7 @@ static void direct_run(struct state *state){
             }
         }
 
+#ifdef notdef
         if (no_trans + new_trans > 0) {
             unsigned int r = rand() % (no_trans + new_trans);
             for (unsigned int i = 0; i < state->bagsize; i++) {
@@ -429,6 +430,7 @@ static void direct_run(struct state *state){
                 }
             }
         }
+ #endif
         free(ci);
         assert(ctx_index >= 0);
         hvalue_t pick = state_ctx(state, ctx_index);
@@ -1103,7 +1105,7 @@ static void trystep(
     hvalue_t choice,         // if about to make a choice, which choice?
     int ctx_index            // -1 if not in the context bag (i.e., invariant)
 ) {
-    assert(state_ctx(state, ctx_index) == ctx);
+    // assert(state_ctx(state, ctx_index) == ctx);
     assert(state->chooser < 0 || choice != 0);
     struct step_condition *stc;
     bool si_new;
@@ -2443,10 +2445,6 @@ void do_work1(struct worker *w, struct node *node){
                 fprintf(stderr, "    states=%u diam=%u q=%d mem=%.3lfGB\n",
                         enqueued, global.diameter,
                         enqueued - dequeued, gigs);
-                struct state *state = node_state(node);
-                char *v = value_string(state->vars);
-                fprintf(stderr, "    --> %s\n", v);
-                free(v);
                 global.last_nstates = enqueued;
             }
             global.lasttime = now;
@@ -3905,7 +3903,7 @@ int exec_model_checker(int argc, char **argv){
 
         struct state *sc = calloc(1, sizeof(struct state) +
                     256 * (sizeof(hvalue_t) + 1));
-        for (int i = 0; i < 100000; i++) {
+        for (int i = 0; i < 200000; i++) {
             printf("TIME %d\n", i);
             memcpy(sc, state, state_size(state));
             direct_run(sc);

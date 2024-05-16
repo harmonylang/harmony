@@ -314,7 +314,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
                 print("    * minify #states=%d"%len(intermediate_dfa.states))
             thread = Thread(target=do_minify, args=(intermediate_dfa,))
             thread.start()
-            thread.join(10)
+            thread.join()   # was 10
             if thread.is_alive():
                 print("    * minify: taking too long and giving up")
                 dfa = intermediate_dfa

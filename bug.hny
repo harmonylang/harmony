@@ -1,5 +1,7 @@
 from synch import *
 
+sequential w
+
 thelock = Lock()
 thecond = Condition()
 x = False
@@ -14,5 +16,8 @@ def g():
     acquire(?thelock)
     notify(?thecond)
     release(?thelock)
+
+spawn eternal f()
+spawn g()
 
 finally x
