@@ -4,20 +4,23 @@ sequential w
 
 thelock = Lock()
 thecond = Condition()
-x = False
+x = 0
 
 def f():
     acquire(?thelock)
-    wait(?thecond, ?thelock)
+    while x == 0:
+        wait(?thecond, ?thelock)
+    assert x == 1
+    x = 2
     release(?thelock)
-    x = True
 
 def g():
     acquire(?thelock)
+    x = 1
     notify(?thecond)
     release(?thelock)
 
 spawn eternal f()
 spawn g()
 
-finally x
+finally x == 2

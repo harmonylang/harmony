@@ -302,7 +302,7 @@ static inline void context_remove_by_index(struct state *state, int i){
 }
 
 // Part of experimental -d option, running Harmony programs "for real".
-static void direct_run(struct state *state){
+static void direct_run(struct state *state, unsigned int id){
     struct {
         struct context ctx;
         hvalue_t stack[MAX_CONTEXT_STACK];
@@ -356,6 +356,8 @@ static void direct_run(struct state *state){
                     new_trans++;
                 }
                 else if (cnt < 0) {
+                    char *v = value_string(symbol);
+                    printf("%u: about to print '%s'\n", id, v);
                     panic("bad transition");
                 }
                 else if (dfa_potential(global.dfa, state->dfa_state, symbol) < 0) {
@@ -2512,20 +2514,12 @@ void do_work1(struct worker *w, struct node *node){
 #endif // PREFILL
 
     // Also check the invariants after initialization
-    if (node->id != 0 && state->chooser < 0 && (global.ninvs > 0 || global.nfinals > 0)) {
-        // memset(&step, 0, sizeof(step));
+    if (node->id != 0 && state->chooser < 0 && global.ninvs > 0) {
         step_init(w, &step);
 
         // Check each invariant
         for (unsigned int i = 0; i < global.ninvs; i++) {
             trystep(w, node, -1, state, global.invs[i].context, &step, 0, -1);
-        }
-
-        if (global.nfinals > 0 && value_state_all_eternal(state)) {
-            // Check each "finally" predicate
-            for (unsigned int i = 0; i < global.nfinals; i++) {
-                trystep(w, node, -1, state, global.finals[i], &step, 0, -1);
-            }
         }
     }
 }
@@ -3546,6 +3540,15 @@ static void charm_dump(bool computed_components){
 #ifndef _WIN32
 static void inthandler(int sig){
     printf("Caught interrupt\n");
+    fflush(stdout);
+    fflush(stderr);
+    _exit(1);
+}
+
+static void alrmhandler(int sig){
+    printf("Timeout exceeded\n");
+    fflush(stdout);
+    fflush(stderr);
     _exit(1);
 }
 #endif
@@ -3901,12 +3904,19 @@ int exec_model_checker(int argc, char **argv){
         global.run_direct = true;
         srand((unsigned) gettime());
 
+#ifndef _WIN32
+        signal(SIGALRM, alrmhandler);
+        alarm((int) maxtime);
+#endif
+
         struct state *sc = calloc(1, sizeof(struct state) +
                     256 * (sizeof(hvalue_t) + 1));
-        for (int i = 0; i < 200000; i++) {
-            printf("TIME %d\n", i);
+        for (unsigned int i = 0; i < 10000; i++) {
+            if (i % 100 == 0) {
+                printf("TIME %d\n", i);
+            }
             memcpy(sc, state, state_size(state));
-            direct_run(sc);
+            direct_run(sc, i);
         }
         if (global.dfa != NULL) {
             dfa_dump(global.dfa);
@@ -4135,7 +4145,7 @@ int exec_model_checker(int argc, char **argv){
     // TODO.  Also look for other final states and evaluate more finally
     //        clauses.  This can happen if an eternal thread sits in
     //        a loop like:  await x and y
-    if (global.failures == NULL && loops_possible) {
+    if (global.failures == NULL /* && loops_possible */) {
         if (global.graph.size > 10000) {
             printf("    * Determine strongly connected components\n");
             fflush(stdout);
@@ -4238,6 +4248,16 @@ int exec_model_checker(int argc, char **argv){
                     f->edge = node_to_parent(node);
                     add_failure(&global.failures, f);
                     // break;
+                }
+
+                if (global.nfinals > 0) {
+                    struct step step;
+                    step_init(&workers[0], &step);
+
+                    // Check each "finally" predicate
+                    for (unsigned int i = 0; i < global.nfinals; i++) {
+                        trystep(&workers[0], node, -1, node_state(node), global.finals[i], &step, 0, -1);
+                    }
                 }
             }
         }
