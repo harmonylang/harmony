@@ -133,12 +133,13 @@ def fs_worker(fs_state, id):
     while True:
         let req = get(fs_state->req_q)
         let ib = req.ino / INODES_PER_BLOCK:
-            if req.type == "write":
+            if req.type in { "write", "delete" }:
                 write_acquire(?fs_state->ib_locks[ib])
                 fs_update_request(fs_state, id, req, ib)
                 write_release(?fs_state->ib_locks[ib])
                 put(req.q, "ok")
             else:
+                assert req.type in { "read", "getsize" }
                 read_acquire(?fs_state->ib_locks[ib])
                 let response = fs_query_request(fs_state, req, ib):
                     read_release(?fs_state->ib_locks[ib])
@@ -184,6 +185,13 @@ def read(req_q, ino, offset) returns data:
 def write(req_q, ino, offset, data):
     let res_q = malloc(Queue()):
         put(req_q, { .type: "write", .ino: ino, .offset: offset, .data: data, .q: res_q })
+        let status = get(res_q):
+            assert status == "ok"
+        free(res_q)
+
+def delete(req_q, ino, offset, data):
+    let res_q = malloc(Queue()):
+        put(req_q, { .type: "delete", .ino: ino, .q: res_q })
         let status = get(res_q):
             assert status == "ok"
         free(res_q)

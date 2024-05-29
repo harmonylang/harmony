@@ -16,3 +16,6 @@ def write(fs, ino, offset, data):
                 (!fs)[ino][offset] = data
             else:
                 (!fs)[ino] += ([ None, ] * (offset - n)) + [data,]
+
+def delete(fs, ino):
+    atomically (!fs)[ino] = []
