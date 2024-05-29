@@ -729,7 +729,6 @@ static void value_string_context(struct strbuf *sb, hvalue_t v) {
 #endif
     strbuf_printf(sb, ",readonly=%d", ctx->readonly);
     strbuf_printf(sb, ",atomic=%d", ctx->atomic);
-    strbuf_printf(sb, ",aflag=%d", ctx->atomicFlag);
     strbuf_printf(sb, ",il=%d", ctx->interruptlevel);
     strbuf_printf(sb, ",stopped=%d", ctx->stopped);
     strbuf_printf(sb, ",terminated=%d", ctx->terminated);
@@ -880,9 +879,6 @@ static void value_json_context(struct strbuf *sb, hvalue_t v) {
     }
     if (ctx->initial) {
         strbuf_printf(sb, "\"initial\": { \"type\": \"bool\", \"value\": \"True\" },");
-    }
-    if (ctx->atomicFlag) {
-        strbuf_printf(sb, "\"atomicFlag\": { \"type\": \"bool\", \"value\": \"True\" },");
     }
     if (ctx->interruptlevel) {
         strbuf_printf(sb, "\"interruptlevel\": { \"type\": \"int\", \"value\": \"1\" },");

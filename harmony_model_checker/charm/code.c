@@ -21,6 +21,7 @@ static struct instr code_instr_parse(struct allocator *allocator, struct json_va
         exit(1);
     }
     struct instr i;
+    memset(&i, 0, sizeof(i));
     i.oi = oi;
     i.env = (*oi->init)(jv->u.map, allocator);
     i.choose = strcmp(oi->name, "Choose") == 0;
@@ -35,7 +36,10 @@ static struct instr code_instr_parse(struct allocator *allocator, struct json_va
     i.breakable = i.load || i.store || i.del || i.print;
     if (strcmp(oi->name, "AtomicInc") == 0) {
         const struct env_AtomicInc *ea = i.env;
-        if (!ea->lazy) {
+        if (ea->lazy) {
+            i.is_assert = true;
+        }
+        else {
             i.breakable = true;
         }
     }

@@ -705,9 +705,7 @@ void op_AtomicDec(const void *env, struct state *state, struct step *step){
     }
 
     assert(ctx->atomic > 0);
-    if (--ctx->atomic == 0) {
-        ctx->atomicFlag = false;
-    }
+    ctx->atomic--;
     ctx->pc++;
 }
 
@@ -2005,7 +2003,6 @@ void op_Finally(const void *env, struct state *state, struct step *step){
     ctx->vars = VALUE_DICT;
     ctx->readonly = 1;
     ctx->atomic = 1;
-    ctx->atomicFlag = true;
     ctx_push(ctx, VALUE_LIST);
     hvalue_t finctx = value_put_context(step->allocator, ctx);
 
@@ -2029,7 +2026,6 @@ void op_Invariant(const void *env, struct state *state, struct step *step){
     ctx->vars = VALUE_DICT;
     ctx->readonly = 1;
     ctx->atomic = 1;
-    ctx->atomicFlag = true;
     ctx_push(ctx, VALUE_LIST);	// HACK
     hvalue_t invctx = value_put_context(step->allocator, ctx);
 

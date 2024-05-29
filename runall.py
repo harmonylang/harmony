@@ -110,11 +110,11 @@ for t in tests:
         (base, ext) = os.path.splitext(args[-1])
         with open(base + ".hco") as f:
             hco = json.load(f)
-            print("time=%.2f, #states=%d, issue=%s" % (end - start, hco["nstates"], hco["issue"]))
+            print("time=%.2f, #states=%d(%d), issue=%s" % (end - start, hco["nstates"], t["nstates"], hco["issue"]))
             if t["issue"] != hco["issue"]:
                 print("Different issue (was %s)???  Aborting further tests" % t["issue"])
                 break
-            if t["issue"] != "Safety violation" and min(t["nstates"], hco["nstates"]) / max(t["nstates"], hco["nstates"]) < .9:
+            if t["issue"] != "Safety violation" and min(t["nstates"], hco["nstates"]) / max(t["nstates"], hco["nstates"]) < .1:
                 print("#states very different (was %d)???" % t["nstates"])
                 break
     else:

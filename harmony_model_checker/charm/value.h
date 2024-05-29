@@ -43,7 +43,6 @@ struct context {   // context value
     uint16_t pc;              // program counter
     uint16_t id;              // thread identifier
     bool initial : 1;         // __init__ context
-    bool atomicFlag : 1;      // to implement lazy atomicity
     bool interruptlevel : 1;  // interrupt level
     bool stopped : 1;         // context is stopped
     bool terminated : 1;      // context has terminated
