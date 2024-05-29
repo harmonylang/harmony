@@ -40,8 +40,8 @@ def json_string(js):
         if v == []:
             return "{:}"
         lst = [ (json_string(js["key"]), json_string(js["value"])) for js in v ]
-        if [ k for k,_ in lst ] == [ str(i) for i in range(len(v)) ]:
-            return "[ " + ", ".join([ x for _,x in lst ]) + " ]" 
+        # if [ k for k,_ in lst ] == [ str(i) for i in range(len(v)) ]:
+        #     return "[ " + ", ".join([ x for _,x in lst ]) + " ]" 
         return "{ " + ", ".join([ k + ": " + x for k,x in lst ]) + " }" 
     if type == "pc":
         return "PC(%s)"%v
