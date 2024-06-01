@@ -94,38 +94,50 @@ def fs_query_request(fs_state, req, ib) returns result:
 
 # Handle a write request.  A write lock on i-node block ib has been acquired.
 def fs_update_request(fs_state, id, req, ib):
-    assert req.type == "write"
     var inode_block = disk.read(fs_state->disk, 1 + ib)
     var inode = inode_block[req.ino % INODES_PER_BLOCK]
-
-    if req.offset == 0:
-        if inode.direct == None:
-            inode.direct = fs_alloc(fs_state)
-            inode.size = max(inode.size, 1)
-            inode_block[req.ino % INODES_PER_BLOCK] = inode
-            disk.write(fs_state->disk, 1 + ib, inode_block)
-        disk.write(fs_state->disk, inode.direct, req.data)
-    else:
-        if inode.indir == None:
-            inode.indir = fs_alloc(fs_state)
-            inode.size = max(inode.size, req.offset + 1)
-            inode_block[req.ino % INODES_PER_BLOCK] = inode
-            disk.write(fs_state->disk, 1 + ib, inode_block)
-            let bno = fs_alloc(fs_state)
-            let indir = [ bno if i == (req.offset - 1) else None
-                            for i in { 0 .. INODES_PER_BLOCK - 1 } ]:
-                disk.write(fs_state->disk, bno, req.data)
-                disk.write(fs_state->disk, inode.indir, indir)
-        else:
-            var indir = disk.read(fs_state->disk, inode.indir)
-            if indir[req.offset - 1] == None:
-                indir[req.offset - 1] = fs_alloc(fs_state)
-                disk.write(fs_state->disk, inode.indir, indir)
-            disk.write(fs_state->disk, indir[req.offset - 1], req.data)
-            if inode.size <= req.offset:
-                inode.size = req.offset + 1
+    if req.type == "write":
+        if req.offset == 0:
+            if inode.direct == None:
+                inode.direct = fs_alloc(fs_state)
+                inode.size = max(inode.size, 1)
                 inode_block[req.ino % INODES_PER_BLOCK] = inode
                 disk.write(fs_state->disk, 1 + ib, inode_block)
+            disk.write(fs_state->disk, inode.direct, req.data)
+        else:
+            if inode.indir == None:
+                inode.indir = fs_alloc(fs_state)
+                inode.size = max(inode.size, req.offset + 1)
+                inode_block[req.ino % INODES_PER_BLOCK] = inode
+                disk.write(fs_state->disk, 1 + ib, inode_block)
+                let bno = fs_alloc(fs_state)
+                let indir = [ bno if i == (req.offset - 1) else None
+                                for i in { 0 .. INDIR_PER_BLOCK - 1 } ]:
+                    disk.write(fs_state->disk, bno, req.data)
+                    disk.write(fs_state->disk, inode.indir, indir)
+            else:
+                var indir = disk.read(fs_state->disk, inode.indir)
+                if indir[req.offset - 1] == None:
+                    indir[req.offset - 1] = fs_alloc(fs_state)
+                    disk.write(fs_state->disk, inode.indir, indir)
+                disk.write(fs_state->disk, indir[req.offset - 1], req.data)
+                if inode.size <= req.offset:
+                    inode.size = req.offset + 1
+                    inode_block[req.ino % INODES_PER_BLOCK] = inode
+                    disk.write(fs_state->disk, 1 + ib, inode_block)
+    else:
+        assert req.type == "delete"
+        if inode.direct != None:
+            fs_free(fs_state, inode.direct)
+        if inode.indir != None:
+            let indir = disk.read(fs_state->disk, inode.indir):
+                for bno in indir:
+                    if bno != None:
+                        fs_free(fs_state, bno)
+        inode.direct = inode.indir = None
+        inode.size = 0
+        inode_block[req.ino % INODES_PER_BLOCK] = inode
+        disk.write(fs_state->disk, 1 + ib, inode_block)
 
 #/ WORKER
 
@@ -185,7 +197,7 @@ def write(req_q, ino, offset, data):
             assert status == "ok"
         free(res_q)
 
-def delete(req_q, ino, offset, data):
+def delete(req_q, ino):
     let res_q = malloc(Queue()):
         put(req_q, { .type: "delete", .ino: ino, .q: res_q })
         let status = get(res_q):
