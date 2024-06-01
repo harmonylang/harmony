@@ -3,9 +3,6 @@ from alloc import malloc
 def File(n_files) returns fs:
     fs = malloc([ [], ] * n_files)
 
-def getsize(fs, ino) returns size:
-    atomically size = len (!fs)[ino] 
-
 def read(fs, ino, offset) returns data:
     atomically data = (!fs)[ino][offset] if 0 <= offset < len (!fs)[ino] else None
 

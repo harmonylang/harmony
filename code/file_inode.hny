@@ -1,5 +1,3 @@
-#/ PREAMBLE
-
 # The file system consists of a superblock pointing to a linked list
 # of free blocks, an array of inode blocks, and the remaining blocks.
 # The remaining blocks are dynamic and can be of the following types:
@@ -8,6 +6,8 @@
 #   - indir: an indirect block, with pointers to other blocks
 # An inode has a pointer to a direct block and a pointer to an indirect block,
 # so the maximum file size is 1 + INDIR_PER_BLOCK.
+
+#/ PREAMBLE
 
 from synch import *             # shared queue for file server and lock for superblock
 from rwlock import *            # read/write locks for inode blocks
@@ -37,7 +37,7 @@ def fs_init(d, n_inode_blocks):
     # Write the superblock
     disk.write(d, 0, { .n_inode_blocks: n_inode_blocks, .free_list: free_list })
 
-#/ FREELIST
+#/ UTILS
 
 # Allocate a disk block.
 def fs_alloc(fs_state) returns bno:
@@ -58,58 +58,60 @@ def fs_free(fs_state, bno):
     disk.write(fs_state->disk, 0, super)
     release(?fs_state->free_lock)
 
+# Read inode ino in block ib.
+def fs_get_inode(fs_state, ib, ino) returns inode:
+    let inode_block = disk.read(fs_state->disk, 1 + ib):
+        inode = inode_block[ino % INODES_PER_BLOCK]
+
+# Write inode ino in block ib.
+def fs_put_inode(fs_state, ib, ino, inode):
+    var inode_block = disk.read(fs_state->disk, 1 + ib)
+    inode_block[ino % INODES_PER_BLOCK] = inode
+    disk.write(fs_state->disk, 1 + ib, inode_block)
+
 #/ QUERY
 
-# Handle a read-only request.  A read lock on i-node block ib has been acquired.
-def fs_query_request(fs_state, req, ib) returns result:
+# Handle a read request.  A read lock on i-node block ib has been acquired.
+def fs_read_request(fs_state, req, ib) returns result:
     # Read the inode block and extract the inode
-    let inode_block = disk.read(fs_state->disk, 1 + ib)
-    let inode = inode_block[req.ino % INODES_PER_BLOCK]:
-        if req.type == "getsize":
-            result = inode.size
-        else:
-            assert req.type == "read"
+    let inode = fs_get_inode(fs_state, ib, req.ino):
+        # Read the direct block.  Return None if there is no direct block.
+        if req.offset == 0:
+            if inode.direct == None:
+                result = None
+            else:
+                result = disk.read(fs_state->disk, inode.direct)
 
-            # Read the direct block.  Return None if there is no direct block.
-            if req.offset == 0:
-                if inode.direct == None:
+        # Read indirectly.  If there is no indirect block return None
+        elif inode.indir == None:
+            result = None
+
+        # Read the indirect block and get the pointer to the data block,
+        # which may be None.
+        else:
+            let indir = disk.read(fs_state->disk, inode.indir):
+                if indir[req.offset - 1] == None:
                     result = None
                 else:
-                    result = disk.read(fs_state->disk, inode.direct)
-
-            # Read indirectly.  If there is no indirect block return None
-            elif inode.indir == None:
-                result = None
-
-            # Read the indirect block and get the pointer to the data block,
-            # which may be None.
-            else:
-                let indir = disk.read(fs_state->disk, inode.indir):
-                    if indir[req.offset - 1] == None:
-                        result = None
-                    else:
-                        result = disk.read(fs_state->disk, indir[req.offset - 1])
+                    result = disk.read(fs_state->disk, indir[req.offset - 1])
 
 #/ UPDATE
 
 # Handle a write request.  A write lock on i-node block ib has been acquired.
 def fs_update_request(fs_state, id, req, ib):
-    var inode_block = disk.read(fs_state->disk, 1 + ib)
-    var inode = inode_block[req.ino % INODES_PER_BLOCK]
+    var inode = fs_get_inode(fs_state, ib, req.ino)
     if req.type == "write":
         if req.offset == 0:
             if inode.direct == None:
                 inode.direct = fs_alloc(fs_state)
                 inode.size = max(inode.size, 1)
-                inode_block[req.ino % INODES_PER_BLOCK] = inode
-                disk.write(fs_state->disk, 1 + ib, inode_block)
+                fs_put_inode(fs_state, ib, req.ino, inode)
             disk.write(fs_state->disk, inode.direct, req.data)
         else:
             if inode.indir == None:
                 inode.indir = fs_alloc(fs_state)
                 inode.size = max(inode.size, req.offset + 1)
-                inode_block[req.ino % INODES_PER_BLOCK] = inode
-                disk.write(fs_state->disk, 1 + ib, inode_block)
+                fs_put_inode(fs_state, ib, req.ino, inode)
                 let bno = fs_alloc(fs_state)
                 let indir = [ bno if i == (req.offset - 1) else None
                                 for i in { 0 .. INDIR_PER_BLOCK - 1 } ]:
@@ -123,8 +125,7 @@ def fs_update_request(fs_state, id, req, ib):
                 disk.write(fs_state->disk, indir[req.offset - 1], req.data)
                 if inode.size <= req.offset:
                     inode.size = req.offset + 1
-                    inode_block[req.ino % INODES_PER_BLOCK] = inode
-                    disk.write(fs_state->disk, 1 + ib, inode_block)
+                    fs_put_inode(fs_state, ib, req.ino, inode)
     else:
         assert req.type == "delete"
         if inode.direct != None:
@@ -136,8 +137,7 @@ def fs_update_request(fs_state, id, req, ib):
                         fs_free(fs_state, bno)
         inode.direct = inode.indir = None
         inode.size = 0
-        inode_block[req.ino % INODES_PER_BLOCK] = inode
-        disk.write(fs_state->disk, 1 + ib, inode_block)
+        fs_put_inode(fs_state, ib, req.ino, inode)
 
 #/ WORKER
 
@@ -152,9 +152,9 @@ def fs_worker(fs_state, id):
                 write_release(?fs_state->ib_locks[ib])
                 put(req.q, "ok")
             else:
-                assert req.type in { "read", "getsize" }
+                assert req.type == "read"
                 read_acquire(?fs_state->ib_locks[ib])
-                let response = fs_query_request(fs_state, req, ib):
+                let response = fs_read_request(fs_state, req, ib):
                     read_release(?fs_state->ib_locks[ib])
                     put(req.q, response)
 
@@ -177,12 +177,6 @@ def File(n_files) returns req_q:
             # Start worker threads to handle client requests
             for i in { 1 .. n_workers }:
                 spawn eternal fs_worker(fs_state, i)
-
-def getsize(req_q, ino) returns size:
-    let res_q = malloc(Queue()):
-        put(req_q, { .type: "getsize", .ino: ino, .q: res_q })
-        size = get(res_q)
-        free(res_q)
 
 def read(req_q, ino, offset) returns data:
     let res_q = malloc(Queue()):

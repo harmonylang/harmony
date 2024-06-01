@@ -5,16 +5,9 @@ const MAX_FILE_SIZE = 2
 
 const N_READ = 1
 const N_WRITE = 1
-const N_GETSIZE = 0
 const N_DELETE = 1
 
 system = File(N_FILES)
-
-def getsize_test(i):
-    let ino = choose { 0 .. N_FILES - 1 }:
-        print(i, "getsize", ino)
-        let size = getsize(system, ino):
-            print(i, "getsize done", ino, size)
 
 def read_test(i):
     let ino = choose { 0 .. N_FILES - 1 }
@@ -36,8 +29,6 @@ def delete_test(i):
         delete(system, ino)
         print(i, "delete done", ino)
 
-for i in { 1 .. N_GETSIZE }:
-    spawn getsize_test(i)
 for i in { 1 .. N_READ }:
     spawn read_test(i)
 for i in { 1 .. N_WRITE }:
