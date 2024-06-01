@@ -1,64 +1,69 @@
 #/ PREAMBLE
 
-from synch import *             # shared queue for file server and lock for superblock
-from rwlock import *            # read/write locks for inode blocks
-from alloc import *             # malloc/free
-from list import subseq         # list slicing
-import wal                      # disk with a write-ahead-log
-
-const N_BLOCKS = 12             # total number of disk blocks
-const INODES_PER_BLOCK = 2      # number of inodes that fit in a block
-const INDIR_PER_BLOCK  = 4      # number of block pointers per block
-
-#/ FREELIST
-
-# The file system consists of a superblock, an array of bitmap blocks
-# (to track the free blocks), an array of inode blocks, and the
-# remaining blocks.  The remaining blocks are dynamic and can be of
-# the following types:
-#   - free: not in use (marked False in the bitmap blocks)
+# The file system consists of a superblock pointing to a linked list
+# of free blocks, an array of inode blocks, and the remaining blocks.
+# The remaining blocks are dynamic and can be of the following types:
+#   - free: in the linked list of free blocks
 #   - data: a data block
 #   - indir: an indirect block, with pointers to other blocks
 # An inode has a pointer to a direct block and a pointer to an indirect block,
 # so the maximum file size is 1 + INDIR_PER_BLOCK.
 
-# Allocate a disk block.  Currently uses first available strategy,
-# which is not very efficient but easy.
-def fs_alloc(fs_state) returns bno:
-    acquire(?fs_state->bitmap_lock)
-    bno = fs_state->n_bitmap_blocks + fs_state->n_inode_blocks
-    var found = False
-    while not found:
-        bno += 1
-        assert bno < N_BLOCKS   # TODO.  Do better error handling here
-        found = not fs_state->bitmap[bno]
-    fs_state->bitmap[bno] = True
-    release(?fs_state->bitmap_lock)
+from synch import *             # shared queue for file server and lock for superblock
+from rwlock import *            # read/write locks for inode blocks
+from alloc import *             # malloc/free
+from list import subseq         # list slicing
+import disk                     # reading and writing blocks
+
+const N_BLOCKS = 10             # total number of disk blocks
+const INODES_PER_BLOCK = 2      # number of inodes that fit in a block
+const INDIR_PER_BLOCK  = 4      # number of block pointers per block
 
 #/ INIT
 
-# Initialize the file system by writing the superblock, the bitmap blocks, and
+# Initialize the file system by writing the superblock, the free list, and
 # the i-node blocks,
-def fs_init(d, n_bitmap_blocks, n_inode_blocks):
-    # Initialize the superblock
-    wal.write(d, 0,
-        { .n_bitmap_block: n_bitmap_blocks, .n_inode_blocks: n_inode_blocks })
-
-    # Initialize the bitmap blocks
-    for bno in { 1 .. n_bitmap_blocks }:
-        wal.write(d, bno, [ False, ] * wal.BITS_PER_BLOCK)
-
+def fs_init(d, n_inode_blocks):
     # Initialize the i-node blocks
     for i in { 1 .. n_inode_blocks }:
-        wal.write(d, n_bitmap_blocks + i, [
-            { .direct: None, .indir: None, .size: 0 }, ] * INODES_PER_BLOCK)
+        disk.write(d, i, [ { .direct: None, .indir: None, .size: 0 }, ] * INODES_PER_BLOCK)
+
+    # Free the data blocks
+    var free_list = None
+    for i in { n_inode_blocks + 1 .. N_BLOCKS - 1 }:
+        disk.write(d, i, free_list)
+        free_list = i
+
+    # Write the superblock
+    disk.write(d, 0, { .n_inode_blocks: n_inode_blocks, .free_list: free_list })
+
+#/ FREELIST
+
+# Allocate a disk block.
+def fs_alloc(fs_state) returns bno:
+    acquire(?fs_state->free_lock)
+    var super = disk.read(fs_state->disk, 0)
+    bno = super.free_list
+    if bno != None:
+        super.free_list = disk.read(fs_state->disk, bno)
+        disk.write(fs_state->disk, 0, super)
+    release(?fs_state->free_lock)
+
+# Free block bno.
+def fs_free(fs_state, bno):
+    acquire(?fs_state->free_lock)
+    var super = disk.read(fs_state->disk, 0)
+    disk.write(fs_state->disk, bno, super.free_list)
+    super.free_list = bno
+    disk.write(fs_state->disk, 0, super)
+    release(?fs_state->free_lock)
 
 #/ QUERY
 
 # Handle a read-only request.  A read lock on i-node block ib has been acquired.
 def fs_query_request(fs_state, req, ib) returns result:
     # Read the inode block and extract the inode
-    let inode_block = wal.read(fs_state->disk, 1 + fs_state->n_bitmap_blocks + ib)
+    let inode_block = disk.read(fs_state->disk, 1 + ib)
     let inode = inode_block[req.ino % INODES_PER_BLOCK]:
         if req.type == "getsize":
             result = inode.size
@@ -70,7 +75,7 @@ def fs_query_request(fs_state, req, ib) returns result:
                 if inode.direct == None:
                     result = None
                 else:
-                    result = wal.read(fs_state->disk, inode.direct)
+                    result = disk.read(fs_state->disk, inode.direct)
 
             # Read indirectly.  If there is no indirect block return None
             elif inode.indir == None:
@@ -79,52 +84,48 @@ def fs_query_request(fs_state, req, ib) returns result:
             # Read the indirect block and get the pointer to the data block,
             # which may be None.
             else:
-                let indir = wal.read(fs_state->disk, inode.indir):
+                let indir = disk.read(fs_state->disk, inode.indir):
                     if indir[req.offset - 1] == None:
                         result = None
                     else:
-                        result = wal.read(fs_state->disk, indir[req.offset - 1])
+                        result = disk.read(fs_state->disk, indir[req.offset - 1])
 
 #/ UPDATE
 
 # Handle a write request.  A write lock on i-node block ib has been acquired.
 def fs_update_request(fs_state, id, req, ib):
     assert req.type == "write"
-    var inode_block = wal.read(fs_state->disk, 1 + fs_state->n_bitmap_blocks + ib)
+    var inode_block = disk.read(fs_state->disk, 1 + ib)
     var inode = inode_block[req.ino % INODES_PER_BLOCK]
-
-    wal.txbegin(fs_state->disk, id)
 
     if req.offset == 0:
         if inode.direct == None:
             inode.direct = fs_alloc(fs_state)
             inode.size = max(inode.size, 1)
             inode_block[req.ino % INODES_PER_BLOCK] = inode
-            wal.write(fs_state->disk, 1 + fs_state->n_bitmap_blocks + ib, inode_block)
-        wal.write(fs_state->disk, inode.direct, req.data)
+            disk.write(fs_state->disk, 1 + ib, inode_block)
+        disk.write(fs_state->disk, inode.direct, req.data)
     else:
         if inode.indir == None:
             inode.indir = fs_alloc(fs_state)
             inode.size = max(inode.size, req.offset + 1)
             inode_block[req.ino % INODES_PER_BLOCK] = inode
-            wal.write(fs_state->disk, 1 + fs_state->n_bitmap_blocks + ib, inode_block)
+            disk.write(fs_state->disk, 1 + ib, inode_block)
             let bno = fs_alloc(fs_state)
             let indir = [ bno if i == (req.offset - 1) else None
                             for i in { 0 .. INODES_PER_BLOCK - 1 } ]:
-                wal.write(fs_state->disk, bno, req.data)
-                wal.write(fs_state->disk, inode.indir, indir)
+                disk.write(fs_state->disk, bno, req.data)
+                disk.write(fs_state->disk, inode.indir, indir)
         else:
-            var indir = wal.read(fs_state->disk, inode.indir)
+            var indir = disk.read(fs_state->disk, inode.indir)
             if indir[req.offset - 1] == None:
                 indir[req.offset - 1] = fs_alloc(fs_state)
-                wal.write(fs_state->disk, inode.indir, indir)
-            wal.write(fs_state->disk, indir[req.offset - 1], req.data)
+                disk.write(fs_state->disk, inode.indir, indir)
+            disk.write(fs_state->disk, indir[req.offset - 1], req.data)
             if inode.size <= req.offset:
                 inode.size = req.offset + 1
                 inode_block[req.ino % INODES_PER_BLOCK] = inode
-                wal.write(fs_state->disk, 1 + fs_state->n_bitmap_blocks + ib, inode_block)
-
-    wal.txend(fs_state->disk, id)
+                disk.write(fs_state->disk, 1 + ib, inode_block)
 
 #/ WORKER
 
@@ -151,19 +152,14 @@ def File(n_files) returns req_q:
     req_q = malloc(Queue())
     let n_inode_blocks = (n_files + (INODES_PER_BLOCK - 1)) / INODES_PER_BLOCK
     let n_workers = 2
-    let d = wal.new(N_BLOCKS)
-    let n_bitmap_blocks = (N_BLOCKS + (wal.BITS_PER_BLOCK - 1)) /
-                                                wal.BITS_PER_BLOCK:
+    let d = disk.new(N_BLOCKS):
         # Initialize the file system on disk
-        fs_init(d, n_bitmap_blocks, n_inode_blocks)
+        fs_init(d, n_inode_blocks)
 
         # Allocate the in-memory shared state of the file server
         let fs_state = malloc({
-                .disk: d, .req_q: req_q, .bitmap_lock: Lock(),
-                .n_bitmap_blocks: n_bitmap_blocks,
+                .disk: d, .req_q: req_q, .free_lock: Lock(),
                 .n_inode_blocks: n_inode_blocks,
-                .bitmap: [ i <= (n_bitmap_blocks + n_inode_blocks)
-                                        for i in { 0 .. N_BLOCKS - 1 } ],
                 .ib_locks: [ RWlock(), ] * n_inode_blocks }):
 
             # Start worker threads to handle client requests
