@@ -3860,8 +3860,8 @@ int exec_model_checker(int argc, char **argv){
 
         struct state *sc = calloc(1, sizeof(struct state) +
                     256 * (sizeof(hvalue_t) + 1));
-        for (unsigned int i = 0; i < 10000; i++) {
-            if (i % 100 == 0) {
+        for (unsigned int i = 0; i < 1; i++) {
+            if (i > 0 && i % 100 == 0) {
                 printf("TIME %d\n", i);
             }
             memcpy(sc, state, state_size(state));
