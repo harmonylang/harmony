@@ -56,9 +56,11 @@
 #include "hashdict.h"
 #include "spawn.h"
 
+#ifdef BIRDS
 #define main xmain
 #include "birds.h"
 #undef main
+#endif
 
 // Maximum number of arguments of the Nary (N-Ary) HVM operation
 #define MAX_ARITY   16
@@ -1040,15 +1042,19 @@ struct iqueue {
 struct bogus_op {
     enum {
         IQ_NEW, IQ_ENQUEUE, IQ_DEQUEUE,
+#ifdef BIRDS
         OLB_NEW, OLB_WB_ACQUIRE, OLB_WB_RELEASE,
                  OLB_EB_ACQUIRE, OLB_EB_RELEASE
+#endif
     } type;
     struct allocator *allocator;
     hvalue_t context;
     struct {
+#ifdef BIRDS
         struct {
             struct device *olb;
         } olb;
+#endif
         struct {
             struct iqueue *iq;  // only for enqueue and dequeue;
             hvalue_t arg;       // only for enqueue
@@ -1056,6 +1062,7 @@ struct bogus_op {
     } args;
 };
 
+#ifdef BIRDS
 static void olb_print(struct strbuf *sb, void *ref){
     strbuf_printf(sb, "OLB<%p>", ref);
 }
@@ -1065,6 +1072,7 @@ static int olb_compare(void *ref1, void *ref2){
     if (ref1 > ref2) return 1;
     return 0;
 }
+#endif
 
 static void iq_print(struct strbuf *sb, void *ref){
     strbuf_printf(sb, "IQueue<%p>", ref);
@@ -1076,11 +1084,13 @@ static int iq_compare(void *ref1, void *ref2){
     return 0;
 }
 
+#ifdef BIRDS
 struct external_descriptor olb_descr = {
     .type_name = "OLB",
     .print = olb_print,
     .compare = olb_compare
 };
+#endif
 
 struct external_descriptor iq_descr = {
     .type_name = "IQueue",
@@ -1093,6 +1103,7 @@ static void bogus_run(void *arg){
 
     hvalue_t result = 0;
     switch (bop->type) {
+#ifdef BIRDS
     case OLB_NEW:
         {
             struct device *olb = malloc(sizeof(*olb));
@@ -1128,6 +1139,7 @@ static void bogus_run(void *arg){
             result = VALUE_ADDRESS_SHARED;  // None
         }
         break;
+#endif
     case IQ_NEW:
         {
             struct iqueue *iq = calloc(1, sizeof(*iq));
@@ -1193,6 +1205,7 @@ static hvalue_t direct_getarg(struct step *step){
     return arg;
 }
 
+#ifdef BIRDS
 // Built-in bogus.olb_new method
 void op_Bogus_olb_new(const void *env, struct state *state, struct step *step){
     if (step->ctx->readonly > 0) {
@@ -1336,6 +1349,7 @@ void op_Bogus_olb_eb_release(const void *env, struct state *state, struct step *
     // Start a native thread to execute the operation.
     thread_create(bogus_run, bop);
 }
+#endif // BIRDS
 
 // Built-in bogus.iq_new method
 void op_Bogus_iq_new(const void *env, struct state *state, struct step *step){
@@ -5157,11 +5171,13 @@ struct op_info op_table[] = {
     { "bogus$iq_enqueue", NULL, op_Bogus_iq_enqueue },
     { "bogus$iq_dequeue", NULL, op_Bogus_iq_dequeue },
 
+#ifdef BIRDS
     { "bogus$olb_new", NULL, op_Bogus_olb_new },
     { "bogus$olb_wb_acquire", NULL, op_Bogus_olb_wb_acquire },
     { "bogus$olb_wb_release", NULL, op_Bogus_olb_wb_release },
     { "bogus$olb_eb_acquire", NULL, op_Bogus_olb_eb_acquire },
     { "bogus$olb_eb_release", NULL, op_Bogus_olb_eb_release },
+#endif
 
     { NULL, NULL, NULL }
 };
