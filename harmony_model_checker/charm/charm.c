@@ -693,35 +693,6 @@ static void process_step(
         next->nedges = noutgoing;
         mutex_release(lock);
 
-#ifdef PREFILL
-        // Fill in the outgoing edges
-        if (!so->failed && !so->infinite_loop) {
-            struct edge *edge = node_edges(next);
-            if (so->choosing) {
-                for (unsigned int i = 0; i < noutgoing; i++, edge++) {
-                    edge->u.before.ctx_index = new_index;
-                    edge->u.before.choice = choices[i];
-                }
-            }
-            else {
-                for (unsigned int i = 0; i < sc->bagsize; i++, edge++) {
-                    edge->u.before.ctx_index = i;
-                    edge->u.before.choice = 0;
-                }
-                for (unsigned int i = 0; i < sc->bagsize; i++) {
-                    struct context *ctx = value_get(choices[i], NULL);
-                    // TODO.  Perhaps ctx should also be non-atomic
-                    if (ctx->extended && ctx_trap_pc(ctx) != 0 && !ctx->interruptlevel) {
-                        edge->u.before.ctx_index = i;
-                        edge->u.before.choice = (hvalue_t) -1;  // signifies interrupt
-                        edge++;
-                    }
-                }
-            }
-            assert(edge == &node_edges(next)[next->nedges]);
-        }
-#endif // PREFILL
-
         // Add new node to results list kept per worker
         struct results_block *rb = w->results;
         if (rb == NULL || rb->nresults == NRESULTS) {
@@ -2413,16 +2384,6 @@ void do_work1(struct worker *w, struct node *node){
     // struct state *state = node_state(node);
     struct state *state = (struct state *) &edges[node->nedges];
     struct step step;
-#ifdef PREFILL
-    for (int i = 0; i < node->nedges; i++) {
-        unsigned int ctx_index = edges[i].u.before.ctx_index;
-        hvalue_t ctx = state_ctx(state, ctx_index);
-        hvalue_t choice = edges[i].u.before.choice;
-        // memset(&step, 0, sizeof(step));
-        step_init(w, &step);
-        trystep(w, node, i, state, ctx, &step, choice, ctx_index);
-    }
-#else
     if (state->chooser >= 0) {
         // The actual set of choices is on top of its stack
         hvalue_t chooser = state_ctx(state, state->chooser);
@@ -2461,7 +2422,6 @@ void do_work1(struct worker *w, struct node *node){
         }
         assert(j == node->nedges);
     }
-#endif // PREFILL
 
     // Also check the invariants after initialization
     if (node->id != 0 && state->chooser < 0 && global.ninvs > 0) {
@@ -2832,7 +2792,7 @@ static void worker(void *arg){
         w->start_count++;
 
         // Worker 0 needs to break out of the loop when the Kripke structure
-        // if finished (or when failures have been detected) so that it can
+        // is finished (or when failures have been detected) so that it can
         // go on with analysis and so on.
         if (done) {
             break;
