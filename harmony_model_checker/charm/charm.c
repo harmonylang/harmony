@@ -6,6 +6,8 @@
 #define _GNU_SOURCE
 #endif
 
+#define NEW_STUFF
+
 #include "head.h"
 
 #ifdef __linux__
@@ -65,8 +67,19 @@
 // Newly discovered  nodes are kept in arrays of this size
 #define NRESULTS        4096
 
+// Convenient constant
+#define MAX_STATE_SIZE (sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1))
+
+// Workers buffer states
+#define STATE_BUFFER_SIZE   ((MAX_STATE_SIZE + sizeof(struct state_header)) * 100)
+
 // All global variables should be here
 struct global global;
+
+struct state_header {
+    struct node *node;
+    unsigned int edge_index;
+};
 
 extern bool has_countLabel;     // TODO.  Hack for backward compatibility
 
@@ -191,9 +204,6 @@ struct worker {
     // instruction for profiling purposes.
     unsigned int *profile;      // one for each instruction in the HVM code
 
-    // Some space to compute a new state in
-    char state_space[sizeof(struct state) + 256*sizeof(hvalue_t)];
-
     // These need to be next to one another.  When a worker performs a
     // "step", it's on behalf of a particular thread with a particular
     // context (state of the thread).  The context structure is immediately
@@ -202,9 +212,16 @@ struct worker {
     hvalue_t stack[MAX_CONTEXT_STACK];
 
     // We also keep space for an optimization for atomic sections
-    char as_state[sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1)];
+    char as_state[MAX_STATE_SIZE];
     struct context as_ctx;
     hvalue_t as_stack[MAX_CONTEXT_STACK];
+
+    char state_buffer[STATE_BUFFER_SIZE];
+    unsigned int sb_index;      // current index into state_buffer
+
+#define TODO_BUFFER_SIZE    10000
+    struct node *todo_buffer[TODO_BUFFER_SIZE];
+    unsigned int tb_size, tb_index;
 };
 
 #ifdef CACHE_LINE_ALIGNED
@@ -538,6 +555,8 @@ static void direct_run(struct state *state, unsigned int id){
 static void process_step(
     struct worker *w,
     struct step_condition *stc,
+
+    // TODO. The following three can be derived from w.
     struct node *node,
     int edge_index,
     struct state *sc
@@ -667,9 +686,15 @@ static void process_step(
         }
     }
 
+    // Compute the size of the state
+    unsigned int size = state_size(sc);
+
+#ifdef NEW_STUFF
+    // TODO.  Should perhaps round up.
+    w->sb_index += size;
+#else
     // See if this state has been computed before by looking up the node,
     // or allocate if not.
-    unsigned int size = state_size(sc);
     bool new;
     mutex_t *lock;
     struct dict_assoc *hn = dict_find_new(w->visited, &w->allocator,
@@ -718,6 +743,7 @@ static void process_step(
     else if (next != node && next->len <= node->len) {
         w->loops_possible = true;
     }
+#endif
 }
 
 // This is the main workhorse function of model checking: explore a state and
@@ -1115,12 +1141,15 @@ static void trystep(
         mutex_release(si_lock);
     }
 
-    // Make a copy of the state.
+    // Copy the state.
     //
     // TODO. Don't need to copy if ctx in readonly mode (unless it stops being in
     //       readonly mode...
+    struct state_header *sh = (struct state_header *) &w->state_buffer[w->sb_index];
+    sh->node = node;
+    sh->edge_index = edge_index;
     unsigned int statesz = state_size(state);
-    struct state *sc = (struct state *) w->state_space;
+    struct state *sc = (struct state *) &sh[1];
     memcpy(sc, state, statesz);
     sc->chooser = -1;
 
@@ -1599,8 +1628,7 @@ void path_serialize(struct node *parent, struct edge *e){
 
 void path_recompute(){
     struct node *node = global.graph.nodes[0];
-    struct state *sc = calloc(1,
-        sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1));
+    struct state *sc = calloc(1, MAX_STATE_SIZE);
     memcpy(sc, node_state(node), state_size(node_state(node)));
 
     for (unsigned int i = 0; i < global.nmacrosteps; i++) {
@@ -2077,7 +2105,7 @@ again:
 // Output the macrosteps
 static void path_output(FILE *file){
     fprintf(file, "\n");
-    struct state *oldstate = calloc(1, sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1));
+    struct state *oldstate = calloc(1, MAX_STATE_SIZE);
     oldstate->vars = VALUE_DICT;
     for (unsigned int i = 0; i < global.nmacrosteps; i++) {
         path_output_macrostep(file, global.macrosteps[i], oldstate);
@@ -2446,38 +2474,8 @@ void do_work1(struct worker *w, struct node *node){
 // Workers move on to phase 2 when the goal is reached, to give charm an
 // opportunity to grow the hash tables which might otherwise become inefficient.
 static void do_work(struct worker *w){
-    unsigned int todo_count = 10;        // TODO
-
-    for (;;) {
-        // Grab one or a few states to evaluate.  When not using atomics, we
-        // do a few to avoid the overhead of contention on the lock.  Note that
-        // it is possible that as a result todo or atodo ends up being larger
-        // than graph.size.
-#ifdef USE_ATOMIC
-        unsigned int next = atomic_fetch_add(&global.atodo, todo_count);
-#else // USE_ATOMIC
-        mutex_acquire(&global.todo_lock);
-        unsigned int next = global.todo;
-        global.todo += todo_count;
-        mutex_release(&global.todo_lock);
-#endif // USE_ATOMIC
-
-        // Call do_work1() for each node we picked off the todo list.  It explores
-        // the node and adds new nodes that are found to w->results.
-        for (unsigned int i = 0; i < todo_count; i++, next++) {
-            // printf("W%d %d %d\n", w->index, next, global.graph.size);
-            // TODO: why not check for reaching the goal here instead of below?
-            if (next >= global.graph.size) {
-                return;
-            }
-            w->dequeued++;
-            do_work1(w, global.graph.nodes[next]);
-        }
-
-        // Stop if the goal has been reached.
-        if (next >= global.goal) {
-            break;
-        }
+    while (w->tb_index < w->tb_size) {
+        do_work1(w, w->todo_buffer[w->tb_index]);
     }
 }
 
