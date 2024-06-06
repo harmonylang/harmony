@@ -137,6 +137,7 @@ struct worker {
     double timeout;              // deadline for model checker (-t option)
     struct failure *failures;    // list of discovered failures (not data races)
     unsigned int index;          // index of worker
+    // TODO.  Next two should probably just be in "global".
     struct worker *workers;      // points to array of workers
     unsigned int nworkers;       // total number of workers
     unsigned int vproc;          // virtual processor for pinning
@@ -159,9 +160,9 @@ struct worker {
     unsigned int dequeued;      // total number of dequeued states
     unsigned int enqueued;      // total number of enqueued states
 
-    // A pointer to the Kripke structure, which is a hash table that
+    // A pointer to the Kripke structure shard, which is a hash table that
     // maps states to nodes.  Nodes contain the list of edges and more.
-    struct dict *visited;
+    struct dict *kripke_shard;
 
     // Thread 0 periodically prints some information on what it's
     // working on.  To avoid it getting the time too much, which might
@@ -691,7 +692,7 @@ static void process_step(
 
 #ifdef NEW_STUFF
     // TODO.  Should perhaps round up.
-    w->sb_index += size;
+    w->sb_index += sizeof(struct state_header) + size;
 #else
     // See if this state has been computed before by looking up the node,
     // or allocate if not.
@@ -2471,9 +2472,70 @@ void do_work1(struct worker *w, struct node *node){
 // ones after todo should be explored.  In other words, the "todo list" starts
 // at global.graph.nodes[global.todo] and ends at graph.nodes[graph.size];
 static void do_work(struct worker *w){
-    printf("WORKER %u: %u %u\n", w->index, w->tb_index, w->tb_size);
+    printf("WORK 1: %u: %u %u\n", w->index, w->tb_index, w->tb_size);
     while (w->tb_index < w->tb_size) {
         do_work1(w, w->todo_buffer[w->tb_index]);
+        w->tb_index += 1;
+    }
+}
+
+static void do_work2(struct worker *w){
+    printf("WORK 2: %u: %u\n", w->index, w->sb_index);
+
+    for (unsigned int i = 0; i < global.nworkers; i++) {
+        struct worker *w2 = &w->workers[i];
+        for (unsigned int sbi = 0; sbi < w2->sb_index;) {
+            struct state_header *sh = (struct state_header *) &w2->state_buffer[sbi];
+            printf("WORK 2: found state\n");
+
+            struct state *sc = (struct state *) &sh[1];
+            unsigned int size = state_size(sc);
+
+            // See if this state has been computed before by looking up the node,
+            // or allocate if not.
+            bool new;
+            mutex_t *lock;
+            struct dict_assoc *hn = dict_find_new(w->kripke_shard, &w->allocator,
+                        sc, size, noutgoing * sizeof(struct edge), &new, &lock);
+            struct node *next = (struct node *) &hn[1];
+            edge->dst = next;
+
+            if (new) {
+                assert(node->len == global.diameter);
+                next->failed = edge->failed;
+                next->parent = node;
+                next->len = node->len + 1;
+                next->nedges = noutgoing;
+                mutex_release(lock);
+
+                // Add new node to results list kept per worker
+                struct results_block *rb = w->results;
+                if (rb == NULL || rb->nresults == NRESULTS) {
+                    if ((rb = w->rb_free) == NULL) {
+                        rb = walloc_fast(w, sizeof(*rb));
+                    }
+                    else {
+                        w->rb_free = rb->next;
+                    }
+                    rb->nresults = 0;
+                    rb->next = w->results;
+                    w->results = rb;
+                }
+                rb->results[rb->nresults++] = next;
+
+                w->count++;
+                w->enqueued++;
+                w->total_results++;
+            }
+
+            // See if the node points sideways or backwards, in which
+            // case cycles in the graph are possible
+            else if (next != node && next->len <= node->len) {
+                w->loops_possible = true;
+            }
+            sbi += sizeof(*sh) + state_size((struct state *) &sh[1]);
+            assert(sbi <= w2->sb_index);
+        }
     }
 }
 
@@ -2818,9 +2880,6 @@ static void worker(void *arg){
         // rehashing is distributed among the threads in the next phase
         // The only parallelism here is that workers 1 and 2 grow different
         // hash tables, while worker 0 deals with the graph table
-        if (w->index == 1 % global.nworkers) {
-            dict_grow_prepare(w->visited);
-        }
         if (w->index == 2 % global.nworkers) {
             dict_grow_prepare(global.values);
         }
@@ -2828,7 +2887,13 @@ static void worker(void *arg){
             dict_grow_prepare(global.computations);
         }
 
-#ifndef NEW_STUFF
+#ifdef NEW_STUFF
+        do_work2(w);
+#else
+        if (w->index == 1 % global.nworkers) {
+            dict_grow_prepare(w->visited);
+        }
+
         // Only the coordinator (worker 0) does the following
         if (w->index == 0 /* % global.nworkers */) {
             // See where todo (or atodo) is at.  Because of how it's incremented
@@ -2927,7 +2992,9 @@ static void worker(void *arg){
         // In parallel, the workers copy the old hash table entries into the
         // new buckets.
         dict_make_stable(global.values, w->index);
+#ifndef NEW_STUFF
         dict_make_stable(w->visited, w->index);
+#endif
         dict_make_stable(global.computations, w->index);
 
         after = gettime();
@@ -3819,7 +3886,8 @@ int exec_model_checker(int argc, char **argv){
     struct worker *workers = calloc(global.nworkers, sizeof(*workers));
     for (unsigned int i = 0; i < global.nworkers; i++) {
         struct worker *w = &workers[i];
-        w->visited = visited;
+        w->kripke_shard = dict_new("kripke_shard", sizeof(struct node), 0, 0, false);
+
         w->timeout = timeout;
         w->start_barrier = &start_barrier;
         w->middle_barrier = &middle_barrier;
@@ -3866,8 +3934,14 @@ int exec_model_checker(int argc, char **argv){
 
     // Put the state and value dictionaries in concurrent mode
     dict_set_concurrent(global.values);
-    dict_set_concurrent(visited);
     dict_set_concurrent(global.computations);
+
+#ifdef NEW_STUFF
+    // Add node to the todo list of worker 0
+    workers[0].todo_buffer[0] = node;
+    workers[0].tb_size = 1;
+#else
+    dict_set_concurrent(visited);
 
     // Put the initial state in the visited map
     bool new;
@@ -3879,11 +3953,8 @@ int exec_model_checker(int argc, char **argv){
     mutex_release(lock);
     memset(node_edges(node), 0, sizeof(struct edge));
 
-    // Add node to the todo list of worker 0
-    workers[0].todo_buffer[0] = node;
-    workers[0].tb_size = 1;
-
-    // graph_add(&global.graph, node);
+    graph_add(&global.graph, node);
+#endif
 
     // Compute how much table space is allocated
     global.allocated = global.graph.size * sizeof(struct node *) +
