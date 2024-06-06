@@ -80,6 +80,7 @@ struct state_header {
     struct node *node;          // old state
     unsigned int edge_index;    // index of the edge in the old state
     unsigned int noutgoing;     // number of outgoing edges of new state
+    uint32_t hash;              // for debugging
 };
 
 extern bool has_countLabel;     // TODO.  Hack for backward compatibility
@@ -557,6 +558,22 @@ static void direct_run(struct state *state, unsigned int id){
     }
 }
 
+static inline uint32_t meiyan(const char *key, int count) {
+	typedef uint32_t *P;
+	uint32_t h = 0x811c9dc5;
+	while (count >= 8) {
+		h = (h ^ ((((*(P)key) << 5) | ((*(P)key) >> 27)) ^ *(P)(key + 4))) * 0xad3e7;
+		count -= 8;
+		key += 8;
+	}
+	#define tmp h = (h ^ *(uint16_t*)key) * 0xad3e7; key += 2;
+	if (count & 4) { tmp tmp }
+	if (count & 2) { tmp }
+	if (count & 1) { h = (h ^ *key) * 0xad3e7; }
+	#undef tmp
+	return h ^ (h >> 16);
+}
+
 // Apply the effect of evaluating a context (for a particular assignment
 // of shared variables and possibly some choice) to a state.  This leads
 // to a new edge in the Kripke structure, possibly to a new state.
@@ -701,6 +718,7 @@ static void process_step(
     // TODO.  Should perhaps round up.
     struct state_header *sh = (struct state_header *) &w->state_buffer[w->sb_index];
     sh->noutgoing = noutgoing;
+    sh->hash = meiyan((char *) sc, size);
     w->sb_index += sizeof(struct state_header) + size;
 #else
     // See if this state has been computed before by looking up the node,
@@ -2490,26 +2508,15 @@ static void do_work(struct worker *w){
     printf("WORK 1: %u: %u %u\n", w->index, w->tb_index, w->tb_size);
     w->sb_index = 0;
     while (w->tb_index < w->tb_size) {
-        do_work1(w, w->todo_buffer[w->tb_index]);
+        struct node *n = w->todo_buffer[w->tb_index];
+        struct state *s = node_state(n);
+        unsigned int size = state_size(s);
+        uint32_t h = meiyan((char *) s, size);
+        printf("WORK 1: %u: do i=%u h=%u\n", w->index, w->tb_index, h);
+        do_work1(w, n);
         w->tb_index += 1;
     }
     printf("WORK 1: %u DONE\n", w->index);
-}
-
-static inline uint32_t meiyan(const char *key, int count) {
-	typedef uint32_t *P;
-	uint32_t h = 0x811c9dc5;
-	while (count >= 8) {
-		h = (h ^ ((((*(P)key) << 5) | ((*(P)key) >> 27)) ^ *(P)(key + 4))) * 0xad3e7;
-		count -= 8;
-		key += 8;
-	}
-	#define tmp h = (h ^ *(uint16_t*)key) * 0xad3e7; key += 2;
-	if (count & 4) { tmp tmp }
-	if (count & 2) { tmp }
-	if (count & 1) { h = (h ^ *key) * 0xad3e7; }
-	#undef tmp
-	return h ^ (h >> 16);
 }
 
 static void do_work2(struct worker *w){
@@ -2527,9 +2534,11 @@ static void do_work2(struct worker *w){
             // See if this state's for me
             // TODO.  Should use a different hash function or something
             uint32_t h = meiyan((char *) sc, size);
+            assert(h == sh->hash);
             if (h % w->nworkers == w->index) {
                 // See if this state has been computed before by looking up the node,
                 // or allocate if not.
+                printf("HERE WE GO\n");
                 bool new;
                 struct dict_assoc *hn = dict_find_new(w->kripke_shard, &w->allocator,
                             sc, size, sh->noutgoing * sizeof(struct edge), &new, NULL);
@@ -2546,6 +2555,15 @@ static void do_work2(struct worker *w){
                     next->len = sh->node->len + 1;
                     next->nedges = sh->noutgoing;
 
+                    struct state *s1 = node_state(next);
+                    assert(memcmp(s1, sc, size) == 0);
+                    assert(h == meiyan((char *) sc, size));
+                    unsigned int sz1 = state_size(s1);
+                    assert(sz1 == size);
+                    assert(memcmp(s1, sc, size) == 0);
+                    assert(h == meiyan((char *) node_state(next), size));
+
+                    printf("ADD w=%u i=%u h=%u\n", w->index, w->tb_size, h);
                     w->todo_buffer[w->tb_size++] = next;
 
                     w->count++;
