@@ -129,7 +129,7 @@ struct worker {
     unsigned int vproc;          // virtual processor for pinning
     unsigned int si_total, si_hits;
     struct edge_list *el_free;
-    bool loops_possible;         // cycles in graph are possible
+    bool loops_possible;         // loops in Kripke structure are possible
 
     // The worker thread loop through three phases:
     //  1: model check part of the state space
@@ -302,7 +302,7 @@ static inline void context_remove_by_index(struct state *state, int i){
 }
 
 // Part of experimental -d option, running Harmony programs "for real".
-static void run_direct(struct state *state){
+static void direct_run(struct state *state, unsigned int id){
     struct {
         struct context ctx;
         hvalue_t stack[MAX_CONTEXT_STACK];
@@ -313,23 +313,135 @@ static void run_direct(struct state *state){
     step.ctx = &fullctx.ctx;
     unsigned int interrupt_count = 1;
 
-    while (state->bagsize > 0) {
-        unsigned int total = 0, ctx_index = 0;
-        for (int i = 0; i < state->bagsize; i++) {
-            total += state_multiplicity(state, i);
-        }
-        unsigned int select = rand() % total;
-        // printf("--> %u %u\n", total, select);
-        for (int i = 0; i < state->bagsize; i++) {
-            if (state_multiplicity(state, i) > select) {
-                ctx_index = i;
-                break;
-            }
-            select -= state_multiplicity(state, i);
+    setbuf(stdout, NULL);
+
+    while (state->total > 0) {
+        direct_check(state, &step);
+        if (state->bagsize == 0) {
+            continue;
         }
 
-        // printf("pick %u\n", ctx_index);
+        // Collect info about the various possible
+        // contexts to run next
+        struct ctx_info {
+            hvalue_t ctx;
+            struct context *cc;
+            enum {
+                CI_NO_TRANSITION,
+                CI_OLD_TRANSITION,
+                CI_NEW_TRANSITION,
+                CI_POT_TRANSITION,
+            } trans;
+        } *ci = calloc( state->bagsize, sizeof(*ci));
+        unsigned int no_trans = 0;
+        unsigned int old_trans = 0;
+        unsigned int new_trans = 0;
+        unsigned int pot_trans = 0;
+        for (int i = 0; i < state->bagsize; i++) {
+            ci[i].ctx = state_ctx(state, i);
+            unsigned int size;
+            ci[i].cc = value_get(ci[i].ctx, &size);
+            assert(ctx_size(ci[i].cc) == size);
+            assert(!ci[i].cc->terminated);
+            assert(!ci[i].cc->failed);
+
+            // See if it's about to print something
+            struct instr *instrs = global.code.instrs;
+            if (instrs[ci[i].cc->pc].print) {
+                assert(ci[i].cc->sp > 0);
+                hvalue_t symbol = ctx_stack(ci[i].cc)[ci[i].cc->sp - 1];
+                int cnt = dfa_visited(global.dfa, state->dfa_state, symbol);
+                if (cnt == 0) {
+                    ci[i].trans = CI_NEW_TRANSITION;
+                    new_trans++;
+                }
+                else if (cnt < 0) {
+                    char *v = value_string(symbol);
+                    printf("%u: about to print '%s'\n", id, v);
+                    panic("bad transition");
+                }
+                else if (dfa_potential(global.dfa, state->dfa_state, symbol) < 0) {
+                    ci[i].trans = CI_OLD_TRANSITION;
+                    old_trans++;
+                }
+                else {
+                    ci[i].trans = CI_POT_TRANSITION;
+                    pot_trans++;
+                }
+            }
+            else {
+                ci[i].trans = CI_NO_TRANSITION;
+                no_trans++;
+            }
+        }
+        assert(no_trans + old_trans + new_trans + pot_trans== state->bagsize);
+
+        int ctx_index = -1;
+        if (ctx_index < 0) {    // random selection
+            ctx_index = 0;
+            unsigned int total = 0;
+            for (int i = 0; i < state->bagsize; i++) {
+                total += state_multiplicity(state, i);
+            }
+            unsigned int select = rand() % total;
+            // printf("--> %u %u\n", total, select);
+            for (int i = 0; i < state->bagsize; i++) {
+                if (state_multiplicity(state, i) > select) {
+                    ctx_index = i;
+                    break;
+                }
+                select -= state_multiplicity(state, i);
+            }
+        }
+
+#ifdef notdef
+        if (no_trans + new_trans > 0) {
+            unsigned int r = rand() % (no_trans + new_trans);
+            for (unsigned int i = 0; i < state->bagsize; i++) {
+                if (ci[i].trans == CI_NO_TRANSITION || ci[i].trans == CI_NEW_TRANSITION) {
+                    if (r == 0) {
+                        ctx_index = i;
+                        break;
+                    }
+                    r--;
+                }
+            }
+        }
+        else if (pot_trans > 0) {
+            unsigned int r = rand() % pot_trans;
+            for (unsigned int i = 0; i < state->bagsize; i++) {
+                if (ci[i].trans == CI_POT_TRANSITION) {
+                    if (r == 0) {
+                        ctx_index = i;
+                        break;
+                    }
+                    r--;
+                }
+            }
+        }
+        else {
+            assert(old_trans > 0);
+            unsigned int r = rand() % old_trans;
+            for (unsigned int i = 0; i < state->bagsize; i++) {
+                if (ci[i].trans == CI_OLD_TRANSITION) {
+                    if (r == 0) {
+                        ctx_index = i;
+                        break;
+                    }
+                    r--;
+                }
+            }
+        }
+ #endif
+        free(ci);
+        assert(ctx_index >= 0);
         hvalue_t pick = state_ctx(state, ctx_index);
+
+        // Remove the original context from the state
+        // assert(state_ctx(state, ctx_index) == ctx);
+        context_remove_by_index(state, ctx_index);
+
+        // printf("RUN %p\n", (void *) pick);
 
         // Get and copy the context
         unsigned int size;
@@ -347,17 +459,18 @@ static void run_direct(struct state *state){
             }
         }
 
-        for (;;) {
+        for (int i = 0; i < 100; i++) {     // Limit partial order reduction
             int pc = step.ctx->pc;
             struct instr *instrs = global.code.instrs;
             struct op_info *oi = instrs[pc].oi;
             (*oi->op)(instrs[pc].env, state, &step);
-            if (step.ctx->terminated) {
+            if (step.ctx->terminated || step.ctx->stopped) {
                 break;
             }
             if (step.ctx->failed) {
                 char *s = value_string(ctx_failure(step.ctx));
                 printf("Failure: %s\n", s);
+                printf("pc = %d\n", (int) step.ctx->pc);
                 free(s);
                 break;
             }
@@ -400,18 +513,28 @@ static void run_direct(struct state *state){
 
         // If context has failed, we're done
         if (step.ctx->failed) {
-            break;
+            return;
         }
 
+#ifdef notdef
         // Remove the original context from the state
         // assert(state_ctx(state, ctx_index) == ctx);
         context_remove_by_index(state, ctx_index);
+#endif
 
         // Add updated context to state unless terminated or stopped
-        if (!step.ctx->terminated && !step.ctx->stopped) {
+        if (step.ctx->stopped) {
+            hvalue_t after = value_put_context(step.allocator, step.ctx);
+            stopped_context_add(state, after);
+        }
+        else if (!step.ctx->terminated) {
             hvalue_t after = value_put_context(step.allocator, step.ctx);
             context_add(state, after);
         }
+    }
+
+    if (global.dfa != NULL && !dfa_is_final(global.dfa, state->dfa_state)) {
+        printf("Error: not in the final DFA state\n");
     }
 }
 
@@ -433,8 +556,9 @@ static void process_step(
             f->type = so->failed ? FAIL_SAFETY : FAIL_TERMINATION;
             f->node = node;
             f->edge = walloc_fast(w, sizeof(struct edge));
-#ifdef SHORT_POINTER
-            f->edge->dest = (uint64_t *) node - (uint64_t *) f->edge;
+#ifdef SHORT_PTR
+            f->edge->dest = (int64_t *) node - (int64_t *) f->edge;
+            printf("SET DST 1: %p\n", node);
 #else
             f->edge->dst = node;
 #endif
@@ -498,6 +622,10 @@ static void process_step(
         struct context *ctx = value_get(so->after, NULL);
         assert(ctx->sp > 0);
         hvalue_t s = ctx_stack(ctx)[ctx->sp - 1];
+        if (VALUE_TYPE(s) != VALUE_SET) {
+            printf("CHOOSING FROM %s\n", value_string(s));
+            panic("choose of non-set\n");
+        }
         assert(VALUE_TYPE(s) == VALUE_SET);
         unsigned int size;
         choices = value_get(s, &size);
@@ -553,8 +681,12 @@ static void process_step(
     struct dict_assoc *hn = dict_find_new(w->visited, &w->allocator,
                 sc, size, noutgoing * sizeof(struct edge), &new, &lock);
     struct node *next = (struct node *) &hn[1];
-#ifdef SHORT_POINTER
-    edge->dest = (uint64_t *) next - (uint64_t *) edge;
+#ifdef SHORT_PTR
+    edge->dest = (int64_t *) next - (int64_t *) edge;
+    printf("SET DST 2: next=%p edge=%p diff=%ld(%ld,%ld) %p\n", next, edge, (int64_t) edge->dest,
+    (int64_t *) next - (int64_t *) edge,
+    ((int64_t *) next - (int64_t *) edge) >> 37,
+    edge_dst(edge));
 #else
     edge->dst = next;
 #endif
@@ -642,85 +774,144 @@ static struct step_output *onestep(
     bool infloop_detect     // try to detect infloop from the start
 ) {
     assert(state_size(sc) == state_size(node_state(node)));
-
     assert(!step->ctx->terminated);
     assert(!step->ctx->failed);
 
+    struct instr *instrs = global.code.instrs;
     bool infinite_loop = false;
+    unsigned int instrcnt = 0;          // keeps track of #instruction executed
+    bool must_break = true;
+    bool choosing = false;              // set when ending in choosing state
+    struct dict *infloop = NULL;        // infinite loop detector
+    unsigned int as_instrcnt = 0;       // for rollback
+    bool stopped = false;
+    bool terminated = false;
+    bool rollback = false;
 
-    // See if we should first try an interrupt.
+    // See if we should first try an interrupt or make a choice.
     if (choice == (hvalue_t) -1) {
-        choice = 0;
         assert(step->ctx->extended);
         assert(ctx_trap_pc(step->ctx) != 0);
         interrupt_invoke(step);
     }
+    else if (choice != 0) {
+        assert(instrs[step->ctx->pc].choose);
+        assert(step->ctx->sp > 0);
+        ctx_stack(step->ctx)[step->ctx->sp - 1] = choice;
+        w->profile[step->ctx->pc]++;
+        instrcnt++;
+        step->ctx->pc++;
+    }
+    else {
+        must_break = false;
+    }
 
-    bool choosing = false;
-    struct dict *infloop = NULL;        // infinite loop detector
-    unsigned int instrcnt = 0;          // keeps track of #instruction executed
-    unsigned int as_instrcnt = 0;       // for rollback
-
-    bool rollback = false, stopped = false;
-    bool terminated = false;
     for (;;) {
-        int pc = step->ctx->pc;
-
-        // Each worker keeps track of how many times each instruction is executed.
-        w->profile[pc]++;
+        assert(!step->ctx->terminated);
+        assert(!step->ctx->failed);
 
         // See what kind of instruction is next
-        struct instr *instrs = global.code.instrs;
+        int pc = step->ctx->pc;
         struct op_info *oi = instrs[pc].oi;
         // printf("--> %u %s %u %u\n", pc, oi->name, step->ctx->sp, instrcnt);
 
-        // If it's a Choose instruction, replace the top of the stack (which
-        // contains the set of choices) with the choice.
+        // If it's a Choose instruction, we should break no matter what.
         if (instrs[pc].choose) {
             assert(step->ctx->sp > 0);
-            assert(choice != 0);
-            ctx_stack(step->ctx)[step->ctx->sp - 1] = choice;
-            step->ctx->pc++;
-        }
 
-
-        // See if it's an AtomicInc instruction.
-        else if (instrs[pc].atomicinc) {
-            // If it's the very first instruction, set the atomicFlag in the context
-            if (instrcnt == 0) {
-                step->ctx->atomicFlag = true;
+            // Check that the top of the stack contains a set.
+            hvalue_t s = ctx_stack(step->ctx)[step->ctx->sp - 1];
+            if (s == VALUE_SET) {
+                value_ctx_failure(step->ctx, step->allocator, "choose operation requires a non-empty set");
+                instrcnt++;
+                break;
+            }
+            if (VALUE_TYPE(s) != VALUE_SET) {
+                value_ctx_failure(step->ctx, step->allocator, "choose operation requires a set");
+                instrcnt++;
+                break;
             }
 
-            // If not, but the context was not in atomic mode, save the current
-            // state to restore to in case we have to "break".
-            else if (step->ctx->atomic == 0) {
+            if (as_instrcnt == 0) {
+                choosing = true;
+            }
+            else {
+                rollback = true;
+            }
+            break;
+        }
+
+        if (instrs[pc].atomicinc && step->ctx->atomic == 0) {
+            if (must_break) {
                 memcpy(w->as_state, sc, state_size(sc));
                 memcpy(&w->as_ctx, step->ctx, ctx_size(step->ctx));
                 as_instrcnt = instrcnt;
             }
-            
-            // Execute the AtomicInc instruction.
-            (*oi->op)(instrs[pc].env, sc, step);
-        }
-
-        // If we're no longer in an atomic section after executing the instruction,
-        // we can clear the saved state.
-        else if (instrs[pc].atomicdec) {
-            (*oi->op)(instrs[pc].env, sc, step);
-            if (step->ctx->atomic == 0) {
-                as_instrcnt = 0;
+            else if (!instrs[pc].is_assert) {
+                must_break = true;
             }
         }
 
-        // Otherwise just execute the operation.
-        else {
-            (*oi->op)(instrs[pc].env, sc, step);
-        }
-        assert(step->ctx->pc >= 0);
-        assert(step->ctx->pc < global.code.len);
-        // printf("<-- %u %s %u\n", pc, oi->name, step->ctx->sp);
+        // Possibly break unless it's in atomic mode.
+        else if (step->ctx->atomic == 0 || as_instrcnt != 0) {
+            // If it's a Load instruction, it's breakable if it accesses a global variable.
+            // TODO.  Can this check be made more efficient?
+            if (instrs[pc].load && instrs[pc].env == NULL) {
+                hvalue_t addr = ctx_stack(step->ctx)[step->ctx->sp - 1];
+                if (VALUE_TYPE(addr) != VALUE_ADDRESS_SHARED && VALUE_TYPE(addr) != VALUE_ADDRESS_PRIVATE) {
+                    value_ctx_failure(step->ctx, step->allocator, "Load: not an address");
+                    instrcnt++;
+                    break;
+                }
+                if ((VALUE_TYPE(addr)) != VALUE_ADDRESS_PRIVATE) {
+                    if (must_break) {
+                        if (as_instrcnt != 0) {
+                            rollback = true;
+                        }
+                        break;
+                    }
+                    else {
+                        must_break = true;
+                    }
+                }
+            }
+            else if (instrs[pc].load || instrs[pc].store || instrs[pc].del || instrs[pc].print) {
+                if (must_break) {
+                    if (as_instrcnt != 0) {
+                        rollback = true;
+                    }
+                    break;
+                }
+                else {
+                    must_break = true;
+                }
+            }
 
+            // Deal with interrupts if enabled
+            else if (step->ctx->extended && ctx_trap_pc(step->ctx) != 0 &&
+                                !step->ctx->interruptlevel) {
+                // If this is a thread exit, break so we can invoke the
+                // interrupt handler one more time (just before its exit)
+                if (instrs[pc].retop && step->ctx->sp == 1) {
+                    if (instrcnt > 0) {
+                        break;
+                    }
+                }
+
+                // If this is a setintlevel(True), should try interrupt
+                // For simplicity, always try when SetIntLevel is about to
+                // be executed.
+                else if (instrs[pc].setintlevel && instrcnt > 0) {
+                    break;
+                }
+            }
+        }
+
+        // Execute the instruction
+        w->profile[pc]++;
+        (*oi->op)(instrs[pc].env, sc, step);
         instrcnt++;
+        // printf("<-- %u %s %u %u %u\n", pc, oi->name, step->ctx->atomic, as_instrcnt, must_break);
 
         // If the last instruction terminated the context, break out of the loop.
         if (step->ctx->terminated) {
@@ -733,6 +924,10 @@ static struct step_output *onestep(
             // printf("FAILED AFTER %d steps\n", (int) instrcnt);
             break;
         }
+
+        assert(step->ctx->pc >= 0);
+        assert(step->ctx->pc != pc);
+        assert(step->ctx->pc < global.code.len);
 
         // Same if the context has stopped.
         if (step->ctx->stopped) {
@@ -800,10 +995,6 @@ static struct step_output *onestep(
             }
         }
 
-        // This should never happen.
-        if (step->ctx->pc == pc) {
-            fprintf(stderr, ">>> %s\n", oi->name);
-        }
         assert(step->ctx->pc != pc);
         assert(step->ctx->pc >= 0);
         assert(step->ctx->pc < global.code.len);
@@ -813,116 +1004,9 @@ static struct step_output *onestep(
         if (step->ctx->atomic == 0 && instrcnt > MAX_STEPS) {
             break;
         }
-
-        /* Peek at the next instruction.  We may have to break out of the loop
-         * because of it.
-         */
-        struct instr *next_instr = &global.code.instrs[step->ctx->pc];
-
-        // If the next instruction is Choose, we should break.
-        if (next_instr->choose) {
-            assert(step->ctx->sp > 0);
-
-#ifdef TODO         // not sure why ifdef'd out
-            if (0 && step->ctx->readonly > 0) {    // TODO
-                value_ctx_failure(step->ctx, step->allocator, "can't choose in assertion or invariant");
-                instrcnt++;
-                break;
-            }
-#endif
-
-            // Check that the top of the stack contains a set.
-            hvalue_t s = ctx_stack(step->ctx)[step->ctx->sp - 1];
-            if (VALUE_TYPE(s) != VALUE_SET) {
-                value_ctx_failure(step->ctx, step->allocator, "choose operation requires a set");
-                instrcnt++;
-                break;
-            }
-
-            // Check that the set contains at least one element.
-            // TODO.  We should just be able to check s == VALUE_SET
-            unsigned int size;
-#ifdef OBSOLETE
-            hvalue_t *vals =
-#endif
-            value_get(s, &size);
-            size /= sizeof(hvalue_t);
-            if (size == 0) {
-                value_ctx_failure(step->ctx, step->allocator, "choose operation requires a non-empty set");
-                instrcnt++;
-                break;
-            }
-            
-            // If we were lazily executing an atomic section in the hopes of
-            // not having to break, we need to restore the state.  This is
-            // needed to make the output understandable
-            if (step->ctx->atomic > 0 && !step->ctx->atomicFlag) {
-                rollback = true;
-            }
-            else {
-                choosing = true;
-            }
-            break;
-        }
-
-        // See if we need to break out of this step.  If the atomicFlag is
-        // set, then definitely not.  If it is not set, then it gets
-        // complicated.  If the atomic count > 0, then we may have delayed
-        // breaking until strictly necessary (lazy atomic), in the hopes
-        // of not having to at all (because breaking causes an expensive
-        // context switch).  If the instruction is not "breakable" (Load,
-        // Store, Del, Print, eager AtomicInc), then there's no need to
-        // break yet.  Otherwise, if the atomic count > 0, we should set
-        // the atomicFlag and break.  Otherwise  if it's a breakable
-        // instruction, we should just break.
-        else if (!step->ctx->atomicFlag) {
-            bool breakable = next_instr->breakable;
-
-            // If this is a Load operation, it's only breakable if it
-            // accesses a global variable
-            // TODO.  Can this be made more efficient?
-            if (next_instr->load && next_instr->env == NULL) {
-                hvalue_t addr = ctx_stack(step->ctx)[step->ctx->sp - 1];
-                if (VALUE_TYPE(addr) != VALUE_ADDRESS_SHARED && VALUE_TYPE(addr) != VALUE_ADDRESS_PRIVATE) {
-                    value_ctx_failure(step->ctx, step->allocator, "Load: not an address");
-                    instrcnt++;
-                    break;
-                }
-                if ((VALUE_TYPE(addr)) == VALUE_ADDRESS_PRIVATE) {
-                    breakable = false;
-                }
-            }
-
-            // Deal with interrupts if enabled
-            if (step->ctx->extended && ctx_trap_pc(step->ctx) != 0 &&
-                                !step->ctx->interruptlevel) {
-                // If this is a thread exit, break so we can invoke the
-                // interrupt handler one more time (just before its exit)
-                if (next_instr->retop && step->ctx->sp == 1) {
-                    breakable = true;
-                }
-
-                // If this is a setintlevel(True), should try interrupt
-                // For simplicity, always try when SetIntLevel is about to
-                // be executed.
-                else if (next_instr->setintlevel) {
-                    breakable = true;
-                }
-            }
-
-            if (breakable) {
-                // If the step is breakable and we're in an atomic section,
-                // we should have broken at the beginning of the atomic
-                // section.  Restore that state.
-                if (step->ctx->atomic > 0 && !step->ctx->atomicFlag) {
-                    rollback = true;
-                }
-                break;
-            }
-        }
     }
 
-    // No longer need this.  It was wasted effort.
+    // No longer need 'infloop' state.
     // TODO.  Perhaps this suggests a way to automatically determine the
     //        number of instructions to run before trying to detect an
     //        infinite loop, which is currently hardwired at 1000.
@@ -985,7 +1069,7 @@ static void trystep(
     hvalue_t choice,         // if about to make a choice, which choice?
     int ctx_index            // -1 if not in the context bag (i.e., invariant)
 ) {
-    assert(state_ctx(state, ctx_index) == ctx);
+    // assert(state_ctx(state, ctx_index) == ctx);
     assert(state->chooser < 0 || choice != 0);
     struct step_condition *stc;
     bool si_new;
@@ -1416,12 +1500,6 @@ static void twostep(
             step.explain_args[step.explain_nargs++] = choice;
             ctx_stack(step.ctx)[step.ctx->sp - 1] = choice;
             step.ctx->pc++;
-        }
-        else if (instrs[pc].atomicinc) {
-            if (instrcnt == 0) {
-                step.ctx->atomicFlag = true;
-            }
-            (*oi->op)(instrs[pc].env, sc, &step);
         }
         else if (instrs[pc].print) {
             print = ctx_stack(step.ctx)[step.ctx->sp - 1];
@@ -2392,20 +2470,12 @@ void do_work1(struct worker *w, struct node *node){
 #endif // PREFILL
 
     // Also check the invariants after initialization
-    if (node->id != 0 && state->chooser < 0 && (global.ninvs > 0 || global.nfinals > 0)) {
-        // memset(&step, 0, sizeof(step));
+    if (node->id != 0 && state->chooser < 0 && global.ninvs > 0) {
         step_init(w, &step);
 
         // Check each invariant
         for (unsigned int i = 0; i < global.ninvs; i++) {
             trystep(w, node, -1, state, global.invs[i].context, &step, 0, -1);
-        }
-
-        if (global.nfinals > 0 && value_state_all_eternal(state)) {
-            // Check each "finally" predicate
-            for (unsigned int i = 0; i < global.nfinals; i++) {
-                trystep(w, node, -1, state, global.finals[i], &step, 0, -1);
-            }
         }
     }
 }
@@ -2892,6 +2962,16 @@ static void worker(void *arg){
             // Compute how much table space is in use (reported in stats)
             global.allocated = global.graph.size * sizeof(struct node *) +
                 dict_allocated(w->visited) + dict_allocated(global.values);
+
+#ifdef SHORT_PTR
+            {
+                struct node *root = global.graph.nodes[0];
+                struct edge *re = node_edges(root);
+                struct node *rd = edge_dst(re);
+                printf("N0: %d %d %p (%ld)\n", (int) root->id, root->nedges, rd, (int64_t) re->dest);
+                printf("N0...: %d %d %p (%d)\n", (int) root->id, root->nedges, rd, (int) rd->id);
+            }
+#endif
         }
 
         // Start the final phase (and keep stats).
@@ -3316,9 +3396,115 @@ unsigned int str_split(const char *s, char sep, char ***parts){
     return n;
 }
 
+static void charm_dump(bool computed_components){
+    FILE *df = fopen("charm.dump", "w");
+    if (df == NULL) {
+        fprintf(stderr, "Can't create charm.dump\n");
+    }
+    else {
+        // setbuf(df, NULL);
+        for (unsigned int i = 0; i < global.graph.size; i++) {
+            struct node *node = global.graph.nodes[i];
+            assert(node->id == i);
+            fprintf(df, "\nNode %d:\n", node->id);
+            if (computed_components) {
+                fprintf(df, "    component: %d\n", scc[i].component);
+            }
+            fprintf(df, "    len to parent: %d\n", node->len);
+            if (node_to_parent(node) != NULL) {
+                fprintf(df, "    ancestors:");
+                for (struct node *n = node->parent;; n = n->parent) {
+                    fprintf(df, " %u", n->id);
+                    if (node_to_parent(n) == NULL) {
+                        break;
+                    }
+                }
+                fprintf(df, "\n");
+            }
+            struct state *state = node_state(node);
+            fprintf(df, "    vars: %s\n", value_string(state->vars));
+            fprintf(df, "    contexts:\n");
+            for (unsigned int i = 0; i < state->bagsize; i++) {
+                fprintf(df, "      %"PRI_HVAL": %u\n", state_ctx(state, i), state_multiplicity(state, i));
+            }
+#ifdef TODO
+            if (state->stopbag != VALUE_DICT) {
+                fprintf(df, "    stopbag:\n");
+                unsigned int size;
+                hvalue_t *vals = value_get(state->stopbag, &size);
+                size /= 2 * sizeof(hvalue_t);
+                for (unsigned int i = 0; i < size; i++) {
+                    fprintf(df, "      %"PRI_HVAL": %d\n", vals[2*i], (int) VALUE_FROM_INT(vals[2*i+1]));;
+                }
+            }
+#endif
+            // fprintf(df, "    len: %u %u\n", node->len, node->steps);
+            if (node->failed) {
+                fprintf(df, "    failed\n");
+            }
+            fprintf(df, "    fwd:\n");
+            int eno = 0;
+            struct edge *edge = node_edges(node);
+            for (unsigned int i = 0; i < node->nedges; i++, edge++) {
+                fprintf(df, "        %d:\n", eno);
+                struct context *ctx = value_get(edge_input(edge)->ctx, NULL);
+                struct node *dst = edge_dst(edge);
+                if (computed_components) {
+                    fprintf(df, "            node: %d (%d)\n", dst->id, scc[dst->id].component);
+                }
+                else {
+                    fprintf(df, "            node: %d\n", dst->id);
+                }
+                fprintf(df, "            context before: %"PRIx64" pc=%d\n", edge_input(edge)->ctx, ctx->pc);
+                ctx = value_get(edge_output(edge)->after, NULL);
+                fprintf(df, "            context after:  %"PRIx64" pc=%d\n", edge_output(edge)->after, ctx->pc);
+                if (edge->failed) {
+                    fprintf(df, "            failed\n");
+                }
+                if (edge_input(edge)->choice != 0) {
+                    fprintf(df, "            choice: %s\n",
+                            value_string(edge_input(edge)->choice));
+                }
+                if (edge_output(edge)->nlog > 0) {
+                    fprintf(df, "            log:");
+                    for (unsigned int j = 0; j < edge_output(edge)->nlog; j++) {
+                        char *p = value_string(step_log(edge_output(edge))[j]);
+                        fprintf(df, " %s", p);
+                        free(p);
+                    }
+                    fprintf(df, "\n");
+                }
+                if (edge_output(edge)->ai != NULL) {
+                    fprintf(df, "            ai:\n");
+                    for (struct access_info *ai = edge_output(edge)->ai; ai != NULL; ai = ai->next) {
+                        char *p = indices_string(ai->indices, ai->n);
+                        if (ai->load) {
+                            fprintf(df, "              load %s\n", p);
+                        }
+                        else {
+                            fprintf(df, "              store %s\n", p);
+                        }
+                        free(p);
+                    }
+                }
+            }
+        }
+        fclose(df);
+    }
+}
+
 #ifndef _WIN32
 static void inthandler(int sig){
     printf("Caught interrupt\n");
+    fflush(stdout);
+    fflush(stderr);
+    _exit(1);
+}
+
+static void alrmhandler(int sig){
+    printf("Timeout exceeded\n");
+    fflush(stdout);
+    fflush(stderr);
     _exit(1);
 }
 #endif
@@ -3645,7 +3831,6 @@ int exec_model_checker(int argc, char **argv){
     init_ctx->vars = VALUE_DICT;
     init_ctx->atomic = 1;
     init_ctx->initial = true;
-    init_ctx->atomicFlag = true;
     value_ctx_push(init_ctx, VALUE_LIST);
 
     // Now create the state.  If running direct, keep room to grow.
@@ -3673,7 +3858,24 @@ int exec_model_checker(int argc, char **argv){
     if (dflag) {
         global.run_direct = true;
         srand((unsigned) gettime());
-        run_direct(state);
+
+#ifndef _WIN32
+        signal(SIGALRM, alrmhandler);
+        alarm((int) maxtime);
+#endif
+
+        struct state *sc = calloc(1, sizeof(struct state) +
+                    256 * (sizeof(hvalue_t) + 1));
+        for (unsigned int i = 0; i < 1; i++) {
+            if (i > 0 && i % 100 == 0) {
+                printf("TIME %d\n", i);
+            }
+            memcpy(sc, state, state_size(state));
+            direct_run(sc, i);
+        }
+        if (global.dfa != NULL) {
+            dfa_dump(global.dfa);
+        }
         exit(0);
     }
 
@@ -3702,7 +3904,6 @@ int exec_model_checker(int argc, char **argv){
         // w->inv_step.ctx->name = value_put_atom(&allocator, "__invariant__", 13);
         w->inv_step.ctx->vars = VALUE_DICT;
         w->inv_step.ctx->atomic = w->inv_step.ctx->readonly = 1;
-        w->inv_step.ctx->atomicFlag = true;
         w->inv_step.ctx->interruptlevel = false;
         w->inv_step.allocator = &w->allocator;
 
@@ -3816,12 +4017,8 @@ int exec_model_checker(int argc, char **argv){
 
     printf("    * %u states (time %.2lfs, mem=%.3lfGB)\n", global.graph.size, gettime() - before, (double) allocated / (1L << 30));
     unsigned int si_hits = 0, si_total = 0;
-    bool loops_possible = false;
     for (unsigned int i = 0; i < global.nworkers; i++) {
         struct worker *w = &workers[i];
-        if (w->loops_possible) {
-            loops_possible = true;
-        }
         si_hits += w->si_hits;
         si_total += w->si_total;
     }
@@ -3840,9 +4037,11 @@ int exec_model_checker(int argc, char **argv){
     dict_set_sequential(visited);
     dict_set_sequential(global.computations);
 
-    printf("* Phase 3: analysis\n");
+    printf("* Phase 3: analysis %p\n", global.failures);
 
     bool computed_components = false;
+
+    // charm_dump(computed_components);
 
     // Do a cheap check for deadlock if no other errors have been detected
     // TODO.  Could be parallelized
@@ -3896,7 +4095,7 @@ int exec_model_checker(int argc, char **argv){
     // TODO.  Also look for other final states and evaluate more finally
     //        clauses.  This can happen if an eternal thread sits in
     //        a loop like:  await x and y
-    if (global.failures == NULL && loops_possible) {
+    if (global.failures == NULL /* && loops_possible */) {
         if (global.graph.size > 10000) {
             printf("    * Determine strongly connected components\n");
             fflush(stdout);
@@ -4000,6 +4199,16 @@ int exec_model_checker(int argc, char **argv){
                     add_failure(&global.failures, f);
                     // break;
                 }
+
+                if (global.nfinals > 0) {
+                    struct step step;
+                    step_init(&workers[0], &step);
+
+                    // Check each "finally" predicate
+                    for (unsigned int i = 0; i < global.nfinals; i++) {
+                        trystep(&workers[0], node, -1, node_state(node), global.finals[i], &step, 0, -1);
+                    }
+                }
             }
         }
 
@@ -4086,94 +4295,7 @@ int exec_model_checker(int argc, char **argv){
             fclose(df);
         }
 
-        df = fopen("charm.dump", "w");
-        if (df == NULL) {
-            fprintf(stderr, "Can't create charm.dump\n");
-        }
-        else {
-            // setbuf(df, NULL);
-            for (unsigned int i = 0; i < global.graph.size; i++) {
-                struct node *node = global.graph.nodes[i];
-                assert(node->id == i);
-                fprintf(df, "\nNode %d:\n", node->id);
-                if (computed_components) {
-                    fprintf(df, "    component: %d\n", scc[i].component);
-                }
-                fprintf(df, "    len to parent: %d\n", node->len);
-                if (node_to_parent(node) != NULL) {
-                    fprintf(df, "    ancestors:");
-                    for (struct node *n = node->parent;; n = n->parent) {
-                        fprintf(df, " %u", n->id);
-                        if (node_to_parent(n) == NULL) {
-                            break;
-                        }
-                    }
-                    fprintf(df, "\n");
-                }
-                struct state *state = node_state(node);
-                fprintf(df, "    vars: %s\n", value_string(state->vars));
-                fprintf(df, "    contexts:\n");
-                for (unsigned int i = 0; i < state->bagsize; i++) {
-                    fprintf(df, "      %"PRI_HVAL": %u\n", state_ctx(state, i), state_multiplicity(state, i));
-                }
-#ifdef TODO
-                if (state->stopbag != VALUE_DICT) {
-                    fprintf(df, "    stopbag:\n");
-                    unsigned int size;
-                    hvalue_t *vals = value_get(state->stopbag, &size);
-                    size /= 2 * sizeof(hvalue_t);
-                    for (unsigned int i = 0; i < size; i++) {
-                        fprintf(df, "      %"PRI_HVAL": %d\n", vals[2*i], (int) VALUE_FROM_INT(vals[2*i+1]));;
-                    }
-                }
-#endif
-                // fprintf(df, "    len: %u %u\n", node->len, node->steps);
-                if (node->failed) {
-                    fprintf(df, "    failed\n");
-                }
-                fprintf(df, "    fwd:\n");
-                int eno = 0;
-                struct edge *edge = node_edges(node);
-                for (unsigned int i = 0; i < node->nedges; i++, edge++) {
-                    fprintf(df, "        %d:\n", eno);
-                    struct context *ctx = value_get(edge_input(edge)->ctx, NULL);
-                    fprintf(df, "            node: %d (%d)\n", edge_dst(edge)->id, scc[edge_dst(edge)->id].component);
-                    fprintf(df, "            context before: %"PRIx64" pc=%d\n", edge_input(edge)->ctx, ctx->pc);
-                    ctx = value_get(edge_output(edge)->after, NULL);
-                    fprintf(df, "            context after:  %"PRIx64" pc=%d\n", edge_output(edge)->after, ctx->pc);
-                    if (edge->failed) {
-                        fprintf(df, "            failed\n");
-                    }
-                    if (edge_input(edge)->choice != 0) {
-                        fprintf(df, "            choice: %s\n",
-                                value_string(edge_input(edge)->choice));
-                    }
-                    if (edge_output(edge)->nlog > 0) {
-                        fprintf(df, "            log:");
-                        for (unsigned int j = 0; j < edge_output(edge)->nlog; j++) {
-                            char *p = value_string(step_log(edge_output(edge))[j]);
-                            fprintf(df, " %s", p);
-                            free(p);
-                        }
-                        fprintf(df, "\n");
-                    }
-                    if (edge_output(edge)->ai != NULL) {
-                        fprintf(df, "            ai:\n");
-                        for (struct access_info *ai = edge_output(edge)->ai; ai != NULL; ai = ai->next) {
-                            char *p = indices_string(ai->indices, ai->n);
-                            if (ai->load) {
-                                fprintf(df, "              load %s\n", p);
-                            }
-                            else {
-                                fprintf(df, "              store %s\n", p);
-                            }
-                            free(p);
-                        }
-                    }
-                }
-            }
-            fclose(df);
-        }
+        charm_dump(computed_components);
     }
 
     // Look for data races

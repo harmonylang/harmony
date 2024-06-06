@@ -48,6 +48,8 @@ args.add_argument("-s", action="store_true",
                   help="silent (do not print periodic status updates)")
 args.add_argument("-v", "--version", action="store_true",
                   help="print version number")
+args.add_argument("--quick", action="store_true",
+                  help="no post-model-check analysis")
 args.add_argument("-o", action='append', type=pathlib.Path,
                   help="specify output file (.hvm, .hco, .hfa, .htm. .tla, .tex, .png, .gv)")
 args.add_argument("-j", action="store_true",
@@ -151,6 +153,9 @@ def handle_hvm(ns, output_files, parse_code_only, code, scope):
             exit(r)
 
 def handle_hco(ns, output_files):
+    if ns.quick:
+        return
+
     suppress_output = ns.suppress
 
     behavior = None

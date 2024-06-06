@@ -154,5 +154,6 @@ struct env_StoreVar {
 };
 
 void interrupt_invoke(struct step *step);
+void direct_check(struct state *state, struct step *step);
 
 #endif //SRC_OPS_H

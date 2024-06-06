@@ -40,6 +40,16 @@ unsigned int graph_add_multiple(struct graph *graph, unsigned int n) {
     return node_id;
 }
 
+#ifdef SHORT_PTR
+void dump_edges(struct node *src){
+    struct edge *e = node_edges(src);
+    for (unsigned int i = 0; i < src->nedges; i++, e++) {
+        printf("--> dst=%p(%ld) stc=%u m=%u f=%u\n",
+            edge_dst(e), (int64_t) e->dest, e->stc_id, e->multiple, e->failed);
+    }
+}
+#endif
+
 struct edge *find_edge(struct node *src, struct node *dst){
     struct edge *e = node_edges(src);
     for (unsigned int i = 0; i < src->nedges; i++, e++) {
@@ -47,6 +57,15 @@ struct edge *find_edge(struct node *src, struct node *dst){
             return e;
         }
     }
+
+#ifndef notdef
+    printf("FINDING %p\n", dst);
+    e = node_edges(src);
+    for (unsigned int i = 0; i < src->nedges; i++, e++) {
+        printf("COMPARE %p\n", edge_dst(e));
+    }
+    panic("find_edge");         // TODO
+#endif
     return NULL;
 }
 

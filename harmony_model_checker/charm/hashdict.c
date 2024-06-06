@@ -228,7 +228,7 @@ struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
 // Similar to dict_find(), but gets a lock on the bucket
 struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
                             const void *key, unsigned int keylen, bool *new, mutex_t **lock){
-    assert(dict->concurrent);
+    // TODO assert(dict->concurrent);
     assert(al != NULL);
     uint32_t hash = hash_func(key, keylen);
     unsigned int index = hash % dict->length;

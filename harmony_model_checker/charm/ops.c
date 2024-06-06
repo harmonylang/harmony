@@ -5,7 +5,7 @@
 // each operation Y.
 //
 // The prototype for init_X is as follows:
-//      void *init_Assert(struct dict *map, struct allocator *allocator);
+//      void *init_X(struct dict *map, struct allocator *allocator);
 //
 //  It is invoked for each such HVM instruction in the code during
 //  initialization of this module for any preprocessing that can happen
@@ -35,8 +35,11 @@
 //  operation Y. 'args' is an array containing the arguments that
 //  were on the stack, and n is the numbers of arguments.
 
+#ifndef _WIN32
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#include <unistd.h>
+#endif
 #endif
 
 #include "head.h"
@@ -54,6 +57,12 @@
 #include "dfa.h"
 #include "hashdict.h"
 #include "spawn.h"
+
+#ifdef BIRDS
+#define main xmain
+#include "birds.h"
+#undef main
+#endif
 
 // Maximum number of arguments of the Nary (N-Ary) HVM operation
 #define MAX_ARITY   16
@@ -135,12 +144,14 @@ static char *vt_string(struct var_tree *vt){
 
 // Push a value onto the context stack of the current thread
 static inline void ctx_push(struct context *ctx, hvalue_t v){
+    assert(v != 0);
     ctx_stack(ctx)[ctx->sp++] = v;
 }
 
 // Pop a value from the context stack of the current thread
 static inline hvalue_t ctx_pop(struct context *ctx){
     assert(ctx->sp > 0);
+    assert(ctx_stack(ctx)[ctx->sp - 1] != 0);
     return ctx_stack(ctx)[--ctx->sp];
 }
 
@@ -633,27 +644,38 @@ void op_Print(const void *env, struct state *state, struct step *step){
     }
     hvalue_t symbol = ctx_pop(step->ctx);
     if (global.run_direct) {
-        if (VALUE_TYPE(symbol) == VALUE_LIST) {
-            unsigned int size;
-            hvalue_t *vals = value_get(symbol, &size);
-            size /= sizeof(hvalue_t);
-            for (unsigned int i = 0; i < size; i++) {
-                if (i != 0) {
-                    printf(" ");
-                }
-                do_print(vals[i]);
+        if (global.dfa != NULL) {
+            int nstate = dfa_step(global.dfa, state->dfa_state, symbol);
+            if (nstate < 0) {
+                panic("bad behavior");
             }
+            state->dfa_state = nstate;
         }
         else {
-            do_print(symbol);
+            if (VALUE_TYPE(symbol) == VALUE_LIST) {
+                unsigned int size;
+                hvalue_t *vals = value_get(symbol, &size);
+                size /= sizeof(hvalue_t);
+                for (unsigned int i = 0; i < size; i++) {
+                    if (i != 0) {
+                        printf(" ");
+                    }
+                    do_print(vals[i]);
+                }
+            }
+            else {
+                do_print(symbol);
+            }
+            printf("\n");
         }
-        printf("\n");
     }
-    if (step->nlog == MAX_PRINT) {
-        value_ctx_failure(step->ctx, step->allocator, "Print: too many prints");
-        return;
+    else {
+        if (step->nlog == MAX_PRINT) {
+            value_ctx_failure(step->ctx, step->allocator, "Print: too many prints");
+            return;
+        }
+        step->log[step->nlog++] = symbol;
     }
-    step->log[step->nlog++] = symbol;
     global.printed_something = true;
     if (step->keep_callstack) {
         strbuf_printf(&step->explain, "pop value (#+) and add to print log");
@@ -687,9 +709,7 @@ void op_AtomicDec(const void *env, struct state *state, struct step *step){
     }
 
     assert(ctx->atomic > 0);
-    if (--ctx->atomic == 0) {
-        ctx->atomicFlag = false;
-    }
+    ctx->atomic--;
     ctx->pc++;
 }
 
@@ -930,6 +950,501 @@ void op_List_Tail(const void *env, struct state *state, struct step *step){
     }
     hvalue_t result = value_put_list(step->allocator, &list[1], size - sizeof(hvalue_t));
     do_return(state, step, result);
+}
+
+static unsigned int direct_count;
+static mutex_t direct_mutex;
+struct direct_done {
+    struct direct_done *next;
+    hvalue_t ctx, result;
+};
+static struct direct_done *direct_done;
+
+// Increment the number of outstanding activities.
+static void direct_outstanding(){
+    mutex_acquire(&direct_mutex);
+    direct_count++;
+    mutex_release(&direct_mutex);
+}
+
+// Add ctx/result to the done list
+static void direct_completed(hvalue_t ctx, hvalue_t result){
+    assert(result != 0);
+    mutex_acquire(&direct_mutex);
+    direct_count--;
+    struct direct_done *dd = calloc(1, sizeof(*dd));
+    dd->ctx = ctx;
+    dd->result = result;
+    dd->next = direct_done;
+    direct_done = dd;
+    mutex_release(&direct_mutex);
+}
+
+// See if any external activities completed.
+void direct_check(struct state *state, struct step *step){
+    mutex_acquire(&direct_mutex);
+
+    struct direct_done *dd;
+    while ((dd = direct_done) != NULL) {
+        assert(dd->result != 0);
+        direct_done = dd->next;
+
+        // Copy the context and reserve an extra hvalue_t
+        unsigned int size;
+        struct context *orig = value_get(dd->ctx, &size);
+#ifdef HEAP_ALLOC
+        char *buffer = malloc(size + sizeof(hvalue_t));
+#else
+        char buffer[size + sizeof(hvalue_t)];
+#endif
+        memcpy(buffer, orig, size);
+        struct context *copy = (struct context *) buffer;
+        ctx_push(copy, dd->result);
+        copy->stopped = false;
+        hvalue_t context = value_put_context(step->allocator, copy);
+#ifdef HEAP_ALLOC
+        free(buffer);
+#endif
+
+        // Remove old context from stopbag if it's there
+        // TODO.  Can potentially be optimized when it's a matter of just moving it to
+        //        the context bag
+        // TODO.  Duplicated from else part below.  Make subroutine
+        hvalue_t *ctxlist = state_ctxlist(state);
+        for (unsigned int i = state->bagsize; i < state->total; i++) {
+            hvalue_t ctxi = ctxlist[i] & ~STATE_MULTIPLICITY;
+            if (ctxi == dd->ctx) {
+                if ((ctxlist[i] & STATE_MULTIPLICITY) > ((hvalue_t) 1 << STATE_M_SHIFT)) {
+                    ctxlist[i] -= ((hvalue_t) 1 << STATE_M_SHIFT);
+                }
+                else {
+                    assert(state->total > state->bagsize);
+                    state->total--;
+                    memmove(&ctxlist[i], &ctxlist[i+1], (state->total - i) * sizeof(hvalue_t));
+                }
+                break;
+            }
+        }
+
+        // Add new context to the context bag
+        if (context_add(state, context) < 0) {
+            panic("direct_check: too many threads");
+        }
+        free(dd);
+    }
+    mutex_release(&direct_mutex);
+}
+
+struct iqueue {
+    mutex_t lock;
+    hvalue_t *vals;
+    unsigned int nvals;
+};
+
+struct bogus_op {
+    enum {
+        IQ_NEW, IQ_ENQUEUE, IQ_DEQUEUE,
+#ifdef BIRDS
+        OLB_NEW, OLB_WB_ACQUIRE, OLB_WB_RELEASE,
+                 OLB_EB_ACQUIRE, OLB_EB_RELEASE
+#endif
+    } type;
+    struct allocator *allocator;
+    hvalue_t context;
+    struct {
+#ifdef BIRDS
+        struct {
+            struct device *olb;
+        } olb;
+#endif
+        struct {
+            struct iqueue *iq;  // only for enqueue and dequeue;
+            hvalue_t arg;       // only for enqueue
+        } iq;
+    } args;
+};
+
+#ifdef BIRDS
+static void olb_print(struct strbuf *sb, void *ref){
+    strbuf_printf(sb, "OLB<%p>", ref);
+}
+
+static int olb_compare(void *ref1, void *ref2){
+    if (ref1 < ref2) return -1;
+    if (ref1 > ref2) return 1;
+    return 0;
+}
+#endif
+
+static void iq_print(struct strbuf *sb, void *ref){
+    strbuf_printf(sb, "IQueue<%p>", ref);
+}
+
+static int iq_compare(void *ref1, void *ref2){
+    if (ref1 < ref2) return -1;
+    if (ref1 > ref2) return 1;
+    return 0;
+}
+
+#ifdef BIRDS
+struct external_descriptor olb_descr = {
+    .type_name = "OLB",
+    .print = olb_print,
+    .compare = olb_compare
+};
+#endif
+
+struct external_descriptor iq_descr = {
+    .type_name = "IQueue",
+    .print = iq_print,
+    .compare = iq_compare
+};
+
+static void bogus_run(void *arg){
+    struct bogus_op *bop = arg;
+
+    hvalue_t result = 0;
+    switch (bop->type) {
+#ifdef BIRDS
+    case OLB_NEW:
+        {
+            struct device *olb = malloc(sizeof(*olb));
+            dev_init(olb);
+            result = value_put_external(bop->allocator, &olb_descr, olb);
+        }
+        break;
+    case OLB_WB_ACQUIRE:
+        {
+            struct device *olb = bop->args.olb.olb;
+            dev_enter(olb, 0);
+            result = VALUE_ADDRESS_SHARED;  // None
+        }
+        break;
+    case OLB_WB_RELEASE:
+        {
+            struct device *olb = bop->args.olb.olb;
+            dev_exit(olb, 0);
+            result = VALUE_ADDRESS_SHARED;  // None
+        }
+        break;
+    case OLB_EB_ACQUIRE:
+        {
+            struct device *olb = bop->args.olb.olb;
+            dev_enter(olb, 1);
+            result = VALUE_ADDRESS_SHARED;  // None
+        }
+        break;
+    case OLB_EB_RELEASE:
+        {
+            struct device *olb = bop->args.olb.olb;
+            dev_exit(olb, 1);
+            result = VALUE_ADDRESS_SHARED;  // None
+        }
+        break;
+#endif
+    case IQ_NEW:
+        {
+            struct iqueue *iq = calloc(1, sizeof(*iq));
+            mutex_init(&iq->lock);
+            result = value_put_external(bop->allocator, &iq_descr, iq);
+        }
+        break;
+    case IQ_ENQUEUE:
+        {
+            struct iqueue *iq = bop->args.iq.iq;
+            mutex_acquire(&iq->lock);
+            iq->vals = realloc(iq->vals,
+                            (iq->nvals + 1) * sizeof(hvalue_t));
+            iq->vals[iq->nvals++] = bop->args.iq.arg;
+            mutex_release(&iq->lock);
+            result = VALUE_ADDRESS_SHARED;  // None
+        }
+        break;
+    case IQ_DEQUEUE:
+        {
+            struct iqueue *iq = bop->args.iq.iq;
+            mutex_acquire(&iq->lock);
+            if (iq->nvals == 0) {
+                result = VALUE_ADDRESS_SHARED;  // None
+            }
+            else {
+                result = iq->vals[0];
+                assert(result != 0);
+                iq->nvals--;
+                memmove(iq->vals, &iq->vals[1],
+                                iq->nvals * sizeof(hvalue_t));
+            }
+            mutex_release(&iq->lock);
+        }
+        break;
+    default:
+        panic("bogus_run: unknown type");
+    }
+
+    direct_completed(bop->context, result);
+    free(bop);
+}
+
+static hvalue_t direct_getarg(struct step *step){
+    hvalue_t arg = ctx_pop(step->ctx);
+
+    // See if it's a normal call.
+    hvalue_t callval = ctx_pop(step->ctx);
+    assert(VALUE_TYPE(callval) == VALUE_INT);
+    unsigned int call = VALUE_FROM_INT(callval);
+    assert((call & CALLTYPE_MASK) == CALLTYPE_NORMAL);
+    unsigned int pc = call >> CALLTYPE_BITS;
+    assert(pc != step->ctx->pc);
+
+    // Get the remaining arguments
+    hvalue_t args = ctx_pop(step->ctx);
+    assert(args == VALUE_LIST);
+
+    // Go on to the next instruction after resuming
+    step->ctx->pc = pc + 1;
+    step->ctx->stopped = true;
+
+    return arg;
+}
+
+#ifdef BIRDS
+// Built-in bogus.olb_new method
+void op_Bogus_olb_new(const void *env, struct state *state, struct step *step){
+    if (step->ctx->readonly > 0) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.olb_new: in read-only mode");
+        return;
+    }
+    hvalue_t arg = direct_getarg(step);
+    if (arg != VALUE_LIST) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.olb_new: must have no argument");
+        return;
+    }
+
+    struct bogus_op *bop = calloc(1, sizeof(*bop));
+    bop->type = OLB_NEW;
+    bop->allocator = step->allocator;
+    bop->context = value_put_context(step->allocator, step->ctx);
+
+    // Note that an external activity is outstanding
+    direct_outstanding();
+
+    // Start a native thread to execute the operation.
+    thread_create(bogus_run, bop);
+}
+
+// Built-in bogus.olb_wb_acquire method
+void op_Bogus_olb_wb_acquire(const void *env, struct state *state, struct step *step){
+    if (step->ctx->readonly > 0) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.olb_wb_acquire: in read-only mode");
+        return;
+    }
+    hvalue_t arg = direct_getarg(step);
+    struct val_external *ve = value_get_external(arg);
+    if (ve->descr != &olb_descr) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.olb_wb_acquire: arg must be an olb");
+        return;
+    }
+    if (step->ctx->readonly > 0) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.olb_wb_acquire: in read-only mode");
+        return;
+    }
+
+    struct bogus_op *bop = calloc(1, sizeof(*bop));
+    bop->type = OLB_WB_ACQUIRE;
+    bop->allocator = step->allocator;
+    bop->context = value_put_context(step->allocator, step->ctx);
+    bop->args.olb.olb = ve->ref;
+
+    // Note that an external activity is outstanding
+    direct_outstanding();
+
+    // Start a native thread to execute the operation.
+    thread_create(bogus_run, bop);
+}
+
+// Built-in bogus.olb_wb_release method
+void op_Bogus_olb_wb_release(const void *env, struct state *state, struct step *step){
+    if (step->ctx->readonly > 0) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.olb_wb_acquire: in read-only mode");
+        return;
+    }
+    hvalue_t arg = direct_getarg(step);
+    struct val_external *ve = value_get_external(arg);
+    if (ve->descr != &olb_descr) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.olb_wb_release: arg must be an olb");
+        return;
+    }
+    if (step->ctx->readonly > 0) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.olb_wb_release: in read-only mode");
+        return;
+    }
+
+    struct bogus_op *bop = calloc(1, sizeof(*bop));
+    bop->type = OLB_WB_RELEASE;
+    bop->allocator = step->allocator;
+    bop->context = value_put_context(step->allocator, step->ctx);
+    bop->args.olb.olb = ve->ref;
+
+    // Note that an external activity is outstanding
+    direct_outstanding();
+
+    // Start a native thread to execute the operation.
+    thread_create(bogus_run, bop);
+}
+
+// Built-in bogus.olb_eb_acquire method
+void op_Bogus_olb_eb_acquire(const void *env, struct state *state, struct step *step){
+    if (step->ctx->readonly > 0) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.olb_eb_acquire: in read-only mode");
+        return;
+    }
+    hvalue_t arg = direct_getarg(step);
+    struct val_external *ve = value_get_external(arg);
+    if (ve->descr != &olb_descr) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.olb_eb_acquire: arg must be an olb");
+        return;
+    }
+    if (step->ctx->readonly > 0) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.olb_eb_acquire: in read-only mode");
+        return;
+    }
+
+    struct bogus_op *bop = calloc(1, sizeof(*bop));
+    bop->type = OLB_EB_ACQUIRE;
+    bop->allocator = step->allocator;
+    bop->context = value_put_context(step->allocator, step->ctx);
+    bop->args.olb.olb = ve->ref;
+
+    // Note that an external activity is outstanding
+    direct_outstanding();
+
+    // Start a native thread to execute the operation.
+    thread_create(bogus_run, bop);
+}
+
+// Built-in bogus.olb_eb_release method
+void op_Bogus_olb_eb_release(const void *env, struct state *state, struct step *step){
+    if (step->ctx->readonly > 0) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.olb_eb_acquire: in read-only mode");
+        return;
+    }
+    hvalue_t arg = direct_getarg(step);
+    struct val_external *ve = value_get_external(arg);
+    if (ve->descr != &olb_descr) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.olb_eb_release: arg must be an olb");
+        return;
+    }
+    if (step->ctx->readonly > 0) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.olb_eb_release: in read-only mode");
+        return;
+    }
+
+    struct bogus_op *bop = calloc(1, sizeof(*bop));
+    bop->type = OLB_EB_RELEASE;
+    bop->allocator = step->allocator;
+    bop->context = value_put_context(step->allocator, step->ctx);
+    bop->args.olb.olb = ve->ref;
+
+    // Note that an external activity is outstanding
+    direct_outstanding();
+
+    // Start a native thread to execute the operation.
+    thread_create(bogus_run, bop);
+}
+#endif // BIRDS
+
+// Built-in bogus.iq_new method
+void op_Bogus_iq_new(const void *env, struct state *state, struct step *step){
+    if (step->ctx->readonly > 0) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.iq_new: in read-only mode");
+        return;
+    }
+    hvalue_t arg = direct_getarg(step);
+    if (arg != VALUE_LIST) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.iq_new: must have no argument");
+        return;
+    }
+
+    struct bogus_op *bop = calloc(1, sizeof(*bop));
+    bop->type = IQ_NEW;
+    bop->allocator = step->allocator;
+    bop->context = value_put_context(step->allocator, step->ctx);
+
+    // Note that an external activity is outstanding
+    direct_outstanding();
+
+    // Start a native thread to execute the operation.
+    thread_create(bogus_run, bop);
+}
+
+// Built-in bogus.iq_enqueue method
+void op_Bogus_iq_enqueue(const void *env, struct state *state, struct step *step){
+    if (step->ctx->readonly > 0) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.iq_new: in read-only mode");
+        return;
+    }
+    hvalue_t arg = direct_getarg(step);
+
+    // TODO.  Check that arg is a list
+
+    unsigned int size;
+    hvalue_t *args = value_get(arg, &size);
+    if (size != 2 * sizeof(hvalue_t)) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.iq_enqueue: must have two arguments");
+        return;
+    }
+    if (VALUE_TYPE(args[0]) != VALUE_EXTERNAL) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.iq_enqueue: first arg must be external");
+        return;
+    }
+    struct val_external *ve = value_get_external(args[0]);
+    if (ve->descr != &iq_descr) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.iq_enqueue: first arg must be an iqueue");
+        return;
+    }
+
+    struct bogus_op *bop = calloc(1, sizeof(*bop));
+    bop->type = IQ_ENQUEUE;
+    bop->allocator = step->allocator;
+    bop->context = value_put_context(step->allocator, step->ctx);
+    bop->args.iq.iq = ve->ref;
+    bop->args.iq.arg = args[1];
+
+    // Note that an external activity is outstanding
+    direct_outstanding();
+
+    // Start a native thread to execute the operation.
+    thread_create(bogus_run, bop);
+}
+
+// Built-in bogus.iq_dequeue method
+void op_Bogus_iq_dequeue(const void *env, struct state *state, struct step *step){
+    if (step->ctx->readonly > 0) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.iq_new: in read-only mode");
+        return;
+    }
+    hvalue_t arg = direct_getarg(step);
+    struct val_external *ve = value_get_external(arg);
+    if (ve->descr != &iq_descr) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.iq_dequeue: arg must be an iqueue");
+        return;
+    }
+    if (step->ctx->readonly > 0) {
+        value_ctx_failure(step->ctx, step->allocator, "bogus.iq_dequeue: in read-only mode");
+        return;
+    }
+
+    struct bogus_op *bop = calloc(1, sizeof(*bop));
+    bop->type = IQ_DEQUEUE;
+    bop->allocator = step->allocator;
+    bop->context = value_put_context(step->allocator, step->ctx);
+    bop->args.iq.iq = ve->ref;
+
+    // Note that an external activity is outstanding
+    direct_outstanding();
+
+    // Start a native thread to execute the operation.
+    thread_create(bogus_run, bop);
 }
 
 // Built-in bag.add method
@@ -1504,7 +2019,6 @@ void op_Finally(const void *env, struct state *state, struct step *step){
     ctx->vars = VALUE_DICT;
     ctx->readonly = 1;
     ctx->atomic = 1;
-    ctx->atomicFlag = true;
     ctx_push(ctx, VALUE_LIST);
     hvalue_t finctx = value_put_context(step->allocator, ctx);
 
@@ -1528,7 +2042,6 @@ void op_Invariant(const void *env, struct state *state, struct step *step){
     ctx->vars = VALUE_DICT;
     ctx->readonly = 1;
     ctx->atomic = 1;
-    ctx->atomicFlag = true;
     ctx_push(ctx, VALUE_LIST);	// HACK
     hvalue_t invctx = value_put_context(step->allocator, ctx);
 
@@ -4656,6 +5169,18 @@ struct op_info op_table[] = {
     { "bag$size", NULL, op_Bag_Size },
     { "list$tail", NULL, op_List_Tail },
 
+    { "bogus$iq_new", NULL, op_Bogus_iq_new },
+    { "bogus$iq_enqueue", NULL, op_Bogus_iq_enqueue },
+    { "bogus$iq_dequeue", NULL, op_Bogus_iq_dequeue },
+
+#ifdef BIRDS
+    { "bogus$olb_new", NULL, op_Bogus_olb_new },
+    { "bogus$olb_wb_acquire", NULL, op_Bogus_olb_wb_acquire },
+    { "bogus$olb_wb_release", NULL, op_Bogus_olb_wb_release },
+    { "bogus$olb_eb_acquire", NULL, op_Bogus_olb_eb_acquire },
+    { "bogus$olb_eb_release", NULL, op_Bogus_olb_eb_release },
+#endif
+
     { NULL, NULL, NULL }
 };
 
@@ -4724,6 +5249,7 @@ void ops_init(struct allocator *allocator) {
     type_context = value_put_atom(allocator, "context", 7);
 	alloc_pool_atom = value_put_atom(allocator, "alloc$pool", 10);
 	alloc_next_atom = value_put_atom(allocator, "alloc$next", 10);
+    mutex_init(&direct_mutex);
 
     for (struct op_info *oi = op_table; oi->name != NULL; oi++) {
         struct op_info **p = dict_insert(ops_map, NULL, oi->name, strlen(oi->name), NULL);

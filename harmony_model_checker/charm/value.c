@@ -91,6 +91,11 @@ void *value_copy(hvalue_t v, unsigned int *psize){
     return r;
 }
 
+struct val_external *value_get_external(hvalue_t v){
+    v &= ~VALUE_MASK;
+    return (struct val_external *) v;
+}
+
 // Like value_copy, but extend with given size and return old size
 void *value_copy_extend(hvalue_t v, unsigned int inc, unsigned int *psize){
     v &= ~VALUE_MASK;
@@ -172,6 +177,14 @@ hvalue_t value_put_context(struct allocator *allocator, struct context *ctx){
     else {
         return (hvalue_t) q | VALUE_CONTEXT;
     }
+}
+
+hvalue_t value_put_external(struct allocator *al, struct external_descriptor *descr, void *ref){
+    struct val_external *ve = al == NULL ? malloc(sizeof(*ve)) :
+            (*al->alloc)(al->ctx, sizeof(*ve), false, false);
+    ve->descr= descr;
+    ve->ref = ref;
+    return (hvalue_t) ve | VALUE_EXTERNAL;
 }
 
 // Helper function for value_cmp.  False < True, for arbitrary reasons.
@@ -320,6 +333,15 @@ static int value_cmp_context(hvalue_t v1, hvalue_t v2){
     return size1 < size2 ? -1 : 1;
 }
 
+static int value_cmp_external(hvalue_t v1, hvalue_t v2){
+    struct val_external *p1 = (struct val_external *) v1;
+    struct val_external *p2 = (struct val_external *) v2;
+    if (p1->descr == p2->descr) {
+        return (*p1->descr->compare)(p1->ref, p2->ref);
+    }
+    return p1 < p2 ? -1 : 1;
+}
+
 // This function compares two values v1 and v2, and returns a negative value if
 // v1 < v2, 0 if  v1 == v2, and a positive value if v1 > v2.  Values are first
 // compared by type (i.e., bools go before integer go before ...) and then are
@@ -353,6 +375,8 @@ int value_cmp(hvalue_t v1, hvalue_t v2){
         return value_cmp_address(v1 & ~VALUE_MASK, v2 & ~VALUE_MASK);
     case VALUE_CONTEXT:
         return value_cmp_context(v1 & ~VALUE_MASK, v2 & ~VALUE_MASK);
+    case VALUE_EXTERNAL:
+        return value_cmp_external(v1 & ~VALUE_MASK, v2 & ~VALUE_MASK);
     default:
         panic("value_cmp: bad value type");
         return 0;
@@ -705,7 +729,6 @@ static void value_string_context(struct strbuf *sb, hvalue_t v) {
 #endif
     strbuf_printf(sb, ",readonly=%d", ctx->readonly);
     strbuf_printf(sb, ",atomic=%d", ctx->atomic);
-    strbuf_printf(sb, ",aflag=%d", ctx->atomicFlag);
     strbuf_printf(sb, ",il=%d", ctx->interruptlevel);
     strbuf_printf(sb, ",stopped=%d", ctx->stopped);
     strbuf_printf(sb, ",terminated=%d", ctx->terminated);
@@ -722,6 +745,12 @@ static void value_string_context(struct strbuf *sb, hvalue_t v) {
 
     strbuf_printf(sb, "])");
 #endif
+}
+
+static void value_string_external(struct strbuf *sb, hvalue_t v) {
+    struct val_external *ve = (struct val_external *) v;
+
+    (*ve->descr->print)(sb, ve->ref);
 }
 
 // Helper function for print_vars
@@ -851,9 +880,6 @@ static void value_json_context(struct strbuf *sb, hvalue_t v) {
     if (ctx->initial) {
         strbuf_printf(sb, "\"initial\": { \"type\": \"bool\", \"value\": \"True\" },");
     }
-    if (ctx->atomicFlag) {
-        strbuf_printf(sb, "\"atomicFlag\": { \"type\": \"bool\", \"value\": \"True\" },");
-    }
     if (ctx->interruptlevel) {
         strbuf_printf(sb, "\"interruptlevel\": { \"type\": \"int\", \"value\": \"1\" },");
     }
@@ -896,6 +922,14 @@ static void value_json_context(struct strbuf *sb, hvalue_t v) {
     strbuf_printf(sb, " } }");
 }
 
+static void value_json_external(struct strbuf *sb, hvalue_t v) {
+    struct val_external *ve = (struct val_external *) v;
+
+    strbuf_printf(sb, "{ \"type\": \"external\", \"value\": \"");
+    (*ve->descr->print)(sb, ve->ref);
+    strbuf_printf(sb, "\" }");
+}
+
 // This function pretty-prints Harmony value v in the given string buffer
 void strbuf_value_string(struct strbuf *sb, hvalue_t v){
     switch (VALUE_TYPE(v)) {
@@ -926,6 +960,9 @@ void strbuf_value_string(struct strbuf *sb, hvalue_t v){
         break;
     case VALUE_CONTEXT:
         value_string_context(sb, v & ~VALUE_MASK);
+        break;
+    case VALUE_EXTERNAL:
+        value_string_external(sb, v & ~VALUE_MASK);
         break;
     default:
         printf("bad value type: %p\n", (void *) v);
@@ -972,6 +1009,9 @@ void strbuf_value_json(struct strbuf *sb, hvalue_t v){
         break;
     case VALUE_CONTEXT:
         value_json_context(sb, v);
+        break;
+    case VALUE_EXTERNAL:
+        value_json_external(sb, v);
         break;
     default:
         printf("bad value type: %p\n", (void *) v);

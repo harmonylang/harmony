@@ -1,0 +1,20 @@
+builtin iq_new "bogus$iq_new"
+def iq_new() returns iq:
+    pass
+
+builtin iq_enqueue "bogus$iq_enqueue"
+def iq_enqueue(iq, v):
+    pass
+
+builtin iq_dequeue "bogus$iq_dequeue"
+def iq_dequeue(iq, v) returns item:
+    pass
+
+def Queue() returns nq:
+    nq = iq_new()
+
+def put(q, v):
+    iq_enqueue(!q, v)
+
+def get(q) returns item:
+    item = iq_dequeue(!q)

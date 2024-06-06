@@ -1,6 +1,6 @@
 from alloc import malloc
 
-const BITS_PER_BLOCK = 4
+const BITS_PER_BLOCK = 16
 
 def new(n_blocks) returns disk:
     disk = malloc([ None, ] * n_blocks)

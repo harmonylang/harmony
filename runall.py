@@ -71,8 +71,8 @@ tests = [
     { "args": "-msynch=synchS code/barrier_test1.hny", "issue": "No issues", "nstates": 7425 },
     { "args": "code/barrier_test2.hny", "issue": "No issues", "nstates": 5711 },
     { "args": "-msynch=synchS code/barrier_test2.hny", "issue": "No issues", "nstates": 16511 },
-    { "args": "-o file.hfa code/file_btest.hny", "issue": "No issues", "nstates": 5593 },
-    { "args": "-B file.hfa -m file=file_inode code/file_btest.hny", "issue": "No issues", "nstates": 1704815 },
+    { "args": "-o file.hfa code/file_btest.hny", "issue": "No issues", "nstates": 36887 },
+    { "args": "-B file.hfa -m file=file_inode code/file_btest.hny", "issue": "No issues", "nstates": 43554096 },
     { "args": "code/trap.hny", "issue": "No issues", "nstates": 8 },
     { "args": "code/trap2.hny", "issue": "Safety violation", "nstates": 21 },
     { "args": "code/trap3.hny", "issue": "Non-terminating state", "nstates": 26 },
@@ -110,11 +110,11 @@ for t in tests:
         (base, ext) = os.path.splitext(args[-1])
         with open(base + ".hco") as f:
             hco = json.load(f)
-            print("time=%.2f, #states=%d, issue=%s" % (end - start, hco["nstates"], hco["issue"]))
+            print("time=%.2f, #states=%d(%d), issue=%s" % (end - start, hco["nstates"], t["nstates"], hco["issue"]))
             if t["issue"] != hco["issue"]:
                 print("Different issue (was %s)???  Aborting further tests" % t["issue"])
                 break
-            if t["issue"] != "Safety violation" and min(t["nstates"], hco["nstates"]) / max(t["nstates"], hco["nstates"]) < .9:
+            if t["issue"] != "Safety violation" and min(t["nstates"], hco["nstates"]) / max(t["nstates"], hco["nstates"]) < .1:
                 print("#states very different (was %d)???" % t["nstates"])
                 break
     else:

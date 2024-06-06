@@ -102,10 +102,11 @@ struct step_comp {
 // information of how a program can get from the source state to the destination
 // state.
 struct edge {
-#ifdef SHORT_POINTER
+#ifdef SHORT_PTR
+XYXZZ
     int64_t dest : 37;          // "short" pointer to dst node
     uint32_t stc_id : 25;       // id of step_condition
-#define edge_dst(e)          ((struct node *) ((uint64_t *) (e) + (e)->dest))
+#define edge_dst(e)          ((struct node *) ((int64_t *) (e) + (e)->dest))
 #else
     struct node *dst;           // pointer to destination node
     uint32_t stc_id : 30;       // id of step_condition

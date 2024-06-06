@@ -16,6 +16,7 @@ struct dfa_transition {
     struct dfa_transition *next; // linked list maintenance
     hvalue_t symbol;             // transition symbol
     unsigned int dst;            // destination state
+    unsigned int cnt;            // for statistics
 };
 
 struct dfa_state {
@@ -29,10 +30,15 @@ struct dfa_state {
 
 struct dfa {
     unsigned int nstates;        // number of states
+    unsigned int nedges;         // number of edges
     unsigned int initial;        // initial state
-    struct dfa_state *states;
+    struct dfa_state *states;    // array of states
     unsigned int nsymbols;       // number of symbols
     hvalue_t *symbols;  // list of symbols
+
+    // stats
+    unsigned int cnt;            // # edges visited
+    unsigned int total;          // total transitions done
 };
 
 static int int_parse(char *p, int len){
@@ -133,6 +139,7 @@ struct dfa *dfa_read(struct allocator *allocator, char *fname){
     // read the list of edges
     struct json_value *edges = dict_lookup(jv->u.map, "edges", 5);
     assert(edges->type == JV_LIST);
+    dfa->nedges = edges->u.list.nvals;
     for (unsigned int i = 0; i < edges->u.list.nvals; i++) {
         struct json_value *edge = edges->u.list.vals[i];
         assert(edge->type == JV_MAP);
@@ -183,8 +190,71 @@ int dfa_step(struct dfa *dfa, int current, hvalue_t symbol){
     // TODO.  Maybe make symbol lookup a hashmap
     for (struct dfa_transition *dt = ds->transitions; dt != NULL; dt = dt->next) {
         if (dt->symbol == symbol) {
+            if (dt->cnt == 0) {
+                dfa->cnt++;
+            }
+            dfa->total++;
+            dt->cnt++;
             return dt->dst;
         }
     }
     return -1;
+}
+
+int dfa_visited(struct dfa *dfa, int current, hvalue_t symbol){
+    struct dfa_state *ds = &dfa->states[current];
+
+    for (struct dfa_transition *dt = ds->transitions; dt != NULL; dt = dt->next) {
+        if (dt->symbol == symbol) {
+            return dt->cnt;
+        }
+    }
+    return -1;
+}
+
+int potential_recurse(struct dfa *dfa, bool *visited, int current){
+    if (visited[current]) {
+        return -1;
+    }
+    visited[current] = true;
+    struct dfa_state *ds = &dfa->states[current];
+    for (struct dfa_transition *dt = ds->transitions; dt != NULL; dt = dt->next) {
+        if (dt->cnt == 0) {
+            return 0;
+        }
+        int r = potential_recurse(dfa, visited, dt->dst);
+        if (r != -1) {
+            return r;
+        }
+    }
+    return -1;
+}
+
+// See if there are any "potential" transitions reachable
+// after taking the step according to symbol
+int dfa_potential(struct dfa *dfa, int current, hvalue_t symbol){
+    bool *visited = calloc(dfa->nstates, sizeof(bool));
+    struct dfa_state *ds = &dfa->states[current];
+
+    visited[current] = true;
+
+    // First see where this takes us
+    for (struct dfa_transition *dt = ds->transitions; dt != NULL; dt = dt->next) {
+        if (dt->symbol == symbol) {
+            if (dt->cnt == 0) {
+                free(visited);
+                return 0;
+            }
+            int r = potential_recurse(dfa, visited, dt->dst);
+            free(visited);
+            return r;
+        }
+    }
+    free(visited);
+    return -1;
+}
+
+void dfa_dump(struct dfa *dfa){
+    printf("%u/%u edges visited\n", dfa->cnt, dfa->nedges);
+    printf("%u transitions made\n", dfa->total);
 }
