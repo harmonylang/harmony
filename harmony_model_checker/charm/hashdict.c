@@ -285,12 +285,13 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
 struct dict_assoc *dict_find_new(struct dict *dict, struct allocator *al,
                             const void *key, unsigned int keylen,
                             unsigned int extra, bool *new, mutex_t **lock){
-    assert(dict->concurrent);
     assert(al != NULL);
     uint32_t hash = hash_func(key, keylen);
     unsigned int index = hash % dict->length;
 
-    *lock = &dict->locks[index % dict->nlocks];
+    if (lock != NULL) {
+        *lock = &dict->locks[index % dict->nlocks];
+    }
 
     struct dict_bucket *db = &dict->table[index];
 	struct dict_assoc *k = db->stable;
@@ -305,25 +306,43 @@ struct dict_assoc *dict_find_new(struct dict *dict, struct allocator *al,
 		k = da_next(k);
 	}
 
-    mutex_acquire(*lock);
-    // See if the item is in the unstable list
-    k = db->unstable;
-    while (k != NULL) {
-        if (da_len(k) == keylen && memcmp((char *) &k[1] + k->val_len, key, keylen) == 0) {
-            *new = false;
+    if (dict->concurrent) {
+        mutex_acquire(*lock);
+        // See if the item is in the unstable list
+        k = db->unstable;
+        while (k != NULL) {
+            if (da_len(k) == keylen && memcmp((char *) &k[1] + k->val_len, key, keylen) == 0) {
+                *new = false;
 #ifdef HASHDICT_STATS
-            (void) atomic_fetch_add(&dict->nunstable_hits, 1);
+                (void) atomic_fetch_add(&dict->nunstable_hits, 1);
 #endif
-            mutex_release(*lock);
-            return k;
+                mutex_release(*lock);
+                return k;
+            }
+            k = da_next(k);
         }
-        k = da_next(k);
     }
 
+    // If not concurrent may have to grow the table now
+	if (!dict->concurrent && db->stable == NULL) {
+		double f = (double)dict->count / (double)dict->length;
+		if (f > dict->growth_threshold) {
+			dict_resize(dict, dict->length * dict->growth_factor - 1);
+			return dict_find(dict, al, key, keylen, new);
+		}
+	}
+
     k = dict_assoc_new(dict, al, (char *) key, keylen, extra);
-    da_set(k, db->unstable);
-    db->unstable = k;
-    dict_unstable(dict, al, index, k);
+    if (dict->concurrent) {
+        da_set(k, db->unstable);
+        db->unstable = k;
+        dict_unstable(dict, al, index, k);
+    }
+    else {
+        da_set(k, db->stable);
+        db->stable = k;
+		dict->count++;
+    }
 
     *new = true;
 #ifdef HASHDICT_STATS
