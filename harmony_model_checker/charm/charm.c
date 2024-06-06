@@ -2476,10 +2476,8 @@ void do_work1(struct worker *w, struct node *node){
 // into this array.  All the nodes before todo have been explored, while the
 // ones after todo should be explored.  In other words, the "todo list" starts
 // at global.graph.nodes[global.todo] and ends at graph.nodes[graph.size];
-// However, there is also a global.goal that indexes into global.graph.nodes.
-// Workers move on to phase 2 when the goal is reached, to give charm an
-// opportunity to grow the hash tables which might otherwise become inefficient.
 static void do_work(struct worker *w){
+    printf("WORKER %u: %u %u\n", w->index, w->tb_index, w->tb_size);
     while (w->tb_index < w->tb_size) {
         do_work1(w, w->todo_buffer[w->tb_index]);
     }
@@ -2836,6 +2834,7 @@ static void worker(void *arg){
             dict_grow_prepare(global.computations);
         }
 
+#ifndef NEW_STUFF
         // Only the coordinator (worker 0) does the following
         if (w->index == 0 /* % global.nworkers */) {
             // See where todo (or atodo) is at.  Because of how it's incremented
@@ -2905,18 +2904,6 @@ static void worker(void *arg){
                 }
             }
 
-            // We check here if more than 10000 nodes are on tbe todo list.  If
-            // so, we explore only 10000 for now to give us a chance to grow
-            // or stabilize hash tables if needed for efficiency.
-            //
-            // TODO.  Why 10000?
-            if (global.graph.size - todo > 10000) {
-                global.goal = todo + 10000;
-            }
-            else {
-                global.goal = global.graph.size;
-            }
-
             // Compute how much table space is in use (reported in stats)
             global.allocated = global.graph.size * sizeof(struct node *) +
                 dict_allocated(w->visited) + dict_allocated(global.values);
@@ -2931,6 +2918,7 @@ static void worker(void *arg){
             }
 #endif
         }
+#endif // NEW_STUFF
 
         // Start the final phase (and keep stats).
         after = gettime();
@@ -3722,15 +3710,6 @@ int exec_model_checker(int argc, char **argv){
 
     // initialize modules
     mutex_init(&global.inv_lock);
-#ifdef USE_ATOMIC
-    atomic_init(&global.atodo, 0);
-#else
-    mutex_init(&global.todo_lock);
-#endif
-    global.goal = 1;
-    mutex_init(&global.todo_enter);
-    mutex_init(&global.todo_wait);
-    mutex_acquire(&global.todo_wait);          // Split Binary Semaphore
     global.values = dict_new("values", 0, 0, global.nworkers, true);
 
     ops_init(NULL);
@@ -3905,7 +3884,12 @@ int exec_model_checker(int argc, char **argv){
     node->nedges = 1;
     mutex_release(lock);
     memset(node_edges(node), 0, sizeof(struct edge));
-    graph_add(&global.graph, node);
+
+    // Add node to the todo list of worker 0
+    workers[0].todo_buffer[0] = node;
+    workers[0].tb_size = 1;
+
+    // graph_add(&global.graph, node);
 
     // Compute how much table space is allocated
     global.allocated = global.graph.size * sizeof(struct node *) +
