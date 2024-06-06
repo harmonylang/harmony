@@ -35,7 +35,7 @@
 //  operation Y. 'args' is an array containing the arguments that
 //  were on the stack, and n is the numbers of arguments.
 
-#ifdef _WIN32
+#ifndef _WIN32
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #include <unistd.h>
