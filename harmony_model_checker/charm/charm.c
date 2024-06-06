@@ -71,7 +71,7 @@
 #define MAX_STATE_SIZE (sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1))
 
 // Workers buffer states
-#define STATE_BUFFER_SIZE   ((MAX_STATE_SIZE + sizeof(struct state_header)) * 10000)
+#define STATE_BUFFER_SIZE   ((MAX_STATE_SIZE + sizeof(struct state_header)) * 100000)
 
 // All global variables should be here
 struct global global;
@@ -2461,6 +2461,7 @@ void do_work1(struct worker *w, struct node *node){
         assert(j == node->nedges);
     }
 
+#ifdef notdef       // TODO NEW_STUFF
     // Also check the invariants after initialization
     if (node->id != 0 && state->chooser < 0 && global.ninvs > 0) {
         step_init(w, &step);
@@ -2470,6 +2471,7 @@ void do_work1(struct worker *w, struct node *node){
             trystep(w, node, -1, state, global.invs[i].context, &step, 0, -1);
         }
     }
+#endif
 }
 
 // A worker thread executes this in "phase 1" of the worker loop, when all
@@ -2507,7 +2509,7 @@ static inline uint32_t meiyan(const char *key, int count) {
 }
 
 static void do_work2(struct worker *w){
-    printf("WORK 2: %u: %u\n", w->index, w->sb_index);
+    printf("WORK 2: %u: %u %lu\n", w->index, w->sb_index, sizeof(w->state_buffer));
 
     for (unsigned int i = 0; i < global.nworkers; i++) {
         struct worker *w2 = &w->workers[i];
@@ -2516,7 +2518,10 @@ static void do_work2(struct worker *w){
             struct state *sc = (struct state *) &sh[1];
             unsigned int size = state_size(sc);
 
+            // w->enqueued = sc->chooser + 1;
+
             // See if this state's for me
+            // TODO.  Should use a different hash function or something
             uint32_t h = meiyan((char *) sc, size);
             if (h % w->nworkers == w->index) {
                 // See if this state has been computed before by looking up the node,
@@ -2526,7 +2531,7 @@ static void do_work2(struct worker *w){
                             sc, size, sh->noutgoing * sizeof(struct edge), &new, NULL);
                 struct node *next = (struct node *) &hn[1];
 
-                printf("found %s state\n", new ? "new" : "old");
+                // printf("found %s state\n", new ? "new" : "old");
 
                 struct edge *edge = &node_edges(sh->node)[sh->edge_index];
                 edge->dst = next;
@@ -2887,9 +2892,9 @@ static void worker(void *arg){
 
         // Wait for others to finish, and keep stats
         before = gettime();
-        printf("WAIT FOR MIDDLE %u\n", w->index);
+        // printf("WAIT FOR MIDDLE %u\n", w->index);
         barrier_wait(w->middle_barrier);
-        printf("DONE WITH MIDDLE %u\n", w->index);
+        // printf("DONE WITH MIDDLE %u\n", w->index);
         after = gettime();
         w->middle_wait += after - before;
         w->middle_count++;
@@ -3007,9 +3012,9 @@ static void worker(void *arg){
         after = gettime();
         w->phase2b += after - before;
         before = after;
-        printf("WAIT FOR END %u\n", w->index);
+        // printf("WAIT FOR END %u\n", w->index);
         barrier_wait(w->end_barrier);
-        printf("DONE WITH END %u\n", w->index);
+        // printf("DONE WITH END %u\n", w->index);
         after = gettime();
         w->end_wait += after - before;
         w->end_count++;
