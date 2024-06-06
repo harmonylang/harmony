@@ -71,14 +71,15 @@
 #define MAX_STATE_SIZE (sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1))
 
 // Workers buffer states
-#define STATE_BUFFER_SIZE   ((MAX_STATE_SIZE + sizeof(struct state_header)) * 100)
+#define STATE_BUFFER_SIZE   ((MAX_STATE_SIZE + sizeof(struct state_header)) * 10000)
 
 // All global variables should be here
 struct global global;
 
 struct state_header {
-    struct node *node;
-    unsigned int edge_index;
+    struct node *node;          // old state
+    unsigned int edge_index;    // index of the edge in the old state
+    unsigned int noutgoing;     // number of outgoing edges of new state
 };
 
 extern bool has_countLabel;     // TODO.  Hack for backward compatibility
@@ -692,6 +693,8 @@ static void process_step(
 
 #ifdef NEW_STUFF
     // TODO.  Should perhaps round up.
+    struct state_header *sh = (struct state_header *) &w->state_buffer[w->sb_index];
+    sh->noutgoing = noutgoing;
     w->sb_index += sizeof(struct state_header) + size;
 #else
     // See if this state has been computed before by looking up the node,
@@ -2473,10 +2476,28 @@ void do_work1(struct worker *w, struct node *node){
 // at global.graph.nodes[global.todo] and ends at graph.nodes[graph.size];
 static void do_work(struct worker *w){
     printf("WORK 1: %u: %u %u\n", w->index, w->tb_index, w->tb_size);
+    w->sb_index = 0;
     while (w->tb_index < w->tb_size) {
         do_work1(w, w->todo_buffer[w->tb_index]);
         w->tb_index += 1;
     }
+    printf("WORK 1: %u DONE\n", w->index);
+}
+
+static inline uint32_t meiyan(const char *key, int count) {
+	typedef uint32_t *P;
+	uint32_t h = 0x811c9dc5;
+	while (count >= 8) {
+		h = (h ^ ((((*(P)key) << 5) | ((*(P)key) >> 27)) ^ *(P)(key + 4))) * 0xad3e7;
+		count -= 8;
+		key += 8;
+	}
+	#define tmp h = (h ^ *(uint16_t*)key) * 0xad3e7; key += 2;
+	if (count & 4) { tmp tmp }
+	if (count & 2) { tmp }
+	if (count & 1) { h = (h ^ *key) * 0xad3e7; }
+	#undef tmp
+	return h ^ (h >> 16);
 }
 
 static void do_work2(struct worker *w){
@@ -2486,57 +2507,50 @@ static void do_work2(struct worker *w){
         struct worker *w2 = &w->workers[i];
         for (unsigned int sbi = 0; sbi < w2->sb_index;) {
             struct state_header *sh = (struct state_header *) &w2->state_buffer[sbi];
-            printf("WORK 2: found state\n");
-
             struct state *sc = (struct state *) &sh[1];
             unsigned int size = state_size(sc);
 
-            // See if this state has been computed before by looking up the node,
-            // or allocate if not.
-            bool new;
-            mutex_t *lock;
-            struct dict_assoc *hn = dict_find_new(w->kripke_shard, &w->allocator,
-                        sc, size, noutgoing * sizeof(struct edge), &new, &lock);
-            struct node *next = (struct node *) &hn[1];
-            edge->dst = next;
+            // See if this state's for me
+            uint32_t h = meiyan((char *) sc, size);
+            if (h % w->nworkers == w->index) {
+                // See if this state has been computed before by looking up the node,
+                // or allocate if not.
+                bool new;
+                struct dict_assoc *hn = dict_find_new(w->kripke_shard, &w->allocator,
+                            sc, size, sh->noutgoing * sizeof(struct edge), &new, NULL);
+                struct node *next = (struct node *) &hn[1];
 
-            if (new) {
-                assert(node->len == global.diameter);
-                next->failed = edge->failed;
-                next->parent = node;
-                next->len = node->len + 1;
-                next->nedges = noutgoing;
-                mutex_release(lock);
+                printf("found %s state\n", new ? "new" : "old");
 
-                // Add new node to results list kept per worker
-                struct results_block *rb = w->results;
-                if (rb == NULL || rb->nresults == NRESULTS) {
-                    if ((rb = w->rb_free) == NULL) {
-                        rb = walloc_fast(w, sizeof(*rb));
-                    }
-                    else {
-                        w->rb_free = rb->next;
-                    }
-                    rb->nresults = 0;
-                    rb->next = w->results;
-                    w->results = rb;
+                struct edge *edge = &node_edges(sh->node)[sh->edge_index];
+                edge->dst = next;
+
+                if (new) {
+                    next->failed = edge->failed;
+                    next->parent = sh->node;
+                    next->len = sh->node->len + 1;
+                    next->nedges = sh->noutgoing;
+
+                    w->todo_buffer[w->tb_size++] = next;
+
+                    w->count++;
+                    w->enqueued++;
+                    w->total_results++;
                 }
-                rb->results[rb->nresults++] = next;
 
-                w->count++;
-                w->enqueued++;
-                w->total_results++;
+                // See if the node points sideways or backwards, in which
+                // case cycles in the graph are possible
+                else if (next != sh->node && next->len <= sh->node->len) {
+                    w->loops_possible = true;
+                }
             }
 
-            // See if the node points sideways or backwards, in which
-            // case cycles in the graph are possible
-            else if (next != node && next->len <= node->len) {
-                w->loops_possible = true;
-            }
             sbi += sizeof(*sh) + state_size((struct state *) &sh[1]);
             assert(sbi <= w2->sb_index);
         }
     }
+
+    printf("WORK 2: %u DONE\n", w->index);
 }
 
 // Copy all the failures that the individuals worker threads discovered
@@ -2827,6 +2841,8 @@ static void worker(void *arg){
     struct worker *w = arg;
     bool done = false;
 
+    printf("WORKER %u\n", w->index);
+
     // Pin the thread to its virtual processor.
 #ifdef __linux__
     if (w->index == 0) {
@@ -2865,7 +2881,9 @@ static void worker(void *arg){
 
         // Wait for others to finish, and keep stats
         before = gettime();
+        printf("WAIT FOR MIDDLE %u\n", w->index);
         barrier_wait(w->middle_barrier);
+        printf("DONE WITH MIDDLE %u\n", w->index);
         after = gettime();
         w->middle_wait += after - before;
         w->middle_count++;
@@ -2983,7 +3001,9 @@ static void worker(void *arg){
         after = gettime();
         w->phase2b += after - before;
         before = after;
+        printf("WAIT FOR END %u\n", w->index);
         barrier_wait(w->end_barrier);
+        printf("DONE WITH END %u\n", w->index);
         after = gettime();
         w->end_wait += after - before;
         w->end_count++;
@@ -3025,6 +3045,20 @@ static void worker(void *arg){
         // Update stats
         after = gettime();
         w->phase3b += after - before;
+
+        if (w->index == 0) {
+            printf("DUMP %u\n", w->nworkers);
+            unsigned int i = 0;
+            for (; i < w->nworkers; i++) {
+                printf("--> %u %u\n", w->workers[i].tb_index, w->workers[i].tb_size);
+                if (w->workers[i].tb_index < w->workers[i].tb_size) {
+                    break;
+                }
+            }
+            if (i == w->nworkers) {
+                break;
+            }
+        }
     }
 }
 
@@ -3937,6 +3971,14 @@ int exec_model_checker(int argc, char **argv){
     dict_set_concurrent(global.computations);
 
 #ifdef NEW_STUFF
+    printf("HERE\n");
+    bool new;
+    struct dict_assoc *hn = dict_find_new(workers[0].kripke_shard, &workers[0].allocator, state, state_size(state), sizeof(struct edge), &new, NULL);
+    struct node *node = (struct node *) &hn[1];
+    memset(node, 0, sizeof(*node));
+    node->nedges = 1;
+    memset(node_edges(node), 0, sizeof(struct edge));
+
     // Add node to the todo list of worker 0
     workers[0].todo_buffer[0] = node;
     workers[0].tb_size = 1;
@@ -3969,6 +4011,10 @@ int exec_model_checker(int argc, char **argv){
 
     // Run the last worker.  When it terminates the model checking is done.
     worker(&workers[0]);
+
+    for (unsigned int i = 0; i < global.nworkers; i++) {
+        printf("W%u: %u\n", i, workers[i].tb_size);
+    }
 
     // Compute how much memory was used, approximately
     unsigned long allocated = global.allocated;
