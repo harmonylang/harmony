@@ -753,7 +753,7 @@ static void process_step(
     else if (next != node && next->len <= node->len) {
         w->loops_possible = true;
     }
-#endif
+#endif // NEW_STUFF
 }
 
 // This is the main workhorse function of model checking: explore a state and
@@ -1227,6 +1227,10 @@ static void trystep(
     process_step(w, stc, node, edge_index, sc);
     while (el != NULL) {
         struct node *n = el->node;
+        sh = (struct state_header *) &w->state_buffer[w->sb_index];
+        sh->node = n;
+        sh->edge_index = el->edge_index;
+        sc = (struct state *) &sh[1];
         struct state *state = node_state(n);
         unsigned int statesz = state_size(state);
         memcpy(sc, state, statesz);
