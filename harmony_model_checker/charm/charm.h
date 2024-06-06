@@ -71,18 +71,9 @@ struct global {
 
     struct graph graph;             // the Kripke structure but also the todo list
 
-#ifdef USE_ATOMIC
-    hAtomic(unsigned int) atodo;
-#else
-    mutex_t todo_lock;              // to access the todo list
-    unsigned int todo;
-#endif
-    unsigned int goal;
     bool layer_done;                // all states in a layer completed
     bool printed_something;         // see if anything was printed
 
-    mutex_t todo_enter;             // entry semaphore for SCC tasks
-    mutex_t todo_wait;              // wait semaphore for SCC tasks
     unsigned int nworkers;          // total number of threads
     unsigned int ncomponents;       // to generate component identifiers
     struct failure *failures;       // queue of "struct failure"  (TODO: make part of struct node "issues")
