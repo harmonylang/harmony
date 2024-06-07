@@ -64,7 +64,7 @@
 // This is use for reading lines from the /proc/cpuinfo file
 #define LINE_CHUNK      128
 
-// Newly discovered  nodes are kept in arrays of this size
+// Newly discovered nodes are kept in arrays of this size
 #define NRESULTS        4096
 
 // Convenient constant
@@ -173,12 +173,15 @@ struct worker {
     // State maintained while evaluating invariants
     struct step inv_step;        // for evaluating invariants
 
+#ifndef NEW_STUFF
     // When a worker creates a new state, it puts the corresponding node
     // in a list.  The nodes are added to the graph table after the
     // graph table has been grown.
     struct results_block *results;       // linked list of nodes
     struct results_block *rb_free;
     unsigned int count;         // size of the results list
+#endif
+
     unsigned int total_results;
     unsigned int process_step;
 
@@ -221,8 +224,7 @@ struct worker {
     char state_buffer[STATE_BUFFER_SIZE];
     unsigned int sb_index;      // current index into state_buffer
 
-#define TODO_BUFFER_SIZE    10000
-    struct node *todo_buffer[TODO_BUFFER_SIZE];
+    struct results_block *todo_buffer, *tb_head, *tb_tail;
     unsigned int tb_size, tb_index;
 };
 
@@ -2498,11 +2500,14 @@ static void do_work(struct worker *w){
     // printf("WORK 1: %u: %u %u\n", w->index, w->tb_index, w->tb_size);
     w->sb_index = 0;
     while (w->tb_index < w->tb_size) {
-        struct node *n = w->todo_buffer[w->tb_index];
+        struct node *n = w->tb_head->results[w->tb_index % NRESULTS];
         struct state *s = node_state(n);
         unsigned int size = state_size(s);
         do_work1(w, n);
-        w->tb_index += 1;
+        w->tb_index++;
+        if (w->tb_index % NRESULTS == 0) {
+            w->tb_head = w->tb_head->next;
+        }
     }
     // printf("WORK 1: %u DONE\n", w->index);
 }
@@ -2541,10 +2546,16 @@ static void do_work2(struct worker *w){
                     next->len = sh->node->len + 1;
                     next->nedges = sh->noutgoing;
 
-                    // printf("ADD w=%u i=%u h=%u\n", w->index, w->tb_size, h);
-                    w->todo_buffer[w->tb_size++] = next;
+                    w->tb_size++;
+                    w->tb_tail->results[w->tb_tail->nresults++] = next;
+                    if (w->tb_tail->nresults == NRESULTS) {
+                        w->tb_tail->next = walloc_fast(w, sizeof(*w->tb_tail));
+                        w->tb_tail = w->tb_tail->next;
+                    }
 
+#ifndef NEW_STUFF
                     w->count++;
+#endif
                     w->enqueued++;
                     w->total_results++;
                 }
@@ -3038,6 +3049,7 @@ static void worker(void *arg){
         w->phase3a += after - before;
         before = after;
 
+#ifndef NEW_STUFF
         // If a layer was completed, move the buffered nodes into the graph.
         // Worker w can assign node identifiers starting from w->node_id.
         if (global.layer_done) {
@@ -3058,6 +3070,7 @@ static void worker(void *arg){
             w->node_id = node_id;
             w->count = 0;
         }
+#endif
 
         // Update stats
         after = gettime();
@@ -3939,6 +3952,7 @@ int exec_model_checker(int argc, char **argv){
     struct worker *workers = calloc(global.nworkers, sizeof(*workers));
     for (unsigned int i = 0; i < global.nworkers; i++) {
         struct worker *w = &workers[i];
+        w->todo_buffer = w->tb_head = w->tb_tail = walloc_fast(w, sizeof(*w->tb_tail));
         w->kripke_shard = dict_new("kripke_shard", sizeof(struct node), 0, 0, false);
 
         w->timeout = timeout;
@@ -4000,7 +4014,8 @@ int exec_model_checker(int argc, char **argv){
     memset(node_edges(node), 0, sizeof(struct edge));
 
     // Add node to the todo list of worker 0
-    workers[0].todo_buffer[0] = node;
+    workers[0].todo_buffer->results[0] = node;
+    workers[0].todo_buffer->nresults = 1;
     workers[0].tb_size = 1;
 #else
     dict_set_concurrent(visited);
@@ -4047,10 +4062,12 @@ int exec_model_checker(int argc, char **argv){
     graph_add_multiple(&global.graph, nstates);
     unsigned int node_id = 0;
     for (unsigned int i = 0; i < global.nworkers; i++) {
-        for (unsigned int j = 0; j < workers[i].tb_size; j++) {
-            struct node *n = workers[i].todo_buffer[j];
-            n->id = node_id;
-            global.graph.nodes[node_id++] = n;
+        for (struct results_block *rb = workers[i].todo_buffer; rb != NULL; rb = rb->next) {
+            for (unsigned int k = 0; k < rb->nresults; k++) {
+                struct node *n = rb->results[k];
+                n->id = node_id;
+                global.graph.nodes[node_id++] = n;
+            }
         }
     }
 #endif
