@@ -65,7 +65,7 @@
 #define LINE_CHUNK      128
 
 // Newly discovered nodes are kept in arrays of this size
-#define NRESULTS        4096
+#define NRESULTS        (4 * 4096)
 
 // Convenient constant
 #define MAX_STATE_SIZE (sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1))
@@ -2440,9 +2440,7 @@ void do_work1(struct worker *w, struct node *node){
     }
 
     // Explore the non-deterministic choices from this node
-    struct edge *edges = node_edges(node);
-    // struct state *state = node_state(node);
-    struct state *state = (struct state *) &edges[node->nedges];
+    struct state *state = node_state(node);
     struct step step;
     if (state->chooser >= 0) {
         // The actual set of choices is on top of its stack
@@ -2484,7 +2482,9 @@ void do_work1(struct worker *w, struct node *node){
     }
 
     // Also check the invariants after initialization
-    if (!node->initial && state->chooser < 0 && global.ninvs > 0) {
+    if (!node->initial)
+	if (state->chooser < 0)
+	if (global.ninvs > 0) {
         step_init(w, &step);
 
         // Check each invariant
@@ -2503,15 +2503,15 @@ void do_work1(struct worker *w, struct node *node){
 // ones after todo should be explored.  In other words, the "todo list" starts
 // at global.graph.nodes[global.todo] and ends at graph.nodes[graph.size];
 static void do_work(struct worker *w){
-    // printf("WORK 1: %u: %u %u\n", w->index, w->tb_index, w->tb_size);
+    printf("WORK 1: %u: %u %u\n", w->index, w->tb_index, w->tb_size);
     w->sb_index = 0;
     while (w->tb_index < w->tb_size) {
+		printf("WORK 1: %u: do %u\n", w->index, w->tb_index);
         struct node *n = w->tb_head->results[w->tb_index % NRESULTS];
-        struct state *s = node_state(n);
-        unsigned int size = state_size(s);
         do_work1(w, n);
         w->tb_index++;
         if (w->tb_index % NRESULTS == 0) {
+			printf("WORK 1: NEXT\n");
             w->tb_head = w->tb_head->next;
         }
     }
@@ -2519,7 +2519,7 @@ static void do_work(struct worker *w){
 }
 
 static void do_work2(struct worker *w){
-    // printf("WORK 2: %u: %u %lu\n", w->index, w->sb_index, sizeof(w->state_buffer));
+    printf("WORK 2: %u: %u %lu\n", w->index, w->sb_index, sizeof(w->state_buffer));
 
     for (unsigned int i = 0; i < global.nworkers; i++) {
         struct worker *w2 = &w->workers[i];
@@ -2548,16 +2548,24 @@ static void do_work2(struct worker *w){
 
                 if (new) {
                     next->failed = edge->failed;
+					next->initial = false;
                     next->parent = sh->node;
                     next->len = sh->node->len + 1;
                     next->nedges = sh->noutgoing;
 
+					assert(w->tb_tail->nresults == w->tb_size % NRESULTS);
+					assert(w->tb_tail->next == NULL);
                     w->tb_size++;
                     w->tb_tail->results[w->tb_tail->nresults++] = next;
                     if (w->tb_tail->nresults == NRESULTS) {
-                        w->tb_tail->next = walloc_fast(w, sizeof(*w->tb_tail));
-                        w->tb_tail = w->tb_tail->next;
+						printf("WORK 2: NEXT\n");
+						struct results_block *rb = walloc_fast(w, sizeof(*w->tb_tail));
+						rb->nresults = 0;
+						rb->next = NULL;
+                        w->tb_tail->next = rb;
+                        w->tb_tail = rb;
                     }
+					assert(w->tb_tail->nresults == w->tb_size % NRESULTS);
 
 #ifndef NEW_STUFF
                     w->count++;
@@ -3958,7 +3966,6 @@ int exec_model_checker(int argc, char **argv){
     struct worker *workers = calloc(global.nworkers, sizeof(*workers));
     for (unsigned int i = 0; i < global.nworkers; i++) {
         struct worker *w = &workers[i];
-        w->todo_buffer = w->tb_head = w->tb_tail = walloc_fast(w, sizeof(*w->tb_tail));
         w->kripke_shard = dict_new("kripke_shard", sizeof(struct node), 0, 0, false);
 
         w->timeout = timeout;
@@ -3988,6 +3995,10 @@ int exec_model_checker(int argc, char **argv){
         w->allocator.free = wfree;
         w->allocator.ctx = w;
         w->allocator.worker = i;
+
+        w->todo_buffer = w->tb_head = w->tb_tail = walloc_fast(w, sizeof(*w->tb_tail));
+		w->todo_buffer->nresults = 0;
+		w->todo_buffer->next = NULL;
     }
 
     // Pin workers to particular virtual processors
@@ -4154,7 +4165,7 @@ int exec_model_checker(int argc, char **argv){
 #endif
     dict_set_sequential(global.computations);
 
-    printf("* Phase 3: analysis %p\n", global.failures);
+    printf("* Phase 3: analysis\n");
 
     bool computed_components = false;
 
