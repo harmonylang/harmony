@@ -2499,22 +2499,22 @@ void do_work1(struct worker *w, struct node *node){
 // ones after todo should be explored.  In other words, the "todo list" starts
 // at global.graph.nodes[global.todo] and ends at graph.nodes[graph.size];
 static void do_work(struct worker *w){
-    printf("WORK 1: %u: %u %u\n", w->index, w->tb_index, w->tb_size);
+    // printf("WORK 1: %u: %u %u\n", w->index, w->tb_index, w->tb_size);
     w->sb_index = 0;
     while (w->tb_index < w->tb_size) {
         struct node *n = w->todo_buffer[w->tb_index];
         struct state *s = node_state(n);
         unsigned int size = state_size(s);
         uint32_t h = meiyan((char *) s, size);
-        printf("WORK 1: %u: do i=%u h=%u\n", w->index, w->tb_index, h);
+        // printf("WORK 1: %u: do i=%u h=%u\n", w->index, w->tb_index, h);
         do_work1(w, n);
         w->tb_index += 1;
     }
-    printf("WORK 1: %u DONE\n", w->index);
+    // printf("WORK 1: %u DONE\n", w->index);
 }
 
 static void do_work2(struct worker *w){
-    printf("WORK 2: %u: %u %lu\n", w->index, w->sb_index, sizeof(w->state_buffer));
+    // printf("WORK 2: %u: %u %lu\n", w->index, w->sb_index, sizeof(w->state_buffer));
 
     for (unsigned int i = 0; i < global.nworkers; i++) {
         struct worker *w2 = &w->workers[i];
@@ -2532,7 +2532,7 @@ static void do_work2(struct worker *w){
             if (h % w->nworkers == w->index) {
                 // See if this state has been computed before by looking up the node,
                 // or allocate if not.
-                printf("HERE WE GO\n");
+                // printf("HERE WE GO\n");
                 bool new;
                 struct dict_assoc *hn = dict_find_new(w->kripke_shard, &w->allocator,
                             sc, size, sh->noutgoing * sizeof(struct edge), &new, NULL);
@@ -2557,7 +2557,7 @@ static void do_work2(struct worker *w){
                     assert(memcmp(s1, sc, size) == 0);
                     assert(h == meiyan((char *) node_state(next), size));
 
-                    printf("ADD w=%u i=%u h=%u\n", w->index, w->tb_size, h);
+                    // printf("ADD w=%u i=%u h=%u\n", w->index, w->tb_size, h);
                     w->todo_buffer[w->tb_size++] = next;
 
                     w->count++;
@@ -2577,7 +2577,7 @@ static void do_work2(struct worker *w){
         }
     }
 
-    printf("WORK 2: %u DONE\n", w->index);
+    // printf("WORK 2: %u DONE\n", w->index);
 }
 
 // Copy all the failures that the individuals worker threads discovered
@@ -2868,7 +2868,7 @@ static void worker(void *arg){
     struct worker *w = arg;
     bool done = false;
 
-    printf("WORKER %u\n", w->index);
+    // printf("WORKER %u\n", w->index);
 
     // Pin the thread to its virtual processor.
 #ifdef __linux__
@@ -3074,10 +3074,10 @@ static void worker(void *arg){
         w->phase3b += after - before;
 
         if (w->index == 0) {
-            printf("DUMP %u\n", w->nworkers);
+            // printf("DUMP %u\n", w->nworkers);
             unsigned int i = 0;
             for (; i < w->nworkers; i++) {
-                printf("--> %u %u\n", w->workers[i].tb_index, w->workers[i].tb_size);
+                // printf("--> %u %u\n", w->workers[i].tb_index, w->workers[i].tb_size);
                 if (w->workers[i].tb_index < w->workers[i].tb_size) {
                     break;
                 }
@@ -3938,8 +3938,10 @@ int exec_model_checker(int argc, char **argv){
         exit(0);
     }
 
+#ifndef NEW_STUFF
     // Create the hash table that maps states to nodes
     struct dict *visited = dict_new("visited", sizeof(struct node), 0, global.nworkers, false);
+#endif
 
     global.computations = dict_new("computations", sizeof(struct step_condition), 0, global.nworkers, false);
 
@@ -3998,7 +4000,7 @@ int exec_model_checker(int argc, char **argv){
     dict_set_concurrent(global.computations);
 
 #ifdef NEW_STUFF
-    printf("HERE\n");
+    // printf("HERE\n");
     bool new;
     struct dict_assoc *hn = dict_find_new(workers[0].kripke_shard, &workers[0].allocator, state, state_size(state), sizeof(struct edge), &new, NULL);
     struct node *node = (struct node *) &hn[1];
@@ -4025,9 +4027,15 @@ int exec_model_checker(int argc, char **argv){
     graph_add(&global.graph, node);
 #endif
 
+#ifdef NEW_STUFF
     // Compute how much table space is allocated
+    // TODO.  Add per worker stuff
+    global.allocated = global.graph.size * sizeof(struct node *) +
+                             dict_allocated(global.values);
+#else
     global.allocated = global.graph.size * sizeof(struct node *) +
         dict_allocated(visited) + dict_allocated(global.values);
+#endif
 
     // Start all but one of the workers. All will wait on the start barrier
     for (unsigned int i = 1; i < global.nworkers; i++) {
@@ -4039,9 +4047,22 @@ int exec_model_checker(int argc, char **argv){
     // Run the last worker.  When it terminates the model checking is done.
     worker(&workers[0]);
 
+#ifdef NEW_STUFF
+    unsigned int nstates = 0;
     for (unsigned int i = 0; i < global.nworkers; i++) {
-        printf("W%u: %u\n", i, workers[i].tb_size);
+        // printf("W%u: %u\n", i, workers[i].tb_size);
+        nstates += workers[i].tb_size;
     }
+    graph_add_multiple(&global.graph, nstates);
+    unsigned int node_id = 0;
+    for (unsigned int i = 0; i < global.nworkers; i++) {
+        for (unsigned int j = 0; j < workers[i].tb_size; j++) {
+            struct node *n = workers[i].todo_buffer[j];
+            n->id = node_id;
+            global.graph.nodes[node_id++] = n;
+        }
+    }
+#endif
 
     // Compute how much memory was used, approximately
     unsigned long allocated = global.allocated;
@@ -4114,7 +4135,9 @@ int exec_model_checker(int argc, char **argv){
 
     // Put the hashtables into "sequential mode" to avoid locking overhead.
     dict_set_sequential(global.values);
+#ifndef NEW_STUFF
     dict_set_sequential(visited);
+#endif
     dict_set_sequential(global.computations);
 
     printf("* Phase 3: analysis %p\n", global.failures);
