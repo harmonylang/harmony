@@ -324,8 +324,8 @@ struct dict_assoc *dict_find_new(struct dict *dict, struct allocator *al,
     }
 
     // If not concurrent may have to grow the table now
-	if (0 && !dict->concurrent && db->stable == NULL) {
-        printf("RESIZE\n");
+	if (!dict->concurrent && db->stable == NULL) {
+        // printf("RESIZE\n");
 		double f = (double)dict->count / (double)dict->length;
 		if (f > dict->growth_threshold) {
 			dict_resize(dict, dict->length * dict->growth_factor - 1);
