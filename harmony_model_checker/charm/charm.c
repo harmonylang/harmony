@@ -2477,9 +2477,8 @@ void do_work1(struct worker *w, struct node *node){
         assert(j == node->nedges);
     }
 
-#ifdef notdef       // TODO NEW_STUFF
     // Also check the invariants after initialization
-    if (node->id != 0 && state->chooser < 0 && global.ninvs > 0) {
+    if (!node->initial && state->chooser < 0 && global.ninvs > 0) {
         step_init(w, &step);
 
         // Check each invariant
@@ -2487,7 +2486,6 @@ void do_work1(struct worker *w, struct node *node){
             trystep(w, node, -1, state, global.invs[i].context, &step, 0, -1);
         }
     }
-#endif
 }
 
 // A worker thread executes this in "phase 1" of the worker loop, when all
@@ -2934,6 +2932,12 @@ static void worker(void *arg){
 
 #ifdef NEW_STUFF
         do_work2(w);
+        if (w->index == 0) {
+            // Collect the failures of all the workers
+            for (unsigned int i = 0; i < global.nworkers; i++) {
+                collect_failures(&w->workers[i]);
+            }
+        }
 #else
         if (w->index == 1 % global.nworkers) {
             dict_grow_prepare(w->visited);
@@ -3039,10 +3043,10 @@ static void worker(void *arg){
         // In parallel, the workers copy the old hash table entries into the
         // new buckets.
         dict_make_stable(global.values, w->index);
+        dict_make_stable(global.computations, w->index);
 #ifndef NEW_STUFF
         dict_make_stable(w->visited, w->index);
 #endif
-        dict_make_stable(global.computations, w->index);
 
         after = gettime();
         w->phase3a += after - before;
@@ -4005,6 +4009,7 @@ int exec_model_checker(int argc, char **argv){
     struct dict_assoc *hn = dict_find_new(workers[0].kripke_shard, &workers[0].allocator, state, state_size(state), sizeof(struct edge), &new, NULL);
     struct node *node = (struct node *) &hn[1];
     memset(node, 0, sizeof(*node));
+    node->initial = true;
     node->nedges = 1;
     memset(node_edges(node), 0, sizeof(struct edge));
 

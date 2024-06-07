@@ -140,6 +140,7 @@ struct node {
     uint32_t id;            // nodes are numbered starting from 0
     uint16_t len;           // length of path to initial state
     uint8_t nedges;         // number of outgoing edges  // TODO also maintained by hash table
+    bool initial : 1;       // initial state
     bool on_stack : 1;      // for Tarjan
     bool failed : 1;        // state resulted from failed transition
     bool final : 1;         // final state
