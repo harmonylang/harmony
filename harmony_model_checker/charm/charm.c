@@ -77,12 +77,15 @@
 struct global global;
 
 struct state_header {
+    struct state_header *next;  // linked list
     struct node *node;          // old state
     unsigned int edge_index;    // index of the edge in the old state
     unsigned int noutgoing;     // number of outgoing edges of new state
 };
 
 extern bool has_countLabel;     // TODO.  Hack for backward compatibility
+
+static bool break_flag;         // TODO.  Move to global
 
 // TODO.  Move into global
 struct scc {
@@ -223,9 +226,12 @@ struct worker {
 
     char state_buffer[STATE_BUFFER_SIZE];
     unsigned int sb_index;      // current index into state_buffer
+    unsigned int sb_count;      // #states buffered
 
     struct results_block *todo_buffer, *tb_head, *tb_tail;
     unsigned int tb_size, tb_index;
+
+    struct state_header **peers; // peers[nworkers]
 };
 
 #ifdef CACHE_LINE_ALIGNED
@@ -715,64 +721,19 @@ static void process_step(
     // Compute the size of the state
     unsigned int size = state_size(sc);
 
-#ifdef NEW_STUFF
-    // TODO.  Should perhaps round up.
+    // See which worker should process this state
+    unsigned int responsible = (meiyan((char *) sc, size) >> 16) % global.nworkers;
+
+    // Push state onto state_buffer and add to the linked list of the
+    // responsible peer.
     struct state_header *sh = (struct state_header *) &w->state_buffer[w->sb_index];
 	assert((void *) sc == &sh[1]);
     sh->noutgoing = noutgoing;
+    sh->next = w->peers[responsible];
+    w->peers[responsible] = sh;
     w->sb_index += sizeof(struct state_header) + size;
-#else
-    // See if this state has been computed before by looking up the node,
-    // or allocate if not.
-    bool new;
-    mutex_t *lock;
-    struct dict_assoc *hn = dict_find_new(w->visited, &w->allocator,
-                sc, size, noutgoing * sizeof(struct edge), &new, &lock);
-    struct node *next = (struct node *) &hn[1];
-#ifdef SHORT_PTR
-    edge->dest = (int64_t *) next - (int64_t *) edge;
-    printf("SET DST 2: next=%p edge=%p diff=%ld(%ld,%ld) %p\n", next, edge, (int64_t) edge->dest,
-    (int64_t *) next - (int64_t *) edge,
-    ((int64_t *) next - (int64_t *) edge) >> 37,
-    edge_dst(edge));
-#else
-    edge->dst = next;
-#endif
-
-    if (new) {
-        assert(node->len == global.diameter);
-        next->failed = edge->failed;
-        next->parent = node;
-        next->len = node->len + 1;
-        next->nedges = noutgoing;
-        mutex_release(lock);
-
-        // Add new node to results list kept per worker
-        struct results_block *rb = w->results;
-        if (rb == NULL || rb->nresults == NRESULTS) {
-            if ((rb = w->rb_free) == NULL) {
-                rb = walloc_fast(w, sizeof(*rb));
-            }
-            else {
-                w->rb_free = rb->next;
-            }
-            rb->nresults = 0;
-            rb->next = w->results;
-            w->results = rb;
-        }
-        rb->results[rb->nresults++] = next;
-
-        w->count++;
-        w->enqueued++;
-        w->total_results++;
-    }
-
-    // See if the node points sideways or backwards, in which
-    // case cycles in the graph are possible
-    else if (next != node && next->len <= node->len) {
-        w->loops_possible = true;
-    }
-#endif // NEW_STUFF
+    w->sb_index = (w->sb_index + 7) & ~7;
+    w->sb_count++;
 }
 
 // This is the main workhorse function of model checking: explore a state and
@@ -2505,7 +2466,8 @@ void do_work1(struct worker *w, struct node *node){
 // at global.graph.nodes[global.todo] and ends at graph.nodes[graph.size];
 static void do_work(struct worker *w){
     // printf("WORK 1: %u: %u %u\n", w->index, w->tb_index, w->tb_size);
-    w->sb_index = 0;
+    w->sb_index = w->sb_count = 0;
+    memset(w->peers, 0, global.nworkers * sizeof(*w->peers));
     while (w->tb_index < w->tb_size) {
 		// printf("WORK 1: %u: do %u\n", w->index, w->tb_index);
         struct node *n = w->tb_head->results[w->tb_index % NRESULTS];
@@ -2514,7 +2476,11 @@ static void do_work(struct worker *w){
         if (w->tb_index % NRESULTS == 0) {
             w->tb_head = w->tb_head->next;
         }
+        if (w->sb_count > 1000) {
+            break;
+        }
     }
+    // break_flag = true;
     // printf("WORK 1: %u DONE\n", w->index);
 }
 
@@ -2523,60 +2489,52 @@ static void do_work2(struct worker *w){
 
     for (unsigned int i = 0; i < global.nworkers; i++) {
         struct worker *w2 = &w->workers[i];
-        for (unsigned int sbi = 0; sbi < w2->sb_index;) {
-            struct state_header *sh = (struct state_header *) &w2->state_buffer[sbi];
+        for (struct state_header *sh = w2->peers[w->index]; sh != NULL;
+                                                        sh = sh->next) {
             struct state *sc = (struct state *) &sh[1];
             unsigned int size = state_size(sc);
 
-            // See if this state's for me
-            // TODO.  Should use a different hash function or something
-            uint32_t h = meiyan((char *) sc, size) * 3;
-            if (h % w->nworkers == w->index) {
-                // See if this state has been computed before by looking up the node,
-                // or allocate if not.
-                bool new;
-                struct dict_assoc *hn = dict_find_new(w->kripke_shard, &w->allocator,
-                            sc, size, sh->noutgoing * sizeof(struct edge), &new, NULL);
-                struct node *next = (struct node *) &hn[1];
-                struct edge *edge = &node_edges(sh->node)[sh->edge_index];
-                edge->dst = next;
+            // See if this state has been computed before by looking up the node,
+            // or allocate if not.
+            bool new;
+            struct dict_assoc *hn = dict_find_new(w->kripke_shard, &w->allocator,
+                        sc, size, sh->noutgoing * sizeof(struct edge), &new, NULL);
+            struct node *next = (struct node *) &hn[1];
+            struct edge *edge = &node_edges(sh->node)[sh->edge_index];
+            edge->dst = next;
 
-                if (new) {
-                    next->failed = edge->failed;
-					next->initial = false;
-                    next->parent = sh->node;
-                    next->len = sh->node->len + 1;
-                    next->nedges = sh->noutgoing;
+            if (new) {
+                next->failed = edge->failed;
+                next->initial = false;
+                next->parent = sh->node;
+                next->len = sh->node->len + 1;
+                next->nedges = sh->noutgoing;
 
-					assert(w->tb_tail->nresults == w->tb_size % NRESULTS);
-					assert(w->tb_tail->next == NULL);
-                    w->tb_size++;
-                    w->tb_tail->results[w->tb_tail->nresults++] = next;
-                    if (w->tb_tail->nresults == NRESULTS) {
-						struct results_block *rb = walloc_fast(w, sizeof(*w->tb_tail));
-						rb->nresults = 0;
-						rb->next = NULL;
-                        w->tb_tail->next = rb;
-                        w->tb_tail = rb;
-                    }
-					assert(w->tb_tail->nresults == w->tb_size % NRESULTS);
+                assert(w->tb_tail->nresults == w->tb_size % NRESULTS);
+                assert(w->tb_tail->next == NULL);
+                w->tb_size++;
+                w->tb_tail->results[w->tb_tail->nresults++] = next;
+                if (w->tb_tail->nresults == NRESULTS) {
+                    struct results_block *rb = walloc_fast(w, sizeof(*w->tb_tail));
+                    rb->nresults = 0;
+                    rb->next = NULL;
+                    w->tb_tail->next = rb;
+                    w->tb_tail = rb;
+                }
+                assert(w->tb_tail->nresults == w->tb_size % NRESULTS);
 
 #ifndef NEW_STUFF
-                    w->count++;
+                w->count++;
 #endif
-                    w->enqueued++;
-                    w->total_results++;
-                }
-
-                // See if the node points sideways or backwards, in which
-                // case cycles in the graph are possible
-                else if (next != sh->node && next->len <= sh->node->len) {
-                    w->loops_possible = true;
-                }
+                w->enqueued++;
+                w->total_results++;
             }
 
-            sbi += sizeof(*sh) + state_size((struct state *) &sh[1]);
-            assert(sbi <= w2->sb_index);
+            // See if the node points sideways or backwards, in which
+            // case cycles in the graph are possible
+            else if (next != sh->node && next->len <= sh->node->len) {
+                w->loops_possible = true;
+            }
         }
     }
 
@@ -2918,6 +2876,8 @@ static void worker(void *arg){
         w->middle_wait += after - before;
         w->middle_count++;
         before = after;
+
+        break_flag = false;
 
         // Keep more stats
         after = gettime();
@@ -3994,6 +3954,8 @@ int exec_model_checker(int argc, char **argv){
         w->todo_buffer = w->tb_head = w->tb_tail = walloc_fast(w, sizeof(*w->tb_tail));
 		w->todo_buffer->nresults = 0;
 		w->todo_buffer->next = NULL;
+
+        w->peers = calloc(global.nworkers, sizeof(*w->peers));
     }
 
     // Pin workers to particular virtual processors
