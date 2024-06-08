@@ -2364,6 +2364,8 @@ void do_work1(struct worker *w, struct node *node){
         return;
     }
 
+    struct state *state = node_state(node);
+
     // Worker 0 periodically (every second) prints some stats for long runs.
     // To avoid calling gettime() very often, which may involve an expensive
     // system call, worker 0 only checks every 100 instructions.
@@ -2384,6 +2386,7 @@ void do_work1(struct worker *w, struct node *node){
                 fprintf(stderr, "    states=%u diam=%u q=%d mem=%.3lfGB\n",
                         enqueued, global.diameter,
                         enqueued - dequeued, gigs);
+                fprintf(stderr, "    vars=%s\n", value_string(state->vars));
                 global.last_nstates = enqueued;
             }
             global.lasttime = now;
@@ -2396,7 +2399,6 @@ void do_work1(struct worker *w, struct node *node){
     }
 
     // Explore the non-deterministic choices from this node
-    struct state *state = node_state(node);
     struct step step;
     if (state->chooser >= 0) {
         // The actual set of choices is on top of its stack
@@ -2884,6 +2886,9 @@ static void worker(void *arg){
             for (unsigned int i = 0; i < global.nworkers; i++) {
                 collect_failures(&w->workers[i]);
             }
+            if (global.failures != NULL) {
+                done = true;
+            }
         }
 
         // Prepare the grow the hash tables (but the actual work of
@@ -2931,8 +2936,7 @@ static void worker(void *arg){
                 }
             }
             if (i == w->nworkers) {
-                barrier_wait(w->start_barrier);
-                break;
+                done = true;
             }
         }
 
