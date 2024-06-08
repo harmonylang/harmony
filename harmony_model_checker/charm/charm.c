@@ -2878,18 +2878,6 @@ static void worker(void *arg){
         w->phase2a += after - before;
         before = after;
 
-        // Prepare the grow the hash tables (but the actual work of
-        // rehashing is distributed among the threads in the next phase
-        // The only parallelism here is that workers 1 and 2 grow different
-        // hash tables, while worker 0 deals with the graph table
-        if (w->index == 2 % global.nworkers) {
-            dict_grow_prepare(global.values);
-        }
-        if (w->index == 3 % global.nworkers) {
-            dict_grow_prepare(global.computations);
-        }
-
-#ifdef NEW_STUFF
         do_work2(w);
         if (w->index == 0) {
             // Collect the failures of all the workers
@@ -2897,95 +2885,17 @@ static void worker(void *arg){
                 collect_failures(&w->workers[i]);
             }
         }
-#else
+
+        // Prepare the grow the hash tables (but the actual work of
+        // rehashing is distributed among the threads in the next phase
+        // The only parallelism here is that workers 1 and 2 grow different
+        // hash tables, while worker 0 deals with the graph table
         if (w->index == 1 % global.nworkers) {
-            dict_grow_prepare(w->visited);
+            dict_grow_prepare(global.values);
         }
-
-        // Only the coordinator (worker 0) does the following
-        if (w->index == 0 /* % global.nworkers */) {
-            // See where todo (or atodo) is at.  Because of how it's incremented
-            // by the workers, it may have exceeded the size of the array of
-            // nodes.  If so, we set it back here.
-#ifdef USE_ATOMIC
-            unsigned int todo = atomic_load(&global.atodo);
-#else
-            unsigned int todo = global.todo;
-#endif
-            if (todo > global.graph.size) {
-#ifdef USE_ATOMIC
-                atomic_store(&global.atodo, global.graph.size);
-#else
-                global.todo = global.graph.size;
-#endif
-                todo = global.graph.size;
-            }
-            // printf("SEQ: todo=%u size=%u\n", todo, global.graph.size);
-
-            // If todo has reached the end of the array of nodes, then we're
-            // done with this layer and the nodes that the workers discovered
-            // and buffered in w->results must be appended to the graph.
-            global.layer_done = todo == global.graph.size;
-            if (global.layer_done) {
-                global.diameter++;
-                // printf("Diameter %d\n", global.diameter);
-
-                // Grow the graph table.  Figure out by how much by adding up
-                // the buffer sizes of each worker.  Also, assign to each worker
-                // 'node_id', which points to the part of the node identifier
-                // space they can use to assign node identifiers to their
-                // buffered nodes.
-                unsigned int total = 0;
-                for (unsigned int i = 0; i < global.nworkers; i++) {
-                    struct worker *w2 = &w->workers[i];
-                    w2->node_id = global.graph.size + total;
-                    total += w2->count;
-                }
-
-                // Grow the graph table (but do not yet copy the buffered
-                // nodes into it.  The workers themselves do that in the
-                // next phase.
-                graph_add_multiple(&global.graph, total);
-                assert(global.graph.size <= global.graph.alloc_size);
-
-                // Collect the failures of all the workers
-                for (unsigned int i = 0; i < global.nworkers; i++) {
-                    collect_failures(&w->workers[i]);
-                }
-
-                // If there are any failures, pretend we're done by setting
-                // todo (or atodo) to the end of the list of nodes.
-                if (global.failures != NULL) {
-                    // Pretend we're done
-#ifdef USE_ATOMIC
-                    atomic_store(&global.atodo, global.graph.size);
-#else
-                    global.todo = global.graph.size;
-#endif
-                }
-
-                // This is still worker 0. If there are no more nodes to process
-                // worker 0 should break out of this loop.
-                if (total == 0) {
-                    done = true;
-                }
-            }
-
-            // Compute how much table space is in use (reported in stats)
-            global.allocated = global.graph.size * sizeof(struct node *) +
-                dict_allocated(w->visited) + dict_allocated(global.values);
-
-#ifdef SHORT_PTR
-            {
-                struct node *root = global.graph.nodes[0];
-                struct edge *re = node_edges(root);
-                struct node *rd = edge_dst(re);
-                printf("N0: %d %d %p (%ld)\n", (int) root->id, root->nedges, rd, (int64_t) re->dest);
-                printf("N0...: %d %d %p (%d)\n", (int) root->id, root->nedges, rd, (int) rd->id);
-            }
-#endif
+        if (w->index == 2 % global.nworkers) {
+            dict_grow_prepare(global.computations);
         }
-#endif // NEW_STUFF
 
         // Start the final phase (and keep stats).
         after = gettime();
@@ -3011,33 +2921,6 @@ static void worker(void *arg){
         w->phase3a += after - before;
         before = after;
 
-#ifndef NEW_STUFF
-        // If a layer was completed, move the buffered nodes into the graph.
-        // Worker w can assign node identifiers starting from w->node_id.
-        if (global.layer_done) {
-            // Fill the graph table
-            unsigned int node_id = w->node_id;
-            while (w->results != NULL) {
-                struct results_block *rb = w->results;
-                memcpy(&global.graph.nodes[node_id],
-                    rb->results, rb->nresults * sizeof(struct node *));
-                for (unsigned int i = 0; i < rb->nresults; i++) {
-                    rb->results[i]->id = node_id++;
-                }
-                w->node_id = node_id;
-                w->results = rb->next;
-                rb->next = w->rb_free;
-                w->rb_free = rb;
-            }
-            w->node_id = node_id;
-            w->count = 0;
-        }
-#endif
-
-        // Update stats
-        after = gettime();
-        w->phase3b += after - before;
-
         if (w->index == 0) {
             // printf("DUMP %u\n", w->nworkers);
             unsigned int i = 0;
@@ -3052,6 +2935,10 @@ static void worker(void *arg){
                 break;
             }
         }
+
+        // Update stats
+        after = gettime();
+        w->phase3b += after - before;
     }
 }
 
