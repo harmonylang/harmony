@@ -712,6 +712,7 @@ static void process_step(
 #ifdef NEW_STUFF
     // TODO.  Should perhaps round up.
     struct state_header *sh = (struct state_header *) &w->state_buffer[w->sb_index];
+	assert((void *) sc == &sh[1]);
     sh->noutgoing = noutgoing;
     w->sb_index += sizeof(struct state_header) + size;
 #else
@@ -2497,15 +2498,14 @@ void do_work1(struct worker *w, struct node *node){
 // ones after todo should be explored.  In other words, the "todo list" starts
 // at global.graph.nodes[global.todo] and ends at graph.nodes[graph.size];
 static void do_work(struct worker *w){
-    printf("WORK 1: %u: %u %u\n", w->index, w->tb_index, w->tb_size);
+    // printf("WORK 1: %u: %u %u\n", w->index, w->tb_index, w->tb_size);
     w->sb_index = 0;
     while (w->tb_index < w->tb_size) {
-		printf("WORK 1: %u: do %u\n", w->index, w->tb_index);
+		// printf("WORK 1: %u: do %u\n", w->index, w->tb_index);
         struct node *n = w->tb_head->results[w->tb_index % NRESULTS];
         do_work1(w, n);
         w->tb_index++;
         if (w->tb_index % NRESULTS == 0) {
-			printf("WORK 1: NEXT\n");
             w->tb_head = w->tb_head->next;
         }
     }
@@ -2513,7 +2513,7 @@ static void do_work(struct worker *w){
 }
 
 static void do_work2(struct worker *w){
-    printf("WORK 2: %u: %u %lu\n", w->index, w->sb_index, sizeof(w->state_buffer));
+    // printf("WORK 2: %u: %u %lu\n", w->index, w->sb_index, sizeof(w->state_buffer));
 
     for (unsigned int i = 0; i < global.nworkers; i++) {
         struct worker *w2 = &w->workers[i];
@@ -2521,8 +2521,6 @@ static void do_work2(struct worker *w){
             struct state_header *sh = (struct state_header *) &w2->state_buffer[sbi];
             struct state *sc = (struct state *) &sh[1];
             unsigned int size = state_size(sc);
-
-            // w->enqueued = sc->chooser + 1;
 
             // See if this state's for me
             // TODO.  Should use a different hash function or something
@@ -2534,9 +2532,6 @@ static void do_work2(struct worker *w){
                 struct dict_assoc *hn = dict_find_new(w->kripke_shard, &w->allocator,
                             sc, size, sh->noutgoing * sizeof(struct edge), &new, NULL);
                 struct node *next = (struct node *) &hn[1];
-
-                // printf("found %s state\n", new ? "new" : "old");
-
                 struct edge *edge = &node_edges(sh->node)[sh->edge_index];
                 edge->dst = next;
 
@@ -2552,7 +2547,6 @@ static void do_work2(struct worker *w){
                     w->tb_size++;
                     w->tb_tail->results[w->tb_tail->nresults++] = next;
                     if (w->tb_tail->nresults == NRESULTS) {
-						printf("WORK 2: NEXT\n");
 						struct results_block *rb = walloc_fast(w, sizeof(*w->tb_tail));
 						rb->nresults = 0;
 						rb->next = NULL;
