@@ -429,6 +429,9 @@ void dict_set_concurrent(struct dict *dict) {
 // When going from concurrent to sequential, need to move over
 // the unstable values.
 void dict_make_stable(struct dict *dict, unsigned int worker){
+    if (!dict->concurrent) {
+        printf("make_stable %s\n", dict->whoami);
+    }
     assert(dict->concurrent);
 
     if (dict->length != dict->old_length) {

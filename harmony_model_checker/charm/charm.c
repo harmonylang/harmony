@@ -3088,6 +3088,7 @@ static void worker(void *arg){
                 }
             }
             if (i == w->nworkers) {
+                barrier_wait(w->start_barrier);
                 break;
             }
         }
