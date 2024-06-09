@@ -71,6 +71,7 @@
 #define MAX_STATE_SIZE (sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1))
 
 // Workers buffer states
+// TODO.  Figure out how to set this
 #define STATE_BUFFER_SIZE   ((MAX_STATE_SIZE + sizeof(struct state_header)) * 100000)
 
 // All global variables should be here
@@ -148,6 +149,7 @@ struct worker {
     unsigned int si_total, si_hits;
     struct edge_list *el_free;
     bool loops_possible;         // loops in Kripke structure are possible
+    bool idle;                   // nothing on TODO list
 
     // The worker thread loop through three phases:
     //  1: model check part of the state space
@@ -2540,6 +2542,9 @@ static void do_work2(struct worker *w){
         }
     }
 
+    assert(w->tb_index <= w->tb_size);
+    w->idle = w->tb_index == w->tb_size;
+
     // printf("WORK 2: %u DONE\n", w->index);
 }
 
@@ -2829,7 +2834,7 @@ void vproc_tree_alloc(struct vproc_tree *vt, struct worker *workers, unsigned in
 // explored.
 static void worker(void *arg){
     struct worker *w = arg;
-    bool done = false;
+    bool done = false;          // only used by worker 0
 
     // printf("WORKER %u\n", w->index);
 
@@ -2861,6 +2866,15 @@ static void worker(void *arg){
         if (done) {
             break;
         }
+        done = true;
+        for (unsigned int i = 0; i < global.nworkers; i++) {
+            if (!w->workers[i].idle) {
+                done = false;
+            }
+        }
+        if (done) {
+            break;
+        }
 
         // First phase starts now.  Call do_work() to do that actual work.
         // Also keep stats.
@@ -2870,23 +2884,22 @@ static void worker(void *arg){
         w->phase1 += after - before;
 
         // Wait for others to finish, and keep stats
-        before = gettime();
+        before = after;
         // printf("WAIT FOR MIDDLE %u\n", w->index);
         barrier_wait(w->middle_barrier);
         // printf("DONE WITH MIDDLE %u\n", w->index);
         after = gettime();
         w->middle_wait += after - before;
         w->middle_count++;
+
         before = after;
-
         break_flag = false;
-
-        // Keep more stats
+        do_work2(w);
         after = gettime();
+
         w->phase2a += after - before;
         before = after;
 
-        do_work2(w);
         if (w->index == 0) {
             // Collect the failures of all the workers
             for (unsigned int i = 0; i < global.nworkers; i++) {
@@ -2932,11 +2945,10 @@ static void worker(void *arg){
         w->phase3a += after - before;
         before = after;
 
+#ifdef OLD
         if (w->index == 0) {
-            // printf("DUMP %u\n", w->nworkers);
             unsigned int i = 0;
             for (; i < w->nworkers; i++) {
-                // printf("--> %u %u\n", w->workers[i].tb_index, w->workers[i].tb_size);
                 if (w->workers[i].tb_index < w->workers[i].tb_size) {
                     break;
                 }
@@ -2945,6 +2957,7 @@ static void worker(void *arg){
                 done = true;
             }
         }
+#endif
 
         // Update stats
         after = gettime();
