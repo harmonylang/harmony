@@ -161,8 +161,7 @@ struct worker {
     // Statistics about the three phases for optimization purposes
     double start_wait, middle_wait, end_wait;
     unsigned int start_count, middle_count, end_count;
-    double phase1, phase2a, phase2b, phase3a, phase3b;
-    unsigned int fix_edge;
+    double phase1, phase2a, phase2b, phase3;
     unsigned int dequeued;      // total number of dequeued states
     unsigned int enqueued;      // total number of enqueued states
 
@@ -2474,7 +2473,9 @@ static void do_work(struct worker *w){
         if (w->tb_index % NRESULTS == 0) {
             w->tb_head = w->tb_head->next;
         }
-        if (w->sb_count > 1000) {
+
+        // TODO How to set max count?
+        if (w->sb_count > 10000 /* || break_flag */) {
             break;
         }
     }
@@ -2846,9 +2847,10 @@ static void worker(void *arg){
 
     // The worker now goes into a loop.  Each iteration consists of three phases.
     // Only worker 0 ever breaks out of this loop.
+    double before = gettime();
     for (;;) {
         // Wait for the first barrier (and keep stats)
-        double before = gettime();
+        // This is where the worker is waiting for stabilizing hash tables
         barrier_wait(w->start_barrier);
         double after = gettime();
         w->start_wait += after - before;
@@ -2878,6 +2880,7 @@ static void worker(void *arg){
         w->phase1 += after - before;
 
         // Wait for others to finish, and keep stats
+        // Here we are waiting for everybody's todo list processing
         before = after;
         // printf("WAIT FOR MIDDLE %u\n", w->index);
         barrier_wait(w->middle_barrier);
@@ -2887,7 +2890,7 @@ static void worker(void *arg){
         w->middle_count++;
 
         before = after;
-        break_flag = false;
+        // break_flag = false;
         do_work2(w);
         after = gettime();
 
@@ -2916,6 +2919,8 @@ static void worker(void *arg){
         }
 
         // Start the final phase (and keep stats).
+        // Here we're waiting for all workers to process the generated
+        // states and put new states on their todo lists
         after = gettime();
         w->phase2b += after - before;
         before = after;
@@ -2931,31 +2936,10 @@ static void worker(void *arg){
         // new buckets.
         dict_make_stable(global.values, w->index);
         dict_make_stable(global.computations, w->index);
-#ifndef NEW_STUFF
-        dict_make_stable(w->visited, w->index);
-#endif
 
         after = gettime();
-        w->phase3a += after - before;
+        w->phase3 += after - before;
         before = after;
-
-#ifdef OLD
-        if (w->index == 0) {
-            unsigned int i = 0;
-            for (; i < w->nworkers; i++) {
-                if (w->workers[i].tb_index < w->workers[i].tb_size) {
-                    break;
-                }
-            }
-            if (i == w->nworkers) {
-                done = true;
-            }
-        }
-#endif
-
-        // Update stats
-        after = gettime();
-        w->phase3b += after - before;
     }
 }
 
@@ -3946,28 +3930,24 @@ int exec_model_checker(int argc, char **argv){
 
     // Compute how much memory was used, approximately
     unsigned long allocated = global.allocated;
-// #define REPORT_WORKERS
+#define REPORT_WORKERS
 #ifdef REPORT_WORKERS
-    double phase1 = 0, phase2a = 0, phase2b = 0, phase3a = 0, phase3b, start_wait = 0, middle_wait = 0, end_wait = 0;
-    unsigned int fix_edge = 0;
+    double phase1 = 0, phase2a = 0, phase2b = 0, phase3 = 0, start_wait = 0, middle_wait = 0, end_wait = 0;
     for (unsigned int i = 0; i < global.nworkers; i++) {
         struct worker *w = &workers[i];
         allocated += w->allocated;
         phase1 += w->phase1;
         phase2a += w->phase2a;
         phase2b += w->phase2b;
-        phase3a += w->phase3a;
-        phase3b += w->phase3b;
-        fix_edge += w->fix_edge;
+        phase3 += w->phase3;
         start_wait += w->start_wait;
         middle_wait += w->middle_wait;
         end_wait += w->end_wait;
-        printf("W%2u: %.3lf %.3lf %.3lf %.3lf %.3lf %.3lf %.3lf %.3lf %u %u\n", i,
+        printf("W%2u: %.3lf %.3lf %.3lf %.3lf %.3lf %.3lf %.3lf %u %u\n", i,
                 w->phase1,
                 w->phase2a,
                 w->phase2b,
-                w->phase3a,
-                w->phase3b,
+                w->phase3,
                 w->start_wait/w->start_count,
                 w->middle_wait/w->middle_count,
                 w->end_wait/w->end_count,
@@ -3980,17 +3960,17 @@ int exec_model_checker(int argc, char **argv){
         allocated += w->allocated;
     }
 #endif // REPORT_WORKERS
-#ifdef notdef
-    printf("computing: %lf %lf %lf %lf (%lf %lf %lf %lf %u); waiting: %lf %lf %lf\n",
+#ifndef notdef
+    // printf("computing: %lf %lf %lf %lf (%lf %lf %lf %lf); waiting: %lf %lf %lf\n",
+    printf("computing: %lf %lf %lf %lf; waiting: %lf %lf %lf\n",
         phase1 / global.nworkers,
         phase2a / global.nworkers,
         phase2b / global.nworkers,
         phase3 / global.nworkers,
-        phase1,
-        phase2a,
-        phase2b,
-        phase3,
-        fix_edge,
+        // phase1,
+        // phase2a,
+        // phase2b,
+        // phase3,
         start_wait / global.nworkers,
         middle_wait / global.nworkers,
         end_wait / global.nworkers);
