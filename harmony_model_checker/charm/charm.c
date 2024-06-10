@@ -86,7 +86,8 @@ struct state_header {
 
 extern bool has_countLabel;     // TODO.  Hack for backward compatibility
 
-static bool break_flag;         // TODO.  Move to global
+#define LOAD_ORDER memory_order_acquire
+#define STORE_ORDER memory_order_release
 
 // TODO.  Move into global
 struct scc {
@@ -139,17 +140,15 @@ struct results_block {
 
 // One of these per worker thread
 struct worker {
+    // Putting the more-or-less constant fields here at the beginning
+    // in the hope of better cache performance
+
     double timeout;              // deadline for model checker (-t option)
-    struct failure *failures;    // list of discovered failures (not data races)
     unsigned int index;          // index of worker
-    // TODO.  Next two should probably just be in "global".
     struct worker *workers;      // points to array of workers
     unsigned int nworkers;       // total number of workers
     unsigned int vproc;          // virtual processor for pinning
-    unsigned int si_total, si_hits;
-    struct edge_list *el_free;
-    bool loops_possible;         // loops in Kripke structure are possible
-    bool idle;                   // nothing on TODO list
+    struct failure *failures;    // list of discovered failures (not data races)
 
     // The worker thread loop through three phases:
     //  1: model check part of the state space
@@ -158,16 +157,34 @@ struct worker {
     // The barriers are to synchronize these three phases.
     barrier_t *start_barrier, *middle_barrier, *end_barrier;
 
+    // A pointer to the Kripke structure shard, which is a hash table that
+    // maps states to nodes.  Nodes contain the list of edges and more.
+    struct dict *kripke_shard;
+
+    // Each worker keeps track of how often it executes a particular
+    // instruction for profiling purposes.
+    unsigned int *profile;      // one for each instruction in the HVM code
+
+    struct state_header **peers;  // peers[nworkers]
+
+    //
+    // Below are the things that are likely to change more often
+    //
+
+    bool signal_to_stop;
+
+    // TODO.  Next two should probably just be in "global".
+    unsigned int si_total, si_hits;
+    struct edge_list *el_free;
+    bool loops_possible;         // loops in Kripke structure are possible
+    bool idle;                   // nothing on TODO list
+
     // Statistics about the three phases for optimization purposes
     double start_wait, middle_wait, end_wait;
     unsigned int start_count, middle_count, end_count;
     double phase1, phase2a, phase2b, phase3;
     unsigned int dequeued;      // total number of dequeued states
     unsigned int enqueued;      // total number of enqueued states
-
-    // A pointer to the Kripke structure shard, which is a hash table that
-    // maps states to nodes.  Nodes contain the list of edges and more.
-    struct dict *kripke_shard;
 
     // Thread 0 periodically prints some information on what it's
     // working on.  To avoid it getting the time too much, which might
@@ -177,22 +194,8 @@ struct worker {
     // State maintained while evaluating invariants
     struct step inv_step;        // for evaluating invariants
 
-#ifndef NEW_STUFF
-    // When a worker creates a new state, it puts the corresponding node
-    // in a list.  The nodes are added to the graph table after the
-    // graph table has been grown.
-    struct results_block *results;       // linked list of nodes
-    struct results_block *rb_free;
-    unsigned int count;         // size of the results list
-#endif
-
     unsigned int total_results;
     unsigned int process_step;
-
-    // New nodes are assigned node identifiers in phase 3.  This is
-    // done in parallel by the various workers.  Each worker gets
-    // 'count' node_ids starting at the following node_id.
-    unsigned int node_id;
 
     // Workers optimize memory allocation.  In particular, it is not
     // necessary for the memory to ever be freed.  So the worker allocates
@@ -208,10 +211,6 @@ struct worker {
 
     // This is used in the code when a worker must allocate memory.
     struct allocator allocator;
-
-    // Each worker keeps track of how often it executes a particular
-    // instruction for profiling purposes.
-    unsigned int *profile;      // one for each instruction in the HVM code
 
     // These need to be next to one another.  When a worker performs a
     // "step", it's on behalf of a particular thread with a particular
@@ -231,8 +230,6 @@ struct worker {
 
     struct results_block *todo_buffer, *tb_head, *tb_tail;
     unsigned int tb_size, tb_index;
-
-    struct state_header **peers; // peers[nworkers]
 };
 
 #ifdef CACHE_LINE_ALIGNED
@@ -722,7 +719,6 @@ static void process_step(
     // Compute the size of the state
     unsigned int size = state_size(sc);
 
-    // See which worker should process this state
     unsigned int responsible = (meiyan((char *) sc, size) >> 16) % global.nworkers;
 
     // Push state onto state_buffer and add to the linked list of the
@@ -2481,11 +2477,14 @@ static void do_work(struct worker *w){
         }
 
         // TODO How to set max count?
-        if (w->sb_count > 10000 /* || break_flag */) {
+        if (w->sb_count > 10000) {
+            break;
+        }
+        if (w->signal_to_stop) {
             break;
         }
     }
-    // break_flag = true;
+    // w->workers[(w->index + 1) % global.nworkers].signal_to_stop = true;
     // printf("WORK 1: %u DONE\n", w->index);
 }
 
@@ -2896,7 +2895,7 @@ static void worker(void *arg){
         w->middle_count++;
 
         before = after;
-        // break_flag = false;
+        w->signal_to_stop = false;
         do_work2(w);
         after = gettime();
 
