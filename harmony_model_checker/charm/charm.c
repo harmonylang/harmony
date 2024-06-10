@@ -83,6 +83,7 @@ struct state_header {
     struct node *node;          // old state
     unsigned int edge_index;    // index of the edge in the old state
     unsigned int noutgoing;     // number of outgoing edges of new state
+    uint32_t hash;              // to speed up hash lookup
 };
 
 extern bool has_countLabel;     // TODO.  Hack for backward compatibility
@@ -712,11 +713,12 @@ static void process_step(
     // Compute the size of the state
     unsigned int size = state_size(sc);
 
-    unsigned int responsible = (meiyan((char *) sc, size) >> 16) % global.nworkers;
+    struct state_header *sh = (struct state_header *) &w->state_buffer[w->sb_index];
+    sh->hash = meiyan((char *) sc, size);
+    unsigned int responsible = (sh->hash >> 16) % global.nworkers;
 
     // Push state onto state_buffer and add to the linked list of the
     // responsible peer.
-    struct state_header *sh = (struct state_header *) &w->state_buffer[w->sb_index];
 	assert((void *) sc == &sh[1]);
     sh->noutgoing = noutgoing;
     sh->next = w->peers[responsible];
@@ -2495,7 +2497,7 @@ static void do_work2(struct worker *w){
             // or allocate if not.
             bool new;
             struct dict_assoc *hn = dict_find_new(w->kripke_shard, &w->allocator,
-                        sc, size, sh->noutgoing * sizeof(struct edge), &new, NULL);
+                        sc, size, sh->noutgoing * sizeof(struct edge), &new, NULL, sh->hash);
             struct node *next = (struct node *) &hn[1];
             struct edge *edge = &node_edges(sh->node)[sh->edge_index];
             edge->dst = next;
@@ -3859,7 +3861,7 @@ int exec_model_checker(int argc, char **argv){
 #ifdef NEW_STUFF
     // printf("HERE\n");
     bool new;
-    struct dict_assoc *hn = dict_find_new(workers[0].kripke_shard, &workers[0].allocator, state, state_size(state), sizeof(struct edge), &new, NULL);
+    struct dict_assoc *hn = dict_find_new(workers[0].kripke_shard, &workers[0].allocator, state, state_size(state), sizeof(struct edge), &new, NULL, meiyan((char *) state, state_size(state)));
     struct node *node = (struct node *) &hn[1];
     memset(node, 0, sizeof(*node));
     node->initial = true;

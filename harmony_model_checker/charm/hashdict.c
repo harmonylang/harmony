@@ -284,9 +284,9 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
 // 'extra' is an additional number of bytes added to the value.
 struct dict_assoc *dict_find_new(struct dict *dict, struct allocator *al,
                             const void *key, unsigned int keylen,
-                            unsigned int extra, bool *new, mutex_t **lock){
+                            unsigned int extra, bool *new, mutex_t **lock, uint32_t hash){
     assert(al != NULL);
-    uint32_t hash = hash_func(key, keylen);
+    // uint32_t hash = hash_func(key, keylen);
     unsigned int index = hash % dict->length;
 
     if (lock != NULL) {
@@ -328,7 +328,7 @@ struct dict_assoc *dict_find_new(struct dict *dict, struct allocator *al,
 		double f = (double) dict->count / (double) dict->length;
 		if (f > dict->growth_threshold) {
 			dict_resize(dict, dict->length * dict->growth_factor - 1);
-			return dict_find_new(dict, al, key, keylen, extra, new, lock);
+			return dict_find_new(dict, al, key, keylen, extra, new, lock, hash);
 		}
 	}
 
