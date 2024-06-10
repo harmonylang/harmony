@@ -73,6 +73,7 @@
 // Workers buffer states
 // TODO.  Figure out how to set this
 #define STATE_BUFFER_SIZE   ((MAX_STATE_SIZE + sizeof(struct state_header)) * 100000)
+#define STATE_BUFFER_HWM    ((MAX_STATE_SIZE + sizeof(struct state_header)) *  90000)
 
 // All global variables should be here
 struct global global;
@@ -170,8 +171,6 @@ struct worker {
     //
     // Below are the things that are likely to change more often
     //
-
-    bool signal_to_stop;
 
     // TODO.  Next two should probably just be in "global".
     unsigned int si_total, si_hits;
@@ -2461,6 +2460,7 @@ static void do_work(struct worker *w){
     // printf("WORK 1: %u: %u %u\n", w->index, w->tb_index, w->tb_size);
     w->sb_index = w->sb_count = 0;
     memset(w->peers, 0, global.nworkers * sizeof(*w->peers));
+    bool do_signal = w->tb_size - w->tb_index > 1000;
     while (w->tb_index < w->tb_size) {
 		// printf("WORK 1: %u: do %u\n", w->index, w->tb_index);
         struct node *n = w->tb_head->results[w->tb_index % NRESULTS];
@@ -2471,14 +2471,13 @@ static void do_work(struct worker *w){
         }
 
         // TODO How to set max count?
-        if (w->sb_count > 10000) {
+        if (0 && w->sb_count > 20000) {
             break;
         }
-        if (w->signal_to_stop) {
+        if (w->sb_index > STATE_BUFFER_HWM) {
             break;
         }
     }
-    // w->workers[(w->index + 1) % global.nworkers].signal_to_stop = true;
     // printf("WORK 1: %u DONE\n", w->index);
 }
 
@@ -2889,7 +2888,6 @@ static void worker(void *arg){
         w->middle_count++;
 
         before = after;
-        w->signal_to_stop = false;
         do_work2(w);
         after = gettime();
 
