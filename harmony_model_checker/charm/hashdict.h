@@ -78,6 +78,7 @@ void dict_make_stable(struct dict *dict, unsigned int worker);
 void dict_set_sequential(struct dict *dict);
 void dict_grow_prepare(struct dict *dict);
 unsigned long dict_allocated(struct dict *dict);
+bool dict_exists(struct dict *dict, const void *key, unsigned int keylen, uint32_t hash);
 void dict_dump(struct dict *dict);
 
 #endif
