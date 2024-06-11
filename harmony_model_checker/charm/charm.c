@@ -721,10 +721,11 @@ static void process_step(
 
     struct state_header *sh = (struct state_header *) &w->state_buffer[w->sb_index];
 	assert((void *) sc == &sh[1]);
+    sh->noutgoing = noutgoing;
     sh->hash = meiyan((char *) sc, size);
     unsigned int responsible = (sh->hash >> 16) % global.nworkers;
 
-    if (responsible == w->index) {
+    if (0 && responsible == w->index) {
         // See if this state has been computed before by looking up the node,
         // or allocate if not.
         bool new;
@@ -770,7 +771,6 @@ static void process_step(
     else {
         // Push state onto state_buffer and add to the linked list of the
         // responsible peer.
-        sh->noutgoing = noutgoing;
         sh->next = w->peers[responsible];
         w->peers[responsible] = sh;
         w->sb_index += sizeof(struct state_header) + size;
@@ -2513,7 +2513,6 @@ static void do_work(struct worker *w){
     // printf("WORK 1: %u: %u %u\n", w->index, w->tb_index, w->tb_size);
     w->sb_index = w->sb_count = 0;
     memset(w->peers, 0, global.nworkers * sizeof(*w->peers));
-    bool do_signal = w->tb_size - w->tb_index > 1000;
     while (w->tb_index < w->tb_size) {
 		// printf("WORK 1: %u: do %u\n", w->index, w->tb_index);
         struct node *n = w->tb_head->results[w->tb_index % NRESULTS];
