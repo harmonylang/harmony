@@ -714,18 +714,63 @@ static void process_step(
     unsigned int size = state_size(sc);
 
     struct state_header *sh = (struct state_header *) &w->state_buffer[w->sb_index];
+	assert((void *) sc == &sh[1]);
     sh->hash = meiyan((char *) sc, size);
     unsigned int responsible = (sh->hash >> 16) % global.nworkers;
 
-    // Push state onto state_buffer and add to the linked list of the
-    // responsible peer.
-	assert((void *) sc == &sh[1]);
-    sh->noutgoing = noutgoing;
-    sh->next = w->peers[responsible];
-    w->peers[responsible] = sh;
-    w->sb_index += sizeof(struct state_header) + size;
-    w->sb_index = (w->sb_index + 7) & ~7;
-    w->sb_count++;
+    if (responsible == w->index) {
+        // See if this state has been computed before by looking up the node,
+        // or allocate if not.
+        bool new;
+        struct dict_assoc *hn = dict_find_new(w->kripke_shard, &w->allocator,
+                    sc, size, sh->noutgoing * sizeof(struct edge), &new, NULL, sh->hash);
+        struct node *next = (struct node *) &hn[1];
+        struct edge *edge = &node_edges(sh->node)[sh->edge_index];
+        edge->dst = next;
+
+        if (new) {
+            next->failed = edge->failed;
+            next->initial = false;
+            next->parent = sh->node;
+            next->len = sh->node->len + 1;
+            next->nedges = sh->noutgoing;
+
+            assert(w->tb_tail->nresults == w->tb_size % NRESULTS);
+            assert(w->tb_tail->next == NULL);
+            w->tb_size++;
+            w->tb_tail->results[w->tb_tail->nresults++] = next;
+            if (w->tb_tail->nresults == NRESULTS) {
+                struct results_block *rb = walloc_fast(w, sizeof(*w->tb_tail));
+                rb->nresults = 0;
+                rb->next = NULL;
+                w->tb_tail->next = rb;
+                w->tb_tail = rb;
+            }
+            assert(w->tb_tail->nresults == w->tb_size % NRESULTS);
+
+#ifndef NEW_STUFF
+            w->count++;
+#endif
+            w->enqueued++;
+            w->total_results++;
+        }
+
+        // See if the node points sideways or backwards, in which
+        // case cycles in the graph are possible
+        else if (next != sh->node && next->len <= sh->node->len) {
+            w->loops_possible = true;
+        }
+    }
+    else {
+        // Push state onto state_buffer and add to the linked list of the
+        // responsible peer.
+        sh->noutgoing = noutgoing;
+        sh->next = w->peers[responsible];
+        w->peers[responsible] = sh;
+        w->sb_index += sizeof(struct state_header) + size;
+        w->sb_index = (w->sb_index + 7) & ~7;
+        w->sb_count++;
+    }
 }
 
 // This is the main workhorse function of model checking: explore a state and
@@ -2472,10 +2517,6 @@ static void do_work(struct worker *w){
             w->tb_head = w->tb_head->next;
         }
 
-        // TODO How to set max count?
-        if (0 && w->sb_count > 20000) {
-            break;
-        }
         if (w->sb_index > STATE_BUFFER_HWM) {
             break;
         }
