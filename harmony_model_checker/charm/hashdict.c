@@ -400,6 +400,21 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keylen) {
 	return NULL;
 }
 
+bool dict_exists(struct dict *dict, const void *key, unsigned int keylen, uint32_t hash) {
+    unsigned int index = hash % dict->length;
+    struct dict_bucket *db = &dict->table[index];
+	assert(!dict->concurrent);
+
+	struct dict_assoc *k = db->stable;
+	while (k != NULL) {
+		if (da_len(k) == keylen && memcmp((char *) &k[1] + k->val_len, key, keylen) == 0) {
+            return true;
+		}
+		k = da_next(k);
+	}
+    return false;
+}
+
 void dict_iter(struct dict *dict, dict_enumfunc f, void *env) {
 	for (unsigned int i = 0; i < dict->length; i++) {
         struct dict_bucket *db = &dict->table[i];
