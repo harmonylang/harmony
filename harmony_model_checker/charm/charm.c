@@ -75,7 +75,7 @@
 #define STATE_BUFFER_SIZE   ((MAX_STATE_SIZE + sizeof(struct state_header)) * 100000)
 #define STATE_BUFFER_HWM    ((MAX_STATE_SIZE + sizeof(struct state_header)) *  90000)
 
-#define SHARDS_PER_WORKER   2
+#define SHARDS_PER_WORKER   16
 
 // All global variables should be here
 struct global global;
@@ -2861,6 +2861,7 @@ static void worker(void *arg){
     // The worker now goes into a loop.  Each iteration consists of three phases.
     // Only worker 0 ever breaks out of this loop.
     double before = gettime();
+    unsigned int first_shard = w->index * SHARDS_PER_WORKER;
     for (;;) {
         // Wait for the first barrier (and keep stats)
         // This is where the worker is waiting for stabilizing hash tables
@@ -2888,7 +2889,6 @@ static void worker(void *arg){
         // First phase starts now.  Call do_work() to do that actual work.
         // Also keep stats.
         before = after;
-        unsigned int first_shard = w->index * SHARDS_PER_WORKER;
         for (unsigned int si = 0; si < SHARDS_PER_WORKER; si++) {
             do_work(w, first_shard + si);
         }
@@ -3937,13 +3937,13 @@ int exec_model_checker(int argc, char **argv){
 
 #ifdef NEW_STUFF
     unsigned int nstates = 0;
-    for (unsigned int i = 0; i < global.nworkers; i++) {
+    for (unsigned int i = 0; i < global.nshards; i++) {
         // printf("W%u: %u\n", i, workers[i].shard.tb_size);
         nstates += global.shards[i].tb_size;
     }
     graph_add_multiple(&global.graph, nstates);
     unsigned int node_id = 0;
-    for (unsigned int i = 0; i < global.nworkers; i++) {
+    for (unsigned int i = 0; i < global.nshards; i++) {
         for (struct results_block *rb = global.shards[i].todo_buffer; rb != NULL; rb = rb->next) {
             for (unsigned int k = 0; k < rb->nresults; k++) {
                 struct node *n = rb->results[k];
