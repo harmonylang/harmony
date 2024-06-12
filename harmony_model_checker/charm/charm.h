@@ -74,6 +74,8 @@ struct global {
     bool layer_done;                // all states in a layer completed
     bool printed_something;         // see if anything was printed
 
+    unsigned int nshards;           // total number of Kripke structure shards
+    struct shard *shards;           // array of shards
     unsigned int nworkers;          // total number of threads
     unsigned int ncomponents;       // to generate component identifiers
     struct failure *failures;       // queue of "struct failure"  (TODO: make part of struct node "issues")
