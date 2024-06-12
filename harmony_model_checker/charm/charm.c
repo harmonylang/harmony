@@ -75,7 +75,7 @@
 #define STATE_BUFFER_SIZE   ((MAX_STATE_SIZE + sizeof(struct state_header)) * 100000)
 #define STATE_BUFFER_HWM    ((MAX_STATE_SIZE + sizeof(struct state_header)) *  90000)
 
-#define SHARDS_PER_WORKER   1
+#define SHARDS_PER_WORKER   2
 
 // All global variables should be here
 struct global global;
@@ -2882,7 +2882,10 @@ static void worker(void *arg){
         // First phase starts now.  Call do_work() to do that actual work.
         // Also keep stats.
         before = after;
-        do_work(w, w->index);
+        unsigned int first_shard = w->index * SHARDS_PER_WORKER;
+        for (unsigned int si = 0; si < SHARDS_PER_WORKER; si++) {
+            do_work(w, first_shard + si);
+        }
         after = gettime();
         w->phase1 += after - before;
 
@@ -2897,7 +2900,9 @@ static void worker(void *arg){
         w->middle_count++;
 
         before = after;
-        do_work2(w, w->index);
+        for (unsigned int si = 0; si < SHARDS_PER_WORKER; si++) {
+            do_work2(w, first_shard + si);
+        }
         after = gettime();
 
         w->phase2a += after - before;
@@ -3844,9 +3849,9 @@ int exec_model_checker(int argc, char **argv){
         w->allocator.worker = i;
 
         // Initialize the shards assigned to this worker
-        unsigned int first = i * SHARDS_PER_WORKER;
-        for (unsigned int j = 0; j < SHARDS_PER_WORKER; j++) {
-            struct shard *shard = &global.shards[first + j];
+        unsigned int first_shard = i * SHARDS_PER_WORKER;
+        for (unsigned int si = 0; si < SHARDS_PER_WORKER; si++) {
+            struct shard *shard = &global.shards[first_shard + si];
             shard->states = dict_new("shard states", sizeof(struct node), 0, 0, false);
             shard->peers = calloc(global.nshards, sizeof(*shard->peers));
             shard->todo_buffer = shard->tb_head = shard->tb_tail = walloc_fast(w, sizeof(*shard->tb_tail));
@@ -3883,7 +3888,8 @@ int exec_model_checker(int argc, char **argv){
     node->nedges = 1;
     memset(node_edges(node), 0, sizeof(struct edge));
 
-    // Add node to the todo list of worker 0
+    // Add node to the todo list of shard 0
+    // TODO.  Should probably just add the state, not the node
     global.shards[0].todo_buffer->results[0] = node;
     global.shards[0].todo_buffer->nresults = 1;
     global.shards[0].tb_size = 1;
