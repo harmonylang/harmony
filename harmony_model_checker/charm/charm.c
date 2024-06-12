@@ -2872,7 +2872,7 @@ static void worker(void *arg){
         // Worker 0 needs to break out of the loop when the Kripke structure
         // is finished (or when failures have been detected) so that it can
         // go on with analysis and so on.
-        if (done) {
+        if (w->index == 0 && done) {
             break;
         }
         done = true;
