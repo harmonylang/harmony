@@ -154,17 +154,20 @@ struct shard {
 
     struct results_block *todo_buffer, *tb_head, *tb_tail;
     unsigned int tb_size, tb_index;
+    bool idle;                    // nothing on TODO list
 };
 
 // One of these per worker thread
 struct worker {
     // Putting the more-or-less constant fields here at the beginning
     // in the hope of better cache performance
-
-    double timeout;              // deadline for model checker (-t option)
     unsigned int index;          // index of worker
+    double timeout;              // deadline for model checker (-t option)
+
+    // TODO.  The following should probably just be in global
     struct worker *workers;      // points to array of workers
     unsigned int nworkers;       // total number of workers
+
     unsigned int vproc;          // virtual processor for pinning
     struct failure *failures;    // list of discovered failures (not data races)
 
@@ -187,7 +190,6 @@ struct worker {
     unsigned int si_total, si_hits;
     struct edge_list *el_free;
     bool loops_possible;         // loops in Kripke structure are possible
-    bool idle;                   // nothing on TODO list
 
     // Statistics about the three phases for optimization purposes
     double start_wait, middle_wait, end_wait;
@@ -1038,14 +1040,15 @@ static struct step_output *onestep(
 // to the given state.  The effect includes updates to shared variables,
 // printing values, spawning threads, and deleting contexts from the stopbag.
 static void trystep(
-    struct worker *w,        // thread info
-    struct node *node,       // starting node
-    int edge_index,          // edge index (-1 if an invariant)
-    struct state *state,     // actual state
-    hvalue_t ctx,            // context identifier
-    struct step *step,       // step info
-    hvalue_t choice,         // if about to make a choice, which choice?
-    int ctx_index            // -1 if not in the context bag (i.e., invariant)
+    struct worker *w,         // thread info
+    unsigned int shard_index, // shard id
+    struct node *node,        // starting node
+    int edge_index,           // edge index (-1 if an invariant)
+    struct state *state,      // actual state
+    hvalue_t ctx,             // context identifier
+    struct step *step,        // step info
+    hvalue_t choice,          // if about to make a choice, which choice?
+    int ctx_index             // -1 if not in the context bag (i.e., invariant)
 ) {
     // assert(state_ctx(state, ctx_index) == ctx);
     assert(state->chooser < 0 || choice != 0);
@@ -1132,7 +1135,8 @@ static void trystep(
     //
     // TODO. Don't need to copy if ctx in readonly mode (unless it stops being in
     //       readonly mode...
-    struct state_header *sh = (struct state_header *) &global.shards[w->index].state_buffer[global.shards[w->index].sb_index];
+    struct shard *shard = &global.shards[shard_index];
+    struct state_header *sh = (struct state_header *) &shard->state_buffer[shard->sb_index];
     sh->node = node;
     sh->edge_index = edge_index;
     unsigned int statesz = state_size(state);
@@ -1201,10 +1205,10 @@ static void trystep(
 
     // Process the effect of the step, and then see if any other
     // edges were waiting for the result of this computation as well.
-    process_step(w, w->index, stc, node, edge_index, sc);
+    process_step(w, shard_index, stc, node, edge_index, sc);
     while (el != NULL) {
         struct node *n = el->node;
-        sh = (struct state_header *) &global.shards[w->index].state_buffer[global.shards[w->index].sb_index];
+        sh = (struct state_header *) &shard->state_buffer[shard->sb_index];
         sh->node = n;
         sh->edge_index = el->edge_index;
         sc = (struct state *) &sh[1];
@@ -1212,7 +1216,7 @@ static void trystep(
         unsigned int statesz = state_size(state);
         memcpy(sc, state, statesz);
         context_remove(sc, ctx);
-        process_step(w, w->index, stc, n, el->edge_index, sc);
+        process_step(w, shard_index, stc, n, el->edge_index, sc);
         struct edge_list *next = el->next;
         el->next = w->el_free;
         w->el_free = el;
@@ -2420,14 +2424,14 @@ void do_work1(struct worker *w, unsigned int shard_index, struct node *node){
         // Explore each choice.
         for (unsigned int i = 0; i < size; i++) {
             step_init(w, &step);
-            trystep(w, node, i, state, chooser, &step, vals[i], state->chooser);
+            trystep(w, shard_index, node, i, state, chooser, &step, vals[i], state->chooser);
         }
     }
     else {
         // Explore each thread that can make a step.
         for (unsigned int i = 0; i < state->bagsize; i++) {
             step_init(w, &step);
-            trystep(w, node, i, state, state_ctx(state, i), &step, 0, i);
+            trystep(w, shard_index, node, i, state, state_ctx(state, i), &step, 0, i);
         }
         unsigned int j = state->bagsize;
         for (unsigned int i = 0; i < state->bagsize; i++) {
@@ -2435,7 +2439,7 @@ void do_work1(struct worker *w, unsigned int shard_index, struct node *node){
             struct context *cc = value_get(ctx, NULL);
             if (cc->extended && ctx_trap_pc(cc) != 0 && !cc->interruptlevel) {
                 step_init(w, &step);
-                trystep(w, node, j, state, state_ctx(state, i), &step, (hvalue_t) -1, i);
+                trystep(w, shard_index, node, j, state, state_ctx(state, i), &step, (hvalue_t) -1, i);
                 j++;
             }
         }
@@ -2450,7 +2454,7 @@ void do_work1(struct worker *w, unsigned int shard_index, struct node *node){
 
         // Check each invariant
         for (unsigned int i = 0; i < global.ninvs; i++) {
-            trystep(w, node, -1, state, global.invs[i].context, &step, 0, -1);
+            trystep(w, shard_index, node, -1, state, global.invs[i].context, &step, 0, -1);
         }
     }
 }
@@ -2541,7 +2545,7 @@ static void do_work2(struct worker *w, unsigned int shard_index){
     }
 
     assert(shard->tb_index <= shard->tb_size);
-    w->idle = shard->tb_index == shard->tb_size;
+    shard->idle = shard->tb_index == shard->tb_size;
 
     // printf("WORK 2: %u DONE\n", w->index);
 }
@@ -2866,8 +2870,8 @@ static void worker(void *arg){
             break;
         }
         done = true;
-        for (unsigned int i = 0; i < global.nworkers; i++) {
-            if (!w->workers[i].idle) {
+        for (unsigned int i = 0; i < global.nshards; i++) {
+            if (!global.shards[i].idle) {
                 done = false;
             }
         }
@@ -4179,7 +4183,7 @@ int exec_model_checker(int argc, char **argv){
 
                     // Check each "finally" predicate
                     for (unsigned int i = 0; i < global.nfinals; i++) {
-                        trystep(&workers[0], node, -1, node_state(node), global.finals[i], &step, 0, -1);
+                        trystep(&workers[0], 0, node, -1, node_state(node), global.finals[i], &step, 0, -1);
                     }
                 }
             }
