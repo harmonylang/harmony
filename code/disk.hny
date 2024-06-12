@@ -5,11 +5,12 @@ const BITS_PER_BLOCK = 16
 def new(n_blocks) returns disk:
     disk = malloc([ None, ] * n_blocks)
 
+
 def getsize(disk) returns size:
     size = len !disk
 
-def read(disk, bno) returns block:
-    block = (!disk)[bno]
+def read(disk, bno) returns contents:
+    contents = (!disk)[bno]
 
 def write(disk, bno, block):
     (!disk)[bno] = block

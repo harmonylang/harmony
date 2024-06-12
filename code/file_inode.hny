@@ -39,6 +39,11 @@ def fs_init(d, n_inode_blocks):
 
 #/ UTILS
 
+# Write to the disk unless the server crashed
+def do_write(fs_state, bno, block):
+    if not fs_state->crashed:
+        disk_write(fs_state->disk, bno,block)
+
 # Allocate a disk block.
 def fs_alloc(fs_state) returns bno:
     acquire(?fs_state->free_lock)
@@ -46,16 +51,16 @@ def fs_alloc(fs_state) returns bno:
     bno = super.free_list
     if bno != None:
         super.free_list = disk.read(fs_state->disk, bno)
-        disk.write(fs_state->disk, 0, super)
+        do_write(fs_state, 0, super)
     release(?fs_state->free_lock)
 
 # Free block bno.
 def fs_free(fs_state, bno):
     acquire(?fs_state->free_lock)
     var super = disk.read(fs_state->disk, 0)
-    disk.write(fs_state->disk, bno, super.free_list)
+    do_write(fs_state, bno, super.free_list)
     super.free_list = bno
-    disk.write(fs_state->disk, 0, super)
+    do_write(fs_state, 0, super)
     release(?fs_state->free_lock)
 
 # Read inode ino in block ib.
@@ -67,7 +72,7 @@ def fs_get_inode(fs_state, ib, ino) returns inode:
 def fs_put_inode(fs_state, ib, ino, inode):
     var inode_block = disk.read(fs_state->disk, 1 + ib)
     inode_block[ino % INODES_PER_BLOCK] = inode
-    disk.write(fs_state->disk, 1 + ib, inode_block)
+    do_write(fs_state, 1 + ib, inode_block)
 
 #/ QUERY
 
@@ -106,7 +111,7 @@ def fs_update_request(fs_state, id, req, ib):
                 inode.direct = fs_alloc(fs_state)
                 inode.size = max(inode.size, 1)
                 fs_put_inode(fs_state, ib, req.ino, inode)
-            disk.write(fs_state->disk, inode.direct, req.data)
+            do_write(fs_state, inode.direct, req.data)
         else:
             if inode.indir == None:
                 inode.indir = fs_alloc(fs_state)
@@ -115,14 +120,14 @@ def fs_update_request(fs_state, id, req, ib):
                 let bno = fs_alloc(fs_state)
                 let indir = [ bno if i == (req.offset - 1) else None
                                 for i in { 0 .. INDIR_PER_BLOCK - 1 } ]:
-                    disk.write(fs_state->disk, bno, req.data)
-                    disk.write(fs_state->disk, inode.indir, indir)
+                    do_write(fs_state, bno, req.data)
+                    do_write(fs_state, inode.indir, indir)
             else:
                 var indir = disk.read(fs_state->disk, inode.indir)
                 if indir[req.offset - 1] == None:
                     indir[req.offset - 1] = fs_alloc(fs_state)
-                    disk.write(fs_state->disk, inode.indir, indir)
-                disk.write(fs_state->disk, indir[req.offset - 1], req.data)
+                    do_write(fs_state, inode.indir, indir)
+                do_write(fs_state, indir[req.offset - 1], req.data)
                 if inode.size <= req.offset:
                     inode.size = req.offset + 1
                     fs_put_inode(fs_state, ib, req.ino, inode)
@@ -142,21 +147,44 @@ def fs_update_request(fs_state, id, req, ib):
 #/ WORKER
 
 # A worker thread handles client requests
-def fs_worker(fs_state, id):
+def fs_worker(fs_state_init, id):
+    var fs_state = fs_state_init
     while True:
         let req = get(fs_state->req_q)
         let ib = req.ino / INODES_PER_BLOCK:
-            if req.type in { "write", "delete" }:
+            var crashed = None
+            atomically:
+                while fs_state->crashed and fs_state->next != None:
+                    fs_state = fs_state->next
+                crashed = fs_state->crashed
+            if crashed
+                put(req.q, "crash")
+            elif req.type in { "write", "delete" }:
                 write_acquire(?fs_state->ib_locks[ib])
                 fs_update_request(fs_state, id, req, ib)
                 write_release(?fs_state->ib_locks[ib])
-                put(req.q, "ok")
+                put(req.q, "crash" if atomic_load(?fs_state->crashed) else "ok"
             else:
-                assert req.type == "read"
+                assert req.type == "read":
                 read_acquire(?fs_state->ib_locks[ib])
                 let response = fs_read_request(fs_state, req, ib):
                     read_release(?fs_state->ib_locks[ib])
-                    put(req.q, response)
+                    put(req.q, "crash" if atomic_load(?fs_state->crashed) else ("ok", response))
+
+def crash_worker(fs_state_init):
+    var fs_state == fs_state_init
+    # while True:
+    for _ in { 1, 2 }:
+        atomically:
+            if fs_state->crashed:
+                assert fs_state->next == None
+                fs_state->next = malloc({ .crashed: False, .next: None,
+                        .disk: fs_state->disk, .req_q: fs_state->req_q, .free_lock: fs_state->free_lock,
+                        .n_inode_blocks: n_inode_blocks,
+                        .ib_locks: fs_state->ib_locks })
+                fs_state = fs_state->next
+            else:
+                fs_state->crashed = True
 
 #/ INTERFACE
 
@@ -169,7 +197,7 @@ def File(n_files) returns req_q:
         fs_init(d, n_inode_blocks)
 
         # Allocate the in-memory shared state of the file server
-        let fs_state = malloc({
+        let fs_state = malloc({ .crashed: False, .next: None,
                 .disk: d, .req_q: req_q, .free_lock: Lock(),
                 .n_inode_blocks: n_inode_blocks,
                 .ib_locks: [ RWlock(), ] * n_inode_blocks }):
@@ -177,23 +205,22 @@ def File(n_files) returns req_q:
             # Start worker threads to handle client requests
             for i in { 1 .. n_workers }:
                 spawn eternal fs_worker(fs_state, i)
+                spawn eternal crash_worker(fs_state)
 
-def read(req_q, ino, offset) returns data:
+def read(req_q, ino, offset) returns result:
     let res_q = malloc(Queue()):
         put(req_q, { .type: "read", .ino: ino, .offset: offset, .q: res_q })
-        data = get(res_q)
+        result = get(res_q)
         free(res_q)
 
-def write(req_q, ino, offset, data):
+def write(req_q, ino, offset, data) returns result:
     let res_q = malloc(Queue()):
         put(req_q, { .type: "write", .ino: ino, .offset: offset, .data: data, .q: res_q })
-        let status = get(res_q):
-            assert status == "ok"
+        result = get(res_q):
         free(res_q)
 
-def delete(req_q, ino):
+def delete(req_q, ino) returns result:
     let res_q = malloc(Queue()):
         put(req_q, { .type: "delete", .ino: ino, .q: res_q })
-        let status = get(res_q):
-            assert status == "ok"
+        result = get(res_q):
         free(res_q)
