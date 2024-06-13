@@ -2883,8 +2883,16 @@ static void worker(void *arg){
         // First phase starts now.  Call do_work() to do that actual work.
         // Also keep stats.
         before = after;
-        for (unsigned int si = 0; si < SHARDS_PER_WORKER; si++) {
-            do_work(w, first_shard + si);
+        for (;;) {
+            unsigned int shard_index = atomic_fetch_add(&global.sh_index1, 1);
+            // printf("W%u: 1 --> %u\n", w->index, shard_index);
+            if (shard_index >= global.nshards) {
+                break;
+            }
+            do_work(w, shard_index);
+        }
+        if (w->index == 0) {
+            atomic_store(&global.sh_index2, 0);
         }
         after = gettime();
         w->phase1 += after - before;
@@ -2900,8 +2908,16 @@ static void worker(void *arg){
         w->middle_count++;
 
         before = after;
-        for (unsigned int si = 0; si < SHARDS_PER_WORKER; si++) {
-            do_work2(w, first_shard + si);
+        for (;;) {
+            unsigned int shard_index = atomic_fetch_add(&global.sh_index2, 1);
+            // printf("W%u: 2 --> %u\n", w->index, shard_index);
+            if (shard_index >= global.nshards) {
+                break;
+            }
+            do_work2(w, shard_index);
+        }
+        if (w->index == 0) {
+            atomic_store(&global.sh_index1, 0);
         }
         after = gettime();
 
@@ -3811,9 +3827,10 @@ int exec_model_checker(int argc, char **argv){
     global.computations = dict_new("computations", sizeof(struct step_condition), 0, global.nworkers, false);
 
     // Allocate the shards array.
-    // TODO.  Currently we assume one shard per worker.
     global.nshards = global.nworkers * SHARDS_PER_WORKER;
     global.shards = calloc(global.nshards, sizeof(*global.shards));
+    atomic_init(&global.sh_index1, 0);
+    atomic_init(&global.sh_index2, 0);
 
     // Allocate space for worker info
     struct worker *workers = calloc(global.nworkers, sizeof(*workers));

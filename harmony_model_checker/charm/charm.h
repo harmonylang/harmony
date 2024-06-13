@@ -76,6 +76,9 @@ struct global {
 
     unsigned int nshards;           // total number of Kripke structure shards
     struct shard *shards;           // array of shards
+    _Atomic(unsigned int) sh_index1; // shard index for phase 1
+    _Atomic(unsigned int) sh_index2; // shard index for phase 2
+
     unsigned int nworkers;          // total number of threads
     unsigned int ncomponents;       // to generate component identifiers
     struct failure *failures;       // queue of "struct failure"  (TODO: make part of struct node "issues")
