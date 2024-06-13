@@ -2891,6 +2891,7 @@ static void worker(void *arg){
         // Also keep stats.
         before = after;
         nshards = 0;
+#ifndef notdef
         for (;;) {
             unsigned int shard_index = atomic_fetch_add(&global.sh_index1, 1);
             if (shard_index >= global.nshards) {
@@ -2900,6 +2901,9 @@ static void worker(void *arg){
             my_shards[nshards++] = shard_index;
             do_work(w, shard_index);
         }
+#else
+        do_work(w, w->index);
+#endif
         if (w->index == 0) {
             atomic_store(&global.sh_index2, 0);
         }
@@ -2917,6 +2921,8 @@ static void worker(void *arg){
         w->middle_count++;
 
         before = after;
+#ifndef notdef
+#ifdef XYZ
         for (unsigned int i = 0; i < nshards; i++) {
             // unsigned int shard_index = atomic_fetch_add(&global.sh_index2, 1);
             // if (shard_index >= global.nshards) {
@@ -2925,6 +2931,19 @@ static void worker(void *arg){
             // printf("W%u: 2 --> %u\n", w->index, my_shards[i]);
             do_work2(w, my_shards[i]);
         }
+#else
+        for (;;) {
+            unsigned int shard_index = atomic_fetch_add(&global.sh_index2, 1);
+            if (shard_index >= global.nshards) {
+                break;
+            }
+            // printf("W%u: 1 --> %u %u\n", w->index, shard_index, global.nshards);
+            do_work2(w, shard_index);
+        }
+#endif // XYZ
+#else
+        do_work2(w, w->index);
+#endif
         if (w->index == 0) {
             atomic_store(&global.sh_index1, 0);
         }
