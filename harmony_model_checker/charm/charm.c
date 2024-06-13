@@ -72,10 +72,10 @@
 
 // Buffer per shard
 // TODO.  Figure out how to set this
-#define STATE_BUFFER_SIZE   ((MAX_STATE_SIZE + sizeof(struct state_header)) * 100000)
-#define STATE_BUFFER_HWM    ((MAX_STATE_SIZE + sizeof(struct state_header)) *  90000)
+#define STATE_BUFFER_SIZE   ((MAX_STATE_SIZE + sizeof(struct state_header)) * 1000)
+#define STATE_BUFFER_HWM    ((MAX_STATE_SIZE + sizeof(struct state_header)) *  900)
 
-#define SHARDS_PER_WORKER   16
+#define SHARDS_PER_WORKER   64
 
 // All global variables should be here
 struct global global;
@@ -2855,7 +2855,8 @@ static void worker(void *arg){
     // The worker now goes into a loop.  Each iteration consists of three phases.
     // Only worker 0 ever breaks out of this loop.
     double before = gettime();
-    unsigned int first_shard = w->index * SHARDS_PER_WORKER;
+    unsigned int *my_shards = calloc(global.nshards, sizeof(*my_shards));
+    unsigned int nshards;
     for (;;) {
         // Wait for the first barrier (and keep stats)
         // This is where the worker is waiting for stabilizing hash tables
@@ -2883,12 +2884,14 @@ static void worker(void *arg){
         // First phase starts now.  Call do_work() to do that actual work.
         // Also keep stats.
         before = after;
+        nshards = 0;
         for (;;) {
             unsigned int shard_index = atomic_fetch_add(&global.sh_index1, 1);
-            // printf("W%u: 1 --> %u\n", w->index, shard_index);
             if (shard_index >= global.nshards) {
                 break;
             }
+            // printf("W%u: 1 --> %u %u\n", w->index, shard_index, global.nshards);
+            my_shards[nshards++] = shard_index;
             do_work(w, shard_index);
         }
         if (w->index == 0) {
@@ -2908,13 +2911,13 @@ static void worker(void *arg){
         w->middle_count++;
 
         before = after;
-        for (;;) {
-            unsigned int shard_index = atomic_fetch_add(&global.sh_index2, 1);
-            // printf("W%u: 2 --> %u\n", w->index, shard_index);
-            if (shard_index >= global.nshards) {
-                break;
-            }
-            do_work2(w, shard_index);
+        for (unsigned int i = 0; i < nshards; i++) {
+            // unsigned int shard_index = atomic_fetch_add(&global.sh_index2, 1);
+            // if (shard_index >= global.nshards) {
+            //     break;
+            // }
+            // printf("W%u: 2 --> %u\n", w->index, my_shards[i]);
+            do_work2(w, my_shards[i]);
         }
         if (w->index == 0) {
             atomic_store(&global.sh_index1, 0);
@@ -3829,6 +3832,7 @@ int exec_model_checker(int argc, char **argv){
     // Allocate the shards array.
     global.nshards = global.nworkers * SHARDS_PER_WORKER;
     global.shards = calloc(global.nshards, sizeof(*global.shards));
+    printf("-> %p %u\n", global.shards, (unsigned int) (global.nshards * sizeof(*global.shards)));
     atomic_init(&global.sh_index1, 0);
     atomic_init(&global.sh_index2, 0);
 
