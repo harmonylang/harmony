@@ -72,8 +72,8 @@
 
 // Buffer per shard
 // TODO.  Figure out how to set this
-#define STATE_BUFFER_SIZE   ((MAX_STATE_SIZE + sizeof(struct state_header)) * 1000)
-#define STATE_BUFFER_HWM    ((MAX_STATE_SIZE + sizeof(struct state_header)) *  900)
+#define STATE_BUFFER_SIZE   ((MAX_STATE_SIZE + sizeof(struct state_header)) * 10000)
+#define STATE_BUFFER_HWM    ((MAX_STATE_SIZE + sizeof(struct state_header)) *  9000)
 
 #define SHARDS_PER_WORKER   64
 
@@ -147,10 +147,6 @@ struct results_block {
 struct shard {
     struct dict *states;          // maps states to nodes
     struct state_header **peers;  // peers[nshards]
-
-    char state_buffer[STATE_BUFFER_SIZE];
-    unsigned int sb_index;        // current index into shard.state_buffer
-    unsigned int sb_count;        // #states buffered
 
     struct results_block *todo_buffer, *tb_head, *tb_tail;
     unsigned int tb_size, tb_index;
@@ -235,6 +231,10 @@ struct worker {
     char as_state[MAX_STATE_SIZE];
     struct context as_ctx;
     hvalue_t as_stack[MAX_CONTEXT_STACK];
+
+    // Buffered states
+    char state_buffer[STATE_BUFFER_SIZE];
+    unsigned int sb_index;        // current index into state_buffer
 };
 
 #ifdef CACHE_LINE_ALIGNED
@@ -719,20 +719,19 @@ static void process_step(
     // Compute the size of the state
     unsigned int size = state_size(sc);
 
-    struct shard *shard = &global.shards[shard_index];
-    struct state_header *sh = (struct state_header *) &shard->state_buffer[shard->sb_index];
+    // Push state onto shard.state_buffer
+    struct state_header *sh = (struct state_header *) &w->state_buffer[w->sb_index];
 	assert((void *) sc == &sh[1]);
     sh->noutgoing = noutgoing;
     sh->hash = meiyan((char *) sc, size);
-    unsigned int responsible = (sh->hash >> 16) % global.nshards;
+    w->sb_index += sizeof(struct state_header) + size;
+    w->sb_index = (w->sb_index + 7) & ~7;
 
-    // Push state onto shard.state_buffer and add to the linked list of the
-    // responsible peer shard.
+    // Add to the linked list of the responsible peer shard
+    struct shard *shard = &global.shards[shard_index];
+    unsigned int responsible = (sh->hash >> 16) % global.nshards;
     sh->next = shard->peers[responsible];
     shard->peers[responsible] = sh;
-    shard->sb_index += sizeof(struct state_header) + size;
-    shard->sb_index = (shard->sb_index + 7) & ~7;
-    shard->sb_count++;
 }
 
 // This is the main workhorse function of model checking: explore a state and
@@ -1135,8 +1134,8 @@ static void trystep(
     //
     // TODO. Don't need to copy if ctx in readonly mode (unless it stops being in
     //       readonly mode...
-    struct shard *shard = &global.shards[shard_index];
-    struct state_header *sh = (struct state_header *) &shard->state_buffer[shard->sb_index];
+    // struct shard *shard = &global.shards[shard_index];
+    struct state_header *sh = (struct state_header *) &w->state_buffer[w->sb_index];
     sh->node = node;
     sh->edge_index = edge_index;
     unsigned int statesz = state_size(state);
@@ -1208,7 +1207,7 @@ static void trystep(
     process_step(w, shard_index, stc, node, edge_index, sc);
     while (el != NULL) {
         struct node *n = el->node;
-        sh = (struct state_header *) &shard->state_buffer[shard->sb_index];
+        sh = (struct state_header *) &w->state_buffer[w->sb_index];
         sh->node = n;
         sh->edge_index = el->edge_index;
         sc = (struct state *) &sh[1];
@@ -2471,7 +2470,6 @@ static void do_work(struct worker *w, unsigned int shard_index){
     struct shard *shard = &global.shards[shard_index];
 
     // printf("WORK 1: %u: %u %u\n", w->index, shard->tb_index, shard->tb_size);
-    shard->sb_index = shard->sb_count = 0;
     memset(shard->peers, 0, global.nshards * sizeof(*shard->peers));
     while (shard->tb_index < shard->tb_size) {
 		// printf("WORK 1: %u: do %u\n", w->index, shard->tb_index);
@@ -2482,7 +2480,8 @@ static void do_work(struct worker *w, unsigned int shard_index){
             shard->tb_head = shard->tb_head->next;
         }
 
-        if (shard->sb_index > STATE_BUFFER_HWM) {
+        // Stop if about to run out of state buffer space
+        if (w->sb_index > STATE_BUFFER_HWM) {
             break;
         }
     }
@@ -2886,6 +2885,7 @@ static void worker(void *arg){
         before = after;
         nshards = 0;
 #ifndef notdef
+        w->sb_index = 0;
         for (;;) {
             unsigned int shard_index = atomic_fetch_add(&global.sh_index1, 1);
             if (shard_index >= global.nshards) {
