@@ -1,0 +1,62 @@
+from synch import *
+
+def RWlock() returns lock:
+    lock = {
+            .nreaders: 0, .nwriters: 0, .mutex: Lock(),
+            .r_waiting: 0, .r_cleared: 0, .w_waiting: 0, .w_cleared: 0,
+            .r_cond: Condition(), .w_cond: Condition()
+        }
+    
+def read_acquire(rw):
+    acquire(?rw->mutex)
+    if (rw->nwriters == 0) and (rw->w_waiting == 0):
+        rw->nreaders += 1
+    else:
+        rw->r_waiting += 1
+        while rw->r_cleared == 0:
+            wait(?rw->r_cond, ?rw->mutex)
+        rw->r_cleared -= 1
+    assert rw->nreaders > 0
+    assert rw->nwriters == 0
+    release(?rw->mutex)
+
+def read_release(rw):
+    acquire(?rw->mutex)
+    assert rw->nreaders > 0
+    assert rw->nwriters == 0
+    rw->nreaders -= 1
+    if (rw->nreaders == 0) and (rw->w_waiting > 0):
+        rw->w_cleared = rw->nwriters = 1
+        rw->w_waiting -= 1
+        notify(?rw->w_cond)
+    release(?rw->mutex)
+
+def write_acquire(rw):
+    acquire(?rw->mutex)
+    if (rw->nreaders + rw->nwriters) == 0:
+        rw->nwriters = 1
+    else:
+        rw->w_waiting += 1
+        while rw->w_cleared == 0:
+            wait(?rw->w_cond, ?rw->mutex)
+        rw->w_cleared = 0
+    assert rw->nreaders == 0
+    assert rw->nwriters == 1
+    release(?rw->mutex)
+
+def write_release(rw):
+    acquire(?rw->mutex)
+    assert rw->nreaders == 0
+    assert rw->nwriters == 1
+    if rw->r_waiting > 0:
+        rw->nwriters = 0
+        rw->r_cleared = rw->nreaders = rw->r_waiting
+        rw->r_waiting = 0
+        notifyAll(?rw->r_cond)
+    elif rw->w_waiting > 0:
+        rw->w_waiting -= 1
+        rw->w_cleared = 1
+        notify(?rw->w_cond)
+    else:
+        rw->nwriters = 0
+    release(?rw->mutex)
