@@ -4,7 +4,7 @@ nreaders = nwriters = 0
 invariant ((nreaders >= 0) and (nwriters == 0)) or
             ((nreaders == 0) and (0 <= nwriters <= 1))
 
-const NOPS = 3
+const NOPS = 4
 
 rw = rwlock.RWlock()
 
