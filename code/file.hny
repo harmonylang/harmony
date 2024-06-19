@@ -4,25 +4,19 @@ def File(n_files) returns fs:
     fs = malloc([ [], ] * n_files)
 
 def read(fs, ino, offset) returns result:
-    atomically result = choose { ("ok", (!fs)[ino][offset] if 0 <= offset < len (!fs)[ino] else None), "crash" }
+    atomically result = (!fs)[ino][offset] if 0 <= offset < len (!fs)[ino] else None
 
 def write(fs, ino, offset, data) returns result:
     atomically:
-        if choose { False, True }:
-            let n = len (!fs)[ino]:
-                if 0 <= offset <= n:
-                    (!fs)[ino][offset] = data
-                else:
-                    (!fs)[ino] += ([ None, ] * (offset - n)) + [data,]
-            result = choose { "ok", "crash" }
-        else:
-            result = "crash"
+        let n = len (!fs)[ino]:
+            if 0 <= offset <= n:
+                (!fs)[ino][offset] = data
+            else:
+                (!fs)[ino] += ([ None, ] * (offset - n)) + [data,]
+        result = "ok"
             
 
-def delete(fs, ino) returns result::
+def delete(fs, ino) returns result:
     atomically:
-        if choose { False, True }:
-            (!fs)[ino] = []
-            result = choose { "ok", "crash" }
-        else:
-            result = "crash"
+        (!fs)[ino] = []
+        result = "ok"
