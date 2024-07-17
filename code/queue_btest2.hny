@@ -1,6 +1,7 @@
 import queue
 
-const NOPS = 4
+const N_PUT = 2
+const N_GET = 2
 q = queue.Queue()
 
 def put_test(self):
@@ -13,7 +14,7 @@ def get_test(self):
     let v = queue.get(?q):
         print("done get", self, v)
 
-for i in {1..NOPS}:
+for i in {1..N_PUT}:
     spawn put_test(i)
-for i in {1..NOPS}:
+for i in {1..N_GET}:
     spawn get_test(i)

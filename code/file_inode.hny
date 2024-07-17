@@ -101,7 +101,7 @@ def fs_read_request(fs_state, req, ib) returns result:
 
 #/ UPDATE
 
-# Handle a write request.  A write lock on i-node block ib has been acquired.
+# Handle an update request.  A write lock on i-node block ib has been acquired.
 def fs_update_request(fs_state, id, req, ib):
     var inode = fs_get_inode(fs_state, ib, req.ino)
     if req.type == "write":

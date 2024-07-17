@@ -6,6 +6,5 @@ def acquire(lk):
         !lk = True
 
 def release(lk):
-    atomically:
-        assert !lk
-        !lk = False
+    assert !lk
+    atomically !lk = False
