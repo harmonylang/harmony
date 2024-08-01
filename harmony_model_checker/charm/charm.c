@@ -75,7 +75,7 @@
 #define STATE_BUFFER_SIZE   ((MAX_STATE_SIZE + sizeof(struct state_header)) * 10000)
 #define STATE_BUFFER_HWM    ((MAX_STATE_SIZE + sizeof(struct state_header)) *  9000)
 
-#define SHARDS_PER_WORKER   64
+#define SHARDS_PER_WORKER   1
 
 // All global variables should be here
 struct global global;
@@ -2478,6 +2478,8 @@ static void do_work(struct worker *w, unsigned int shard_index){
     // printf("WORK 1: %u: %u %u\n", w->index, shard->tb_index, shard->tb_size);
     memset(shard->peers, 0, global.nshards * sizeof(*shard->peers));
     while (shard->tb_index < shard->tb_size) {
+        // gettime();
+
 		// printf("WORK 1: %u: do %u\n", w->index, shard->tb_index);
         struct node *n = shard->tb_head->results[shard->tb_index % NRESULTS];
         do_work1(w, shard_index, n);
@@ -2502,6 +2504,7 @@ static void do_work2(struct worker *w, unsigned int shard_index){
     for (unsigned int i = 0; i < global.nshards; i++) {
         struct shard *s2 = &global.shards[i];
         for (struct state_header *sh = s2->peers[shard_index]; sh != NULL; sh = sh->next) {
+            // gettime();
             struct state *sc = (struct state *) &sh[1];
             unsigned int size = state_size(sc);
 
@@ -2828,6 +2831,25 @@ void vproc_tree_alloc(struct vproc_tree *vt, struct worker *workers, unsigned in
     }
 }
 
+#include <sched.h>
+#include <numa.h>
+#include <omp.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <string.h>
+
+void bind_thread_to_cpu(int cpu_id) {
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(cpu_id, &cpuset);
+
+    pthread_t thread = pthread_self();
+    int result = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
+    if (result != 0) {
+        fprintf(stderr, "Error setting thread affinity: %s\n", strerror(result));
+    }
+}
+
 // This is a main worker thread for the model checking phase.  arg points to
 // the struct worker record for this worker.
 //
@@ -2847,6 +2869,15 @@ static void worker(void *arg){
 
     // Pin the thread to its virtual processor.
 #ifdef __linux__
+#ifdef NUMA
+    // Main execution with OpenMP
+    #pragma omp parallel num_threads(global.nworkers)
+    {
+        int thread_id = w->index; // omp_get_thread_num();
+        bind_thread_to_cpu(thread_id % numa_num_configured_cpus());
+    }
+
+#else // NUMA
     if (w->index == 0) {
         printf("pinning cores\n");
     }
@@ -2855,14 +2886,18 @@ static void worker(void *arg){
     CPU_ZERO(&cpuset);
     CPU_SET(w->vproc, &cpuset);
     sched_setaffinity(0, sizeof(cpuset), &cpuset);
-#endif
+#endif // NUMA
+#endif // __linux__
 
     // The worker now goes into a loop.  Each iteration consists of three phases.
     // Only worker 0 ever breaks out of this loop.
     double before = gettime();
+    unsigned int nrounds = 0;
+#ifdef notdef
     unsigned int *my_shards = calloc(global.nshards, sizeof(*my_shards));
     unsigned int nshards;
-    for (;;) {
+#endif
+    for (;; nrounds++) {
         // Wait for the first barrier (and keep stats)
         // This is where the worker is waiting for stabilizing hash tables
         barrier_wait(w->start_barrier);
@@ -2889,8 +2924,8 @@ static void worker(void *arg){
         // First phase starts now.  Call do_work() to do that actual work.
         // Also keep stats.
         before = after;
+#ifdef notdef
         nshards = 0;
-#ifndef notdef
         w->sb_index = 0;
         for (;;) {
             unsigned int shard_index = atomic_fetch_add(&global.sh_index1, 1);
@@ -2901,12 +2936,13 @@ static void worker(void *arg){
             my_shards[nshards++] = shard_index;
             do_work(w, shard_index);
         }
-#else
-        do_work(w, w->index);
-#endif
         if (w->index == 0) {
             atomic_store(&global.sh_index2, 0);
         }
+#else
+        w->sb_index = 0;
+        do_work(w, w->index);
+#endif
         after = gettime();
         w->phase1 += after - before;
 
@@ -2921,7 +2957,7 @@ static void worker(void *arg){
         w->middle_count++;
 
         before = after;
-#ifndef notdef
+#ifdef notdef
 #ifdef XYZ
         for (unsigned int i = 0; i < nshards; i++) {
             // unsigned int shard_index = atomic_fetch_add(&global.sh_index2, 1);
@@ -2941,12 +2977,12 @@ static void worker(void *arg){
             do_work2(w, shard_index);
         }
 #endif // XYZ
-#else
-        do_work2(w, w->index);
-#endif
         if (w->index == 0) {
             atomic_store(&global.sh_index1, 0);
         }
+#else
+        do_work2(w, w->index);
+#endif
         after = gettime();
 
         w->phase2a += after - before;
@@ -2995,6 +3031,9 @@ static void worker(void *arg){
         after = gettime();
         w->phase3 += after - before;
         before = after;
+    }
+    if (w->index == 0) {
+        printf("Ran %u rounds\n", nrounds);
     }
 }
 
@@ -3858,8 +3897,10 @@ int exec_model_checker(int argc, char **argv){
     global.nshards = global.nworkers * SHARDS_PER_WORKER;
     global.shards = calloc(global.nshards, sizeof(*global.shards));
     printf("-> %p %u\n", global.shards, (unsigned int) (global.nshards * sizeof(*global.shards)));
+#ifdef notdef
     atomic_init(&global.sh_index1, 0);
     atomic_init(&global.sh_index2, 0);
+#endif
 
     // Allocate space for worker info
     struct worker *workers = calloc(global.nworkers, sizeof(*workers));
@@ -3915,7 +3956,7 @@ int exec_model_checker(int argc, char **argv){
     // there, the Tarjan SCC algorithm (executed by worker 0) will run significantly
     // faster.
 #ifdef __linux__
-#ifdef NUMA
+#ifdef xxxNUMA
     numa_available();
     numa_set_preferred(vproc_info[workers[0].vproc].ids[0]);
 #endif
@@ -4009,6 +4050,7 @@ int exec_model_checker(int argc, char **argv){
         start_wait += w->start_wait;
         middle_wait += w->middle_wait;
         end_wait += w->end_wait;
+#ifdef notdef
         printf("W%2u: %.3lf %.3lf %.3lf %.3lf %.3lf %.3lf %.3lf %u %u\n", i,
                 w->phase1,
                 w->phase2a,
@@ -4019,6 +4061,7 @@ int exec_model_checker(int argc, char **argv){
                 w->end_wait/w->end_count,
                 w->total_results,
                 w->process_step);
+#endif
     }
 #else
     for (unsigned int i = 0; i < global.nworkers; i++) {

@@ -195,8 +195,9 @@ struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
     }
 
     // If not concurrent may have to grow the table now
-	if (!dict->concurrent && db->stable == NULL) {
-		double f = (double)dict->count / (double)dict->length;
+	// if (!dict->concurrent && db->stable == NULL) {
+	if (!dict->concurrent) {
+		double f = (double) dict->count / (double) dict->length;
 		if (f > dict->growth_threshold) {
 			dict_resize(dict, dict->length * dict->growth_factor - 1);
 			return dict_find(dict, al, key, keylen, new);
@@ -324,7 +325,8 @@ struct dict_assoc *dict_find_new(struct dict *dict, struct allocator *al,
     }
 
     // If not concurrent may have to grow the table now
-	if (!dict->concurrent && db->stable == NULL) {
+	// if (!dict->concurrent && db->stable == NULL) {
+	if (!dict->concurrent) {
 		double f = (double) dict->count / (double) dict->length;
 		if (f > dict->growth_threshold) {
 			dict_resize(dict, dict->length * dict->growth_factor - 1);

@@ -34,3 +34,11 @@ void *my_aligned_alloc(size_t alignment, size_t size);
 #include <stdatomic.h>
 #define hAtomic(x)  _Atomic(x)
 #endif
+
+#ifdef __linux__
+#ifdef NUMA
+#include <numa.h>
+#include <numaif.h>
+#include <omp.h>
+#endif
+#endif
