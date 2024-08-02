@@ -5,6 +5,7 @@
 #include <stdlib.h> /* malloc/calloc */
 #include <stdint.h> /* uint32_t */
 #include <string.h> /* memcpy/memcmp */
+#include <stdbool.h>
 
 #include "thread.h"
 
@@ -51,6 +52,7 @@ struct dict {
     unsigned int nlocks;
 	double growth_threshold;
 	unsigned int growth_factor;
+    bool autogrow;
     bool concurrent;
     bool align16;            // entries must be aligned to 16 bytes
 
@@ -79,6 +81,7 @@ void dict_set_sequential(struct dict *dict);
 void dict_grow_prepare(struct dict *dict);
 unsigned long dict_allocated(struct dict *dict);
 bool dict_exists(struct dict *dict, const void *key, unsigned int keylen, uint32_t hash);
+void dict_resize(struct dict *dict, unsigned int newsize);
 void dict_dump(struct dict *dict);
 
 #endif

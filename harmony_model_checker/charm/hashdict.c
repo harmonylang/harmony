@@ -64,6 +64,7 @@ struct dict *dict_new(char *whoami, unsigned int value_len, unsigned int initial
 	}
 	dict->growth_threshold = 2;
 	dict->growth_factor = 10;
+    dict->autogrow = true;
 	dict->concurrent = false;
     dict->workers = calloc(sizeof(struct dict_worker), nworkers);
     dict->nworkers = nworkers;
@@ -109,7 +110,7 @@ unsigned long dict_allocated(struct dict *dict) {
     return dict->length * sizeof(struct dict_bucket);
 }
 
-static void dict_resize(struct dict *dict, unsigned int newsize) {
+void dict_resize(struct dict *dict, unsigned int newsize) {
 	unsigned int o = dict->length;
 	struct dict_bucket *old = dict->table;
 	dict->table = calloc(sizeof(struct dict_bucket), newsize);
@@ -196,7 +197,7 @@ struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
 
     // If not concurrent may have to grow the table now
 	// if (!dict->concurrent && db->stable == NULL) {
-	if (!dict->concurrent) {
+	if (dict->autogrow && !dict->concurrent) {
 		double f = (double) dict->count / (double) dict->length;
 		if (f > dict->growth_threshold) {
 			dict_resize(dict, dict->length * dict->growth_factor - 1);
@@ -326,7 +327,7 @@ struct dict_assoc *dict_find_new(struct dict *dict, struct allocator *al,
 
     // If not concurrent may have to grow the table now
 	// if (!dict->concurrent && db->stable == NULL) {
-	if (!dict->concurrent) {
+	if (dict->autogrow && !dict->concurrent) {
 		double f = (double) dict->count / (double) dict->length;
 		if (f > dict->growth_threshold) {
 			dict_resize(dict, dict->length * dict->growth_factor - 1);

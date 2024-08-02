@@ -2549,6 +2549,23 @@ static void do_work2(struct worker *w, unsigned int shard_index){
     assert(shard->tb_index <= shard->tb_size);
     shard->idle = shard->tb_index == shard->tb_size;
 
+#ifdef notdef
+    // See if any shard needs growing.  If so, grow all.
+    bool needs_growth = false;
+    for (unsigned int i = 0; i < global.nshards; i++) {
+        struct dict *dict = global.shards[i].states;
+        double f = (double) dict->count / (double) dict->length;
+        if (f > dict->growth_threshold) {
+            needs_growth = true;
+            break;
+        }
+    }
+    if (needs_growth) {
+        struct dict *dict = shard->states;
+        dict_resize(dict, dict->length * dict->growth_factor - 1);
+    }
+#endif
+
     // printf("WORK 2: %u DONE\n", w->index);
 }
 
@@ -2825,25 +2842,6 @@ void vproc_tree_alloc(struct vproc_tree *vt, struct worker *workers, unsigned in
     }
 }
 
-#include <sched.h>
-#include <numa.h>
-#include <omp.h>
-#include <pthread.h>
-#include <stdio.h>
-#include <string.h>
-
-void bind_thread_to_cpu(int cpu_id) {
-    cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
-    CPU_SET(cpu_id, &cpuset);
-
-    pthread_t thread = pthread_self();
-    int result = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
-    if (result != 0) {
-        fprintf(stderr, "Error setting thread affinity: %s\n", strerror(result));
-    }
-}
-
 // This is a main worker thread for the model checking phase.  arg points to
 // the struct worker record for this worker.
 //
@@ -2863,15 +2861,6 @@ static void worker(void *arg){
 
     // Pin the thread to its virtual processor.
 #ifdef __linux__
-#ifdef NUMA
-    // Main execution with OpenMP
-    #pragma omp parallel num_threads(global.nworkers)
-    {
-        int thread_id = w->index; // omp_get_thread_num();
-        bind_thread_to_cpu(thread_id % numa_num_configured_cpus());
-    }
-
-#else // NUMA
     if (w->index == 0) {
         printf("pinning cores\n");
     }
@@ -2880,7 +2869,6 @@ static void worker(void *arg){
     CPU_ZERO(&cpuset);
     CPU_SET(w->vproc, &cpuset);
     sched_setaffinity(0, sizeof(cpuset), &cpuset);
-#endif // NUMA
 #endif // __linux__
 
     // The worker now goes into a loop.  Each iteration consists of three phases.
@@ -3934,6 +3922,7 @@ int exec_model_checker(int argc, char **argv){
         for (unsigned int si = 0; si < SHARDS_PER_WORKER; si++) {
             struct shard *shard = &global.shards[first_shard + si];
             shard->states = dict_new("shard states", sizeof(struct node), 0, 0, false);
+            // shard->states->autogrow = false;
             shard->peers = calloc(global.nshards, sizeof(*shard->peers));
             shard->todo_buffer = shard->tb_head = shard->tb_tail = walloc_fast(w, sizeof(*shard->tb_tail));
             shard->todo_buffer->nresults = 0;
