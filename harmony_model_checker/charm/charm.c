@@ -3016,6 +3016,7 @@ static void worker(void *arg){
     }
     if (w->index == 0) {
         printf("Ran %u rounds\n", nrounds);
+        printf("%u values\n", global.values->count);
     }
 }
 
@@ -4033,7 +4034,7 @@ int exec_model_checker(int argc, char **argv){
         start_wait += w->start_wait;
         middle_wait += w->middle_wait;
         end_wait += w->end_wait;
-#ifdef notdef
+#ifndef notdef
         printf("W%2u: %.3lf %.3lf %.3lf %.3lf %.3lf %.3lf %.3lf %u %u\n", i,
                 w->phase1,
                 w->phase2a,
