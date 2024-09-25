@@ -640,7 +640,7 @@ static void process_step(
         }
     }
 
-    // Add new context to state unless it's terminated.
+    // Add new context to state unless it's terminated
     int new_index = -1;
     if (so->stopped) {
         stopped_context_add(sc, so->after);
