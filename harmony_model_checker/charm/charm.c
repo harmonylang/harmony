@@ -758,8 +758,9 @@ static void process_step(
     struct shard *shard = &global.shards[shard_index];
     unsigned int responsible = (sh->hash >> 16) % global.nshards;
     struct state_queue *sq = &shard->peers[responsible];
-    *sq->last = sh->next;
+    *sq->last = sh;
     sq->last = &sh->next;
+    sh->next = NULL;
 
     w->sb_index++;      // TODOTODO
 }
@@ -2514,7 +2515,7 @@ static void do_work(struct worker *w, unsigned int shard_index){
     struct shard *shard = &global.shards[shard_index];
 
     // printf("WORK 1: %u: %u %u\n", w->index, shard->tb_index, shard->tb_size);
-    memset(shard->peers, 0, global.nshards * sizeof(*shard->peers));
+    // memset(shard->peers, 0, global.nshards * sizeof(*shard->peers));
     while (shard->tb_index < shard->tb_size) {
         // gettime();
 
