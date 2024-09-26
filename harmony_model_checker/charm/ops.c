@@ -908,7 +908,7 @@ static void ai_add(struct step *step, hvalue_t *indices, unsigned int n, bool lo
 // TODO.  DISABLED.  Two problems: ai_add and atomic mode
 void op_Alloc_Malloc(const void *env, struct state *state, struct step *step){
     hvalue_t arg = ctx_pop(step->ctx);
-    hvalue_t next = value_dict_load(state->vars, alloc_next_atom);
+    hvalue_t next = value_dict_load(step->vars, alloc_next_atom);
 
     // Assign arg to alloc$pool[alloc$next]
     hvalue_t addr[3];
@@ -917,7 +917,7 @@ void op_Alloc_Malloc(const void *env, struct state *state, struct step *step){
     addr[2] = next;
     // TODO.  THIS CANNOT WORK AS addr IS NOT COPIED
     ai_add(step, addr, 3, false);
-    if (!ind_trystore(state->vars, addr + 1, 2, arg, step->allocator, &state->vars)) {
+    if (!ind_trystore(step->vars, addr + 1, 2, arg, step->allocator, &step->vars)) {
         panic("op_Alloc_Malloc: store value failed");
     }
 
@@ -928,7 +928,7 @@ void op_Alloc_Malloc(const void *env, struct state *state, struct step *step){
     // TODO.  THIS CANNOT WORK AS addr IS NOT COPIED
     ai_add(step, addr2, 2, false);
     next = VALUE_TO_INT(VALUE_FROM_INT(next) + 1);
-    state->vars = value_dict_store(step->allocator, state->vars, alloc_next_atom, next);
+    step->vars = value_dict_store(step->allocator, step->vars, alloc_next_atom, next);
 
     // Return the address
     hvalue_t result = value_put_address(step->allocator, addr, sizeof(addr));
@@ -1741,7 +1741,7 @@ void op_Cut(const void *env, struct state *state, struct step *step){
 void op_Del(const void *env, struct state *state, struct step *step){
     const struct env_Del *ed = env;
 
-    assert(VALUE_TYPE(state->vars) == VALUE_DICT);
+    assert(VALUE_TYPE(step->vars) == VALUE_DICT);
 
     if (step->ctx->readonly > 0) {
         value_ctx_failure(step->ctx, step->allocator, "Can't update state in assert or invariant");
@@ -1772,22 +1772,22 @@ void op_Del(const void *env, struct state *state, struct step *step){
         size /= sizeof(hvalue_t);
         ai_add(step, indices, size, false);
         hvalue_t nd;
-        if (!ind_remove(step->ctx, state->vars, indices + 1, size - 1, step->allocator, &nd)) {
+        if (!ind_remove(step->ctx, step->vars, indices + 1, size - 1, step->allocator, &nd)) {
             value_ctx_failure(step->ctx, step->allocator, "Del: no such variable");
         }
         else {
-            state->vars = nd;
+            step->vars = nd;
             step->ctx->pc++;
         }
     }
     else {
         ai_add(step, ed->indices, ed->n, false);
         hvalue_t nd;
-        if (!ind_remove(step->ctx, state->vars, ed->indices + 1, ed->n - 1, step->allocator, &nd)) {
+        if (!ind_remove(step->ctx, step->vars, ed->indices + 1, ed->n - 1, step->allocator, &nd)) {
             value_ctx_failure(step->ctx, step->allocator, "Del: bad variable");
         }
         else {
-            state->vars = nd;
+            step->vars = nd;
             step->ctx->pc++;
         }
     }
@@ -2319,7 +2319,7 @@ void do_Load(struct state *state, struct step *step,
 void op_Load(const void *env, struct state *state, struct step *step){
     const struct env_Load *el = env;
 
-    assert(VALUE_TYPE(state->vars) == VALUE_DICT);
+    assert(VALUE_TYPE(step->vars) == VALUE_DICT);
 
     // See if the address is on the stack
     if (el == 0) {
@@ -2352,7 +2352,7 @@ void op_Load(const void *env, struct state *state, struct step *step){
             //        of it is not memory.
             ai_add(step, indices, size, true);
 
-            do_Load(state, step, av, state->vars, indices + 1, size - 1);
+            do_Load(state, step, av, step->vars, indices + 1, size - 1);
         }
         else {
             assert(VALUE_TYPE(av) == VALUE_ADDRESS_PRIVATE);
@@ -2375,7 +2375,7 @@ void op_Load(const void *env, struct state *state, struct step *step){
 
         ai_add(step, el->indices, el->n, true);
         hvalue_t v;
-        unsigned int k = ind_tryload(step->allocator, state->vars, el->indices + 1, el->n - 1, &v);
+        unsigned int k = ind_tryload(step->allocator, step->vars, el->indices + 1, el->n - 1, &v);
         if (k != el->n - 1) {
             char *x = indices_string(el->indices, el->n);
             value_ctx_failure(step->ctx, step->allocator, "Load: unknown variable %s", x);
@@ -2847,7 +2847,7 @@ void op_Split(const void *env, struct state *state, struct step *step){
 }
 
 void op_Save(const void *env, struct state *state, struct step *step){
-    assert(VALUE_TYPE(state->vars) == VALUE_DICT);
+    assert(VALUE_TYPE(step->vars) == VALUE_DICT);
     hvalue_t e = ctx_pop(step->ctx);
 
     // Save the context
@@ -2869,7 +2869,7 @@ void op_Save(const void *env, struct state *state, struct step *step){
 void op_Stop(const void *env, struct state *state, struct step *step){
     const struct env_Stop *es = env;
 
-    assert(VALUE_TYPE(state->vars) == VALUE_DICT);
+    assert(VALUE_TYPE(step->vars) == VALUE_DICT);
 
     if (step->ctx->readonly > 0) {
         value_ctx_failure(step->ctx, step->allocator, "Stop: in read-only mode");
@@ -2899,7 +2899,7 @@ void op_Stop(const void *env, struct state *state, struct step *step){
         size /= sizeof(hvalue_t);
         ai_add(step, indices, size, false);
         // TODO: check if indices[0] == VALUE_PC_SHARED?
-        if (!ind_trystore(state->vars, indices + 1, size - 1, v, step->allocator, &state->vars)) {
+        if (!ind_trystore(step->vars, indices + 1, size - 1, v, step->allocator, &step->vars)) {
             char *x = indices_string(indices, size);
             value_ctx_failure(step->ctx, step->allocator, "Stop: bad address: %s", x);
             free(x);
@@ -2912,7 +2912,7 @@ void op_Stop(const void *env, struct state *state, struct step *step){
         hvalue_t v = value_put_context(step->allocator, step->ctx);
         ai_add(step, es->indices, es->n, false);
         // TODO: check if indices[0] == VALUE_PC_SHARED?
-        if (!ind_trystore(state->vars, es->indices + 1, es->n - 1, v, step->allocator, &state->vars)) {
+        if (!ind_trystore(step->vars, es->indices + 1, es->n - 1, v, step->allocator, &step->vars)) {
             value_ctx_failure(step->ctx, step->allocator, "Stop: bad variable");
         }
     }
@@ -3020,7 +3020,7 @@ static bool store_match(struct state *state, struct step *step,
 
     if (size == 2 && !step->ctx->initial) {
         hvalue_t newvars;
-        if (!value_dict_trystore(step->allocator, state->vars, indices[1], v, false, &newvars)){
+        if (!value_dict_trystore(step->allocator, step->vars, indices[1], v, false, &newvars)){
             // Complain if some shared variable is first set after
             // initialization
             char *x = indices_string(indices, size);
@@ -3028,9 +3028,9 @@ static bool store_match(struct state *state, struct step *step,
             free(x);
             return false;
         }
-        state->vars = newvars;
+        step->vars = newvars;
     }
-    else if (!ind_trystore(state->vars, indices + 1, size - 1, v, step->allocator, &state->vars)) {
+    else if (!ind_trystore(step->vars, indices + 1, size - 1, v, step->allocator, &step->vars)) {
         char *x = indices_string(indices, size);
         value_ctx_failure(step->ctx, step->allocator, "Store: bad address: %s", x);
         free(x);
@@ -3042,7 +3042,7 @@ static bool store_match(struct state *state, struct step *step,
 void op_Store(const void *env, struct state *state, struct step *step){
     const struct env_Store *es = env;
 
-    assert(VALUE_TYPE(state->vars) == VALUE_DICT);
+    assert(VALUE_TYPE(step->vars) == VALUE_DICT);
 
     hvalue_t v = ctx_pop(step->ctx);
 
@@ -3065,15 +3065,15 @@ void op_Store(const void *env, struct state *state, struct step *step){
         ai_add(step, es->indices, es->n, false);
         if (es->n == 2 && !step->ctx->initial) {
             hvalue_t newvars;
-            if (!value_dict_trystore(step->allocator, state->vars, es->indices[1], v, false, &newvars)){
+            if (!value_dict_trystore(step->allocator, step->vars, es->indices[1], v, false, &newvars)){
                 char *x = indices_string(es->indices, es->n);
                 value_ctx_failure(step->ctx, step->allocator, "Store: declare a local variable %s (or set during initialization)", x);
                 free(x);
                 return;
             }
-            state->vars = newvars;
+            step->vars = newvars;
         }
-        else if (!ind_trystore(state->vars, es->indices + 1, es->n - 1, v, step->allocator, &state->vars)) {
+        else if (!ind_trystore(step->vars, es->indices + 1, es->n - 1, v, step->allocator, &step->vars)) {
             char *x = indices_string(es->indices, es->n);
             value_ctx_failure(step->ctx, step->allocator, "Store: bad variable %s", x);
             free(x);

@@ -27,6 +27,7 @@ struct step {
     // additional information.  In particular this includes the callstack.
     bool keep_callstack;
 
+    hvalue_t vars;                      // current shared variables
     unsigned int nlog;                  // output values that are printed
     unsigned int nspawned;              // #threads spawned or resumed
     unsigned int nunstopped;            // #threads removed from stopbag
