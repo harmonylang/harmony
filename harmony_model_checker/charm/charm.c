@@ -71,17 +71,17 @@
 #define MAX_STATE_SIZE (sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1))
 
 // Buffer per shard
-// TODO.  Figure out how to set this
-#define STATE_BUFFER_SIZE   ((MAX_STATE_SIZE + sizeof(struct state_header)) * 10000)
-#define STATE_BUFFER_HWM    ((MAX_STATE_SIZE + sizeof(struct state_header)) *  9000)
+#define STATE_BUFFER_HWM    100
 
 #define SHARDS_PER_WORKER   1
 
 // All global variables should be here
 struct global global;
 
+// Immediately followed by a state
 struct state_header {
     struct state_header *next;  // linked list
+    unsigned int nctxs;         // for free list maintenance
     struct node *node;          // old state
     unsigned int edge_index;    // index of the edge in the old state
     unsigned int noutgoing;     // number of outgoing edges of new state
@@ -142,16 +142,22 @@ struct results_block {
     struct node *results[NRESULTS];
 };
 
+struct state_queue {
+    struct state_header *first, **last;
+};
+
 // Shard of the Kripke structure.  There is an array of shards.  Each shard
 // holds the states that hash onto the index into the array.
 struct shard {
     struct dict *states;          // maps states to nodes
-    struct state_header **peers;  // peers[nshards]
+    struct state_queue *peers;    // peers[nshards]
 
     struct results_block *todo_buffer, *tb_head, *tb_tail;
     unsigned int tb_size, tb_index;
     bool idle;                    // nothing on TODO list
 };
+
+#define MAX_THREADS 100
 
 // One of these per worker thread
 struct worker {
@@ -163,6 +169,9 @@ struct worker {
     // TODO.  The following should probably just be in global
     struct worker *workers;      // points to array of workers
     unsigned int nworkers;       // total number of workers
+
+    // free lists of state_headers for various numbers of threads
+    struct state_header *state_header_free[MAX_THREADS];
 
     unsigned int vproc;          // virtual processor for pinning
     struct failure *failures;    // list of discovered failures (not data races)
@@ -232,9 +241,7 @@ struct worker {
     struct context as_ctx;
     hvalue_t as_stack[MAX_CONTEXT_STACK];
 
-    // Buffered states
-    char state_buffer[STATE_BUFFER_SIZE];
-    unsigned int sb_index;        // current index into state_buffer
+    unsigned int sb_index;
 };
 
 #ifdef CACHE_LINE_ALIGNED
@@ -304,6 +311,34 @@ static inline void *walloc_fast(struct worker *w, unsigned int size){
     void *result = w->alloc_ptr;
     w->alloc_ptr += size;
     return result;
+}
+
+// Allocate a "state_header", copy in s, and make sure there's room for
+// at least n contexts.
+static inline struct state_header *state_header_alloc(struct worker *w,
+                        struct state *s, unsigned int nctxs){
+    if (nctxs < s->total) {
+        nctxs = s->total;
+    }
+    assert(nctxs < MAX_THREADS);
+    struct state_header *sh = w->state_header_free[nctxs];
+    if (sh == NULL) {
+        sh = walloc_fast(w, sizeof(*sh) + state_size_nctx(nctxs));
+        sh->nctxs = nctxs;
+    }
+    else {
+        assert(sh->nctxs == nctxs);
+        w->state_header_free[nctxs] = sh->next;
+    }
+    memcpy(sh + 1, s, state_size(s));
+    return sh;
+}
+
+// Put a state_header on the freelist of the right size
+static void state_header_free(struct worker *w, struct state_header *sh){
+    assert(sh->nctxs < MAX_THREADS);
+    sh->next = w->state_header_free[sh->nctxs];
+    w->state_header_free[sh->nctxs] = sh;
 }
 
 // This is only allowed to release the last thing that was allocated
@@ -493,7 +528,9 @@ static void direct_run(struct state *state, unsigned int id){
             int pc = step.ctx->pc;
             struct instr *instrs = global.code.instrs;
             struct op_info *oi = instrs[pc].oi;
+            step.vars = state->vars;       // NEW
             (*oi->op)(instrs[pc].env, state, &step);
+            state->vars = step.vars;       // NEW
             if (step.ctx->terminated || step.ctx->stopped) {
                 break;
             }
@@ -585,34 +622,32 @@ static void process_step(
     struct worker *w,
     unsigned int shard_index,
     struct step_condition *stc,
-
-    // TODO. The following three can be derived from w.
-    struct node *node,
-    int edge_index,
-    struct state *sc
+    struct state_header *sh
 ) {
     struct step_output *so = stc->u.completed;
 
-    if (edge_index < 0) { // invariant
+    if (sh->edge_index < 0) { // invariant
         if (so->failed || so->infinite_loop) {
             struct failure *f = new_alloc(struct failure);
             f->type = so->failed ? FAIL_SAFETY : FAIL_TERMINATION;
-            f->node = node;
+            f->node = sh->node;
             f->edge = walloc_fast(w, sizeof(struct edge));
 #ifdef SHORT_PTR
             f->edge->dest = (int64_t *) node - (int64_t *) f->edge;
             printf("SET DST 1: %p\n", node);
 #else
-            f->edge->dst = node;
+            f->edge->dst = sh->node;
 #endif
             f->edge->stc_id = stc->id;
             f->edge->failed = true;
             add_failure(&global.failures, f);
         }
+        state_header_free(w, sh);
         return;
     }
 
     w->process_step++;
+    struct state *sc = (struct state *) &sh[1];
     sc->vars = so->vars;
 
     // Update state with spawned and resumed threads.
@@ -640,7 +675,7 @@ static void process_step(
         }
     }
 
-    // Add new context to state unless it's terminated
+    // Add new context to state unless it's terminated or stopped
     int new_index = -1;
     if (so->stopped) {
         stopped_context_add(sc, so->after);
@@ -659,7 +694,7 @@ static void process_step(
     hvalue_t *choices;
     if (so->choosing) {
         sc->chooser = new_index;
-        // sc->pre = global.inv_pre ? node_state(node)->pre : sc->vars;
+        // sc->pre = global.inv_pre ? node_state(sh->node)->pre : sc->vars;
         // TODO.  Maybe more efficient to keep the following info
         //        as it's already computed in onestep
         struct context *ctx = value_get(so->after, NULL);
@@ -688,13 +723,13 @@ static void process_step(
     }
 
     // If a failure has occurred, keep track of that too.
-    struct edge *edge = &node_edges(node)[edge_index];
+    struct edge *edge = &node_edges(sh->node)[sh->edge_index];
     if (so->failed || so->infinite_loop) {
         edge->failed = true;
         noutgoing = 0;
         struct failure *f = new_alloc(struct failure);
         f->type = so->infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
-        f->node = node;
+        f->node = sh->node;
         f->edge = edge;
         f->next = w->failures;
         w->failures = f;
@@ -706,7 +741,7 @@ static void process_step(
             if (nstate < 0) {
                 struct failure *f = new_alloc(struct failure);
                 f->type = FAIL_BEHAVIOR_BAD;
-                f->node = node;
+                f->node = sh->node;
                 f->edge = edge;
                 edge->failed = true;
                 add_failure(&global.failures, f);
@@ -716,22 +751,17 @@ static void process_step(
         }
     }
 
-    // Compute the size of the state
-    unsigned int size = state_size(sc);
-
-    // Push state onto shard.state_buffer
-    struct state_header *sh = (struct state_header *) &w->state_buffer[w->sb_index];
-	assert((void *) sc == &sh[1]);
     sh->noutgoing = noutgoing;
-    sh->hash = meiyan((char *) sc, size);
-    w->sb_index += sizeof(struct state_header) + size;
-    w->sb_index = (w->sb_index + 7) & ~7;
+    sh->hash = meiyan((char *) sc, state_size(sc));
 
     // Add to the linked list of the responsible peer shard
     struct shard *shard = &global.shards[shard_index];
     unsigned int responsible = (sh->hash >> 16) % global.nshards;
-    sh->next = shard->peers[responsible];
-    shard->peers[responsible] = sh;
+    struct state_queue *sq = &shard->peers[responsible];
+    *sq->last = sh->next;
+    sq->last = &sh->next;
+
+    w->sb_index++;      // TODOTODO
 }
 
 // This is the main workhorse function of model checking: explore a state and
@@ -743,6 +773,9 @@ static void process_step(
 // programmers from using assertions.  Thus, to execute an atomic section, we
 // save the state at the beginning and rollback in case it turns out that we do
 // need to break.
+//
+// NEW: sc is read-only in onestep.  All the effects are returned, and process_step
+//      must be invoked to apply them.
 static struct step_output *onestep(
     struct worker *w,       // thread info
     struct node *node,      // starting node
@@ -1005,7 +1038,7 @@ static struct step_output *onestep(
     // Capture the result of executing this step
     struct step_output *so = walloc_fast(w, sizeof(struct step_output) +
             (step->nlog + step->nspawned + step->nunstopped) * sizeof(hvalue_t));
-    so->vars = sc->vars;
+    so->vars = step->vars;  // NEW
     so->after = value_put_context(step->allocator, step->ctx);
     so->ai = step->ai;     step->ai = NULL;
     so->nsteps = instrcnt;
@@ -1049,7 +1082,7 @@ static void trystep(
     hvalue_t choice,          // if about to make a choice, which choice?
     int ctx_index             // -1 if not in the context bag (i.e., invariant)
 ) {
-    // assert(state_ctx(state, ctx_index) == ctx);
+    assert(ctx_index == -1 || state_ctx(state, ctx_index) == ctx);
     assert(state->chooser < 0 || choice != 0);
     struct step_condition *stc;
     bool si_new;
@@ -1130,19 +1163,6 @@ static void trystep(
         mutex_release(si_lock);
     }
 
-    // Copy the state.
-    //
-    // TODO. Don't need to copy if ctx in readonly mode (unless it stops being in
-    //       readonly mode...
-    // struct shard *shard = &global.shards[shard_index];
-    struct state_header *sh = (struct state_header *) &w->state_buffer[w->sb_index];
-    sh->node = node;
-    sh->edge_index = edge_index;
-    unsigned int statesz = state_size(state);
-    struct state *sc = (struct state *) &sh[1];
-    memcpy(sc, state, statesz);
-    sc->chooser = -1;
-
     // If this is a new step, perform it
     struct edge_list *el = NULL;
     if (si_new) {
@@ -1156,20 +1176,20 @@ static void trystep(
         assert(!cc->failed);
         memcpy(&w->ctx, cc, ctx_size(cc));
         step->ctx = &w->ctx;
+        step->vars = state->vars; // NEW
 
         // This will first attempt to run onestep() with delayed detection
         // of infinite loops (for efficiency).  If an infinite loop is
         // detected, it will run again immediately looking for infinite
         // loops to find the shortest counterexample.
         struct step_output *so =
-            onestep(w, node, sc, ctx, step, choice, false);
+            onestep(w, node, state, ctx, step, choice, false);
         if (so == NULL) {        // ran into an infinite loop
             // TODO.  Need probably more cleanup of step, like ai
             step->nlog = step->nspawned = step->nunstopped = 0;
-            memcpy(sc, state, statesz);
-            sc->chooser = -1;
             memcpy(&w->ctx, cc, ctx_size(cc));
-            so = onestep(w, node, sc, ctx, step, choice, true);
+            step->vars = state->vars; // NEW
+            so = onestep(w, node, state, ctx, step, choice, true);
         }
 
         if (has_countLabel) {
@@ -1192,30 +1212,50 @@ static void trystep(
         assert(stc->completed);
     }
 
-#ifndef TODO
-    // TODO check if ctx_index is still valid (ctxbag hasn't changed)
+    // Conservative size.  Actual size hard to estimate because of
+    // multiplicities.
+    struct step_output *so2 = stc->u.completed;
+    unsigned int est_total_ctxs = state->total + so2->nspawned;
+
+    // Allocate a state_header
+    // TODO. Don't need to copy if ctx in readonly mode (unless it stops being in
+    //       readonly mode...
+    // TODO. Alternatively, it seems easy to check if the state is going to be updated or not
+    // TODO. Also copy not needed if ctx_index == -1 (invariant check)
+    // struct shard *shard = &global.shards[shard_index];
+    struct state_header *sh = state_header_alloc(w, state, est_total_ctxs);
+    sh->node = node;
+    sh->edge_index = edge_index;
+    struct state *sc = (struct state *) &sh[1];
+
+    // Remove original context from context bag
     if (ctx_index >= 0) {
         assert(state_ctx(sc, ctx_index) == ctx);
         context_remove_by_index(sc, ctx_index);
     }
-#else
-    context_remove(sc, ctx);
-#endif
 
-    // Process the effect of the step, and then see if any other
-    // edges were waiting for the result of this computation as well.
-    process_step(w, shard_index, stc, node, edge_index, sc);
+    // Process the effect of the step
+    process_step(w, shard_index, stc, sh);
+    assert(sc->total <= est_total_ctxs);
+
+    // See if any other edges were waiting for the result of this
+    // computation as well.
     while (el != NULL) {
-        struct node *n = el->node;
-        sh = (struct state_header *) &w->state_buffer[w->sb_index];
-        sh->node = n;
+        node = el->node;
+        state = node_state(node);
+        est_total_ctxs = state->total + so2->nspawned;
+        sh = state_header_alloc(w, state, est_total_ctxs);
+        sh->node = node;
         sh->edge_index = el->edge_index;
         sc = (struct state *) &sh[1];
-        struct state *state = node_state(n);
-        unsigned int statesz = state_size(state);
-        memcpy(sc, state, statesz);
+
         context_remove(sc, ctx);
-        process_step(w, shard_index, stc, n, el->edge_index, sc);
+        process_step(w, shard_index, stc, sh);
+        if (sc->total != est_total_ctxs) {
+            printf("===> %u %u\n", sc->total, est_total_ctxs);
+        }
+        assert(sc->total <= est_total_ctxs);
+
         struct edge_list *next = el->next;
         el->next = w->el_free;
         w->el_free = el;
@@ -1491,10 +1531,14 @@ static void twostep(
         }
         else if (instrs[pc].print) {
             print = ctx_stack(step.ctx)[step.ctx->sp - 1];
+            step.vars = sc->vars;        // NEW
             (*oi->op)(instrs[pc].env, sc, &step);
+            sc->vars = step.vars;        // NEW
         }
         else {
+            step.vars = sc->vars;        // NEW
             (*oi->op)(instrs[pc].env, sc, &step);
+            sc->vars = step.vars;        // NEW
         }
 
         // Infinite loop detection
@@ -2497,7 +2541,10 @@ static void do_work2(struct worker *w, unsigned int shard_index){
 
     for (unsigned int i = 0; i < global.nshards; i++) {
         struct shard *s2 = &global.shards[i];
-        for (struct state_header *sh = s2->peers[shard_index]; sh != NULL; sh = sh->next) {
+        struct state_header *sh;
+        while ((sh = s2->peers[shard_index].first) != NULL) {
+            s2->peers[shard_index].first = sh->next;
+
             // gettime();
             struct state *sc = (struct state *) &sh[1];
             unsigned int size = state_size(sc);
@@ -2543,7 +2590,10 @@ static void do_work2(struct worker *w, unsigned int shard_index){
             else if (next != sh->node && next->len <= sh->node->len) {
                 w->loops_possible = true;
             }
+
+            state_header_free(w, sh);  // TODOTODO
         }
+        s2->peers[shard_index].last = &s2->peers[shard_index].first;
     }
 
     assert(shard->tb_index <= shard->tb_size);
@@ -2906,9 +2956,9 @@ static void worker(void *arg){
         // First phase starts now.  Call do_work() to do that actual work.
         // Also keep stats.
         before = after;
+        w->sb_index = 0;
 #ifdef notdef
         nshards = 0;
-        w->sb_index = 0;
         for (;;) {
             unsigned int shard_index = atomic_fetch_add(&global.sh_index1, 1);
             if (shard_index >= global.nshards) {
@@ -2922,7 +2972,6 @@ static void worker(void *arg){
             atomic_store(&global.sh_index2, 0);
         }
 #else
-        w->sb_index = 0;
         do_work(w, w->index);
 #endif
         after = gettime();
@@ -3925,6 +3974,9 @@ int exec_model_checker(int argc, char **argv){
             shard->states = dict_new("shard states", sizeof(struct node), 0, 0, false);
             // shard->states->autogrow = false;
             shard->peers = calloc(global.nshards, sizeof(*shard->peers));
+            for (unsigned int si2 = 0; si2 < global.nshards; si2++) {
+                shard->peers[si2].last = &shard->peers[si2].first;
+            }
             shard->todo_buffer = shard->tb_head = shard->tb_tail = walloc_fast(w, sizeof(*shard->tb_tail));
             shard->todo_buffer->nresults = 0;
             shard->todo_buffer->next = NULL;

@@ -29,7 +29,8 @@ typedef struct state {
     uint16_t total;       // bagsize + size of bag of stopped contexts
     // hvalue_t contexts[VAR_SIZE];   // context/multiplicity pairs
 } state;
-#define state_size(s)            (sizeof(struct state) + (s)->total * sizeof(hvalue_t))
+#define state_size_nctx(n)       (sizeof(struct state) + (n) * sizeof(hvalue_t))
+#define state_size(s)            state_size_nctx((s)->total)
 #define state_ctxlist(s)         ((hvalue_t *) ((s) + 1))
 #define STATE_M_SHIFT            48
 #define STATE_MULTIPLICITY       ((hvalue_t) 0xFF << STATE_M_SHIFT)
