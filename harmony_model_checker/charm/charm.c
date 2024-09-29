@@ -2618,6 +2618,7 @@ static void do_work(struct worker *w, unsigned int shard_index){
                 mutex_acquire(&w2->mq_mutex);
                 *w2->mq_last = sq->first;
                 w2->mq_last = sq->last;
+                assert(*w2->mq_list == NULL);
                 mutex_release(&w2->mq_mutex);
                 sq->first = NULL;
                 sq->last = &sq->first;
