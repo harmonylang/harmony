@@ -242,6 +242,10 @@ struct worker {
     hvalue_t as_stack[MAX_CONTEXT_STACK];
 
     unsigned int sb_index;
+
+    // Message queue
+    mutex_t mq_mutex;
+    struct state_header *mq_first, **mq_last;
 };
 
 #ifdef CACHE_LINE_ALIGNED
@@ -1252,9 +1256,6 @@ static void trystep(
 
         context_remove(sc, ctx);
         process_step(w, shard_index, stc, sh);
-        if (sc->total != est_total_ctxs) {
-            printf("===> %u %u\n", sc->total, est_total_ctxs);
-        }
         assert(sc->total <= est_total_ctxs);
 
         struct edge_list *next = el->next;
@@ -2514,25 +2515,109 @@ void do_work1(struct worker *w, unsigned int shard_index, struct node *node){
 static void do_work(struct worker *w, unsigned int shard_index){
     struct shard *shard = &global.shards[shard_index];
 
-    // printf("WORK 1: %u: %u %u\n", w->index, shard->tb_index, shard->tb_size);
-    // memset(shard->peers, 0, global.nshards * sizeof(*shard->peers));
-    while (shard->tb_index < shard->tb_size) {
-        // gettime();
-
-		// printf("WORK 1: %u: do %u\n", w->index, shard->tb_index);
-        struct node *n = shard->tb_head->results[shard->tb_index % NRESULTS];
-        do_work1(w, shard_index, n);
-        shard->tb_index++;
-        if (shard->tb_index % NRESULTS == 0) {
-            shard->tb_head = shard->tb_head->next;
+    for (;;) {
+        // See if there are messages for me.
+        mutex_acquire(&w->mq_mutex);
+        struct state_header *msgs = w->mq_first;
+        if (msgs != NULL) {
+            w->mq_first = NULL;
+            w->mq_last = &w->mq_first;
         }
+        mutex_release(&w->mq_mutex);
 
-        // Stop if about to run out of state buffer space
-        if (w->sb_index > STATE_BUFFER_HWM) {
+        // If there are no messages and my todo list is empty, go to the barrier.
+        if (msgs == NULL && shard->tb_index == shard->tb_size) {
+            shard->idle = true;
             break;
         }
+
+        // Look up the states, and if they're new add them to my todo list
+        struct state_header *sh;
+        while ((sh = msgs) != NULL) {
+            msgs = sh->next;
+
+            struct state *sc = (struct state *) &sh[1];
+            unsigned int size = state_size(sc);
+
+            // See if this state has been computed before by looking up the node,
+            // or allocate if not.
+            bool new;
+            struct dict_assoc *hn = dict_find_new(shard->states, &w->allocator,
+                        sc, size, sh->noutgoing * sizeof(struct edge), &new, NULL, sh->hash);
+            struct node *next = (struct node *) &hn[1];
+            struct edge *edge = &node_edges(sh->node)[sh->edge_index];
+            edge->dst = next;
+
+            if (new) {
+                next->failed = edge->failed;
+                next->initial = false;
+                next->parent = sh->node;
+                next->len = sh->node->len + 1;
+                next->nedges = sh->noutgoing;
+
+                assert(shard->tb_tail->nresults == shard->tb_size % NRESULTS);
+                assert(shard->tb_tail->next == NULL);
+                shard->tb_size++;
+                shard->tb_tail->results[shard->tb_tail->nresults++] = next;
+                if (shard->tb_tail->nresults == NRESULTS) {
+                    struct results_block *rb = walloc_fast(w, sizeof(*shard->tb_tail));
+                    rb->nresults = 0;
+                    rb->next = NULL;
+                    shard->tb_tail->next = rb;
+                    shard->tb_tail = rb;
+                }
+                assert(shard->tb_tail->nresults == shard->tb_size % NRESULTS);
+
+#ifndef NEW_STUFF
+                w->count++;
+#endif
+                w->enqueued++;
+                w->total_results++;
+            }
+
+            // See if the node points sideways or backwards, in which
+            // case cycles in the graph are possible
+            else if (next != sh->node && next->len <= sh->node->len) {
+                w->loops_possible = true;
+            }
+
+            state_header_free(w, sh);  // TODOTODO  should be sent back
+        }
+
+        // See if there's anything on my TODO list.
+        w->sb_index = 0;
+        while (shard->tb_index < shard->tb_size) {
+            // gettime();
+
+            // printf("WORK 1: %u: do %u\n", w->index, shard->tb_index);
+            struct node *n = shard->tb_head->results[shard->tb_index % NRESULTS];
+            do_work1(w, shard_index, n);
+            shard->tb_index++;
+            if (shard->tb_index % NRESULTS == 0) {
+                shard->tb_head = shard->tb_head->next;
+            }
+
+            // Stop if about to run out of state buffer space
+            if (w->sb_index > STATE_BUFFER_HWM) {
+                break;
+            }
+        }
+
+        // Send the computed states to their respective destinations
+        struct shard *shard = &global.shards[shard_index];
+        for (unsigned int i = 0; i < global.nshards; i++) {
+            struct state_queue *sq = &shard->peers[i];
+            if (sq->first != NULL) {
+                struct worker *w2 = &w->workers[i];
+                mutex_acquire(&w2->mq_mutex);
+                *w2->mq_last = sq->first;
+                w2->mq_last = sq->last;
+                mutex_release(&w2->mq_mutex);
+                sq->first = NULL;
+                sq->last = &sq->first;
+            }
+        }
     }
-    // printf("WORK 1: %u DONE\n", w->index);
 }
 
 static void do_work2(struct worker *w, unsigned int shard_index){
@@ -2599,23 +2684,6 @@ static void do_work2(struct worker *w, unsigned int shard_index){
 
     assert(shard->tb_index <= shard->tb_size);
     shard->idle = shard->tb_index == shard->tb_size;
-
-#ifdef notdef
-    // See if any shard needs growing.  If so, grow all.
-    bool needs_growth = false;
-    for (unsigned int i = 0; i < global.nshards; i++) {
-        struct dict *dict = global.shards[i].states;
-        double f = (double) dict->count / (double) dict->length;
-        if (f > dict->growth_threshold) {
-            needs_growth = true;
-            break;
-        }
-    }
-    if (needs_growth) {
-        struct dict *dict = shard->states;
-        dict_resize(dict, dict->length * dict->growth_factor - 1);
-    }
-#endif
 
     // printf("WORK 2: %u DONE\n", w->index);
 }
@@ -2926,10 +2994,6 @@ static void worker(void *arg){
     // Only worker 0 ever breaks out of this loop.
     double before = gettime();
     unsigned int nrounds = 0;
-#ifdef notdef
-    unsigned int *my_shards = calloc(global.nshards, sizeof(*my_shards));
-    unsigned int nshards;
-#endif
     for (;; nrounds++) {
         // Wait for the first barrier (and keep stats)
         // This is where the worker is waiting for stabilizing hash tables
@@ -2957,24 +3021,7 @@ static void worker(void *arg){
         // First phase starts now.  Call do_work() to do that actual work.
         // Also keep stats.
         before = after;
-        w->sb_index = 0;
-#ifdef notdef
-        nshards = 0;
-        for (;;) {
-            unsigned int shard_index = atomic_fetch_add(&global.sh_index1, 1);
-            if (shard_index >= global.nshards) {
-                break;
-            }
-            // printf("W%u: 1 --> %u %u\n", w->index, shard_index, global.nshards);
-            my_shards[nshards++] = shard_index;
-            do_work(w, shard_index);
-        }
-        if (w->index == 0) {
-            atomic_store(&global.sh_index2, 0);
-        }
-#else
         do_work(w, w->index);
-#endif
         after = gettime();
         w->phase1 += after - before;
 
@@ -2989,32 +3036,7 @@ static void worker(void *arg){
         w->middle_count++;
 
         before = after;
-#ifdef notdef
-#ifdef XYZ
-        for (unsigned int i = 0; i < nshards; i++) {
-            // unsigned int shard_index = atomic_fetch_add(&global.sh_index2, 1);
-            // if (shard_index >= global.nshards) {
-            //     break;
-            // }
-            // printf("W%u: 2 --> %u\n", w->index, my_shards[i]);
-            do_work2(w, my_shards[i]);
-        }
-#else
-        for (;;) {
-            unsigned int shard_index = atomic_fetch_add(&global.sh_index2, 1);
-            if (shard_index >= global.nshards) {
-                break;
-            }
-            // printf("W%u: 1 --> %u %u\n", w->index, shard_index, global.nshards);
-            do_work2(w, shard_index);
-        }
-#endif // XYZ
-        if (w->index == 0) {
-            atomic_store(&global.sh_index1, 0);
-        }
-#else
-        do_work2(w, w->index);
-#endif
+        // do_work2(w, w->index);
         after = gettime();
 
         w->phase2a += after - before;
@@ -3982,6 +4004,11 @@ int exec_model_checker(int argc, char **argv){
             shard->todo_buffer->nresults = 0;
             shard->todo_buffer->next = NULL;
         }
+
+        // Initialize the worker's message queue
+        mutex_init(&w->mq_mutex);
+        w->mq_first = NULL;
+        w->mq_last = &w->mq_first;
     }
 
     // Pin workers to particular virtual processors
