@@ -2515,7 +2515,24 @@ void do_work1(struct worker *w, unsigned int shard_index, struct node *node){
 static void do_work(struct worker *w, unsigned int shard_index){
     struct shard *shard = &global.shards[shard_index];
 
+    shard->idle = false;
     for (;;) {
+        // Send the computed states to their respective destinations
+        struct shard *shard = &global.shards[shard_index];
+        for (unsigned int i = 0; i < global.nshards; i++) {
+            struct state_queue *sq = &shard->peers[i];
+            if (sq->first != NULL) {
+                struct worker *w2 = &w->workers[i];
+                mutex_acquire(&w2->mq_mutex);
+                *w2->mq_last = sq->first;
+                w2->mq_last = sq->last;
+                assert(*w2->mq_last == NULL);
+                mutex_release(&w2->mq_mutex);
+                sq->first = NULL;
+                sq->last = &sq->first;
+            }
+        }
+
         // See if there are messages for me.
         mutex_acquire(&w->mq_mutex);
         struct state_header *msgs = w->mq_first;
@@ -2600,22 +2617,6 @@ static void do_work(struct worker *w, unsigned int shard_index){
             // Stop if about to run out of state buffer space
             if (w->sb_index > STATE_BUFFER_HWM) {
                 break;
-            }
-        }
-
-        // Send the computed states to their respective destinations
-        struct shard *shard = &global.shards[shard_index];
-        for (unsigned int i = 0; i < global.nshards; i++) {
-            struct state_queue *sq = &shard->peers[i];
-            if (sq->first != NULL) {
-                struct worker *w2 = &w->workers[i];
-                mutex_acquire(&w2->mq_mutex);
-                *w2->mq_last = sq->first;
-                w2->mq_last = sq->last;
-                assert(*w2->mq_list == NULL);
-                mutex_release(&w2->mq_mutex);
-                sq->first = NULL;
-                sq->last = &sq->first;
             }
         }
     }
@@ -3010,8 +3011,15 @@ static void worker(void *arg){
             break;
         }
         done = true;
-        for (unsigned int i = 0; i < global.nshards; i++) {
-            if (!global.shards[i].idle) {
+        for (unsigned int i = 0; i < w->nworkers; i++) {
+            // If the worker has incoming messages, we're not done.
+            if (w->workers[i].mq_first != NULL) {
+                done = false;
+            }
+
+            // If the worker has anything on its TODO list, we're not done.
+            struct shard *shard = &global.shards[i];
+            if (shard->tb_index != shard->tb_size) {
                 done = false;
             }
         }
