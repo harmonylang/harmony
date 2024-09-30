@@ -3091,7 +3091,7 @@ void op_StoreVar(const void *env, struct state *state, struct step *step){
     if (es == NULL) {
         hvalue_t av = ctx_pop(step->ctx);
         if (VALUE_TYPE(av) != VALUE_ADDRESS_PRIVATE) {
-            printf("===> %u %s\n", step->ctx->pc, value_string(av));
+            printf("STOREVAR ===> %u %s\n", step->ctx->pc, value_string(av));
         }
         assert(VALUE_TYPE(av) == VALUE_ADDRESS_PRIVATE);
         assert(av != VALUE_ADDRESS_PRIVATE);
