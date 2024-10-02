@@ -2638,7 +2638,7 @@ static void do_work(struct worker *w, unsigned int shard_index){
             }
 
             // Stop if about to run out of state buffer space
-            if (w->sb_index > STATE_BUFFER_HWM) {
+            if (false && w->sb_index > STATE_BUFFER_HWM) {
                 break;
             }
 
@@ -2979,15 +2979,17 @@ void vproc_tree_alloc(struct vproc_tree *vt, struct worker *workers, unsigned in
         }
     }
 
-    // Spread them over the children
+    // Spread them evenly over the children
+    unsigned int over_capacity = vt->n_vprocessors - n;
     for (unsigned int i = 0; i < vt->nchildren; i++) {
         struct vproc_tree *child = vt->children[i].child;
         if (n <= child->n_vprocessors) {
             vproc_tree_alloc(child, workers, index, n);
             break;
         }
-        vproc_tree_alloc(child, workers, index, child->n_vprocessors);
-        n -= child->n_vprocessors;
+        unsigned int assign = child->n_vprocessors - (over_capacity / vt->nchildren);
+        vproc_tree_alloc(child, workers, index, assign);
+        n -= assign;
     }
 }
 
@@ -3774,6 +3776,7 @@ int exec_model_checker(int argc, char **argv){
     //            a total of 17 workers
     //
     // If -w is not specified, simply use all virtual processors.
+    bool print_vproc_info = false;
     if (worker_flag == NULL) {
         global.nworkers = n_vproc_info;
         for (unsigned int i = 0; i < n_vproc_info; i++) {
@@ -3783,7 +3786,7 @@ int exec_model_checker(int argc, char **argv){
     else {
         // -w/... causes virtual processors to be printed.
         if (*worker_flag == '/') {
-            vproc_info_dump();
+            print_vproc_info = true;
             worker_flag++;
         }
 
@@ -3855,7 +3858,10 @@ int exec_model_checker(int argc, char **argv){
 
     // Create a tree of the selected processors
     vproc_tree_create();
-    // vproc_tree_dump(vproc_root, 0);
+
+    if (print_vproc_info) {
+        vproc_info_dump();
+    }
 
     if (dflag) {
         printf("* Phase 2: execute directly\n");
@@ -4055,6 +4061,15 @@ int exec_model_checker(int argc, char **argv){
     // Pin workers to particular virtual processors
     unsigned int worker_index = 0;
     vproc_tree_alloc(vproc_root, workers, &worker_index, global.nworkers);
+
+    if (print_vproc_info) {
+        printf("Assignment:");
+        for (unsigned int i = 0; i < global.nworkers; i++) {
+            struct worker *w = &workers[i];
+            printf(" %u", w->vproc);
+        }
+        printf("\n");
+    }
 
     // Prefer to allocate memory at the memory bank attached to the first worker.
     // The main advantage of this is that if the entire Kripke structure is stored
