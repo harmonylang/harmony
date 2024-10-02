@@ -3004,25 +3004,7 @@ static void worker(void *arg){
         w->start_wait += after - before;
         w->start_count++;
 
-        // Worker 0 needs to break out of the loop when the Kripke structure
-        // is finished (or when failures have been detected) so that it can
-        // go on with analysis and so on.
-        if (w->index == 0 && done) {
-            break;
-        }
-        done = true;
-        for (unsigned int i = 0; i < w->nworkers; i++) {
-            // If the worker has incoming messages, we're not done.
-            if (w->workers[i].mq_first != NULL) {
-                done = false;
-            }
-
-            // If the worker has anything on its TODO list, we're not done.
-            struct shard *shard = &global.shards[i];
-            if (shard->tb_index != shard->tb_size) {
-                done = false;
-            }
-        }
+        // See if we're done
         if (done) {
             break;
         }
@@ -3043,6 +3025,24 @@ static void worker(void *arg){
         after = gettime();
         w->middle_wait += after - before;
         w->middle_count++;
+
+        // Nobody's doing work.  Great time to see if we are done.
+        done = true;
+        for (unsigned int i = 0; i < w->nworkers; i++) {
+            // If the worker has incoming messages, we're not done.
+            if (w->workers[i].mq_first != NULL) {
+                done = false;
+            }
+
+            // If the worker has anything on its TODO list, we're not done.
+            struct shard *shard = &global.shards[i];
+            if (shard->tb_index != shard->tb_size) {
+                done = false;
+            }
+        }
+        if (done) {
+            break;
+        }
 
         before = after;
         // do_work2(w, w->index);
