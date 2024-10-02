@@ -243,9 +243,12 @@ struct worker {
 
     unsigned int sb_index;
 
-    // Message queue
+    // Lock protected message queue
     mutex_t mq_mutex;
     struct state_header *mq_first, **mq_last;
+
+    // Non-lock protected message queue
+    struct state_header *umq_first, **umq_last;
 };
 
 #ifdef CACHE_LINE_ALIGNED
@@ -2513,9 +2516,8 @@ void do_work1(struct worker *w, unsigned int shard_index, struct node *node){
 // ones after todo should be explored.  In other words, the "todo list" starts
 // at global.graph.nodes[global.todo] and ends at graph.nodes[graph.size];
 static void do_work(struct worker *w, unsigned int shard_index){
+    double start = gettime(), now;
     struct shard *shard = &global.shards[shard_index];
-
-    double start = gettime();
 
     shard->idle = false;
     for (;;) {
@@ -2535,25 +2537,28 @@ static void do_work(struct worker *w, unsigned int shard_index){
             }
         }
 
-        // See if there are messages for me.
+        // Get my messages
+        // TODO.  Optimize by incorporating into loop above.
         mutex_acquire(&w->mq_mutex);
-        struct state_header *msgs = w->mq_first;
-        if (msgs != NULL) {
+        if (w->mq_first != NULL) {
+            *w->umq_last = w->mq_first;
+            w->umq_last = w->mq_last;
             w->mq_first = NULL;
             w->mq_last = &w->mq_first;
         }
         mutex_release(&w->mq_mutex);
 
         // If there are no messages and my todo list is empty, go to the barrier.
-        if (msgs == NULL && shard->tb_index == shard->tb_size) {
+        if (w->umq_first == NULL && shard->tb_index == shard->tb_size) {
             shard->idle = true;
             break;
         }
 
         // Look up the states, and if they're new add them to my todo list
         struct state_header *sh;
-        while ((sh = msgs) != NULL) {
-            msgs = sh->next;
+        now = gettime();
+        while ((sh = w->umq_first) != NULL) {
+            w->umq_first = sh->next;
 
             struct state *sc = (struct state *) &sh[1];
             unsigned int size = state_size(sc);
@@ -2601,9 +2606,16 @@ static void do_work(struct worker *w, unsigned int shard_index){
             }
 
             state_header_free(w, sh);  // TODOTODO  should be sent back
+
+            now = gettime();
+            if (now - start > .1) {
+                break;
+            }
+        }
+        if (w->umq_first == NULL) {
+            w->umq_last = &w->umq_first;
         }
 
-        double now = gettime();
         if (now - start > .1) {
             break;
         }
@@ -4028,6 +4040,10 @@ int exec_model_checker(int argc, char **argv){
         mutex_init(&w->mq_mutex);
         w->mq_first = NULL;
         w->mq_last = &w->mq_first;
+
+        // Locally buffered message queue
+        w->umq_first = NULL;
+        w->umq_last = &w->umq_first;
     }
 
     // Pin workers to particular virtual processors
