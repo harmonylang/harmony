@@ -2521,6 +2521,8 @@ void do_work1(struct worker *w, unsigned int shard_index, struct node *node){
 static void do_work(struct worker *w, unsigned int shard_index){
     struct shard *shard = &global.shards[shard_index];
 
+    double start = gettime();
+
     shard->idle = false;
     for (;;) {
         // Send the computed states to their respective destinations
@@ -2607,11 +2609,14 @@ static void do_work(struct worker *w, unsigned int shard_index){
             state_header_free(w, sh);  // TODOTODO  should be sent back
         }
 
+        double now = gettime();
+        if (now - start > .1) {
+            break;
+        }
+
         // See if there's anything on my TODO list.
         w->sb_index = 0;
         while (shard->tb_index < shard->tb_size) {
-            // gettime();
-
             // printf("WORK 1: %u: do %u\n", w->index, shard->tb_index);
             struct node *n = shard->tb_head->results[shard->tb_index % NRESULTS];
             do_work1(w, shard_index, n);
@@ -2622,6 +2627,11 @@ static void do_work(struct worker *w, unsigned int shard_index){
 
             // Stop if about to run out of state buffer space
             if (w->sb_index > STATE_BUFFER_HWM) {
+                break;
+            }
+
+            now = gettime();
+            if (now - start > .1) {
                 break;
             }
         }
