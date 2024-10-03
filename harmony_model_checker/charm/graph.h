@@ -166,12 +166,11 @@ struct failure {
     hvalue_t address;       // in case of data race or invariant failure
 };
 
-// A graph is represented by a list of its nodes.  Each node maintains a linked
+// A graph is represented by a list of its nodes.  Each node maintains a
 // list of its outgoing edges.
 struct graph {
     struct node **nodes;         // vector of all nodes
     unsigned int size;           // #valid nodes in this vector
-    unsigned int alloc_size;     // #nodes allocated
 };
 
 void graph_init(struct graph *graph, unsigned int initial_size);

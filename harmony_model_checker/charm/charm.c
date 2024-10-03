@@ -3006,7 +3006,6 @@ void vproc_tree_alloc(struct vproc_tree *vt, struct worker *workers, unsigned in
 // explored.
 static void worker(void *arg){
     struct worker *w = arg;
-    bool done = false;          // only used by worker 0
 
     // printf("WORKER %u\n", w->index);
 
@@ -3025,7 +3024,9 @@ static void worker(void *arg){
     // The worker now goes into a loop.  Each iteration consists of three phases.
     // Only worker 0 ever breaks out of this loop.
     double before = gettime();
+    double start_time = before;
     unsigned int nrounds = 0;
+    bool done = false;
     for (;; nrounds++) {
         // Wait for the first barrier (and keep stats)
         // This is where the worker is waiting for stabilizing hash tables
@@ -3057,21 +3058,37 @@ static void worker(void *arg){
         w->middle_count++;
 
         // Nobody's doing work.  Great time to see if we are done.
+        bool found_fail = false;
+        unsigned int nstates = 0, local_node_id = 0;
         done = true;
         for (unsigned int i = 0; i < w->nworkers; i++) {
+            if (i == w->index) {
+                local_node_id = nstates;
+            }
+
+            // Keep track of the total number of states
+            nstates += global.shards[i].tb_size;
+
+            // See if the worker found a failure.
+            if (w->workers[i].failures != NULL) {
+                found_fail = true;
+            }
+
             // If the worker has incoming messages, we're not done.
             if (w->workers[i].mq_first != NULL) {
                 done = false;
             }
 
-            // If the worker has anything on its TODO list, we're not done.
+            // TODO.  Should we also check for outgoing messages?
+
+            // If the worker has anything on its todo list, we're not done.
             struct shard *shard = &global.shards[i];
             if (shard->tb_index != shard->tb_size) {
                 done = false;
             }
         }
-        if (done) {
-            break;
+        if (found_fail) {
+            done = true;
         }
 
         before = after;
@@ -3081,13 +3098,11 @@ static void worker(void *arg){
         w->phase2a += after - before;
         before = after;
 
-        if (w->index == 0) {
-            // Collect the failures of all the workers
-            for (unsigned int i = 0; i < global.nworkers; i++) {
-                collect_failures(&w->workers[i]);
-            }
-            if (global.failures != NULL) {
-                done = true;
+        // If we're done, allocate the array of nodes, which is easier
+        // for graph analysis than a linked list
+        if (w->index == 0 % global.nworkers) {
+            if (done) {
+                graph_add_multiple(&global.graph, nstates);
             }
         }
 
@@ -3121,12 +3136,25 @@ static void worker(void *arg){
         dict_make_stable(global.values, w->index);
         dict_make_stable(global.computations, w->index);
 
+        // If done, fill in the graph table
+        if (done) {
+            for (struct results_block *rb = global.shards[w->index].todo_buffer;
+                                            rb != NULL; rb = rb->next) {
+                for (unsigned int k = 0; k < rb->nresults; k++) {
+                    struct node *n = rb->results[k];
+                    n->id = local_node_id;
+                    global.graph.nodes[local_node_id++] = n;
+                }
+            }
+        }
+
         after = gettime();
         w->phase3 += after - before;
         before = after;
     }
     if (w->index == 0) {
-        printf("Ran %u rounds\n", nrounds);
+        double end_time = gettime();
+        printf("Ran %u rounds in %lf seconds\n", nrounds, end_time - start_time);
         printf("%u values\n", global.values->count);
     }
 }
@@ -4086,7 +4114,6 @@ int exec_model_checker(int argc, char **argv){
     dict_set_concurrent(global.values);
     dict_set_concurrent(global.computations);
 
-#ifdef NEW_STUFF
     bool new;
     struct dict_assoc *hn = dict_find_new(global.shards[0].states, &workers[0].allocator, state, state_size(state), sizeof(struct edge), &new, NULL, meiyan((char *) state, state_size(state)));
     struct node *node = (struct node *) &hn[1];
@@ -4100,21 +4127,6 @@ int exec_model_checker(int argc, char **argv){
     global.shards[0].todo_buffer->results[0] = node;
     global.shards[0].todo_buffer->nresults = 1;
     global.shards[0].tb_size = 1;
-#else
-    dict_set_concurrent(visited);
-
-    // Put the initial state in the visited map
-    bool new;
-    mutex_t *lock;
-    struct dict_assoc *hn = dict_find_new(visited, &workers[0].allocator, state, state_size(state), sizeof(struct edge), &new, &lock);
-    struct node *node = (struct node *) &hn[1];
-    memset(node, 0, sizeof(*node));
-    node->nedges = 1;
-    mutex_release(lock);
-    memset(node_edges(node), 0, sizeof(struct edge));
-
-    graph_add(&global.graph, node);
-#endif
 
 #ifdef NEW_STUFF
     // Compute how much table space is allocated
@@ -4136,13 +4148,18 @@ int exec_model_checker(int argc, char **argv){
     // Run the last worker.  When it terminates the model checking is done.
     worker(&workers[0]);
 
-#ifdef NEW_STUFF
+    // Collect the failures of all the workers
+    for (unsigned int i = 0; i < global.nworkers; i++) {
+        collect_failures(&workers[i]);
+    }
+
+#ifdef notdef
     unsigned int nstates = 0;
     for (unsigned int i = 0; i < global.nshards; i++) {
         // printf("W%u: %u\n", i, workers[i].shard.tb_size);
         nstates += global.shards[i].tb_size;
     }
-    graph_add_multiple(&global.graph, nstates);
+    assert(global.graph.size == nstates);
     unsigned int node_id = 0;
     for (unsigned int i = 0; i < global.nshards; i++) {
         for (struct results_block *rb = global.shards[i].todo_buffer; rb != NULL; rb = rb->next) {
@@ -4154,6 +4171,8 @@ int exec_model_checker(int argc, char **argv){
         }
     }
 #endif
+
+    printf("TIME EXP %lf\n", gettime() - before);
 
     // Compute how much memory was used, approximately
     unsigned long allocated = global.allocated;
