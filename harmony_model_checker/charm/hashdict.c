@@ -103,9 +103,9 @@ void dict_delete(struct dict *dict) {
 
 static inline void dict_reinsert_when_resizing(struct dict *dict, struct dict_assoc *k) {
     unsigned int n = hash_func((char *) &k[1] + k->val_len, k->len) % dict->length;
-	struct dict_assoc **db = &dict->stable[n];
-    k->next = *db;
-    *db = k;
+	struct dict_assoc **sdb = &dict->stable[n];
+    k->next = *sdb;
+    *sdb = k;
 }
 
 unsigned long dict_allocated(struct dict *dict) {
@@ -239,7 +239,7 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
     *lock = &dict->locks[index % dict->nlocks];
 
     struct dict_assoc **sdb = &dict->stable[index];
-    struct dict_assoc **udb = &dict->stable[index];
+    struct dict_assoc **udb = &dict->unstable[index];
 	struct dict_assoc *k = *sdb;
 	while (k != NULL) {
 		if (k->len == keylen && memcmp((char *) &k[1] + k->val_len, key, keylen) == 0) {
@@ -252,7 +252,7 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
 #endif
 			return k;
 		}
-		k = k->next;;
+		k = k->next;
 	}
 
     mutex_acquire(*lock);
@@ -378,12 +378,10 @@ void *dict_retrieve(const void *p, unsigned int *psize){
 void *dict_lookup(struct dict *dict, const void *key, unsigned int keylen) {
     uint32_t hash = hash_func(key, keylen);
     unsigned int index = hash % dict->length;
-    struct dict_assoc **sdb = &dict->stable[index];
-    struct dict_assoc **udb = &dict->unstable[index];
 	// __builtin_prefetch(db);
 
     // First look in the stable list, which does not require a lock
-	struct dict_assoc *k = *sdb;
+	struct dict_assoc *k = dict->stable[index];
 	while (k != NULL) {
 		if (k->len == keylen && !memcmp((char *) &k[1] + k->val_len, key, keylen)) {
             return * (void **) &k[1];
@@ -394,7 +392,7 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keylen) {
     // Look in the unstable list
     if (dict->concurrent) {
         mutex_acquire(&dict->locks[index % dict->nlocks]);
-        k = *udb;
+        k = dict->unstable[index];
         while (k != NULL) {
             if (k->len == keylen && !memcmp((char *) &k[1] + k->val_len, key, keylen)) {
                 mutex_release(&dict->locks[index % dict->nlocks]);
@@ -451,9 +449,6 @@ void dict_set_concurrent(struct dict *dict) {
 // When going from concurrent to sequential, need to move over
 // the unstable values.
 void dict_make_stable(struct dict *dict, unsigned int worker){
-    if (!dict->concurrent) {
-        printf("make_stable %s\n", dict->whoami);
-    }
     assert(dict->concurrent);
 
     if (dict->length != dict->old_length) {
@@ -544,13 +539,14 @@ void dict_set_sequential(struct dict *dict) {
 
 #ifdef notdef
     // check integrity
-    struct dict_bucket *db = dict->table;
+    struct dict_assoc **sdb = dict->stable;
+    struct dict_assoc **udb = dict->unstable;
     unsigned int total = 0;
-	for (unsigned int i = 0; i < dict->length; i++, db++) {
-        if (db->unstable != NULL) {
+	for (unsigned int i = 0; i < dict->length; i++, sdb++, udb++) {
+        if (*udb != NULL) {
             printf("BAD DICT %s\n", dict->whoami);
         }
-        for (struct dict_assoc *k = db->stable; k != NULL; k = k->next) {
+        for (struct dict_assoc *k = *sdb; k != NULL; k = k->next) {
             total++;
         }
     }

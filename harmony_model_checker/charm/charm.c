@@ -3947,7 +3947,10 @@ int exec_model_checker(int argc, char **argv){
     // parse the contents
     char *buf_orig = buf.base;
     struct json_value *jv = json_parse_value(&buf);
-    assert(jv->type == JV_MAP);
+    if (jv == NULL || jv->type != JV_MAP) {
+        fprintf(stderr, "%s: bad input file: %s\n", argv[0], fname);
+        exit(1);
+    }
     free(buf_orig);
 
     // travel through the json code contents to create the code array
