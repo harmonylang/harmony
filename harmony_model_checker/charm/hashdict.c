@@ -49,7 +49,7 @@ void dict_assoc_delete(struct dict *dict, struct dict_assoc *k) {
 }
 
 struct dict *dict_new(char *whoami, unsigned int value_len, unsigned int initial_size,
-        unsigned int nworkers, bool align16) {
+        unsigned int nworkers, bool align16, bool concurrent) {
 	struct dict *dict = new_alloc(struct dict);
     dict->whoami = whoami;
     dict->value_len = value_len;
@@ -66,7 +66,7 @@ struct dict *dict_new(char *whoami, unsigned int value_len, unsigned int initial
 	dict->growth_threshold = 2;
 	dict->growth_factor = 10;
     dict->autogrow = true;
-	dict->concurrent = false;
+	dict->concurrent = concurrent;
     dict->workers = calloc(sizeof(struct dict_worker), nworkers);
     dict->nworkers = nworkers;
     for (unsigned int i = 0; i < nworkers; i++) {
@@ -441,7 +441,9 @@ void dict_iter(struct dict *dict, dict_enumfunc f, void *env) {
 }
 
 // Switch to concurrent mode
+// TODO.  Obsolete
 void dict_set_concurrent(struct dict *dict) {
+    assert(false);
     assert(!dict->concurrent);
     dict->concurrent = true;
 }

@@ -98,7 +98,7 @@ static struct json_value *json_parse_struct(json_buf_t *buf){
 
 	struct json_value *jv = new_alloc(struct json_value);
 	jv->type = JV_MAP;
-	jv->u.map = dict_new("json", sizeof(struct json_value *), 0, 0, false);
+	jv->u.map = dict_new("json", sizeof(struct json_value *), 0, 0, false, false);
 	for (;;) {
 		json_skip_blanks(buf);
 		assert(buf->len > 0);

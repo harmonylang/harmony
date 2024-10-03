@@ -56,7 +56,7 @@ struct dict {
 };
 
 struct dict *dict_new(char *whoami, unsigned int value_len, unsigned int initial_size,
-    unsigned int nworkers, bool align16);
+    unsigned int nworkers, bool align16, bool concurrent);
 void dict_delete(struct dict *dict);
 void *dict_lookup(struct dict *dict, const void *key, unsigned int keylen);
 bool dict_remove(struct dict *dict, const void *key, unsigned int keylen);
