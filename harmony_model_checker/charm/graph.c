@@ -17,10 +17,10 @@
 void graph_init(struct graph *graph, unsigned int initial_size) {
     assert(initial_size >= 1);
     graph->size = 0;
-    graph->alloc_size = initial_size;
-    graph->nodes = malloc(graph->alloc_size * sizeof(struct node *));
+    graph->nodes = NULL;
 }
 
+#ifdef notdef
 void graph_add(struct graph *graph, struct node *node) {
     node->id = graph->size;
     if (graph->size >= graph->alloc_size) {
@@ -29,14 +29,12 @@ void graph_add(struct graph *graph, struct node *node) {
     }
     graph->nodes[graph->size++] = node;
 }
+#endif
 
 unsigned int graph_add_multiple(struct graph *graph, unsigned int n) {
     unsigned int node_id = graph->size;
     graph->size += n;
-    if (graph->size > graph->alloc_size) {
-        graph->alloc_size = (graph->size + 1) * 2;
-        graph->nodes = realloc(graph->nodes, (graph->alloc_size * sizeof(struct node *)));
-    }
+    graph->nodes = realloc(graph->nodes, (graph->size * sizeof(struct node *)));
     return node_id;
 }
 
