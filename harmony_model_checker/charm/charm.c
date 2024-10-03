@@ -973,7 +973,7 @@ static struct step_output *onestep(
         if (infloop_detect || instrcnt > 1000) {
             if (infloop == NULL) {
                 infloop = dict_new("infloop1", sizeof(unsigned int),
-                                                0, 0, false);
+                                                0, 0, false, false);
             }
 
             // We need to save the global state *and *the state of the current
@@ -1549,7 +1549,7 @@ static void twostep(
         // Infinite loop detection
         if (!step.ctx->terminated && !step.ctx->failed) {
             if (infloop == NULL) {
-                infloop = dict_new("infloop2", 0, 0, 0, false);
+                infloop = dict_new("infloop2", 0, 0, 0, false, false);
             }
 
             int ctxsize = sizeof(struct context) + step.ctx->sp * sizeof(hvalue_t);
@@ -3400,7 +3400,7 @@ static void destutter1(FILE *out, bool suppress){
 }
 
 static struct dict *collect_symbols(struct graph *graph){
-    struct dict *symbols = dict_new("symbols", sizeof(unsigned int), 0, 0, false);
+    struct dict *symbols = dict_new("symbols", sizeof(unsigned int), 0, 0, false, false);
     unsigned int symbol_id = 0;
 
     for (unsigned int i = 0; i < graph->size; i++) {
@@ -3473,7 +3473,7 @@ static void print_trans_upcall(void *env, const void *key, unsigned int key_size
 }
 
 static void print_transitions(FILE *out, struct dict *symbols, struct node *node) {
-    struct dict *d = dict_new("transitions", sizeof(struct strbuf), 0, 0, false);
+    struct dict *d = dict_new("transitions", sizeof(struct strbuf), 0, 0, false, false);
 
     fprintf(out, "      \"transitions\": [\n");
     struct edge *e = node_edges(node);
@@ -3900,7 +3900,7 @@ int exec_model_checker(int argc, char **argv){
 
     // initialize modules
     mutex_init(&global.inv_lock);
-    global.values = dict_new("values", 0, 0, global.nworkers, true);
+    global.values = dict_new("values", 0, 0, global.nworkers, true, true);
 
     ops_init(NULL);
 
@@ -4009,12 +4009,7 @@ int exec_model_checker(int argc, char **argv){
         exit(0);
     }
 
-#ifndef NEW_STUFF
-    // Create the hash table that maps states to nodes
-    struct dict *visited = dict_new("visited", sizeof(struct node), 0, global.nworkers, false);
-#endif
-
-    global.computations = dict_new("computations", sizeof(struct step_condition), 0, global.nworkers, false);
+    global.computations = dict_new("computations", sizeof(struct step_condition), 0, global.nworkers, false, true);
 
     // Allocate the shards array.
     global.nshards = global.nworkers * SHARDS_PER_WORKER;
@@ -4062,7 +4057,7 @@ int exec_model_checker(int argc, char **argv){
         unsigned int first_shard = i * SHARDS_PER_WORKER;
         for (unsigned int si = 0; si < SHARDS_PER_WORKER; si++) {
             struct shard *shard = &global.shards[first_shard + si];
-            shard->states = dict_new("shard states", sizeof(struct node), 0, 0, false);
+            shard->states = dict_new("shard states", sizeof(struct node), 0, 0, false, false);
             // shard->states->autogrow = false;
             shard->peers = calloc(global.nshards, sizeof(*shard->peers));
             for (unsigned int si2 = 0; si2 < global.nshards; si2++) {
@@ -4106,10 +4101,6 @@ int exec_model_checker(int argc, char **argv){
     numa_set_preferred(vproc_info[workers[0].vproc].ids[0]);
 #endif
 #endif
-
-    // Put the state and value dictionaries in concurrent mode
-    dict_set_concurrent(global.values);
-    dict_set_concurrent(global.computations);
 
     bool new;
     struct dict_assoc *hn = dict_find_new(global.shards[0].states, &workers[0].allocator, state, state_size(state), sizeof(struct edge), &new, NULL, meiyan((char *) state, state_size(state)));
@@ -4240,9 +4231,6 @@ int exec_model_checker(int argc, char **argv){
 
     // Put the hashtables into "sequential mode" to avoid locking overhead.
     dict_set_sequential(global.values);
-#ifndef NEW_STUFF
-    dict_set_sequential(visited);
-#endif
     dict_set_sequential(global.computations);
 
     printf("* Phase 3: analysis\n");

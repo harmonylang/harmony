@@ -5234,8 +5234,8 @@ struct op_info *ops_get(char *opname, int size){
 // Initialize the tables that map instruction names (op_X) or Nary function
 // names (f_Y).  Also initialize a bunch of handy Harmony value constants.
 void ops_init(struct allocator *allocator) {
-    ops_map = dict_new("ops", sizeof(struct op_info *), 0, 0, false);
-    f_map = dict_new("functions", sizeof(struct f_info *), 0, 0, false);
+    ops_map = dict_new("ops", sizeof(struct op_info *), 0, 0, false, false);
+    f_map = dict_new("functions", sizeof(struct f_info *), 0, 0, false, false);
 	underscore = value_put_atom(allocator, "_", 1);
 	this_atom = value_put_atom(allocator, "this", 4);
     type_bool = value_put_atom(allocator, "bool", 4);

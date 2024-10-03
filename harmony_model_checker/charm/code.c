@@ -57,7 +57,7 @@ struct code code_init_parse(struct allocator *allocator, struct json_value *json
         code.instrs[i] = code_instr_parse(allocator, json_code->u.list.vals[i]);
     }
 
-    code.code_map = dict_new("code", sizeof(char *), 0, 0, false);
+    code.code_map = dict_new("code", sizeof(char *), 0, 0, false, false);
 
     return code;
 }
