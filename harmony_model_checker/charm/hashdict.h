@@ -17,15 +17,6 @@ struct dict_assoc {
 	struct dict_assoc *next;
 	uint16_t len;               // key length
     uint16_t val_len;           // value length
-#define da_next(k)     ((k)->next)
-#define da_len(k)      ((k)->len)
-};
-
-#define da_set(k, n)   do (k)->next = (n); while (0)
-
-// TODO.  Split into two tables, one for stable, one for unstable.
-struct dict_bucket {
-    struct dict_assoc *stable, *unstable;
 };
 
 struct dict_unstable {
@@ -42,9 +33,9 @@ struct dict_worker {
 struct dict {
     char *whoami;
     unsigned int value_len;
-	struct dict_bucket *table;
+	struct dict_assoc **stable, **unstable;
 	unsigned int length, count;
-	struct dict_bucket *old_table;
+	struct dict_assoc **old_stable, **old_unstable;
 	unsigned int old_length, old_count;
     struct dict_worker *workers;
     unsigned int nworkers;
