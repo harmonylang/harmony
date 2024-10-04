@@ -173,7 +173,7 @@ struct graph {
     unsigned int size;           // #valid nodes in this vector
 };
 
-void graph_init(struct graph *graph, unsigned int initial_size);
+void graph_init(struct graph *graph);
 void graph_check_for_data_race(
     struct failure **failures,
     struct node *node,

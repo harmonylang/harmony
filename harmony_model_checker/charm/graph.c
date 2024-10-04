@@ -14,8 +14,7 @@
 
 #define new_alloc(t)	(t *) calloc(1, sizeof(t))
 
-void graph_init(struct graph *graph, unsigned int initial_size) {
-    assert(initial_size >= 1);
+void graph_init(struct graph *graph) {
     graph->size = 0;
     graph->nodes = NULL;
 }

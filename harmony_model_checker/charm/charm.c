@@ -3908,9 +3908,7 @@ int exec_model_checker(int argc, char **argv){
     mutex_init(&global.inv_lock);
     global.values = dict_new("values", 0, 0, global.nworkers, true, true);
 
-    ops_init(NULL);
-
-    graph_init(&global.graph, 1 << 20);
+    graph_init(&global.graph);
     global.failures = NULL;
     global.seqs = VALUE_SET;
 
@@ -3952,70 +3950,6 @@ int exec_model_checker(int argc, char **argv){
         exit(1);
     }
     free(buf_orig);
-
-    // travel through the json code contents to create the code array
-    struct json_value *jc = dict_lookup(jv->u.map, "code", 4);
-    assert(jc->type == JV_LIST);
-    global.code = code_init_parse(NULL, jc);
-
-    if (has_countLabel) {
-        printf("    * compability with countLabel\n");
-    }
-
-    // Create an initial state.  Start with the initial context.
-    struct context *init_ctx = calloc(1, sizeof(struct context) + MAX_CONTEXT_STACK * sizeof(hvalue_t));
-    init_ctx->vars = VALUE_DICT;
-    init_ctx->atomic = 1;
-    init_ctx->initial = true;
-    value_ctx_push(init_ctx, VALUE_LIST);
-
-    // Now create the state.  If running direct, keep room to grow.
-    struct state *state = calloc(1, sizeof(struct state) +
-            (dflag ? 256 : 1) * (sizeof(hvalue_t) + 1));
-    state->vars = VALUE_DICT;
-    hvalue_t ictx = value_put_context(NULL, init_ctx);
-    state->chooser = -1;
-    state->bagsize = state->total = 1;
-    state_ctxlist(state)[0] = ictx | ((hvalue_t) 1 << STATE_M_SHIFT);
-    state->dfa_state = global.dfa == NULL ? 0 : dfa_initial(global.dfa);
-
-    // Needed for second phase
-    global.processes = new_alloc(hvalue_t);
-    global.callstacks = new_alloc(struct callstack *);
-    *global.processes = ictx;
-    struct callstack *cs = new_alloc(struct callstack);
-    cs->arg = VALUE_LIST;
-    cs->vars = VALUE_DICT;
-    cs->return_address = CALLTYPE_PROCESS;
-    *global.callstacks = cs;
-    global.nprocesses = 1;
-
-    // This is an experimental feature: run code directly (don't model check)
-    if (dflag) {
-        global.run_direct = true;
-        srand((unsigned) gettime());
-
-#ifndef _WIN32
-        signal(SIGALRM, alrmhandler);
-        alarm((int) maxtime);
-#endif
-
-        struct state *sc = calloc(1, sizeof(struct state) +
-                    256 * (sizeof(hvalue_t) + 1));
-        for (unsigned int i = 0; i < 1; i++) {
-            if (i > 0 && i % 100 == 0) {
-                printf("TIME %d\n", i);
-            }
-            memcpy(sc, state, state_size(state));
-            direct_run(sc, i);
-        }
-        if (global.dfa != NULL) {
-            dfa_dump(global.dfa);
-        }
-        exit(0);
-    }
-
-    global.computations = dict_new("computations", sizeof(struct step_condition), 0, global.nworkers, false, true);
 
     // Allocate the shards array.
     global.nshards = global.nworkers * SHARDS_PER_WORKER;
@@ -4108,6 +4042,72 @@ int exec_model_checker(int argc, char **argv){
 #endif
 #endif
 
+    ops_init(&workers[0].allocator);
+
+    // travel through the json code contents to create the code array
+    struct json_value *jc = dict_lookup(jv->u.map, "code", 4);
+    assert(jc->type == JV_LIST);
+    global.code = code_init_parse(&workers[0].allocator, jc);
+
+    if (has_countLabel) {
+        printf("    * compability with countLabel\n");
+    }
+
+    // Create an initial state.  Start with the initial context.
+    struct context *init_ctx = calloc(1, sizeof(struct context) + MAX_CONTEXT_STACK * sizeof(hvalue_t));
+    init_ctx->vars = VALUE_DICT;
+    init_ctx->atomic = 1;
+    init_ctx->initial = true;
+    value_ctx_push(init_ctx, VALUE_LIST);
+
+    // Now create the state.  If running direct, keep room to grow.
+    struct state *state = calloc(1, sizeof(struct state) +
+            (dflag ? 256 : 1) * (sizeof(hvalue_t) + 1));
+    state->vars = VALUE_DICT;
+    hvalue_t ictx = value_put_context(&workers[0].allocator, init_ctx);
+    state->chooser = -1;
+    state->bagsize = state->total = 1;
+    state_ctxlist(state)[0] = ictx | ((hvalue_t) 1 << STATE_M_SHIFT);
+    state->dfa_state = global.dfa == NULL ? 0 : dfa_initial(global.dfa);
+
+    // Needed for second phase
+    global.processes = new_alloc(hvalue_t);
+    global.callstacks = new_alloc(struct callstack *);
+    *global.processes = ictx;
+    struct callstack *cs = new_alloc(struct callstack);
+    cs->arg = VALUE_LIST;
+    cs->vars = VALUE_DICT;
+    cs->return_address = CALLTYPE_PROCESS;
+    *global.callstacks = cs;
+    global.nprocesses = 1;
+
+    // This is an experimental feature: run code directly (don't model check)
+    if (dflag) {
+        global.run_direct = true;
+        srand((unsigned) gettime());
+
+#ifndef _WIN32
+        signal(SIGALRM, alrmhandler);
+        alarm((int) maxtime);
+#endif
+
+        struct state *sc = calloc(1, sizeof(struct state) +
+                    256 * (sizeof(hvalue_t) + 1));
+        for (unsigned int i = 0; i < 1; i++) {
+            if (i > 0 && i % 100 == 0) {
+                printf("TIME %d\n", i);
+            }
+            memcpy(sc, state, state_size(state));
+            direct_run(sc, i);
+        }
+        if (global.dfa != NULL) {
+            dfa_dump(global.dfa);
+        }
+        exit(0);
+    }
+
+    global.computations = dict_new("computations", sizeof(struct step_condition), 0, global.nworkers, false, true);
+
     bool new;
     struct dict_assoc *hn = dict_find_new(global.shards[0].states, &workers[0].allocator, state, state_size(state), sizeof(struct edge), &new, NULL, meiyan((char *) state, state_size(state)));
     struct node *node = (struct node *) &hn[1];
@@ -4122,15 +4122,10 @@ int exec_model_checker(int argc, char **argv){
     global.shards[0].todo_buffer->nresults = 1;
     global.shards[0].tb_size = 1;
 
-#ifdef NEW_STUFF
     // Compute how much table space is allocated
     // TODO.  Add per worker stuff
     global.allocated = global.graph.size * sizeof(struct node *) +
                              dict_allocated(global.values);
-#else
-    global.allocated = global.graph.size * sizeof(struct node *) +
-        dict_allocated(visited) + dict_allocated(global.values);
-#endif
 
     // Start all but one of the workers. All will wait on the start barrier
     for (unsigned int i = 1; i < global.nworkers; i++) {
@@ -4146,27 +4141,6 @@ int exec_model_checker(int argc, char **argv){
     for (unsigned int i = 0; i < global.nworkers; i++) {
         collect_failures(&workers[i]);
     }
-
-#ifdef notdef
-    unsigned int nstates = 0;
-    for (unsigned int i = 0; i < global.nshards; i++) {
-        // printf("W%u: %u\n", i, workers[i].shard.tb_size);
-        nstates += global.shards[i].tb_size;
-    }
-    assert(global.graph.size == nstates);
-    unsigned int node_id = 0;
-    for (unsigned int i = 0; i < global.nshards; i++) {
-        for (struct results_block *rb = global.shards[i].todo_buffer; rb != NULL; rb = rb->next) {
-            for (unsigned int k = 0; k < rb->nresults; k++) {
-                struct node *n = rb->results[k];
-                n->id = node_id;
-                global.graph.nodes[node_id++] = n;
-            }
-        }
-    }
-#endif
-
-    printf("TIME EXP %lf\n", gettime() - before);
 
     // Compute how much memory was used, approximately
     unsigned long allocated = global.allocated;

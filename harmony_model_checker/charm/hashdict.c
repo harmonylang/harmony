@@ -56,23 +56,25 @@ struct dict *dict_new(char *whoami, unsigned int value_len, unsigned int initial
 	if (initial_size == 0) initial_size = 1024;
 	dict->length = dict->old_length = initial_size;
 	dict->count = dict->old_count = 0;
-	dict->stable = dict->old_stable = calloc(sizeof(*dict->stable), initial_size);
-	dict->unstable = dict->old_unstable = calloc(sizeof(*dict->unstable), initial_size);
-    dict->nlocks = nworkers * 64;        // TODO: how much?
-    dict->locks = malloc(dict->nlocks * sizeof(mutex_t));
-	for (unsigned int i = 0; i < dict->nlocks; i++) {
-		mutex_init(&dict->locks[i]);
-	}
 	dict->growth_threshold = 2;
 	dict->growth_factor = 10;
     dict->autogrow = true;
 	dict->concurrent = concurrent;
-    dict->workers = calloc(sizeof(struct dict_worker), nworkers);
-    dict->nworkers = nworkers;
-    for (unsigned int i = 0; i < nworkers; i++) {
-        dict->workers[i].unstable = calloc(sizeof(struct dict_unstable), nworkers);
-    }
     dict->align16 = align16;
+	dict->stable = dict->old_stable = calloc(sizeof(*dict->stable), initial_size);
+    if (concurrent) {
+        dict->unstable = dict->old_unstable = calloc(sizeof(*dict->unstable), initial_size);
+        dict->nlocks = nworkers * 64;        // TODO: how much?
+        dict->locks = malloc(dict->nlocks * sizeof(mutex_t));
+        for (unsigned int i = 0; i < dict->nlocks; i++) {
+            mutex_init(&dict->locks[i]);
+        }
+        dict->workers = calloc(sizeof(struct dict_worker), nworkers);
+        dict->nworkers = nworkers;
+        for (unsigned int i = 0; i < nworkers; i++) {
+            dict->workers[i].unstable = calloc(sizeof(struct dict_unstable), nworkers);
+        }
+    }
 #ifdef HASHDICT_STATS
     atomic_init(&dict->nstable_hits, 0);
     atomic_init(&dict->nunstable_hits, 0);
@@ -494,7 +496,7 @@ void dict_make_stable(struct dict *dict, unsigned int worker){
                 struct dict_assoc **sdb = &dict->stable[index];
                 k->next = *sdb;
                 *sdb = k;
-                assert(dict->unstable[index] = NULL);
+                assert(dict->unstable[index] == NULL);
             }
             du->next = 0;
         }
