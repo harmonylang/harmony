@@ -111,7 +111,10 @@ static inline void dict_reinsert_when_resizing(struct dict *dict, struct dict_as
 }
 
 unsigned long dict_allocated(struct dict *dict) {
-    return dict->length * (sizeof(*dict->stable) + sizeof(*dict->unstable));
+    if (dict->concurrent) {
+        return dict->length * (sizeof(*dict->stable) + sizeof(*dict->unstable));
+    }
+    return dict->length * sizeof(*dict->stable);
 }
 
 void dict_resize(struct dict *dict, unsigned int newsize) {
