@@ -71,7 +71,7 @@
 #define MAX_STATE_SIZE (sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1))
 
 // Buffer per shard
-#define STATE_BUFFER_HWM    25
+#define STATE_BUFFER_HWM    500
 
 #define SHARDS_PER_WORKER   1
 
@@ -81,6 +81,8 @@ struct global global;
 // Immediately followed by a state
 struct state_header {
     struct state_header *next;  // linked list
+    bool garbage;               // returned to sender
+    unsigned int source;        // for return to sender and free-ing
     unsigned int nctxs;         // for free list maintenance
     struct node *node;          // old state
     unsigned int edge_index;    // index of the edge in the old state
@@ -1232,6 +1234,8 @@ static void trystep(
     // TODO. Also copy not needed if ctx_index == -1 (invariant check)
     // struct shard *shard = &global.shards[shard_index];
     struct state_header *sh = state_header_alloc(w, state, est_total_ctxs);
+    sh->garbage = false;
+    sh->source = shard_index;
     sh->node = node;
     sh->edge_index = edge_index;
     struct state *sc = (struct state *) &sh[1];
@@ -2560,6 +2564,11 @@ static void do_work(struct worker *w, unsigned int shard_index){
         while ((sh = w->umq_first) != NULL) {
             w->umq_first = sh->next;
 
+            if (sh->garbage) {
+                state_header_free(w, sh);
+                continue;
+            }
+
             struct state *sc = (struct state *) &sh[1];
             unsigned int size = state_size(sc);
 
@@ -2605,7 +2614,12 @@ static void do_work(struct worker *w, unsigned int shard_index){
                 w->loops_possible = true;
             }
 
-            state_header_free(w, sh);  // TODOTODO  should be sent back
+            // Send the state back to the source
+            sh->garbage = true;
+            struct state_queue *sq = &shard->peers[sh->source];
+            *sq->last = sh;
+            sq->last = &sh->next;
+            sh->next = NULL;
 
             now = gettime();
             if (now - start > .1) {
