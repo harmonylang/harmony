@@ -3972,7 +3972,6 @@ int exec_model_checker(int argc, char **argv){
         w->index = i;
         w->workers = workers;
         w->nworkers = global.nworkers;
-        w->profile = calloc(global.code.len, sizeof(*w->profile));
 
         // Create a context for evaluating invariants
         w->inv_step.ctx = calloc(1, sizeof(struct context) +
@@ -4051,6 +4050,12 @@ int exec_model_checker(int argc, char **argv){
 
     if (has_countLabel) {
         printf("    * compability with countLabel\n");
+    }
+
+    // Initialize the profile arrays of the workers.
+    for (unsigned int i = 0; i < global.nworkers; i++) {
+        struct worker *w = &workers[i];
+        w->profile = calloc(global.code.len, sizeof(*w->profile));
     }
 
     // Create an initial state.  Start with the initial context.
