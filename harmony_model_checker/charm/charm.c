@@ -71,7 +71,7 @@
 #define MAX_STATE_SIZE (sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1))
 
 // Buffer per shard
-#define STATE_BUFFER_HWM    5000
+#define STATE_BUFFER_HWM    50000
 
 #define SHARDS_PER_WORKER   1
 
