@@ -81,8 +81,8 @@ struct global global;
 // Immediately followed by a state
 struct state_header {
     struct state_header *next;  // linked list
-    bool garbage;               // returned to sender
-    unsigned int source;        // for return to sender and free-ing
+    // bool garbage;               // returned to sender
+    // unsigned int source;        // for return to sender and free-ing
     unsigned int nctxs;         // for free list maintenance
     struct node *node;          // old state
     unsigned int edge_index;    // index of the edge in the old state
@@ -245,12 +245,14 @@ struct worker {
 
     unsigned int sb_index;
 
+#ifdef notdef
     // Lock protected message queue
     mutex_t mq_mutex;
     struct state_header *mq_first, **mq_last;
 
     // Non-lock protected message queue
     struct state_header *umq_first, **umq_last;
+#endif
 };
 
 #ifdef CACHE_LINE_ALIGNED
@@ -1240,8 +1242,8 @@ static void trystep(
     // TODO. Also copy not needed if ctx_index == -1 (invariant check)
     // struct shard *shard = &global.shards[shard_index];
     struct state_header *sh = state_header_alloc(w, state, est_total_ctxs);
-    sh->garbage = false;
-    sh->source = shard_index;
+    // sh->garbage = false;
+    // sh->source = shard_index;
     sh->node = node;
     sh->edge_index = edge_index;
     struct state *sc = (struct state *) &sh[1];
@@ -2526,13 +2528,25 @@ void do_work1(struct worker *w, unsigned int shard_index, struct node *node){
 // ones after todo should be explored.  In other words, the "todo list" starts
 // at global.graph.nodes[global.todo] and ends at graph.nodes[graph.size];
 static void do_work(struct worker *w, unsigned int shard_index){
-    double start = gettime(), now;
+    // double start = gettime(), now;
     struct shard *shard = &global.shards[shard_index];
 
+// printf("FREE MESSAGES\n");
+    // Put any messages from the prior round on the appropriate free lists
+    for (unsigned int i = 0; i < global.nshards; i++) {
+        struct state_queue *sq = &shard->peers[i];
+        struct state_header *sh;
+        while ((sh = sq->first) != NULL) {
+            sq->first = sh->next;
+            state_header_free(w, sh);
+        }
+        sq->last = &sq->first;
+    }
+
     shard->idle = false;
+#ifdef notdef
     for (;;) {
         // Send the computed states to their respective destinations
-        struct shard *shard = &global.shards[shard_index];
         for (unsigned int i = 0; i < global.nshards; i++) {
             struct state_queue *sq = &shard->peers[i];
             if (sq->first != NULL) {
@@ -2566,7 +2580,7 @@ static void do_work(struct worker *w, unsigned int shard_index){
 
         // Look up the states, and if they're new add them to my todo list
         struct state_header *sh;
-        now = gettime();
+        // now = gettime();
         while ((sh = w->umq_first) != NULL) {
             w->umq_first = sh->next;
 
@@ -2639,11 +2653,11 @@ static void do_work(struct worker *w, unsigned int shard_index){
         if (now - start > .1) {
             break;
         }
+#endif // notdef
 
         // See if there's anything on my TODO list.
         w->sb_index = 0;
         while (shard->tb_index < shard->tb_size) {
-            // printf("WORK 1: %u: do %u\n", w->index, shard->tb_index);
             struct node *n = shard->tb_head->results[shard->tb_index % NRESULTS];
             do_work1(w, shard_index, n);
             shard->tb_index++;
@@ -2656,12 +2670,14 @@ static void do_work(struct worker *w, unsigned int shard_index){
                 break;
             }
 
+#ifdef notdef
             now = gettime();
             if (now - start > .1) {
                 break;
             }
+#endif
         }
-    }
+    // }
 }
 
 static void do_work2(struct worker *w, unsigned int shard_index){
@@ -2671,11 +2687,8 @@ static void do_work2(struct worker *w, unsigned int shard_index){
 
     for (unsigned int i = 0; i < global.nshards; i++) {
         struct shard *s2 = &global.shards[i];
-        struct state_header *sh;
-        while ((sh = s2->peers[shard_index].first) != NULL) {
-            s2->peers[shard_index].first = sh->next;
-
-            // gettime();
+        for (struct state_header *sh = s2->peers[shard_index].first;
+                                    sh != NULL; sh = sh->next) {
             struct state *sc = (struct state *) &sh[1];
             unsigned int size = state_size(sc);
 
@@ -2720,10 +2733,7 @@ static void do_work2(struct worker *w, unsigned int shard_index){
             else if (next != sh->node && next->len <= sh->node->len) {
                 w->loops_possible = true;
             }
-
-            state_header_free(w, sh);  // TODOTODO
         }
-        s2->peers[shard_index].last = &s2->peers[shard_index].first;
     }
 
     assert(shard->tb_index <= shard->tb_size);
@@ -3088,8 +3098,9 @@ static void worker(void *arg){
                 found_fail = true;
             }
 
-            // If the worker has incoming messages, we're not done.
-            if (w->workers[i].mq_first != NULL) {
+            // If the worker has outgoing messages, we're not done.
+            // if (w->workers[i].mq_first != NULL) {
+            if (w->workers[i].sb_index != 0) {
                 done = false;
             }
 
@@ -3106,7 +3117,7 @@ static void worker(void *arg){
         }
 
         before = after;
-        // do_work2(w, w->index);
+        do_work2(w, w->index);
         after = gettime();
 
         w->phase2a += after - before;
@@ -3968,8 +3979,8 @@ int exec_model_checker(int argc, char **argv){
     // Allocate the shards array.
     global.nshards = global.nworkers * SHARDS_PER_WORKER;
     global.shards = calloc(global.nshards, sizeof(*global.shards));
-    printf("-> %p %u\n", global.shards, (unsigned int) (global.nshards * sizeof(*global.shards)));
 #ifdef notdef
+    printf("-> %p %u\n", global.shards, (unsigned int) (global.nshards * sizeof(*global.shards)));
     atomic_init(&global.sh_index1, 0);
     atomic_init(&global.sh_index2, 0);
 #endif
@@ -4021,6 +4032,7 @@ int exec_model_checker(int argc, char **argv){
             shard->todo_buffer->next = NULL;
         }
 
+#ifdef notdef
         // Initialize the worker's message queue
         mutex_init(&w->mq_mutex);
         w->mq_first = NULL;
@@ -4029,6 +4041,7 @@ int exec_model_checker(int argc, char **argv){
         // Locally buffered message queue
         w->umq_first = NULL;
         w->umq_last = &w->umq_first;
+#endif
     }
 
     // Pin workers to particular virtual processors
