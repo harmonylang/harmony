@@ -648,6 +648,7 @@ static void process_step(
 #else
             f->edge->dst = sh->node;
 #endif
+            assert(f->edge->dst != NULL);
             f->edge->stc_id = stc->id;
             f->edge->failed = true;
             add_failure(&global.failures, f);
@@ -736,6 +737,7 @@ static void process_step(
     assert(sh->edge_index >= 0);
     assert(sh->edge_index < 256);
     struct edge *edge = &node_edges(sh->node)[sh->edge_index];
+    // assert(edge->dst != NULL);
     if (so->failed || so->infinite_loop) {
         edge->failed = true;
         noutgoing = 0;
@@ -1690,6 +1692,7 @@ void path_recompute(){
     for (unsigned int i = 0; i < global.nmacrosteps; i++) {
         struct macrostep *macro = global.macrosteps[i];
         struct edge *e = macro->edge;
+        // assert(e->dst != NULL);
         hvalue_t ctx = edge_input(e)->ctx;
 
         if (edge_invariant(e)) {
@@ -2164,6 +2167,7 @@ static void path_output(FILE *file){
     struct state *oldstate = calloc(1, MAX_STATE_SIZE);
     oldstate->vars = VALUE_DICT;
     for (unsigned int i = 0; i < global.nmacrosteps; i++) {
+        // assert(global.macrosteps[i]->edge->dst != NULL);
         path_output_macrostep(file, global.macrosteps[i], oldstate);
         if (i == global.nmacrosteps - 1) {
             fprintf(file, "\n");
@@ -2975,7 +2979,6 @@ static void worker(void *arg){
 
             // Keep track of the total number of states
             nstates += global.shards[i].tb_size;
-            assert(global.shards[i].tb_size == global.shards[i].todo_buffer->nresults);
 
             // See if the worker found a failure.
             if (w->workers[i].failures != NULL) {
@@ -3008,8 +3011,10 @@ static void worker(void *arg){
             before = after;
         }
 
-        // If we're done, allocate the array of nodes, which is easier
-        // for graph analysis than a linked list
+        // If we're done, allocate an array of nodes, which is easier
+        // for graph analysis than a linked list.  The entriews themselves
+        // are filled in parallel later, while also assigning ids to each
+        // of the nodes.
         if (w->index == 0 % global.nworkers) {
             if (done) {
                 graph_add_multiple(&global.graph, nstates);
@@ -4583,6 +4588,7 @@ int exec_model_checker(int argc, char **argv){
 
         // First copy the path to the bad state into an array for easier sorting
         assert(bad->node != NULL);
+        // assert(bad->edge->dst != NULL);
         path_serialize(bad->node, bad->edge);
 
         // The optimal path minimizes the number of context switches.  Here we
