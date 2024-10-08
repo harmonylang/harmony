@@ -4182,7 +4182,7 @@ int exec_model_checker(int argc, char **argv){
         start_wait += w->start_wait;
         middle_wait += w->middle_wait;
         end_wait += w->end_wait;
-#ifndef notdef
+#ifdef notdef
         printf("W%2u: %.3lf %.3lf %.3lf %.3lf %.3lf %.3lf %.3lf %u %u\n", i,
                 w->phase1,
                 w->phase2a,
