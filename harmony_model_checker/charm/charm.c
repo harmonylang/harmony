@@ -84,7 +84,7 @@ struct state_header {
     // unsigned int source;        // for return to sender and free-ing
     unsigned int nctxs;         // for free list maintenance
     struct node *node;          // old state
-    unsigned int edge_index;    // index of the edge in the old state
+    int edge_index;             // index of edge in the old state (-1 is invarinat)
     unsigned int noutgoing;     // number of outgoing edges of new state
     uint32_t hash;              // to speed up hash lookup
 };
@@ -733,6 +733,8 @@ static void process_step(
     }
 
     // If a failure has occurred, keep track of that too.
+    assert(sh->edge_index >= 0);
+    assert(sh->edge_index < 256);
     struct edge *edge = &node_edges(sh->node)[sh->edge_index];
     if (so->failed || so->infinite_loop) {
         edge->failed = true;
@@ -1095,6 +1097,8 @@ static void trystep(
 ) {
     assert(ctx_index == -1 || state_ctx(state, ctx_index) == ctx);
     assert(state->chooser < 0 || choice != 0);
+    assert(edge_index >= -1);
+    assert(edge_index < 256);
     struct step_condition *stc;
     bool si_new;
     mutex_t *si_lock;
@@ -1226,7 +1230,7 @@ static void trystep(
     // Conservative size.  Actual size hard to estimate because of
     // multiplicities.
     struct step_output *so2 = stc->u.completed;
-    unsigned int est_total_ctxs = state->total + so2->nspawned;
+    unsigned int est_total_ctxs = state->total + so2->nspawned + 1;
 
     // Allocate a state_header
     // TODO. Don't need to copy if ctx in readonly mode (unless it stops being in
@@ -1239,6 +1243,8 @@ static void trystep(
     // sh->source = shard_index;
     sh->node = node;
     sh->edge_index = edge_index;
+    assert(sh->edge_index >= -1);
+    assert(sh->edge_index < 256);
     struct state *sc = (struct state *) &sh[1];
 
     // Remove original context from context bag
@@ -1260,6 +1266,8 @@ static void trystep(
         sh = state_header_alloc(w, state, est_total_ctxs);
         sh->node = node;
         sh->edge_index = el->edge_index;
+        assert(sh->edge_index >= -1);
+        assert(sh->edge_index < 256);
         sc = (struct state *) &sh[1];
 
         context_remove(sc, ctx);
@@ -2537,140 +2545,22 @@ static void do_work(struct worker *w, unsigned int shard_index){
     }
 
     shard->idle = false;
-#ifdef notdef
-    for (;;) {
-        // Send the computed states to their respective destinations
-        for (unsigned int i = 0; i < global.nshards; i++) {
-            struct state_queue *sq = &shard->peers[i];
-            if (sq->first != NULL) {
-                struct worker *w2 = &w->workers[i];
-                mutex_acquire(&w2->mq_mutex);
-                *w2->mq_last = sq->first;
-                w2->mq_last = sq->last;
-                assert(*w2->mq_last == NULL);
-                mutex_release(&w2->mq_mutex);
-                sq->first = NULL;
-                sq->last = &sq->first;
-            }
+
+    // See if there's anything on my TODO list.
+    w->sb_index = 0;
+    while (shard->tb_index < shard->tb_size) {
+        struct node *n = shard->tb_head->results[shard->tb_index % NRESULTS];
+        do_work1(w, shard_index, n);
+        shard->tb_index++;
+        if (shard->tb_index % NRESULTS == 0) {
+            shard->tb_head = shard->tb_head->next;
         }
 
-        // Get my messages
-        // TODO.  Optimize by incorporating into loop above.
-        mutex_acquire(&w->mq_mutex);
-        if (w->mq_first != NULL) {
-            *w->umq_last = w->mq_first;
-            w->umq_last = w->mq_last;
-            w->mq_first = NULL;
-            w->mq_last = &w->mq_first;
-        }
-        mutex_release(&w->mq_mutex);
-
-        // If there are no messages and my todo list is empty, go to the barrier.
-        if (w->umq_first == NULL && shard->tb_index == shard->tb_size) {
-            shard->idle = true;
+        // Stop if about to run out of state buffer space
+        if (w->sb_index > STATE_BUFFER_HWM * global.nworkers) {
             break;
         }
-
-        // Look up the states, and if they're new add them to my todo list
-        struct state_header *sh;
-        // now = gettime();
-        while ((sh = w->umq_first) != NULL) {
-            w->umq_first = sh->next;
-
-            if (sh->garbage) {
-                state_header_free(w, sh);
-                continue;
-            }
-
-            struct state *sc = (struct state *) &sh[1];
-            unsigned int size = state_size(sc);
-
-            // See if this state has been computed before by looking up the node,
-            // or allocate if not.
-            bool new;
-            struct dict_assoc *hn = dict_find_new(shard->states, &w->allocator,
-                        sc, size, sh->noutgoing * sizeof(struct edge), &new, NULL, sh->hash);
-            struct node *next = (struct node *) &hn[1];
-            struct edge *edge = &node_edges(sh->node)[sh->edge_index];
-            edge->dst = next;
-
-            if (new) {
-                next->failed = edge->failed;
-                next->initial = false;
-                next->parent = sh->node;
-                next->len = sh->node->len + 1;
-                next->nedges = sh->noutgoing;
-
-                assert(shard->tb_tail->nresults == shard->tb_size % NRESULTS);
-                assert(shard->tb_tail->next == NULL);
-                shard->tb_size++;
-                shard->tb_tail->results[shard->tb_tail->nresults++] = next;
-                if (shard->tb_tail->nresults == NRESULTS) {
-                    struct results_block *rb = walloc_fast(w, sizeof(*shard->tb_tail));
-                    rb->nresults = 0;
-                    rb->next = NULL;
-                    shard->tb_tail->next = rb;
-                    shard->tb_tail = rb;
-                }
-                assert(shard->tb_tail->nresults == shard->tb_size % NRESULTS);
-
-#ifndef NEW_STUFF
-                w->count++;
-#endif
-                w->enqueued++;
-                w->total_results++;
-            }
-
-            // See if the node points sideways or backwards, in which
-            // case cycles in the graph are possible
-            else if (next != sh->node && next->len <= sh->node->len) {
-                w->loops_possible = true;
-            }
-
-            // Send the state back to the source
-            sh->garbage = true;
-            struct state_queue *sq = &shard->peers[sh->source];
-            *sq->last = sh;
-            sq->last = &sh->next;
-            sh->next = NULL;
-
-            now = gettime();
-            if (now - start > .1) {
-                break;
-            }
-        }
-        if (w->umq_first == NULL) {
-            w->umq_last = &w->umq_first;
-        }
-
-        if (now - start > .1) {
-            break;
-        }
-#endif // notdef
-
-        // See if there's anything on my TODO list.
-        w->sb_index = 0;
-        while (shard->tb_index < shard->tb_size) {
-            struct node *n = shard->tb_head->results[shard->tb_index % NRESULTS];
-            do_work1(w, shard_index, n);
-            shard->tb_index++;
-            if (shard->tb_index % NRESULTS == 0) {
-                shard->tb_head = shard->tb_head->next;
-            }
-
-            // Stop if about to run out of state buffer space
-            if (w->sb_index > STATE_BUFFER_HWM * global.nworkers) {
-                break;
-            }
-
-#ifdef notdef
-            now = gettime();
-            if (now - start > .1) {
-                break;
-            }
-#endif
-        }
-    // }
+    }
 }
 
 static void do_work2(struct worker *w, unsigned int shard_index){
@@ -3085,6 +2975,7 @@ static void worker(void *arg){
 
             // Keep track of the total number of states
             nstates += global.shards[i].tb_size;
+            assert(global.shards[i].tb_size == global.shards[i].todo_buffer->nresults);
 
             // See if the worker found a failure.
             if (w->workers[i].failures != NULL) {
@@ -3108,13 +2999,14 @@ static void worker(void *arg){
         if (found_fail) {
             done = true;
         }
+        else if (!done) {
+            before = after;
+            do_work2(w, w->index);
+            after = gettime();
 
-        before = after;
-        do_work2(w, w->index);
-        after = gettime();
-
-        w->phase2a += after - before;
-        before = after;
+            w->phase2a += after - before;
+            before = after;
+        }
 
         // If we're done, allocate the array of nodes, which is easier
         // for graph analysis than a linked list
@@ -3156,11 +3048,15 @@ static void worker(void *arg){
 
         // If done, fill in the graph table
         if (done) {
+            assert(global.graph.size == nstates);
             for (struct results_block *rb = global.shards[w->index].todo_buffer;
                                             rb != NULL; rb = rb->next) {
+                assert(rb->nresults <= nstates);
+                assert(rb->nresults <= global.shards[w->index].tb_size);
                 for (unsigned int k = 0; k < rb->nresults; k++) {
                     struct node *n = rb->results[k];
                     n->id = local_node_id;
+                    assert(local_node_id < global.graph.size);
                     global.graph.nodes[local_node_id++] = n;
                 }
             }
