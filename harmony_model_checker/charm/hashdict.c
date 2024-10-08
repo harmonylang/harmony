@@ -92,7 +92,7 @@ void dict_delete(struct dict *dict) {
 	for (unsigned int i = 0; i < dict->length; i++) {
 		if (dict->stable[i] != NULL)
 			dict_assoc_delete(dict, dict->stable[i]);
-		if (dict->unstable[i] != NULL)
+		if (dict->concurrent && dict->unstable[i] != NULL)
 			dict_assoc_delete(dict, dict->unstable[i]);
 	}
 	for (unsigned int i = 0; i < dict->nlocks; i++) {
