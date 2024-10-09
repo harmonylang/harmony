@@ -176,6 +176,7 @@ struct worker {
 
     unsigned int vproc;          // virtual processor for pinning
     struct failure *failures;    // list of discovered failures (not data races)
+    bool found_failures;         // some worker found failures
 
     // The worker thread loop through three phases:
     //  1: model check part of the state space
@@ -2536,7 +2537,6 @@ static void do_work(struct worker *w, unsigned int shard_index){
     // double start = gettime(), now;
     struct shard *shard = &global.shards[shard_index];
 
-// printf("FREE MESSAGES\n");
     // Put any messages from the prior round on the appropriate free lists
     for (unsigned int i = 0; i < global.nshards; i++) {
         struct state_queue *sq = &shard->peers[i];
@@ -2554,7 +2554,9 @@ static void do_work(struct worker *w, unsigned int shard_index){
     w->sb_index = 0;
     while (shard->tb_index < shard->tb_size) {
         struct node *n = shard->tb_head->results[shard->tb_index % NRESULTS];
-        do_work1(w, shard_index, n);
+        if (!w->found_failures) {
+            do_work1(w, shard_index, n);
+        }
         shard->tb_index++;
         if (shard->tb_index % NRESULTS == 0) {
             shard->tb_head = shard->tb_head->next;
@@ -2969,7 +2971,6 @@ static void worker(void *arg){
         w->middle_count++;
 
         // Nobody's doing work.  Great time to see if we are done.
-        bool found_fail = false;
         unsigned int nstates = 0, local_node_id = 0;
         done = true;
         for (unsigned int i = 0; i < w->nworkers; i++) {
@@ -2982,7 +2983,7 @@ static void worker(void *arg){
 
             // See if the worker found a failure.
             if (w->workers[i].failures != NULL) {
-                found_fail = true;
+                w->found_failures = true;
             }
 
             // If the worker has outgoing messages, we're not done.
@@ -2999,17 +3000,13 @@ static void worker(void *arg){
                 done = false;
             }
         }
-        if (found_fail) {
-            done = true;
-        }
-        else if (!done) {
-            before = after;
-            do_work2(w, w->index);
-            after = gettime();
 
-            w->phase2a += after - before;
-            before = after;
-        }
+        before = after;
+        do_work2(w, w->index);
+        after = gettime();
+
+        w->phase2a += after - before;
+        before = after;
 
         // If we're done, allocate an array of nodes, which is easier
         // for graph analysis than a linked list.  The entriews themselves
