@@ -1265,7 +1265,7 @@ static void trystep(
     while (el != NULL) {
         node = el->node;
         state = node_state(node);
-        est_total_ctxs = state->total + so2->nspawned;
+        est_total_ctxs = state->total + so2->nspawned + 1;
         sh = state_header_alloc(w, state, est_total_ctxs);
         sh->node = node;
         sh->edge_index = el->edge_index;
