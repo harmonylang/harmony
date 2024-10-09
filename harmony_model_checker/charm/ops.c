@@ -2965,7 +2965,8 @@ void next_Store(const void *env, struct context *ctx, FILE *fp){
 // where x is assigned 4 but fails if y is not 3.
 static bool store_match(struct state *state, struct step *step,
                     hvalue_t av, hvalue_t v){
-    if (VALUE_TYPE(av) != VALUE_ADDRESS_SHARED) {
+    if (VALUE_TYPE(av) != VALUE_ADDRESS_SHARED &&
+                            VALUE_TYPE(av) != VALUE_ADDRESS_PRIVATE) {
         char *p = value_string(av);
         value_ctx_failure(step->ctx, step->allocator, "Store %s: not an address", p);
         free(p);
