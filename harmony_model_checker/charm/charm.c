@@ -6,8 +6,6 @@
 #define _GNU_SOURCE
 #endif
 
-#define NEW_STUFF
-
 #include "head.h"
 
 #ifdef __linux__
@@ -154,8 +152,7 @@ struct shard {
     struct state_queue *peers;    // peers[nshards]
 
     struct results_block *todo_buffer, *tb_head, *tb_tail;
-    unsigned int tb_size, tb_index;
-    bool idle;                    // nothing on TODO list
+    unsigned int tb_size, tb_index;     // TODO: tb_index == w->dequeued
 };
 
 #define MAX_THREADS 100
@@ -213,7 +210,6 @@ struct worker {
     // State maintained while evaluating invariants
     struct step inv_step;        // for evaluating invariants
 
-    unsigned int total_results;
     unsigned int process_step;
 
     // Workers optimize memory allocation.  In particular, it is not
@@ -2428,51 +2424,12 @@ static inline void step_init(struct worker *w, struct step *step){
     step->keep_callstack = false;
 }
 
-// This function evaluates a node just taken from the todo list by the worker.
-// Any new nodes that are found are kept in w->workers and not yet added to
-// the todo list or the graph.
+// This function explores the non-deterministic choices of a node just
+// taken from the todo list by the worker. Any new nodes that are found are
+// kept in w->results and not yet added to the todo list or the graph.
 void do_work1(struct worker *w, unsigned int shard_index, struct node *node){
-    // If the node is the result of a failed transition, don't explore it
-    if (node->failed) {
-        return;
-    }
-
-    struct state *state = node_state(node);
-
-    // Worker 0 periodically (every second) prints some stats for long runs.
-    // To avoid calling gettime() very often, which may involve an expensive
-    // system call, worker 0 only checks every 100 instructions.
-    if (w->index == 0 && w->timecnt-- == 0) {
-        double now = gettime();
-        if (now - global.lasttime > 3) {
-            if (global.lasttime != 0) {
-                unsigned int enqueued = 0, dequeued = 0;
-                unsigned long allocated = global.allocated;
-
-                for (unsigned int i = 0; i < w->nworkers; i++) {
-                    struct worker *w2 = &w->workers[i];
-                    enqueued += w2->enqueued;
-                    dequeued += w2->dequeued;
-                    allocated += w2->allocated;
-                }
-                double gigs = (double) allocated / (1 << 30);
-                fprintf(stderr, "    states=%u diam=%u q=%d mem=%.3lfGB\n",
-                        enqueued, global.diameter,
-                        enqueued - dequeued, gigs);
-                fprintf(stderr, "    vars=%s\n", value_string(state->vars));
-                global.last_nstates = enqueued;
-            }
-            global.lasttime = now;
-            if (now > w->timeout) {
-                fprintf(stderr, "charm: timeout exceeded\n");
-                exit(1);
-            }
-        }
-        w->timecnt = 1000;
-    }
-
-    // Explore the non-deterministic choices from this node
     struct step step;
+    struct state *state = node_state(node);
     if (state->chooser >= 0) {
         // The actual set of choices is on top of its stack
         hvalue_t chooser = state_ctx(state, state->chooser);
@@ -2548,15 +2505,14 @@ static void do_work(struct worker *w, unsigned int shard_index){
         sq->last = &sq->first;
     }
 
-    shard->idle = false;
-
     // See if there's anything on my TODO list.
     w->sb_index = 0;
     while (shard->tb_index < shard->tb_size) {
         struct node *n = shard->tb_head->results[shard->tb_index % NRESULTS];
-        if (!w->found_failures) {
+        if (!w->found_failures && !n->failed) {
             do_work1(w, shard_index, n);
         }
+        w->dequeued++;
         shard->tb_index++;
         if (shard->tb_index % NRESULTS == 0) {
             shard->tb_head = shard->tb_head->next;
@@ -2609,12 +2565,7 @@ static void do_work2(struct worker *w, unsigned int shard_index){
                     shard->tb_tail = rb;
                 }
                 assert(shard->tb_tail->nresults == shard->tb_size % NRESULTS);
-
-#ifndef NEW_STUFF
-                w->count++;
-#endif
                 w->enqueued++;
-                w->total_results++;
             }
 
             // See if the node points sideways or backwards, in which
@@ -2626,8 +2577,6 @@ static void do_work2(struct worker *w, unsigned int shard_index){
     }
 
     assert(shard->tb_index <= shard->tb_size);
-    shard->idle = shard->tb_index == shard->tb_size;
-
     // printf("WORK 2: %u DONE\n", w->index);
 }
 
@@ -3004,7 +2953,6 @@ static void worker(void *arg){
         before = after;
         do_work2(w, w->index);
         after = gettime();
-
         w->phase2a += after - before;
         before = after;
 
@@ -3015,6 +2963,31 @@ static void worker(void *arg){
         if (w->index == 0 % global.nworkers) {
             if (done) {
                 graph_add_multiple(&global.graph, nstates);
+            }
+
+            // Worker 0 periodically prints some stats for long runs.
+            if (after - global.lasttime > 3) {
+                if (global.lasttime != 0) {
+                    unsigned int enqueued = 0, dequeued = 0;
+                    unsigned long allocated = global.allocated;
+
+                    for (unsigned int i = 0; i < w->nworkers; i++) {
+                        struct worker *w2 = &w->workers[i];
+                        enqueued += w2->enqueued;
+                        dequeued += w2->dequeued;
+                        allocated += w2->allocated;
+                    }
+                    double gigs = (double) allocated / (1 << 30);
+                    fprintf(stderr, "    states=%u diam=%u q=%d mem=%.3lfGB\n",
+                            enqueued, global.diameter,
+                            enqueued - dequeued, gigs);
+                    global.last_nstates = enqueued;
+                }
+                global.lasttime = after;
+                if (after > w->timeout) {
+                    fprintf(stderr, "charm: timeout exceeded\n");
+                    exit(1);
+                }
             }
         }
 
@@ -4089,7 +4062,7 @@ int exec_model_checker(int argc, char **argv){
                 w->start_wait/w->start_count,
                 w->middle_wait/w->middle_count,
                 w->end_wait/w->end_count,
-                w->total_results,
+                w->enqueued,
                 w->process_step);
 #endif
     }
