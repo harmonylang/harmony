@@ -3832,14 +3832,6 @@ int exec_model_checker(int argc, char **argv){
     global.stc_allocated = 4096;
     global.stc_table = malloc(global.stc_allocated * sizeof(*global.stc_table));
 
-    // First read and parse the DFA if any
-    if (dfafile != NULL) {
-        global.dfa = dfa_read(NULL, dfafile);
-        if (global.dfa == NULL) {
-            exit(1);
-        }
-    }
-
     // open the HVM file
     FILE *fp = fopen(fname, "r");
     if (fp == NULL) {
@@ -3960,6 +3952,14 @@ int exec_model_checker(int argc, char **argv){
 #endif
 
     ops_init(&workers[0].allocator);
+
+    // Read and parse the DFA if any
+    if (dfafile != NULL) {
+        global.dfa = dfa_read(&workers[0].allocator, dfafile);
+        if (global.dfa == NULL) {
+            exit(1);
+        }
+    }
 
     // travel through the json code contents to create the code array
     struct json_value *jc = dict_lookup(jv->u.map, "code", 4);
