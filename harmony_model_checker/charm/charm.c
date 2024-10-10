@@ -64,6 +64,7 @@
 // Convenient constant
 #define MAX_STATE_SIZE (sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1))
 
+// Important performance parameter...
 #define STATE_BUFFER_HWM    50
 
 // All global variables should be here
