@@ -66,8 +66,6 @@
 
 #define STATE_BUFFER_HWM    50
 
-#define SHARDS_PER_WORKER   1
-
 // All global variables should be here
 struct global global;
 
@@ -141,16 +139,7 @@ struct state_queue {
     struct state_header *first, **last;
 };
 
-// Shard of the Kripke structure.  There is an array of shards.  Each shard
-// holds the states that hash onto the index into the array.
-struct shard {
-    struct dict *states;          // maps states to nodes
-    struct state_queue *peers;    // peers[nshards]
-
-    struct results_block *todo_buffer, *tb_head, *tb_tail;
-    unsigned int tb_size, tb_index;     // TODO: tb_index == w->dequeued
-};
-
+// TODO.  Is this a problem?
 #define MAX_THREADS 100
 
 // One of these per worker thread
@@ -159,6 +148,16 @@ struct worker {
     // in the hope of better cache performance
     unsigned int index;          // index of worker
     double timeout;              // deadline for model checker (-t option)
+
+    // Shard of the Kripke structure.  There is an array of shards.  Each shard
+    // holds the states that hash onto the index into the array.
+    struct shard {
+        struct dict *states;          // maps states to nodes
+        struct state_queue *peers;    // peers[nshards]
+
+        struct results_block *todo_buffer, *tb_head, *tb_tail;
+        unsigned int tb_size, tb_index;     // TODO: tb_index == w->dequeued
+    } shard;
 
     // free lists of state_headers for various numbers of threads
     struct state_header *state_header_free[MAX_THREADS];
@@ -598,7 +597,6 @@ static inline uint32_t meiyan2(const char *key, int count) {
 // to a new edge in the Kripke structure, possibly to a new state.
 static void process_step(
     struct worker *w,
-    unsigned int shard_index,
     struct step_condition *stc,
     struct state_header *sh
 ) {
@@ -737,8 +735,8 @@ static void process_step(
     sh->hash = meiyan2((char *) sc, state_size(sc));
 
     // Add to the linked list of the responsible peer shard
-    struct shard *shard = &global.shards[shard_index];
-    unsigned int responsible = (sh->hash >> 16) % global.nshards;
+    struct shard *shard = &w->shard;
+    unsigned int responsible = (sh->hash >> 16) % global.nworkers;
     struct state_queue *sq = &shard->peers[responsible];
     *sq->last = sh;
     sq->last = &sh->next;
@@ -1056,7 +1054,6 @@ static struct step_output *onestep(
 // printing values, spawning threads, and deleting contexts from the stopbag.
 static void trystep(
     struct worker *w,         // thread info
-    unsigned int shard_index, // shard id
     struct node *node,        // starting node
     int edge_index,           // edge index (-1 if an invariant)
     struct state *state,      // actual state
@@ -1207,10 +1204,7 @@ static void trystep(
     //       readonly mode...
     // TODO. Alternatively, it seems easy to check if the state is going to be updated or not
     // TODO. Also copy not needed if ctx_index == -1 (invariant check)
-    // struct shard *shard = &global.shards[shard_index];
     struct state_header *sh = state_header_alloc(w, state, est_total_ctxs);
-    // sh->garbage = false;
-    // sh->source = shard_index;
     sh->node = node;
     sh->edge_index = edge_index;
     assert(sh->edge_index >= -1);
@@ -1224,7 +1218,7 @@ static void trystep(
     }
 
     // Process the effect of the step
-    process_step(w, shard_index, stc, sh);
+    process_step(w, stc, sh);
     assert(sc->total <= est_total_ctxs);
 
     // See if any other edges were waiting for the result of this
@@ -1241,7 +1235,7 @@ static void trystep(
         sc = (struct state *) &sh[1];
 
         context_remove(sc, ctx);
-        process_step(w, shard_index, stc, sh);
+        process_step(w, stc, sh);
         assert(sc->total <= est_total_ctxs);
 
         struct edge_list *next = el->next;
@@ -2398,7 +2392,7 @@ static inline void step_init(struct worker *w, struct step *step){
 // This function explores the non-deterministic choices of a node just
 // taken from the todo list by the worker. Any new nodes that are found are
 // kept in w->results and not yet added to the todo list or the graph.
-void do_work1(struct worker *w, unsigned int shard_index, struct node *node){
+void do_work1(struct worker *w, struct node *node){
     struct step step;
     struct state *state = node_state(node);
     if (state->chooser >= 0) {
@@ -2418,14 +2412,14 @@ void do_work1(struct worker *w, unsigned int shard_index, struct node *node){
         // Explore each choice.
         for (unsigned int i = 0; i < size; i++) {
             step_init(w, &step);
-            trystep(w, shard_index, node, i, state, chooser, &step, vals[i], state->chooser);
+            trystep(w, node, i, state, chooser, &step, vals[i], state->chooser);
         }
     }
     else {
         // Explore each thread that can make a step.
         for (unsigned int i = 0; i < state->bagsize; i++) {
             step_init(w, &step);
-            trystep(w, shard_index, node, i, state, state_ctx(state, i), &step, 0, i);
+            trystep(w, node, i, state, state_ctx(state, i), &step, 0, i);
         }
         unsigned int j = state->bagsize;
         for (unsigned int i = 0; i < state->bagsize; i++) {
@@ -2433,7 +2427,7 @@ void do_work1(struct worker *w, unsigned int shard_index, struct node *node){
             struct context *cc = value_get(ctx, NULL);
             if (cc->extended && ctx_trap_pc(cc) != 0 && !cc->interruptlevel) {
                 step_init(w, &step);
-                trystep(w, shard_index, node, j, state, state_ctx(state, i), &step, (hvalue_t) -1, i);
+                trystep(w, node, j, state, state_ctx(state, i), &step, (hvalue_t) -1, i);
                 j++;
             }
         }
@@ -2448,7 +2442,7 @@ void do_work1(struct worker *w, unsigned int shard_index, struct node *node){
 
         // Check each invariant
         for (unsigned int i = 0; i < global.ninvs; i++) {
-            trystep(w, shard_index, node, -1, state, global.invs[i].context, &step, 0, -1);
+            trystep(w, node, -1, state, global.invs[i].context, &step, 0, -1);
         }
     }
 }
@@ -2461,12 +2455,12 @@ void do_work1(struct worker *w, unsigned int shard_index, struct node *node){
 // into this array.  All the nodes before todo have been explored, while the
 // ones after todo should be explored.  In other words, the "todo list" starts
 // at global.graph.nodes[global.todo] and ends at graph.nodes[graph.size];
-static void do_work(struct worker *w, unsigned int shard_index){
+static void do_work(struct worker *w){
     // double start = gettime(), now;
-    struct shard *shard = &global.shards[shard_index];
+    struct shard *shard = &w->shard;
 
     // Put any messages from the prior round on the appropriate free lists
-    for (unsigned int i = 0; i < global.nshards; i++) {
+    for (unsigned int i = 0; i < global.nworkers; i++) {
         struct state_queue *sq = &shard->peers[i];
         struct state_header *sh;
         while ((sh = sq->first) != NULL) {
@@ -2481,7 +2475,7 @@ static void do_work(struct worker *w, unsigned int shard_index){
     while (shard->tb_index < shard->tb_size) {
         struct node *n = shard->tb_head->results[shard->tb_index % NRESULTS];
         if (!w->found_failures && !n->failed) {
-            do_work1(w, shard_index, n);
+            do_work1(w, n);
         }
         w->dequeued++;
         shard->tb_index++;
@@ -2496,14 +2490,14 @@ static void do_work(struct worker *w, unsigned int shard_index){
     }
 }
 
-static void do_work2(struct worker *w, unsigned int shard_index){
-    struct shard *shard = &global.shards[shard_index]; 
+static void do_work2(struct worker *w){
+    struct shard *shard = &w->shard; 
 
     // printf("WORK 2: %u: %u %lu\n", w->index, shard->sb_index, sizeof(shard->state_buffer));
 
-    for (unsigned int i = 0; i < global.nshards; i++) {
-        struct shard *s2 = &global.shards[i];
-        for (struct state_header *sh = s2->peers[shard_index].first;
+    for (unsigned int i = 0; i < global.nworkers; i++) {
+        struct shard *s2 = &global.workers[i].shard;
+        for (struct state_header *sh = s2->peers[w->index].first;
                                     sh != NULL; sh = sh->next) {
             struct state *sc = (struct state *) &sh[1];
             unsigned int size = state_size(sc);
@@ -2876,7 +2870,7 @@ static void worker(void *arg){
         // First phase starts now.  Call do_work() to do that actual work.
         // Also keep stats.
         before = after;
-        do_work(w, w->index);
+        do_work(w);
         after = gettime();
         w->phase1 += after - before;
 
@@ -2899,7 +2893,7 @@ static void worker(void *arg){
             }
 
             // Keep track of the total number of states
-            nstates += global.shards[i].tb_size;
+            nstates += global.workers[i].shard.tb_size;
 
             // See if the worker found a failure.
             if (global.workers[i].failures != NULL) {
@@ -2915,14 +2909,14 @@ static void worker(void *arg){
             // TODO.  Should we also check for outgoing messages?
 
             // If the worker has anything on its todo list, we're not done.
-            struct shard *shard = &global.shards[i];
+            struct shard *shard = &global.workers[i].shard;
             if (shard->tb_index != shard->tb_size) {
                 done = false;
             }
         }
 
         before = after;
-        do_work2(w, w->index);
+        do_work2(w);
         after = gettime();
         w->phase2a += after - before;
         before = after;
@@ -2995,10 +2989,10 @@ static void worker(void *arg){
         // If done, fill in the graph table
         if (done) {
             assert(global.graph.size == nstates);
-            for (struct results_block *rb = global.shards[w->index].todo_buffer;
+            for (struct results_block *rb = w->shard.todo_buffer;
                                             rb != NULL; rb = rb->next) {
                 assert(rb->nresults <= nstates);
-                assert(rb->nresults <= global.shards[w->index].tb_size);
+                assert(rb->nresults <= w->shard.tb_size);
                 for (unsigned int k = 0; k < rb->nresults; k++) {
                     struct node *n = rb->results[k];
                     n->id = local_node_id;
@@ -3802,10 +3796,6 @@ int exec_model_checker(int argc, char **argv){
     }
     free(buf_orig);
 
-    // Allocate the shards array.
-    global.nshards = global.nworkers * SHARDS_PER_WORKER;
-    global.shards = calloc(global.nshards, sizeof(*global.shards));
-
     // Allocate space for worker info
     struct worker *workers = calloc(global.nworkers, sizeof(*workers));
     global.workers = workers;
@@ -3834,20 +3824,15 @@ int exec_model_checker(int argc, char **argv){
         w->allocator.ctx = w;
         w->allocator.worker = i;
 
-        // Initialize the shards assigned to this worker
-        unsigned int first_shard = i * SHARDS_PER_WORKER;
-        for (unsigned int si = 0; si < SHARDS_PER_WORKER; si++) {
-            struct shard *shard = &global.shards[first_shard + si];
-            shard->states = dict_new("shard states", sizeof(struct node), 0, 0, false, false);
-            // shard->states->autogrow = false;
-            shard->peers = calloc(global.nshards, sizeof(*shard->peers));
-            for (unsigned int si2 = 0; si2 < global.nshards; si2++) {
-                shard->peers[si2].last = &shard->peers[si2].first;
-            }
-            shard->todo_buffer = shard->tb_head = shard->tb_tail = walloc_fast(w, sizeof(*shard->tb_tail));
-            shard->todo_buffer->nresults = 0;
-            shard->todo_buffer->next = NULL;
+        struct shard *shard = &w->shard;
+        shard->states = dict_new("shard states", sizeof(struct node), 0, 0, false, false);
+        shard->peers = calloc(global.nworkers, sizeof(*shard->peers));
+        for (unsigned int si2 = 0; si2 < global.nworkers; si2++) {
+            shard->peers[si2].last = &shard->peers[si2].first;
         }
+        shard->todo_buffer = shard->tb_head = shard->tb_tail = walloc_fast(w, sizeof(*shard->tb_tail));
+        shard->todo_buffer->nresults = 0;
+        shard->todo_buffer->next = NULL;
     }
 
     // Pin workers to particular virtual processors
@@ -3955,7 +3940,7 @@ int exec_model_checker(int argc, char **argv){
     global.computations = dict_new("computations", sizeof(struct step_condition), 0, global.nworkers, false, true);
 
     bool new;
-    struct dict_assoc *hn = dict_find_new(global.shards[0].states, &workers[0].allocator, state, state_size(state), sizeof(struct edge), &new, meiyan2((char *) state, state_size(state)));
+    struct dict_assoc *hn = dict_find_new(global.workers[0].shard.states, &workers[0].allocator, state, state_size(state), sizeof(struct edge), &new, meiyan2((char *) state, state_size(state)));
     struct node *node = (struct node *) &hn[1];
     memset(node, 0, sizeof(*node));
     node->initial = true;
@@ -3964,9 +3949,9 @@ int exec_model_checker(int argc, char **argv){
 
     // Add node to the todo list of shard 0
     // TODO.  Should probably just add the state, not the node
-    global.shards[0].todo_buffer->results[0] = node;
-    global.shards[0].todo_buffer->nresults = 1;
-    global.shards[0].tb_size = 1;
+    global.workers[0].shard.todo_buffer->results[0] = node;
+    global.workers[0].shard.todo_buffer->nresults = 1;
+    global.workers[0].shard.tb_size = 1;
 
     // Compute how much table space is allocated
     // TODO.  Add per worker stuff
@@ -4225,7 +4210,7 @@ int exec_model_checker(int argc, char **argv){
 
                     // Check each "finally" predicate
                     for (unsigned int i = 0; i < global.nfinals; i++) {
-                        trystep(&workers[0], 0, node, -1, node_state(node), global.finals[i], &step, 0, -1);
+                        trystep(&workers[0], node, -1, node_state(node), global.finals[i], &step, 0, -1);
                     }
                 }
             }
