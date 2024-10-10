@@ -160,23 +160,12 @@ struct worker {
     unsigned int index;          // index of worker
     double timeout;              // deadline for model checker (-t option)
 
-    // TODO.  The following should probably just be in global
-    struct worker *workers;      // points to array of workers
-    unsigned int nworkers;       // total number of workers
-
     // free lists of state_headers for various numbers of threads
     struct state_header *state_header_free[MAX_THREADS];
 
     unsigned int vproc;          // virtual processor for pinning
     struct failure *failures;    // list of discovered failures (not data races)
     bool found_failures;         // some worker found failures
-
-    // The worker thread loop through three phases:
-    //  1: model check part of the state space
-    //  2: fix forward edges and allocate larger tables if needed
-    //  3: copy from old to new hash table
-    // The barriers are to synchronize these three phases.
-    barrier_t *start_barrier, *middle_barrier, *end_barrier;
 
     // Each worker keeps track of how often it executes a particular
     // instruction for profiling purposes.
@@ -197,11 +186,6 @@ struct worker {
     double phase1, phase2a, phase2b, phase3;
     unsigned int dequeued;      // total number of dequeued states
     unsigned int enqueued;      // total number of enqueued states
-
-    // Thread 0 periodically prints some information on what it's
-    // working on.  To avoid it getting the time too much, which might
-    // involve an expensive system call, we do it every timecnt steps.
-    int timecnt;                 // to reduce gettime() overhead
 
     // State maintained while evaluating invariants
     struct step inv_step;        // for evaluating invariants
@@ -593,7 +577,7 @@ static void direct_run(struct state *state, unsigned int id){
     }
 }
 
-static inline uint32_t meiyan(const char *key, int count) {
+static inline uint32_t meiyan2(const char *key, int count) {
 	typedef uint32_t *P;
 	uint32_t h = 0x811c9dc5;
 	while (count >= 8) {
@@ -750,7 +734,7 @@ static void process_step(
     }
 
     sh->noutgoing = noutgoing;
-    sh->hash = meiyan((char *) sc, state_size(sc));
+    sh->hash = meiyan2((char *) sc, state_size(sc));
 
     // Add to the linked list of the responsible peer shard
     struct shard *shard = &global.shards[shard_index];
@@ -2528,7 +2512,7 @@ static void do_work2(struct worker *w, unsigned int shard_index){
             // or allocate if not.
             bool new;
             struct dict_assoc *hn = dict_find_new(shard->states, &w->allocator,
-                        sc, size, sh->noutgoing * sizeof(struct edge), &new, NULL, sh->hash);
+                        sc, size, sh->noutgoing * sizeof(struct edge), &new, sh->hash);
             struct node *next = (struct node *) &hn[1];
             struct edge *edge = &node_edges(sh->node)[sh->edge_index];
             edge->dst = next;
@@ -2879,7 +2863,7 @@ static void worker(void *arg){
     for (;; nrounds++) {
         // Wait for the first barrier (and keep stats)
         // This is where the worker is waiting for stabilizing hash tables
-        barrier_wait(w->start_barrier);
+        barrier_wait(&global.start_barrier);
         double after = gettime();
         w->start_wait += after - before;
         w->start_count++;
@@ -2900,7 +2884,7 @@ static void worker(void *arg){
         // Here we are waiting for everybody's todo list processing
         before = after;
         // printf("WAIT FOR MIDDLE %u\n", w->index);
-        barrier_wait(w->middle_barrier);
+        barrier_wait(&global.middle_barrier);
         // printf("DONE WITH MIDDLE %u\n", w->index);
         after = gettime();
         w->middle_wait += after - before;
@@ -2909,7 +2893,7 @@ static void worker(void *arg){
         // Nobody's doing work.  Great time to see if we are done.
         unsigned int nstates = 0, local_node_id = 0;
         done = true;
-        for (unsigned int i = 0; i < w->nworkers; i++) {
+        for (unsigned int i = 0; i < global.nworkers; i++) {
             if (i == w->index) {
                 local_node_id = nstates;
             }
@@ -2918,13 +2902,13 @@ static void worker(void *arg){
             nstates += global.shards[i].tb_size;
 
             // See if the worker found a failure.
-            if (w->workers[i].failures != NULL) {
+            if (global.workers[i].failures != NULL) {
                 w->found_failures = true;
             }
 
             // If the worker has outgoing messages, we're not done.
-            // if (w->workers[i].mq_first != NULL) {
-            if (w->workers[i].sb_index != 0) {
+            // if (global.workers[i].mq_first != NULL) {
+            if (global.workers[i].sb_index != 0) {
                 done = false;
             }
 
@@ -2958,8 +2942,8 @@ static void worker(void *arg){
                     unsigned int enqueued = 0, dequeued = 0;
                     unsigned long allocated = global.allocated;
 
-                    for (unsigned int i = 0; i < w->nworkers; i++) {
-                        struct worker *w2 = &w->workers[i];
+                    for (unsigned int i = 0; i < global.nworkers; i++) {
+                        struct worker *w2 = &global.workers[i];
                         enqueued += w2->enqueued;
                         dequeued += w2->dequeued;
                         allocated += w2->allocated;
@@ -2996,7 +2980,7 @@ static void worker(void *arg){
         w->phase2b += after - before;
         before = after;
         // printf("WAIT FOR END %u\n", w->index);
-        barrier_wait(w->end_barrier);
+        barrier_wait(&global.end_barrier);
         // printf("DONE WITH END %u\n", w->index);
         after = gettime();
         w->end_wait += after - before;
@@ -3775,10 +3759,9 @@ int exec_model_checker(int argc, char **argv){
     }
 
     // Initialize barriers for the three phases (see struct worker definition)
-    barrier_t start_barrier, middle_barrier, end_barrier;
-    barrier_init(&start_barrier, global.nworkers);
-    barrier_init(&middle_barrier, global.nworkers);
-    barrier_init(&end_barrier, global.nworkers);
+    barrier_init(&global.start_barrier, global.nworkers);
+    barrier_init(&global.middle_barrier, global.nworkers);
+    barrier_init(&global.end_barrier, global.nworkers);
 
     // initialize modules
     mutex_init(&global.inv_lock);
@@ -3825,16 +3808,12 @@ int exec_model_checker(int argc, char **argv){
 
     // Allocate space for worker info
     struct worker *workers = calloc(global.nworkers, sizeof(*workers));
+    global.workers = workers;
     for (unsigned int i = 0; i < global.nworkers; i++) {
         struct worker *w = &workers[i];
 
         w->timeout = timeout;
-        w->start_barrier = &start_barrier;
-        w->middle_barrier = &middle_barrier;
-        w->end_barrier = &end_barrier;
         w->index = i;
-        w->workers = workers;
-        w->nworkers = global.nworkers;
 
         // Create a context for evaluating invariants
         w->inv_step.ctx = calloc(1, sizeof(struct context) +
@@ -3976,7 +3955,7 @@ int exec_model_checker(int argc, char **argv){
     global.computations = dict_new("computations", sizeof(struct step_condition), 0, global.nworkers, false, true);
 
     bool new;
-    struct dict_assoc *hn = dict_find_new(global.shards[0].states, &workers[0].allocator, state, state_size(state), sizeof(struct edge), &new, NULL, meiyan((char *) state, state_size(state)));
+    struct dict_assoc *hn = dict_find_new(global.shards[0].states, &workers[0].allocator, state, state_size(state), sizeof(struct edge), &new, meiyan2((char *) state, state_size(state)));
     struct node *node = (struct node *) &hn[1];
     memset(node, 0, sizeof(*node));
     node->initial = true;

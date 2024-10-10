@@ -60,6 +60,15 @@ struct global {
     struct dict *values;            // dictionary of values
     struct dict *computations;      // evaluated Harmony byte code
     hvalue_t seqs;                  // sequential variables
+    struct worker *workers;         // points to array of workers
+    unsigned int nworkers;          // total number of workers
+
+    // The worker thread loops through three phases:
+    //  1: evaluate states on the todo list
+    //  2: look up states and add to the todo list if new
+    //  3: resize tables
+    // The barriers are to synchronize these three phases.
+    barrier_t start_barrier, middle_barrier, end_barrier;
 
     // invariants
     mutex_t inv_lock;               // lock on list of invariants and finals
@@ -74,7 +83,6 @@ struct global {
     bool printed_something;         // see if anything was printed
     unsigned int nshards;           // total number of Kripke structure shards
     struct shard *shards;           // array of shards
-    unsigned int nworkers;          // total number of threads
     unsigned int ncomponents;       // to generate component identifiers
     struct failure *failures;       // queue of "struct failure"  (TODO: make part of struct node "issues")
     hvalue_t *processes;            // array of contexts of processes

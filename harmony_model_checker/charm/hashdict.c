@@ -53,7 +53,6 @@ struct dict *dict_new(char *whoami, unsigned int value_len, unsigned int initial
 	dict->count = dict->old_count = 0;
 	dict->growth_threshold = 2;
 	dict->growth_factor = 10;
-    dict->autogrow = true;
 	dict->concurrent = concurrent;
     dict->align16 = align16;
 	dict->stable = dict->old_stable = calloc(sizeof(*dict->stable), initial_size);
@@ -188,7 +187,7 @@ struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
 
     // If not concurrent may have to grow the table now
 	// if (!dict->concurrent && db->stable == NULL) {
-	if (dict->autogrow && !dict->concurrent) {
+	if (!dict->concurrent) {
 		double f = (double) dict->count / (double) dict->length;
 		if (f > dict->growth_threshold) {
 			dict_resize(dict, dict->length * dict->growth_factor - 1);
@@ -266,17 +265,13 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
 // 'extra' is an additional number of bytes added to the value.
 struct dict_assoc *dict_find_new(struct dict *dict, struct allocator *al,
                             const void *key, unsigned int keylen,
-                            unsigned int extra, bool *new, mutex_t **lock, uint32_t hash){
+                            unsigned int extra, bool *new, uint32_t hash){
     assert(al != NULL);
+    assert(!dict->concurrent);
     // uint32_t hash = hash_func(key, keylen);
     unsigned int index = hash % dict->length;
 
-    if (lock != NULL) {
-        *lock = &dict->locks[index % dict->nlocks];
-    }
-
     struct dict_assoc **sdb = &dict->stable[index];
-    struct dict_assoc **udb = &dict->unstable[index];
 	struct dict_assoc *k = *sdb;
 	while (k != NULL) {
 		if (k->len == keylen && memcmp((char *) &k[1] + k->val_len, key, keylen) == 0) {
@@ -286,42 +281,18 @@ struct dict_assoc *dict_find_new(struct dict *dict, struct allocator *al,
 		k = k->next;
 	}
 
-    if (dict->concurrent) {
-        mutex_acquire(*lock);
-        // See if the item is in the unstable list
-        k = *udb;
-        while (k != NULL) {
-            if (k->len == keylen && memcmp((char *) &k[1] + k->val_len, key, keylen) == 0) {
-                *new = false;
-                mutex_release(*lock);
-                return k;
-            }
-            k = k->next;
-        }
+    // See if we need to grow the table
+    double f = (double) dict->count / (double) dict->length;
+    if (f > dict->growth_threshold) {
+        dict_resize(dict, dict->length * dict->growth_factor - 1);
+        return dict_find_new(dict, al, key, keylen, extra, new, hash);
     }
 
-    // If not concurrent may have to grow the table now
-	// if (!dict->concurrent && db->stable == NULL) {
-	if (dict->autogrow && !dict->concurrent) {
-		double f = (double) dict->count / (double) dict->length;
-		if (f > dict->growth_threshold) {
-			dict_resize(dict, dict->length * dict->growth_factor - 1);
-			return dict_find_new(dict, al, key, keylen, extra, new, lock, hash);
-		}
-	}
-
+    // Add new entry
     k = dict_assoc_new(dict, al, (char *) key, keylen, extra);
-    if (dict->concurrent) {
-        k->next = *udb;
-        *udb = k;
-        dict_unstable(dict, al, index, k);
-    }
-    else {
-        k->next = *sdb;
-        *sdb = k;
-		dict->count++;
-    }
-
+    k->next = *sdb;
+    *sdb = k;
+    dict->count++;
     *new = true;
 	return k;
 }
