@@ -156,7 +156,7 @@ struct worker {
         struct state_queue *peers;    // peers[nshards]
 
         struct results_block *todo_buffer, *tb_head, *tb_tail;
-        unsigned int tb_size, tb_index;     // TODO: tb_index == w->dequeued
+        unsigned int tb_size, tb_index;
     } shard;
 
     // free lists of state_headers for various numbers of threads
@@ -183,8 +183,6 @@ struct worker {
     double start_wait, middle_wait, end_wait;
     unsigned int start_count, middle_count, end_count;
     double phase1, phase2a, phase2b, phase3;
-    unsigned int dequeued;      // total number of dequeued states
-    unsigned int enqueued;      // total number of enqueued states
 
     // State maintained while evaluating invariants
     struct step inv_step;        // for evaluating invariants
@@ -2477,7 +2475,6 @@ static void do_work(struct worker *w){
         if (!w->found_failures && !n->failed) {
             do_work1(w, n);
         }
-        w->dequeued++;
         shard->tb_index++;
         if (shard->tb_index % NRESULTS == 0) {
             shard->tb_head = shard->tb_head->next;
@@ -2530,7 +2527,6 @@ static void do_work2(struct worker *w){
                     shard->tb_tail = rb;
                 }
                 assert(shard->tb_tail->nresults == shard->tb_size % NRESULTS);
-                w->enqueued++;
             }
 
             // See if the node points sideways or backwards, in which
@@ -2935,11 +2931,10 @@ static void worker(void *arg){
                 if (global.lasttime != 0) {
                     unsigned int enqueued = 0, dequeued = 0;
                     unsigned long allocated = global.allocated;
-
                     for (unsigned int i = 0; i < global.nworkers; i++) {
                         struct worker *w2 = &global.workers[i];
-                        enqueued += w2->enqueued;
-                        dequeued += w2->dequeued;
+                        enqueued += w2->shard.tb_size;
+                        dequeued += w2->shard.tb_index;
                         allocated += w2->allocated;
                     }
                     double gigs = (double) allocated / (1 << 30);
@@ -3997,7 +3992,7 @@ int exec_model_checker(int argc, char **argv){
                 w->start_wait/w->start_count,
                 w->middle_wait/w->middle_count,
                 w->end_wait/w->end_count,
-                w->enqueued,
+                w->shard.tb_size,
                 w->process_step);
 #endif
     }

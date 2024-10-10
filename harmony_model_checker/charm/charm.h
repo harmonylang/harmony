@@ -79,7 +79,6 @@ struct global {
     hvalue_t *finals;               // contexts of finally preds
 
     struct graph graph;             // the Kripke structure but also the todo list
-    bool layer_done;                // all states in a layer completed
     bool printed_something;         // see if anything was printed
     unsigned int ncomponents;       // to generate component identifiers
     struct failure *failures;       // queue of "struct failure"  (TODO: make part of struct node "issues")
