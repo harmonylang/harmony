@@ -17,10 +17,6 @@
 
 #include <stdint.h>
 
-#ifdef USE_ATOMIC
-#include <stdatomic.h>
-#endif
-
 #ifdef _WIN32
 #include <windows.h>
 #else
@@ -240,15 +236,6 @@ struct worker {
     hvalue_t as_stack[MAX_CONTEXT_STACK];
 
     unsigned int sb_index;
-
-#ifdef notdef
-    // Lock protected message queue
-    mutex_t mq_mutex;
-    struct state_header *mq_first, **mq_last;
-
-    // Non-lock protected message queue
-    struct state_header *umq_first, **umq_last;
-#endif
 };
 
 #ifdef CACHE_LINE_ALIGNED
@@ -3835,11 +3822,6 @@ int exec_model_checker(int argc, char **argv){
     // Allocate the shards array.
     global.nshards = global.nworkers * SHARDS_PER_WORKER;
     global.shards = calloc(global.nshards, sizeof(*global.shards));
-#ifdef notdef
-    printf("-> %p %u\n", global.shards, (unsigned int) (global.nshards * sizeof(*global.shards)));
-    atomic_init(&global.sh_index1, 0);
-    atomic_init(&global.sh_index2, 0);
-#endif
 
     // Allocate space for worker info
     struct worker *workers = calloc(global.nworkers, sizeof(*workers));
@@ -3887,17 +3869,6 @@ int exec_model_checker(int argc, char **argv){
             shard->todo_buffer->nresults = 0;
             shard->todo_buffer->next = NULL;
         }
-
-#ifdef notdef
-        // Initialize the worker's message queue
-        mutex_init(&w->mq_mutex);
-        w->mq_first = NULL;
-        w->mq_last = &w->mq_first;
-
-        // Locally buffered message queue
-        w->umq_first = NULL;
-        w->umq_last = &w->umq_first;
-#endif
     }
 
     // Pin workers to particular virtual processors
@@ -4096,11 +4067,8 @@ int exec_model_checker(int argc, char **argv){
         si_total += w->si_total;
     }
     printf("    * %u/%u computations/edges\n", (si_total - si_hits), si_total);
-#ifdef HASHDICT_STATS
-    float atotal = atomic_load(&visited->nstable_hits) + atomic_load(&visited->nunstable_hits) + atomic_load(&visited->nmisses);
-    printf("    * hashtable %.2f/%.2f/%.2f\n", atomic_load(&visited->nstable_hits)/atotal, atomic_load(&visited->nunstable_hits)/atotal, atomic_load(&visited->nmisses)/atotal);
-#endif
 
+    // If no output file is desired, we're done.
     if (outfile == NULL) {
         exit(0);
     }

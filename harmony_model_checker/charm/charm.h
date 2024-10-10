@@ -70,17 +70,10 @@ struct global {
     hvalue_t *finals;               // contexts of finally preds
 
     struct graph graph;             // the Kripke structure but also the todo list
-
     bool layer_done;                // all states in a layer completed
     bool printed_something;         // see if anything was printed
-
     unsigned int nshards;           // total number of Kripke structure shards
     struct shard *shards;           // array of shards
-#ifdef notdef
-    _Atomic(unsigned int) sh_index1; // shard index for phase 1
-    _Atomic(unsigned int) sh_index2; // shard index for phase 2
-#endif
-
     unsigned int nworkers;          // total number of threads
     unsigned int ncomponents;       // to generate component identifiers
     struct failure *failures;       // queue of "struct failure"  (TODO: make part of struct node "issues")
