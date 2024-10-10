@@ -92,7 +92,7 @@ void dict_delete(struct dict *dict) {
 	free(dict);
 }
 
-static inline void dict_reinsert_when_resizing(struct dict *dict, struct dict_assoc *k) {
+static inline void dict_reinsert(struct dict *dict, struct dict_assoc *k) {
     unsigned int n = hash_func((char *) &k[1] + k->val_len, k->len) % dict->length;
 	struct dict_assoc **sdb = &dict->stable[n];
     k->next = *sdb;
@@ -117,7 +117,7 @@ void dict_resize(struct dict *dict, unsigned int newsize) {
 		*b = NULL;
 		while (k != NULL) {
 			struct dict_assoc *next = k->next;
-			dict_reinsert_when_resizing(dict, k);
+			dict_reinsert(dict, k);
 			k = next;
 		}
 	}
@@ -399,7 +399,7 @@ void dict_make_stable(struct dict *dict, unsigned int worker){
             struct dict_assoc *k = dict->old_stable[i];
             while (k != NULL) {
                 struct dict_assoc *next = k->next;
-                dict_reinsert_when_resizing(dict, k);
+                dict_reinsert(dict, k);
                 k = next;
             }
         }
