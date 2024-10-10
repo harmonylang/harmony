@@ -5,6 +5,7 @@
 #include "global.h"
 #include "strbuf.h"
 #include "charm.h"
+#include "hashdict.h"
 
 #define MAX_CONTEXT_STACK   250        // maximum size of context stack
 #define MAX_CONTEXT_BAG      32        // maximum number of distinct contexts
@@ -83,7 +84,7 @@ struct val_external {
 
 hvalue_t value_from_json(struct allocator *allocator, struct dict *map);
 int value_cmp(hvalue_t v1, hvalue_t v2);
-void *value_get(hvalue_t v, unsigned int *size);
+// void *value_get(hvalue_t v, unsigned int *size);
 struct val_external *value_get_external(hvalue_t v);
 void *value_copy(hvalue_t v, unsigned int *size);
 void *value_copy_extend(hvalue_t v, unsigned int inc, unsigned int *psize);
@@ -144,6 +145,20 @@ void strbuf_value_json(strbuf *sb, hvalue_t v);
 
 #define VALUE_PC_SHARED    VALUE_TO_PC(-1)
 #define VALUE_PC_LOCAL     VALUE_TO_PC(-2)
+
+// Return the value represented by v.  If psize != NULL, return the size
+// in bytes in *psize.  The value should be stored in the global.values
+// hash table.
+static inline void *value_get(hvalue_t v, unsigned int *psize){
+    v &= ~VALUE_MASK;
+    if (v == 0) {
+        if (psize != NULL) {
+            *psize = 0;
+        }
+        return NULL;
+    }
+    return dict_retrieve((void *) v, psize);
+}
 
 bool value_trystore(struct allocator *allocator, hvalue_t dict, hvalue_t key, hvalue_t value, bool allow_inserts, hvalue_t *result);
 hvalue_t value_store(struct allocator *allocator, hvalue_t root, hvalue_t key, hvalue_t value);

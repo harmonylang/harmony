@@ -690,6 +690,8 @@ static void process_step(
         choices = state_ctxlist(sc);
         noutgoing = sc->bagsize;
         for (unsigned int i = 0; i < sc->bagsize; i++) {
+            // TODO.  This is very expensive.  We can maintain a bit in the
+            //        ctx pointer itself
             struct context *ctx = value_get(choices[i], NULL);
             if (ctx->extended && ctx_trap_pc(ctx) != 0 && !ctx->interruptlevel) {
                 noutgoing++;
@@ -3754,7 +3756,7 @@ int exec_model_checker(int argc, char **argv){
 
     // initialize modules
     mutex_init(&global.inv_lock);
-    global.values = dict_new("values", 0, 0, global.nworkers, true, true);
+    global.values = dict_new("values", 0, 4096, global.nworkers, true, true);
 
     graph_init(&global.graph);
     global.failures = NULL;
@@ -3932,7 +3934,7 @@ int exec_model_checker(int argc, char **argv){
         exit(0);
     }
 
-    global.computations = dict_new("computations", sizeof(struct step_condition), 0, global.nworkers, false, true);
+    global.computations = dict_new("computations", sizeof(struct step_condition), 16 * 1024, global.nworkers, false, true);
 
     bool new;
     struct dict_assoc *hn = dict_find_new(global.workers[0].shard.states, &workers[0].allocator, state, state_size(state), sizeof(struct edge), &new, meiyan2((char *) state, state_size(state)));

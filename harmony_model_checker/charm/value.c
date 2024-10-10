@@ -59,20 +59,6 @@
 #include "ops.h"
 #include "json.h"
 
-// Return the value represented by v.  If psize != NULL, return the size
-// in bytes in *psize.  The value should be stored in the global.values
-// hash table.
-void *value_get(hvalue_t v, unsigned int *psize){
-    v &= ~VALUE_MASK;
-    if (v == 0) {
-        if (psize != NULL) {
-            *psize = 0;
-        }
-        return NULL;
-    }
-    return dict_retrieve((void *) v, psize);
-}
-
 // Like value_get, but allocate dynamic memory for it
 // TODO: OBSOLETE
 void *value_copy(hvalue_t v, unsigned int *psize){

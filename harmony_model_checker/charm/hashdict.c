@@ -304,14 +304,6 @@ void *dict_insert(struct dict *dict, struct allocator *al,
     return (char *) &k[1];
 }
 
-void *dict_retrieve(const void *p, unsigned int *psize){
-    const struct dict_assoc *k = p;
-    if (psize != NULL) {
-        *psize = k->len;
-    }
-    return (char *) &k[1];
-}
-
 // This assumes that the value is a pointer.  Returns NULL if there is
 // no entry but does not create an entry.
 void *dict_lookup(struct dict *dict, const void *key, unsigned int keylen) {
