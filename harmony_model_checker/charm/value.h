@@ -40,6 +40,9 @@ typedef struct state {
 
 // A context is the state of a Harmony thread.  The state, which is part of the
 // state of a thread, immediately follows this structure.
+//
+// TODO.  Some of this info should be kept in the ctx pointer itself.
+//        In fact, the eternal bit already is.
 struct context {   // context value
     hvalue_t vars;            // method-local variables
     uint16_t pc;              // program counter
@@ -126,7 +129,8 @@ void strbuf_value_json(strbuf *sb, hvalue_t v);
 #define VALUE_CONTEXT  10
 #define VALUE_EXTERNAL 11
 
-#define VALUE_CONTEXT_ETERNAL   ((hvalue_t) 1 << 56)
+#define VALUE_CONTEXT_ETERNAL         ((hvalue_t) 1 << 56)
+#define VALUE_CONTEXT_INTERRUPTABLE   ((hvalue_t) 1 << 57)
 
 #define VALUE_FALSE     VALUE_BOOL
 #define VALUE_TRUE      ((1 << VALUE_BITS) | VALUE_BOOL)

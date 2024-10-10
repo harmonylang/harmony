@@ -667,7 +667,6 @@ static void process_step(
     unsigned int noutgoing;
 
     // If choosing, save in state.
-    hvalue_t *choices;
     if (so->choosing) {
         sc->chooser = new_index;
         // sc->pre = global.inv_pre ? node_state(sh->node)->pre : sc->vars;
@@ -682,21 +681,27 @@ static void process_step(
         }
         assert(VALUE_TYPE(s) == VALUE_SET);
         unsigned int size;
-        choices = value_get(s, &size);
+        (void) value_get(s, &size);
         noutgoing = size / sizeof(hvalue_t);
     }
     else {
         sc->chooser = -1;
         // sc->pre = sc->vars;
-        choices = state_ctxlist(sc);
+        hvalue_t *choices = state_ctxlist(sc);
         noutgoing = sc->bagsize;
         for (unsigned int i = 0; i < sc->bagsize; i++) {
+#ifdef notdef
             // TODO.  This is very expensive.  We can maintain a bit in the
             //        ctx pointer itself
             struct context *ctx = value_get(choices[i], NULL);
             if (ctx->extended && ctx_trap_pc(ctx) != 0 && !ctx->interruptlevel) {
                 noutgoing++;
             }
+#else
+            if (choices[i] & VALUE_CONTEXT_INTERRUPTABLE) {
+                noutgoing++;
+            }
+#endif
         }
     }
 

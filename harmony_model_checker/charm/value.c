@@ -156,12 +156,16 @@ hvalue_t value_put_address(struct allocator *allocator, void *p, unsigned int si
 // ctx points to a context.  Returns an hvalue.
 hvalue_t value_put_context(struct allocator *allocator, struct context *ctx){
 	assert(ctx->pc >= 0);
-    void *q = dict_find(global.values, allocator, ctx, ctx_size(ctx), NULL);
+    hvalue_t q = (hvalue_t) dict_find(global.values, allocator,
+                                                ctx, ctx_size(ctx), NULL);
+    if (ctx->extended && ctx_trap_pc(ctx) != 0 && !ctx->interruptlevel) {
+        q |= VALUE_CONTEXT_INTERRUPTABLE;
+    }
     if (ctx->eternal) {
-        return (hvalue_t) q | VALUE_CONTEXT | VALUE_CONTEXT_ETERNAL;
+        return q | VALUE_CONTEXT | VALUE_CONTEXT_ETERNAL;
     }
     else {
-        return (hvalue_t) q | VALUE_CONTEXT;
+        return q | VALUE_CONTEXT;
     }
 }
 
