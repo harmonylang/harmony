@@ -493,7 +493,8 @@ static void direct_run(struct state *state, unsigned int id){
         memcpy(&fullctx, cc, ctx_size(cc));
 
         // Check if an interrupt is in order
-        if (cc->extended && ctx_trap_pc(cc) != 0 && !cc->interruptlevel) {
+        if (pick & VALUE_CONTEXT_INTERRUPTABLE) {
+        // if (cc->extended && ctx_trap_pc(cc) != 0 && !cc->interruptlevel) {
             interrupt_count += 1;
             if (rand() % interrupt_count == 0) {
                 interrupt_invoke(&step);
@@ -690,18 +691,9 @@ static void process_step(
         hvalue_t *choices = state_ctxlist(sc);
         noutgoing = sc->bagsize;
         for (unsigned int i = 0; i < sc->bagsize; i++) {
-#ifdef notdef
-            // TODO.  This is very expensive.  We can maintain a bit in the
-            //        ctx pointer itself
-            struct context *ctx = value_get(choices[i], NULL);
-            if (ctx->extended && ctx_trap_pc(ctx) != 0 && !ctx->interruptlevel) {
-                noutgoing++;
-            }
-#else
             if (choices[i] & VALUE_CONTEXT_INTERRUPTABLE) {
                 noutgoing++;
             }
-#endif
         }
     }
 
@@ -2430,8 +2422,7 @@ void do_work1(struct worker *w, struct node *node){
         unsigned int j = state->bagsize;
         for (unsigned int i = 0; i < state->bagsize; i++) {
             hvalue_t ctx = state_ctx(state, i);
-            struct context *cc = value_get(ctx, NULL);
-            if (cc->extended && ctx_trap_pc(cc) != 0 && !cc->interruptlevel) {
+            if (ctx & VALUE_CONTEXT_INTERRUPTABLE) {
                 step_init(w, &step);
                 trystep(w, node, j, state, state_ctx(state, i), &step, (hvalue_t) -1, i);
                 j++;

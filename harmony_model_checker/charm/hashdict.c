@@ -114,7 +114,7 @@ void dict_resize(struct dict *dict, unsigned int newsize) {
 	for (unsigned int i = 0; i < o; i++) {
 		struct dict_assoc **b = &old[i];
         struct dict_assoc *k = *b;
-		*b = NULL;
+		// *b = NULL;
 		while (k != NULL) {
 			struct dict_assoc *next = k->next;
 			dict_reinsert(dict, k);
