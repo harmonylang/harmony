@@ -1027,6 +1027,7 @@ static struct step_output *onestep(
     so->ai = step->ai;     step->ai = NULL;
     so->nsteps = instrcnt;
 
+    assert(choose_count <= 255);
     so->choose_count = choose_count;
     so->terminated = terminated;
     so->stopped = stopped;
