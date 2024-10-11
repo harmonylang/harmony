@@ -48,23 +48,24 @@ struct step_input {
 // a failure is found, that information is recovered by re-executing the path to
 // the faulty state.
 struct step_output {
-    hvalue_t vars;           // updated shared variables
-    hvalue_t after;          // context at end
-    struct access_info *ai;  // to detect data races
-    uint16_t nsteps;         // # microsteps
+    hvalue_t vars;             // updated shared variables
+    hvalue_t after;            // context at end
+    struct access_info *ai;    // to detect data races
+    uint16_t nsteps;           // # microsteps
+    uint16_t choose_count;     // number of possible choices
 
-    bool choosing : 1;       // destination state is choosing
-    bool terminated : 1;     // thread has terminated
-    bool stopped : 1;        // thread has stopped
-    bool failed : 1;         // context failed
-    bool infinite_loop : 1;  // ran into an infinite loop
+    // TODO.  Would be good if these bits could be squeezed in more efficiently
+    bool terminated : 1;       // thread has terminated
+    bool stopped : 1;          // thread has stopped
+    bool failed : 1;           // context failed
+    bool infinite_loop : 1;    // ran into an infinite loop
 
-    uint8_t nlog;            // # values printed
-    uint8_t nspawned;        // # contexts started
-    uint8_t nunstopped;      // # contexts removed from stopbag
-    // hvalue_t log[];       // print history (immediately follows this structure)
-    // hvalue_t spawned[];   // spawn history (immediately follows log)
-    // hvalue_t unstopped[]; // unstop history (immediately follows spawn history)
+    uint8_t nlog;              // # values printed
+    uint8_t nspawned;          // # contexts started
+    uint8_t nunstopped;        // # contexts removed from stopbag
+    // hvalue_t log[];         // print history (immediately follows this structure)
+    // hvalue_t spawned[];     // spawn history (immediately follows log)
+    // hvalue_t unstopped[];   // unstop history (immediately follows spawn history)
 };
 #define step_log(x)          ((hvalue_t *) ((x) + 1))
 #define step_spawned(x)      ((hvalue_t *) ((x) + 1) + (x)->nlog)

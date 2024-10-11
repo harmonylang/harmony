@@ -188,8 +188,6 @@ struct worker {
     // State maintained while evaluating invariants
     struct step inv_step;        // for evaluating invariants
 
-    unsigned int process_step;
-
     // Workers optimize memory allocation.  In particular, it is not
     // necessary for the memory to ever be freed.  So the worker allocates
     // large chunks of memory (WALLOC_CHUNK) and then use a pointer into
@@ -623,7 +621,6 @@ static void process_step(
         return;
     }
 
-    w->process_step++;
     struct state *sc = (struct state *) &sh[1];
     sc->vars = so->vars;
 
@@ -668,9 +665,10 @@ static void process_step(
     unsigned int noutgoing;
 
     // If choosing, save in state.
-    if (so->choosing) {
+    if (so->choose_count > 0) {
         sc->chooser = new_index;
         // sc->pre = global.inv_pre ? node_state(sh->node)->pre : sc->vars;
+#ifdef notdef
         // TODO.  Maybe more efficient to keep the following info
         //        as it's already computed in onestep
         struct context *ctx = value_get(so->after, NULL);
@@ -684,6 +682,9 @@ static void process_step(
         unsigned int size;
         (void) value_get(s, &size);
         noutgoing = size / sizeof(hvalue_t);
+#else
+        noutgoing = so->choose_count;
+#endif
     }
     else {
         sc->chooser = -1;
@@ -700,9 +701,9 @@ static void process_step(
     // If a failure has occurred, keep track of that too.
     assert(sh->edge_index >= 0);
     assert(sh->edge_index < 256);
-    struct edge *edge = &node_edges(sh->node)[sh->edge_index];
     // assert(edge->dst != NULL);
     if (so->failed || so->infinite_loop) {
+        struct edge *edge = &node_edges(sh->node)[sh->edge_index];
         edge->failed = true;
         noutgoing = 0;
         struct failure *f = new_alloc(struct failure);
@@ -717,6 +718,7 @@ static void process_step(
         for (unsigned int i = 0; i < so->nlog; i++) {
             int nstate = dfa_step(global.dfa, sc->dfa_state, step_log(so)[i]);
             if (nstate < 0) {
+                struct edge *edge = &node_edges(sh->node)[sh->edge_index];
                 struct failure *f = new_alloc(struct failure);
                 f->type = FAIL_BEHAVIOR_BAD;
                 f->node = sh->node;
@@ -740,7 +742,7 @@ static void process_step(
     sq->last = &sh->next;
     sh->next = NULL;
 
-    w->sb_index++;      // TODOTODO
+    w->sb_index++;
 }
 
 // This is the main workhorse function of model checking: explore a state and
@@ -772,7 +774,7 @@ static struct step_output *onestep(
     bool infinite_loop = false;
     unsigned int instrcnt = 0;          // keeps track of #instruction executed
     bool must_break = true;
-    bool choosing = false;              // set when ending in choosing state
+    unsigned int choose_count = 0;      // number of choices
     struct dict *infloop = NULL;        // infinite loop detector
     unsigned int as_instrcnt = 0;       // for rollback
     bool stopped = false;
@@ -824,7 +826,10 @@ static struct step_output *onestep(
             }
 
             if (as_instrcnt == 0) {
-                choosing = true;
+                unsigned int size;
+                (void) value_get(s, &size);
+                choose_count = size / sizeof(hvalue_t);
+                assert(choose_count > 0);
             }
             else {
                 rollback = true;
@@ -1022,7 +1027,7 @@ static struct step_output *onestep(
     so->ai = step->ai;     step->ai = NULL;
     so->nsteps = instrcnt;
 
-    so->choosing = choosing;
+    so->choose_count = choose_count;
     so->terminated = terminated;
     so->stopped = stopped;
     so->failed = step->ctx->failed;
@@ -1243,7 +1248,7 @@ static void trystep(
     }
 }
 
-char *ctx_status(struct node *node, hvalue_t ctx) {
+static char *ctx_status(struct node *node, hvalue_t ctx) {
     struct state *state = node_state(node);
 
     if (state->chooser >= 0 && state_ctx(state, state->chooser) == ctx) {
@@ -1265,7 +1270,7 @@ char *ctx_status(struct node *node, hvalue_t ctx) {
     return "runnable";
 }
 
-void print_context(
+static void print_context(
     FILE *file,
     hvalue_t ctx,
     struct callstack *cs,
@@ -1621,7 +1626,7 @@ static void *copy(void *p, unsigned int size){
 }
 
 // Take the path and put it in an array
-void path_serialize(struct node *parent, struct edge *e){
+static void path_serialize(struct node *parent, struct edge *e){
     // First recurse to the previous step
     assert(parent != NULL);
     struct edge *to_grandparent = node_to_parent(parent);
@@ -1644,7 +1649,7 @@ void path_serialize(struct node *parent, struct edge *e){
     global.macrosteps[global.nmacrosteps++] = macro;
 }
 
-void path_recompute(){
+static void path_recompute(){
     struct node *node = global.graph.nodes[0];
     struct state *sc = calloc(1, MAX_STATE_SIZE);
     memcpy(sc, node_state(node), state_size(node_state(node)));
@@ -1980,7 +1985,7 @@ static void path_output_macrostep(FILE *file, struct macrostep *macro, struct st
 // of the accesses is a store.  An access is identified by a path.  Two
 // accesses are to the same variable if one of the paths is a prefix of
 // the other.
-bool path_edge_conflict(
+static bool path_edge_conflict(
     struct edge *edge,
     struct edge *edge2
 ) {
@@ -2390,7 +2395,7 @@ static inline void step_init(struct worker *w, struct step *step){
 // This function explores the non-deterministic choices of a node just
 // taken from the todo list by the worker. Any new nodes that are found are
 // kept in w->results and not yet added to the todo list or the graph.
-void do_work1(struct worker *w, struct node *node){
+static void do_work1(struct worker *w, struct node *node){
     struct step step;
     struct state *state = node_state(node);
     if (state->chooser >= 0) {
@@ -2583,7 +2588,7 @@ static bool cpuinfo_addrecord(int processor, int phys_id, int core_id){
 }
 
 // Like POSIX getline, but works in Windows too
-int my_getline(char **buf, size_t *cap, FILE *fp) {
+static int my_getline(char **buf, size_t *cap, FILE *fp) {
     int c = fgetc(fp);
     if (c == EOF) {
         return -1;
@@ -2779,7 +2784,7 @@ static void vproc_tree_create(){
 }
 
 // Allocate n virtual processors, eagerly.
-void vproc_tree_alloc(struct vproc_tree *vt, struct worker *workers, unsigned int *index, unsigned int n){
+static void vproc_tree_alloc(struct vproc_tree *vt, struct worker *workers, unsigned int *index, unsigned int n){
     assert(n > 0);
     assert(n <= vt->n_vprocessors);
 
@@ -3353,7 +3358,7 @@ static void print_transitions(FILE *out, struct dict *symbols, struct node *node
 
 // Split s into components separated by sep.  Returns #components.
 // Return the components themselves into *parts.  All is malloc'd.
-unsigned int str_split(const char *s, char sep, char ***parts){
+static unsigned int str_split(const char *s, char sep, char ***parts){
     // Count the number of components
     unsigned int n = 1;
     for (const char *p = s; *p != '\0'; p++) {
@@ -3983,7 +3988,7 @@ int exec_model_checker(int argc, char **argv){
         middle_wait += w->middle_wait;
         end_wait += w->end_wait;
 #ifdef notdef
-        printf("W%2u: %.3lf %.3lf %.3lf %.3lf %.3lf %.3lf %.3lf %u %u\n", i,
+        printf("W%2u: %.3lf %.3lf %.3lf %.3lf %.3lf %.3lf %.3lf %u\n", i,
                 w->phase1,
                 w->phase2a,
                 w->phase2b,
@@ -3991,8 +3996,7 @@ int exec_model_checker(int argc, char **argv){
                 w->start_wait/w->start_count,
                 w->middle_wait/w->middle_count,
                 w->end_wait/w->end_count,
-                w->shard.tb_size,
-                w->process_step);
+                w->shard.tb_size);
 #endif
     }
 #else
