@@ -1098,6 +1098,7 @@ static void trystep(
                 global.stc_allocated * sizeof(*global.stc_table));
         }
         stc->id = global.nstc;
+        stc->invariant_chk = edge_index < 0;
         stc->completed = false;
         stc->u.in_progress = NULL;
         global.stc_table[global.nstc] = stc;
@@ -1105,17 +1106,12 @@ static void trystep(
         mutex_release(&global.stc_lock);
     }
 
-    // TODO. BUG? Seems there's concurrent writing into stc->invariant_chk here
     if (edge_index >= 0) {
         struct edge *edge = &node_edges(node)[edge_index];
         edge->stc_id = stc->id;
         edge->multiple = ctx_index >= 0 &&
                             state_multiplicity(state, ctx_index) > 1;
         edge->failed = false;
-        stc->invariant_chk = false;
-    }
-    else {
-        stc->invariant_chk = true;
     }
 
     if (!si_new) {
