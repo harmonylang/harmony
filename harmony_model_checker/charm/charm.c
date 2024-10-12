@@ -613,11 +613,7 @@ static void process_step(
             f->edge->dst = sh->node;
 #endif
             assert(f->edge->dst != NULL);
-#ifdef notdef
-            f->edge->stc_id = stc->id;
-#else
             f->edge->stc_id = (uint64_t) stc;
-#endif
             f->edge->failed = true;
             add_failure(&global.failures, f);
         }
@@ -672,23 +668,7 @@ static void process_step(
     if (so->choose_count > 0) {
         sc->chooser = new_index;
         // sc->pre = global.inv_pre ? node_state(sh->node)->pre : sc->vars;
-#ifdef notdef
-        // TODO.  Maybe more efficient to keep the following info
-        //        as it's already computed in onestep
-        struct context *ctx = value_get(so->after, NULL);
-        assert(ctx->sp > 0);
-        hvalue_t s = ctx_stack(ctx)[ctx->sp - 1];
-        if (VALUE_TYPE(s) != VALUE_SET) {
-            printf("CHOOSING FROM %s\n", value_string(s));
-            panic("choose of non-set\n");
-        }
-        assert(VALUE_TYPE(s) == VALUE_SET);
-        unsigned int size;
-        (void) value_get(s, &size);
-        noutgoing = size / sizeof(hvalue_t);
-#else
         noutgoing = so->choose_count;
-#endif
     }
     else {
         sc->chooser = -1;
@@ -1093,34 +1073,14 @@ static void trystep(
     stc = (struct step_condition *) &da[1];
 
     if (si_new) {
-#ifdef notdef
-        // Add to global array to create an id
-        // TODOTODO.  Possibly get rid of this global array
-        mutex_acquire(&global.stc_lock);
-        if (global.nstc == global.stc_allocated) {
-            global.stc_allocated *= 4;
-            global.stc_table = realloc(global.stc_table,
-                global.stc_allocated * sizeof(*global.stc_table));
-        }
-        stc->id = global.nstc;
-#endif
         stc->invariant_chk = edge_index < 0;
         stc->completed = false;
         stc->u.in_progress = NULL;
-#ifdef notdef
-        global.stc_table[global.nstc] = stc;
-        global.nstc++;
-        mutex_release(&global.stc_lock);
-#endif
     }
 
     if (edge_index >= 0) {
         struct edge *edge = &node_edges(node)[edge_index];
-#ifdef notdef
-        edge->stc_id = stc->id;
-#else
         edge->stc_id = (uint64_t) stc;
-#endif
         edge->multiple = ctx_index >= 0 &&
                             state_multiplicity(state, ctx_index) > 1;
         edge->failed = false;
@@ -3754,12 +3714,6 @@ int exec_model_checker(int argc, char **argv){
     graph_init(&global.graph);
     global.failures = NULL;
     global.seqs = VALUE_SET;
-
-#ifdef notdef
-    mutex_init(&global.stc_lock);
-    global.stc_allocated = 4096;
-    global.stc_table = malloc(global.stc_allocated * sizeof(*global.stc_table));
-#endif
 
     // open the HVM file
     FILE *fp = fopen(fname, "r");
