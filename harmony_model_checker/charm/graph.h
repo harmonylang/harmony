@@ -85,7 +85,9 @@ struct edge_list {
 // multiple edges may be ``waiting'' for it to complete in order to
 // compute the next state.
 struct step_condition {
+#ifdef notdef
     unsigned int id : 30;    // index into global.stc_table
+#endif
     bool completed : 1;      // step has been computed
     bool invariant_chk : 1;  // step is part of invariant check
     union {
@@ -99,20 +101,21 @@ struct step_condition {
 // state.
 struct edge {
 #ifdef SHORT_PTR
-XYXZZ
+THIS SHOULD NOT BE DEFINED
     int64_t dest : 37;          // "short" pointer to dst node
     uint32_t stc_id : 25;       // id of step_condition
 #define edge_dst(e)          ((struct node *) ((int64_t *) (e) + (e)->dest))
 #else
     struct node *dst;           // pointer to destination node
-    uint32_t stc_id : 30;       // id of step_condition
+    uint64_t stc_id : 48;       // id of step_condition
 #define edge_dst(e)          ((e)->dst)
 #endif
     bool multiple : 1;          // multiplicity > 1
     bool failed : 1;            // edge has failed (safety violation)
 };
 
-#define edge_sc(e)           (global.stc_table[(e)->stc_id])
+#define edge_sc(e)           ((struct step_condition *) (e->stc_id))
+// #define edge_sc(e)           (global.stc_table[(e)->stc_id])
 #define edge_input(e)        ((struct step_input *) &edge_sc(e)[1])
 #define edge_output(e)       (edge_sc(e)->u.completed)
 #define edge_invariant(e)    (edge_sc(e)->invariant_chk)

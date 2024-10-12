@@ -98,9 +98,11 @@ struct global {
     unsigned int nmacrosteps, alloc_macrosteps;
     struct macrostep **macrosteps;
 
+#ifdef notdef
     mutex_t stc_lock;
     struct step_condition **stc_table;
     unsigned int nstc, stc_allocated;
+#endif
 };
 
 extern struct global global;

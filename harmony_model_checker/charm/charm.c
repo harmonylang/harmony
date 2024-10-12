@@ -613,7 +613,11 @@ static void process_step(
             f->edge->dst = sh->node;
 #endif
             assert(f->edge->dst != NULL);
+#ifdef notdef
             f->edge->stc_id = stc->id;
+#else
+            f->edge->stc_id = (uint64_t) stc;
+#endif
             f->edge->failed = true;
             add_failure(&global.failures, f);
         }
@@ -1089,6 +1093,7 @@ static void trystep(
     stc = (struct step_condition *) &da[1];
 
     if (si_new) {
+#ifdef notdef
         // Add to global array to create an id
         // TODOTODO.  Possibly get rid of this global array
         mutex_acquire(&global.stc_lock);
@@ -1098,17 +1103,24 @@ static void trystep(
                 global.stc_allocated * sizeof(*global.stc_table));
         }
         stc->id = global.nstc;
+#endif
         stc->invariant_chk = edge_index < 0;
         stc->completed = false;
         stc->u.in_progress = NULL;
+#ifdef notdef
         global.stc_table[global.nstc] = stc;
         global.nstc++;
         mutex_release(&global.stc_lock);
+#endif
     }
 
     if (edge_index >= 0) {
         struct edge *edge = &node_edges(node)[edge_index];
+#ifdef notdef
         edge->stc_id = stc->id;
+#else
+        edge->stc_id = (uint64_t) stc;
+#endif
         edge->multiple = ctx_index >= 0 &&
                             state_multiplicity(state, ctx_index) > 1;
         edge->failed = false;
@@ -3743,9 +3755,11 @@ int exec_model_checker(int argc, char **argv){
     global.failures = NULL;
     global.seqs = VALUE_SET;
 
+#ifdef notdef
     mutex_init(&global.stc_lock);
     global.stc_allocated = 4096;
     global.stc_table = malloc(global.stc_allocated * sizeof(*global.stc_table));
+#endif
 
     // open the HVM file
     FILE *fp = fopen(fname, "r");
