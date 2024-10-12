@@ -149,7 +149,6 @@ struct worker {
     // in the hope of better cache performance
     unsigned int index;          // index of worker
     double timeout;              // deadline for model checker (-t option)
-    struct dict *computations;   // local computations cache
 
     // Shard of the Kripke structure.  There is an array of shards.  Each shard
     // holds the states that hash onto the index into the array.
@@ -1084,44 +1083,6 @@ static void trystep(
         .ctx = ctx
     };
 
-    // Try to find the computation in the local cache first.
-    // TODO.  Computing same hash up to three times in trystep
-#ifndef XYZ
-    struct step_condition *stc3 = dict_lookup(w->computations, &si, sizeof(si));
-#else
-    struct step_condition *stc3 = NULL;
-#endif
-    if (stc3 != NULL) {
-        if (edge_index >= 0) {
-            struct edge *edge = &node_edges(node)[edge_index];
-            edge->stc_id = stc3->id;
-            edge->multiple = ctx_index >= 0 &&
-                                state_multiplicity(state, ctx_index) > 1;
-            edge->failed = false;
-        }
-        assert(stc3->completed);
-
-        struct step_output *so3 = stc3->u.completed;
-        unsigned int est_total_ctxs = state->total + so3->nspawned + 1;
-        struct state_header *sh = state_header_alloc(w, state, est_total_ctxs);
-        sh->node = node;
-        sh->edge_index = edge_index;
-        assert(sh->edge_index >= -1);
-        assert(sh->edge_index < 256);
-        struct state *sc = (struct state *) &sh[1];
-
-        // Remove original context from context bag
-        if (ctx_index >= 0) {
-            assert(state_ctx(sc, ctx_index) == ctx);
-            context_remove_by_index(sc, ctx_index);
-        }
-
-        // Process the effect of the step
-        process_step(w, stc3, sh);
-        assert(sc->total <= est_total_ctxs);
-        return;
-    }
-
     // See if we did this already (or are doing this already)
     struct dict_assoc *da = dict_find_lock(global.computations,
         &w->allocator, &si, sizeof(si), &si_new, &si_lock);
@@ -1218,13 +1179,6 @@ static void trystep(
     }
 
     assert(stc->completed);
-
-#ifndef XYZ
-    // Add to the local cache.
-	struct step_condition **pstc = dict_insert(w->computations, &w->allocator,
-                                        &si, sizeof(si), NULL);
-    *pstc = stc;
-#endif
 
     // Conservative size.  Actual size hard to estimate because of
     // multiplicities.
@@ -3829,10 +3783,6 @@ int exec_model_checker(int argc, char **argv){
     global.workers = workers;
     for (unsigned int i = 0; i < global.nworkers; i++) {
         struct worker *w = &workers[i];
-
-#ifndef XYZ
-        w->computations = dict_new("computations", sizeof(struct step_condition *), 16 * 1024, global.nworkers, false, false);
-#endif
 
         w->timeout = timeout;
         w->index = i;
