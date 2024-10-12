@@ -156,7 +156,6 @@ struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
     // a lock
     unsigned int index = hash % dict->length;
     struct dict_assoc **sdb = &dict->stable[index];
-    struct dict_assoc **udb = &dict->unstable[index];
 	struct dict_assoc *k = *sdb;
 	while (k != NULL) {
 		if (k->len == keylen && memcmp((char *) &k[1] + k->val_len, key, keylen) == 0) {
@@ -168,6 +167,7 @@ struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
 		k = k->next;
 	}
 
+    struct dict_assoc **udb = &dict->unstable[index];
     if (dict->concurrent) {
         mutex_acquire(&dict->locks[index % dict->nlocks]);
 
@@ -224,7 +224,6 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
     *lock = &dict->locks[index % dict->nlocks];
 
     struct dict_assoc **sdb = &dict->stable[index];
-    struct dict_assoc **udb = &dict->unstable[index];
 	struct dict_assoc *k = *sdb;
 	while (k != NULL) {
 		if (k->len == keylen && memcmp((char *) &k[1] + k->val_len, key, keylen) == 0) {
@@ -237,8 +236,9 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
 		k = k->next;
 	}
 
-    mutex_acquire(*lock);
     // See if the item is in the unstable list
+    struct dict_assoc **udb = &dict->unstable[index];
+    mutex_acquire(*lock);
     k = *udb;
     while (k != NULL) {
         if (k->len == keylen && memcmp((char *) &k[1] + k->val_len, key, keylen) == 0) {

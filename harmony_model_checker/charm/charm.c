@@ -149,6 +149,7 @@ struct worker {
     // in the hope of better cache performance
     unsigned int index;          // index of worker
     double timeout;              // deadline for model checker (-t option)
+    struct dict *computations;   // local computations cache
 
     // Shard of the Kripke structure.  There is an array of shards.  Each shard
     // holds the states that hash onto the index into the array.
@@ -1076,29 +1077,59 @@ static void trystep(
 
     w->si_total++;          // counts the number of edges
 
+    // Key to find (vars, choice, ctx) pair in hash table.
     struct step_input si = {
         .vars = state->vars,
         .choice = choice,
         .ctx = ctx
     };
 
-    // For backward compatibility, we still support countLabel().  If the
-    // Harmony program uses it, we circumvent the cache.
-    if (has_countLabel) {
-        struct step_comp *comp = walloc_fast(w, sizeof(struct step_comp));
-        si_new = true;
-        stc = &comp->cond;
-        comp->input = si;
+    // Try to find the computation in the local cache first.
+    // TODO.  Computing same hash up to three times in trystep
+#ifndef XYZ
+    struct step_condition *stc3 = dict_lookup(w->computations, &si, sizeof(si));
+#else
+    struct step_condition *stc3 = NULL;
+#endif
+    if (stc3 != NULL) {
+        if (edge_index >= 0) {
+            struct edge *edge = &node_edges(node)[edge_index];
+            edge->stc_id = stc3->id;
+            edge->multiple = ctx_index >= 0 &&
+                                state_multiplicity(state, ctx_index) > 1;
+            edge->failed = false;
+        }
+        assert(stc3->completed);
+
+        struct step_output *so3 = stc3->u.completed;
+        unsigned int est_total_ctxs = state->total + so3->nspawned + 1;
+        struct state_header *sh = state_header_alloc(w, state, est_total_ctxs);
+        sh->node = node;
+        sh->edge_index = edge_index;
+        assert(sh->edge_index >= -1);
+        assert(sh->edge_index < 256);
+        struct state *sc = (struct state *) &sh[1];
+
+        // Remove original context from context bag
+        if (ctx_index >= 0) {
+            assert(state_ctx(sc, ctx_index) == ctx);
+            context_remove_by_index(sc, ctx_index);
+        }
+
+        // Process the effect of the step
+        process_step(w, stc3, sh);
+        assert(sc->total <= est_total_ctxs);
+        return;
     }
-    else {
-        // See if we did this already (or are doing this already)
-        struct dict_assoc *da = dict_find_lock(global.computations,
-            &w->allocator, &si, sizeof(si), &si_new, &si_lock);
-        stc = (struct step_condition *) &da[1];
-    }
+
+    // See if we did this already (or are doing this already)
+    struct dict_assoc *da = dict_find_lock(global.computations,
+        &w->allocator, &si, sizeof(si), &si_new, &si_lock);
+    stc = (struct step_condition *) &da[1];
 
     if (si_new) {
         // Add to global array to create an id
+        // TODOTODO.  Possibly get rid of this global array
         mutex_acquire(&global.stc_lock);
         if (global.nstc == global.stc_allocated) {
             global.stc_allocated *= 4;
@@ -1113,6 +1144,7 @@ static void trystep(
         mutex_release(&global.stc_lock);
     }
 
+    // TODO. BUG? Seems there's concurrent writing into stc->invariant_chk here
     if (edge_index >= 0) {
         struct edge *edge = &node_edges(node)[edge_index];
         edge->stc_id = stc->id;
@@ -1145,9 +1177,7 @@ static void trystep(
         assert(stc->completed);
     }
 
-    if (!has_countLabel) {
-        mutex_release(si_lock);
-    }
+    mutex_release(si_lock);
 
     // If this is a new step, perform it
     struct edge_list *el = NULL;
@@ -1178,25 +1208,23 @@ static void trystep(
             so = onestep(w, node, state, ctx, step, choice, true);
         }
 
-        if (has_countLabel) {
-            assert(!stc->completed);
-            assert(stc->u.in_progress == NULL);
-            el = stc->u.in_progress;
-            stc->completed = true;
-            stc->u.completed = so;
-        }
-        else {
-            mutex_acquire(si_lock);
-            assert(!stc->completed);
-            el = stc->u.in_progress;
-            stc->completed = true;
-            stc->u.completed = so;
-            mutex_release(si_lock);
-        }
+        // Mark as completed
+        mutex_acquire(si_lock);
+        assert(!stc->completed);
+        el = stc->u.in_progress;
+        stc->completed = true;
+        stc->u.completed = so;
+        mutex_release(si_lock);
     }
-    else {
-        assert(stc->completed);
-    }
+
+    assert(stc->completed);
+
+#ifndef XYZ
+    // Add to the local cache.
+	struct step_condition **pstc = dict_insert(w->computations, &w->allocator,
+                                        &si, sizeof(si), NULL);
+    *pstc = stc;
+#endif
 
     // Conservative size.  Actual size hard to estimate because of
     // multiplicities.
@@ -3802,6 +3830,10 @@ int exec_model_checker(int argc, char **argv){
     for (unsigned int i = 0; i < global.nworkers; i++) {
         struct worker *w = &workers[i];
 
+#ifndef XYZ
+        w->computations = dict_new("computations", sizeof(struct step_condition *), 16 * 1024, global.nworkers, false, false);
+#endif
+
         w->timeout = timeout;
         w->index = i;
 
@@ -3875,7 +3907,8 @@ int exec_model_checker(int argc, char **argv){
     global.code = code_init_parse(&workers[0].allocator, jc);
 
     if (has_countLabel) {
-        printf("    * compability with countLabel\n");
+        fprintf(stderr, "countLabel no longer supported\n");
+        exit(1);
     }
 
     // Initialize the profile arrays of the workers.

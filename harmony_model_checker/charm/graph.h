@@ -94,12 +94,6 @@ struct step_condition {
     } u;
 };
 
-// Mostly for backward compatibility with countlabel()
-struct step_comp {
-    struct step_condition cond;
-    struct step_input input;
-};
-
 // For each (directed) edge in the Kripke structure (a graph of states), we maintain
 // information of how a program can get from the source state to the destination
 // state.
