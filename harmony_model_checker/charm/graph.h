@@ -78,6 +78,7 @@ struct edge_list {
     struct edge_list *next; // linked list
     struct node *node;      // source node
     int edge_index;         // index into edges of the source node
+    int ctx_index;          // index of context in state
 };
 
 // Each edge points to one of these (by id).  It describes either a

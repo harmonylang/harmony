@@ -175,7 +175,6 @@ struct worker {
     // Below are the things that are likely to change more often
     //
 
-    // TODO.  Next two should probably just be in "global".
     unsigned int si_total, si_hits;
     struct edge_list *el_free;
     bool loops_possible;         // loops in Kripke structure are possible
@@ -1097,6 +1096,7 @@ static void trystep(
                 w->el_free = el->next;
             }
             el->node = node;
+            el->ctx_index = ctx_index;
             el->edge_index = edge_index;
             el->next = stc->u.in_progress;
             stc->u.in_progress = el;
@@ -1187,11 +1187,15 @@ static void trystep(
         assert(sh->edge_index >= -1);
         assert(sh->edge_index < 256);
         sc = (struct state *) &sh[1];
-
-        context_remove(sc, ctx);
+        // context_remove(sc, ctx);
+        if (el->ctx_index >= 0) {
+            assert(state_ctx(sc, cl->ctx_index) == ctx);
+            context_remove_by_index(sc, el->ctx_index);
+        }
         process_step(w, stc, sh);
         assert(sc->total <= est_total_ctxs);
 
+        // Put edge_list node back on the free list
         struct edge_list *next = el->next;
         el->next = w->el_free;
         w->el_free = el;
