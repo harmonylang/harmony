@@ -223,8 +223,7 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
     unsigned int index = hash % dict->length;
     *lock = &dict->locks[index % dict->nlocks];
 
-    struct dict_assoc **sdb = &dict->stable[index];
-	struct dict_assoc *k = *sdb;
+	struct dict_assoc *k = dict->stable[index];
 	while (k != NULL) {
 		if (k->len == keylen && memcmp((char *) &k[1] + k->val_len, key, keylen) == 0) {
             if (new != NULL) {

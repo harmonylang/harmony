@@ -343,6 +343,36 @@ static inline void context_remove_by_index(struct state *state, int i){
     }
 }
 
+// Copy of value::context_add
+static inline int local_context_add(struct state *state, hvalue_t ctx){
+    hvalue_t *ctxlist = state_ctxlist(state);
+
+    unsigned int i;
+    for (i = 0; i < state->bagsize; i++) {
+        hvalue_t ctxi = ctxlist[i] & ~STATE_MULTIPLICITY;
+        if (ctxi == ctx) {
+            ctxlist[i] += (hvalue_t) 1 << STATE_M_SHIFT;
+            return i;
+        }
+        if (ctxi > ctx) {
+            break;
+        }
+    }
+
+    if (state->total >= MAX_CONTEXT_BAG) {
+        return -1;
+    }
+ 
+    // Move the last contexts
+    memmove(&ctxlist[i+1], &ctxlist[i],
+                    (state->total - i) * sizeof(hvalue_t));
+
+    state->bagsize++;
+    state->total++;
+    ctxlist[i] = ctx | ((hvalue_t) 1 << STATE_M_SHIFT);
+    return i;
+}
+
 // Part of experimental -d option, running Harmony programs "for real".
 static void direct_run(struct state *state, unsigned int id){
     struct {
@@ -568,7 +598,7 @@ static void direct_run(struct state *state, unsigned int id){
         }
         else if (!step.ctx->terminated) {
             hvalue_t after = value_put_context(step.allocator, step.ctx);
-            context_add(state, after);
+            local_context_add(state, after);
         }
     }
 
@@ -632,7 +662,7 @@ static inline void process_step(
 
     // Update state with spawned and resumed threads.
     for (unsigned int i = 0; i < so->nspawned; i++) {
-        if (context_add(sc, step_spawned(so)[i]) < 0) {
+        if (local_context_add(sc, step_spawned(so)[i]) < 0) {
             panic("too many threads 1");
         }
     }
@@ -661,7 +691,7 @@ static inline void process_step(
         stopped_context_add(sc, so->after);
     }
     else if (!so->terminated) {
-        new_index = context_add(sc, so->after);
+        new_index = local_context_add(sc, so->after);
         if (new_index < 0) {
             panic("too many threads 0");
         }
@@ -1571,7 +1601,7 @@ static void twostep(
     }
     else if (!step.ctx->terminated) {
         // TODO.  Check failure of context_add
-        (void) context_add(sc, after);
+        (void) local_context_add(sc, after);
     }
 
     free(step.ctx);
