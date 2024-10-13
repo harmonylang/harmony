@@ -215,6 +215,10 @@ struct worker {
     hvalue_t as_stack[MAX_CONTEXT_STACK];
 
     unsigned int sb_index;
+
+    // Some cached info from global to reduce contention
+    unsigned int nworkers;
+    struct dfa *dfa;
 };
 
 #ifdef CACHE_LINE_ALIGNED
@@ -592,7 +596,7 @@ static inline uint32_t meiyan2(const char *key, int count) {
 // Apply the effect of evaluating a context (for a particular assignment
 // of shared variables and possibly some choice) to a state.  This leads
 // to a new edge in the Kripke structure, possibly to a new state.
-static void process_step(
+static inline void process_step(
     struct worker *w,
     struct step_condition *stc,
     struct state_header *sh
@@ -600,6 +604,8 @@ static void process_step(
     struct step_output *so = stc->u.completed;
 
     if (sh->edge_index < 0) { // invariant
+        assert(stc->completed);
+        assert(stc->invariant_chk);
         if (so->failed || so->infinite_loop) {
             struct failure *f = new_alloc(struct failure);
             f->type = so->failed ? FAIL_SAFETY : FAIL_TERMINATION;
@@ -614,6 +620,7 @@ static void process_step(
             assert(f->edge->dst != NULL);
             f->edge->stc_id = (uint64_t) stc;
             f->edge->failed = true;
+            f->edge->invariant_chk = true;
             add_failure(&global.failures, f);
         }
         state_header_free(w, sh);
@@ -697,9 +704,9 @@ static void process_step(
         w->failures = f;
     }
 
-    if (global.dfa != NULL) {
+    if (w->dfa != NULL) {
         for (unsigned int i = 0; i < so->nlog; i++) {
-            int nstate = dfa_step(global.dfa, sc->dfa_state, step_log(so)[i]);
+            int nstate = dfa_step(w->dfa, sc->dfa_state, step_log(so)[i]);
             if (nstate < 0) {
                 struct edge *edge = &node_edges(sh->node)[sh->edge_index];
                 struct failure *f = new_alloc(struct failure);
@@ -719,7 +726,7 @@ static void process_step(
 
     // Add to the linked list of the responsible peer shard
     struct shard *shard = &w->shard;
-    unsigned int responsible = (sh->hash >> 16) % global.nworkers;
+    unsigned int responsible = (sh->hash >> 16) % w->nworkers;
     struct state_queue *sq = &shard->peers[responsible];
     *sq->last = sh;
     sq->last = &sh->next;
@@ -1072,11 +1079,12 @@ static void trystep(
     stc = (struct step_condition *) &da[1];
 
     if (si_new) {
-        stc->invariant_chk = edge_index < 0;
+        // stc->invariant_chk = edge_index < 0;
         stc->completed = false;
         stc->u.in_progress = NULL;
     }
 
+    // edge_index < 0 ==> invariant check
     if (edge_index >= 0) {
         struct edge *edge = &node_edges(node)[edge_index];
         edge->stc_id = (uint64_t) stc;
@@ -1615,7 +1623,7 @@ static void path_recompute(){
         // assert(e->dst != NULL);
         hvalue_t ctx = edge_input(e)->ctx;
 
-        if (edge_invariant(e)) {
+        if (e->invariant_chk) {
             global.processes = realloc(global.processes, (global.nprocesses + 1) * sizeof(hvalue_t));
             global.callstacks = realloc(global.callstacks, (global.nprocesses + 1) * sizeof(struct callstack *));
             global.processes[global.nprocesses] = ctx;
@@ -2417,7 +2425,7 @@ static void do_work(struct worker *w){
     struct shard *shard = &w->shard;
 
     // Put any messages from the prior round on the appropriate free lists
-    for (unsigned int i = 0; i < global.nworkers; i++) {
+    for (unsigned int i = 0; i < w->nworkers; i++) {
         struct state_queue *sq = &shard->peers[i];
         struct state_header *sh;
         while ((sh = sq->first) != NULL) {
@@ -2440,7 +2448,7 @@ static void do_work(struct worker *w){
         }
 
         // Stop if about to run out of state buffer space
-        if (w->sb_index > STATE_BUFFER_HWM * global.nworkers) {
+        if (w->sb_index > STATE_BUFFER_HWM * w->nworkers) {
             break;
         }
     }
@@ -2451,7 +2459,7 @@ static void do_work2(struct worker *w){
 
     // printf("WORK 2: %u: %u %lu\n", w->index, shard->sb_index, sizeof(shard->state_buffer));
 
-    for (unsigned int i = 0; i < global.nworkers; i++) {
+    for (unsigned int i = 0; i < w->nworkers; i++) {
         struct shard *s2 = &global.workers[i].shard;
         for (struct state_header *sh = s2->peers[w->index].first;
                                     sh != NULL; sh = sh->next) {
@@ -2842,7 +2850,7 @@ static void worker(void *arg){
         // Nobody's doing work.  Great time to see if we are done.
         unsigned int nstates = 0, local_node_id = 0;
         done = true;
-        for (unsigned int i = 0; i < global.nworkers; i++) {
+        for (unsigned int i = 0; i < w->nworkers; i++) {
             if (i == w->index) {
                 local_node_id = nstates;
             }
@@ -2880,7 +2888,7 @@ static void worker(void *arg){
         // for graph analysis than a linked list.  The entriews themselves
         // are filled in parallel later, while also assigning ids to each
         // of the nodes.
-        if (w->index == 0 % global.nworkers) {
+        if (w->index == 0 % w->nworkers) {
             if (done) {
                 graph_add_multiple(&global.graph, nstates);
             }
@@ -2890,7 +2898,7 @@ static void worker(void *arg){
                 if (global.lasttime != 0) {
                     unsigned int enqueued = 0, dequeued = 0;
                     unsigned long allocated = global.allocated;
-                    for (unsigned int i = 0; i < global.nworkers; i++) {
+                    for (unsigned int i = 0; i < w->nworkers; i++) {
                         struct worker *w2 = &global.workers[i];
                         enqueued += w2->shard.tb_size;
                         dequeued += w2->shard.tb_index;
@@ -2914,10 +2922,10 @@ static void worker(void *arg){
         // rehashing is distributed among the threads in the next phase
         // The only parallelism here is that workers 1 and 2 grow different
         // hash tables, while worker 0 deals with the graph table
-        if (w->index == 1 % global.nworkers) {
+        if (w->index == 1 % w->nworkers) {
             dict_grow_prepare(global.values);
         }
-        if (w->index == 2 % global.nworkers) {
+        if (w->index == 2 % w->nworkers) {
             dict_grow_prepare(global.computations);
         }
 
@@ -3829,10 +3837,12 @@ int exec_model_checker(int argc, char **argv){
         exit(1);
     }
 
-    // Initialize the profile arrays of the workers.
+    // Initialize some more of the worker info.
     for (unsigned int i = 0; i < global.nworkers; i++) {
         struct worker *w = &workers[i];
         w->profile = calloc(global.code.len, sizeof(*w->profile));
+        w->nworkers = global.nworkers;
+        w->dfa = global.dfa;
     }
 
     // Create an initial state.  Start with the initial context.

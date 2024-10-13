@@ -105,17 +105,17 @@ THIS SHOULD NOT BE DEFINED
 #define edge_dst(e)          ((struct node *) ((int64_t *) (e) + (e)->dest))
 #else
     struct node *dst;           // pointer to destination node
-    uint64_t stc_id : 48;       // pointer to step_condition
+    uint64_t stc_id : 48;       // pointer to step_condition / step_input
 #define edge_dst(e)          ((e)->dst)
 #endif
     bool multiple : 1;          // multiplicity > 1
     bool failed : 1;            // edge has failed (safety violation)
+    bool invariant_chk : 1;     // fake edge for invariant
 };
 
 #define edge_sc(e)           ((struct step_condition *) (uint64_t) (e->stc_id))
 #define edge_input(e)        ((struct step_input *) &edge_sc(e)[1])
 #define edge_output(e)       (edge_sc(e)->u.completed)
-#define edge_invariant(e)    (edge_sc(e)->invariant_chk)
 
 // Charm can detect a variety of failure types:
 enum fail_type {
