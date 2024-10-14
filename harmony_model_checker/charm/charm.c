@@ -64,7 +64,9 @@
 // Convenient constant
 #define MAX_STATE_SIZE (sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1))
 
-// Important performance parameter...
+// Important performance parameter that represents the number of states that
+// each worker produces for each other worker before going to the barrier.
+// TODO.  How to tune this thing?
 #define STATE_BUFFER_HWM    50
 
 // All global variables should be here
@@ -4047,7 +4049,7 @@ int exec_model_checker(int argc, char **argv){
         noc += w->noc;
     }
     printf("    * %u/%u computations/edges\n", (si_total - si_hits), si_total);
-    printf("    * %u noc\n", noc);
+    // printf("    * %u noc\n", noc);
 
     // If no output file is desired, we're done.
     if (outfile == NULL) {
