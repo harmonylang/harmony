@@ -219,6 +219,8 @@ struct worker {
     // Some cached info from global to reduce contention
     unsigned int nworkers;
     struct dfa *dfa;
+
+    unsigned int noc;
 };
 
 #ifdef CACHE_LINE_ALIGNED
@@ -1189,6 +1191,27 @@ static void trystep(
     // multiplicities.
     struct step_output *so2 = stc->u.completed;
     unsigned int est_total_ctxs = state->total + so2->nspawned + 1;
+
+    // Keep track of no change
+    if (so2->vars == state->vars && so2->after == ctx &&
+            so2->nlog == 0 && so2->nspawned == 0 && so2->nunstopped == 0 &&
+            !so2->failed && !so2->infinite_loop) {
+        if (edge_index >= 0) {
+            struct edge *edge = &node_edges(node)[edge_index];
+            edge->dst = node;
+        }
+        while (el != NULL) {
+            node = el->node;
+            if (el->edge_index >= 0) {
+                node_edges(node)[el->edge_index].dst = node;
+            }
+            struct edge_list *next = el->next;
+            el->next = w->el_free;
+            w->el_free = el;
+            el = next;
+        }
+        return;
+    }
 
     // Allocate a state_header
     // TODO. Don't need to copy if ctx in readonly mode (unless it stops being in
@@ -4014,12 +4037,15 @@ int exec_model_checker(int argc, char **argv){
 
     printf("    * %u states (time %.2lfs, mem=%.3lfGB)\n", global.graph.size, gettime() - before, (double) allocated / (1L << 30));
     unsigned int si_hits = 0, si_total = 0;
+    unsigned int noc = 0;
     for (unsigned int i = 0; i < global.nworkers; i++) {
         struct worker *w = &workers[i];
         si_hits += w->si_hits;
         si_total += w->si_total;
+        noc += w->noc;
     }
     printf("    * %u/%u computations/edges\n", (si_total - si_hits), si_total);
+    printf("    * %u noc\n", noc);
 
     // If no output file is desired, we're done.
     if (outfile == NULL) {
