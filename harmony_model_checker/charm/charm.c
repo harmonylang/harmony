@@ -221,8 +221,6 @@ struct worker {
     // Some cached info from global to reduce contention
     unsigned int nworkers;
     struct dfa *dfa;
-
-    unsigned int noc;
 };
 
 #ifdef CACHE_LINE_ALIGNED
@@ -1192,16 +1190,14 @@ static void trystep(
     // Conservative size.  Actual size hard to estimate because of
     // multiplicities.
     struct step_output *so2 = stc->u.completed;
-    unsigned int est_total_ctxs = state->total + so2->nspawned + 1;
 
-    // Keep track of no change
+    // If there was no change, then we don't need to look up the state.
+    // We can simply create a self-edge.
     if (so2->vars == state->vars && so2->after == ctx &&
             so2->nlog == 0 && so2->nspawned == 0 && so2->nunstopped == 0 &&
             !so2->failed && !so2->infinite_loop) {
         if (edge_index >= 0) {
-            struct edge *edge = &node_edges(node)[edge_index];
-            edge->dst = node;
-            w->noc++;
+            node_edges(node)[edge_index].dst = node;
         }
         while (el != NULL) {
             node = el->node;
@@ -1212,16 +1208,12 @@ static void trystep(
             el->next = w->el_free;
             w->el_free = el;
             el = next;
-            w->noc++;
         }
         return;
     }
 
-    // Allocate a state_header
-    // TODO. Don't need to copy if ctx in readonly mode (unless it stops being in
-    //       readonly mode...
-    // TODO. Alternatively, it seems easy to check if the state is going to be updated or not
-    // TODO. Also copy not needed if ctx_index == -1 (invariant check)
+    // Allocate a state_header, essentially a message to another worker
+    unsigned int est_total_ctxs = state->total + so2->nspawned + 1;
     struct state_header *sh = state_header_alloc(w, state, est_total_ctxs);
     sh->node = node;
     sh->edge_index = edge_index;
@@ -1251,7 +1243,6 @@ static void trystep(
         assert(sh->edge_index >= -1);
         assert(sh->edge_index < 256);
         sc = (struct state *) &sh[1];
-        // context_remove(sc, ctx);
         if (el->ctx_index >= 0) {
             assert(state_ctx(sc, cl->ctx_index) == ctx);
             context_remove_by_index(sc, el->ctx_index);
@@ -4041,15 +4032,12 @@ int exec_model_checker(int argc, char **argv){
 
     printf("    * %u states (time %.2lfs, mem=%.3lfGB)\n", global.graph.size, gettime() - before, (double) allocated / (1L << 30));
     unsigned int si_hits = 0, si_total = 0;
-    unsigned int noc = 0;
     for (unsigned int i = 0; i < global.nworkers; i++) {
         struct worker *w = &workers[i];
         si_hits += w->si_hits;
         si_total += w->si_total;
-        noc += w->noc;
     }
     printf("    * %u/%u computations/edges\n", (si_total - si_hits), si_total);
-    // printf("    * %u noc\n", noc);
 
     // If no output file is desired, we're done.
     if (outfile == NULL) {
