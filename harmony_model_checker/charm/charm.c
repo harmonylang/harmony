@@ -607,19 +607,18 @@ static void direct_run(struct state *state, unsigned int id){
     }
 }
 
-static inline uint32_t meiyan2(const char *key, int count) {
+// Specialized hash function for states
+static inline uint32_t meiyan2(const struct state *s){
 	typedef uint32_t *P;
+    unsigned int count = sizeof(*s) / 8 + s->total;
+    P key = (P) s;
+
 	uint32_t h = 0x811c9dc5;
-	while (count >= 8) {
-		h = (h ^ ((((*(P)key) << 5) | ((*(P)key) >> 27)) ^ *(P)(key + 4))) * 0xad3e7;
-		count -= 8;
-		key += 8;
+	while (count > 0) {
+		h = (h ^ ((((*key) << 5) | ((*key) >> 27)) ^ *(key + 1))) * 0xad3e7;
+		count--;
+		key += 2;
 	}
-	#define tmp h = (h ^ *(uint16_t*)key) * 0xad3e7; key += 2;
-	if (count & 4) { tmp tmp }
-	if (count & 2) { tmp }
-	if (count & 1) { h = (h ^ *key) * 0xad3e7; }
-	#undef tmp
 	return h ^ (h >> 16);
 }
 
@@ -752,7 +751,7 @@ static inline void process_step(
     }
 
     sh->noutgoing = noutgoing;
-    sh->hash = meiyan2((char *) sc, state_size(sc));
+    sh->hash = meiyan2(sc);
 
     // Add to the linked list of the responsible peer shard
     struct shard *shard = &w->shard;
@@ -3931,7 +3930,7 @@ int exec_model_checker(int argc, char **argv){
     global.computations = dict_new("computations", sizeof(struct step_condition), 16 * 1024, global.nworkers, false, true);
 
     bool new;
-    struct dict_assoc *hn = dict_find_new(global.workers[0].shard.states, &workers[0].allocator, state, state_size(state), sizeof(struct edge), &new, meiyan2((char *) state, state_size(state)));
+    struct dict_assoc *hn = dict_find_new(global.workers[0].shard.states, &workers[0].allocator, state, state_size(state), sizeof(struct edge), &new, meiyan2(state));
     struct node *node = (struct node *) &hn[1];
     memset(node, 0, sizeof(*node));
     node->initial = true;
