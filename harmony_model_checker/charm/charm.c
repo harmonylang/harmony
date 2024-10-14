@@ -1199,6 +1199,7 @@ static void trystep(
         if (edge_index >= 0) {
             struct edge *edge = &node_edges(node)[edge_index];
             edge->dst = node;
+            w->noc++;
         }
         while (el != NULL) {
             node = el->node;
@@ -1209,6 +1210,7 @@ static void trystep(
             el->next = w->el_free;
             w->el_free = el;
             el = next;
+            w->noc++;
         }
         return;
     }
