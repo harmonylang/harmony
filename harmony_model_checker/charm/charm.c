@@ -3141,8 +3141,7 @@ static void tarjan(){
                             now = gettime();
                             lastdone = ndone;
                         }
-                        struct node *n2;
-                        n2 = stack_pop(&stack, NULL);
+                        struct node *n2 = stack_pop(&stack, NULL);
                         n2->on_stack = false;
                         scc[n2->id].component = comp_id;
                         if (n2 == n) {
@@ -3162,7 +3161,7 @@ static void tarjan(){
 // This is the same as tarjan(), except that it only considers
 // epsilon edges in the graph.
 static void tarjan_epsclosure(){
-    struct scc *scc = malloc(global.graph.size * sizeof(*scc));
+    struct eps_scc *scc = malloc(global.graph.size * sizeof(*scc));
     for (unsigned int v = 0; v < global.graph.size; v++) {
         scc[v].index = -1;
     }
@@ -3185,7 +3184,7 @@ static void tarjan_epsclosure(){
                     scc[n->id].lowlink = i;
                     i++;
                     stack_push(&stack, n, 0);
-                    n->on_stack = true;
+                    n->eps_on_stack = true;
                 }
                 else {
                     assert(pi > 0);
@@ -3201,7 +3200,7 @@ static void tarjan_epsclosure(){
                     if (scc[w->id].index < 0) {
                         break;
                     }
-                    if (w->on_stack && scc[w->id].index < scc[n->id].lowlink) {
+                    if (w->eps_on_stack && scc[w->id].index < scc[n->id].lowlink) {
                         scc[n->id].lowlink = scc[w->id].index;
                     }
                     pi += 1;
@@ -3212,6 +3211,7 @@ static void tarjan_epsclosure(){
                     stack_push(&call_stack, edge_dst(e), 0);
                 }
                 else if (scc[n->id].lowlink == scc[n->id].index) {
+                    struct eps_component *ec = new_alloc(struct eps_component);
                     for (;;) {
                         ndone++;
                         if (ndone - lastdone >= 10000000 && gettime() - now > 3) {
@@ -3219,10 +3219,9 @@ static void tarjan_epsclosure(){
                             now = gettime();
                             lastdone = ndone;
                         }
-                        struct node *n2;
-                        n2 = stack_pop(&stack, NULL);
-                        n2->on_stack = false;
-                        scc[n2->id].component = comp_id;
+                        struct node *n2 = stack_pop(&stack, NULL);
+                        n2->eps_on_stack = false;
+                        scc[n2->id].component = ec;
                         if (n2 == n) {
                             break;
                         }
@@ -4095,6 +4094,8 @@ int exec_model_checker(int argc, char **argv){
 
     if (global.printed_something) {
         epsilon_closure_prep();
+        tarjan_epsclosure();
+        printf("EPS %u components\n", global.eps_ncomponents);
     }
 
     bool computed_components = false;

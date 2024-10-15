@@ -53,6 +53,17 @@ struct macrostep {
     unsigned int nprocesses;        // the number of processes in the list
 };
 
+struct eps_component {
+    int stuff;
+};
+
+// TODO. Could this be a union?
+struct eps_scc {
+    struct eps_component *component;
+    int32_t index, lowlink; // only needed for Tarjan
+};
+
+// TODO. Could this be a union?
 struct scc {
     uint32_t component;     // strongly connected component id
     int32_t index, lowlink; // only needed for Tarjan
@@ -100,7 +111,7 @@ struct global {
     unsigned int oldpid;            // for thread id computation
     struct scc *scc;                // strongly connected components
     unsigned int ncomponents;       // number of components
-    struct scc *eps_scc;            // same as above two for epsilon
+    struct eps_scc *eps_scc;        // same as above two for epsilon
     unsigned int eps_ncomponents;   //    closure computation
 
     // Reconstructed error trace stored here

@@ -137,6 +137,7 @@ struct node {
     uint8_t nedges;         // number of outgoing edges  // TODO also maintained indirectly by hash table
     bool initial : 1;       // initial state
     bool on_stack : 1;      // for Tarjan
+    bool eps_on_stack : 1;  // for Tarjan epsilon closure
     bool failed : 1;        // state resulted from failed transition
     bool final : 1;         // final state
     bool visited : 1;       // for busy wait detection
