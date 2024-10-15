@@ -131,11 +131,10 @@ enum fail_type {
 // This is information about a node in the Kripke structure.  The node is directly followed
 // by the array of outgoing edges and then the Harmony state corresponding to this node.
 struct node {
-    // struct edge *fwd;       // forward edges
     struct node *parent;    // path to initial state
     uint32_t id;            // nodes are numbered starting from 0
     uint16_t len;           // length of path to initial state
-    uint8_t nedges;         // number of outgoing edges  // TODO also maintained by hash table
+    uint8_t nedges;         // number of outgoing edges  // TODO also maintained indirectly by hash table
     bool initial : 1;       // initial state
     bool on_stack : 1;      // for Tarjan
     bool failed : 1;        // state resulted from failed transition

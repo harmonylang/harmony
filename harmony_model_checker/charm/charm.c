@@ -86,15 +86,6 @@ struct state_header {
 
 extern bool has_countLabel;     // TODO.  Hack for backward compatibility
 
-#define LOAD_ORDER memory_order_acquire
-#define STORE_ORDER memory_order_release
-
-// TODO.  Move into global
-struct scc {
-    uint32_t component;     // strongly connected component id
-    int32_t index, lowlink; // only needed for Tarjan
-} *scc;
-
 // Info about virtual processors (cores or hyperthreads).  Virtual
 // processors are thought of a organized in a tree, for example based
 // on cache affinity.  Each processor is therefore uniquely identified
@@ -2238,89 +2229,6 @@ static char *json_string_encode(char *s, int len){
     return result;
 }
 
-#ifdef notdef
-
-struct enum_loc_env_t {
-    FILE *out;
-    struct dict *code_map;
-};
-
-static void enum_loc(
-    void *env,
-    const void *key,
-    unsigned int key_size,
-    void *value
-) {
-    static bool notfirst = false;
-    struct enum_loc_env_t *enum_loc_env = env;
-    FILE *out = enum_loc_env->out;
-    struct dict *code_map = enum_loc_env->code_map;
-
-    if (notfirst) {
-        fprintf(out, ",\n");
-    }
-    else {
-        notfirst = true;
-        fprintf(out, "\n");
-    }
-
-    // Get program counter
-    char *pcc = malloc(key_size + 1);
-    memcpy(pcc, key, key_size);
-    pcc[key_size] = 0;
-    int pc = atoi(pcc);
-    free(pcc);
-
-    fprintf(out, "    \"%.*s\": { ", key_size, (char *) key);
-
-    struct json_value **pjv = value;
-    struct json_value *jv = *pjv;
-    assert(jv->type == JV_MAP);
-
-    struct json_value *file = dict_lookup(jv->u.map, "file", 4);
-    assert(file->type == JV_ATOM);
-    fprintf(out, "\"file\": \"%s\", ", json_string_encode(file->u.atom.base, file->u.atom.len));
-
-    struct json_value *line = dict_lookup(jv->u.map, "line", 4);
-    assert(line->type == JV_ATOM);
-    fprintf(out, "\"line\": \"%.*s\", ", line->u.atom.len, line->u.atom.base);
-
-    static char *tocopy[] = { "column", "endline", "endcolumn", NULL };
-    for (unsigned int i = 0; tocopy[i] != NULL; i++) {
-        char *key2 = tocopy[i];
-        struct json_value *jv2 = dict_lookup(jv->u.map, key2, strlen(key2));
-        assert(jv2->type == JV_ATOM);
-        fprintf(out, "\"%s\": \"%.*s\", ", key2, jv2->u.atom.len, jv2->u.atom.base);
-    }
-
-    struct json_value *stmt = dict_lookup(jv->u.map, "stmt", 4);
-    assert(stmt->type == JV_LIST);
-    assert(stmt->u.list.nvals == 4);
-    fprintf(out, "\"stmt\": [");
-    for (unsigned int i = 0; i < 4; i++) {
-        if (i != 0) {
-            fprintf(out, ",");
-        }
-        struct json_value *jv2 = stmt->u.list.vals[i];
-        assert(jv2->type == JV_ATOM);
-        fprintf(out, "%.*s", jv2->u.atom.len, jv2->u.atom.base);
-    }
-    fprintf(out, "], ");
-
-    char **p = dict_insert(code_map, NULL, &pc, sizeof(pc), NULL);
-    struct strbuf sb;
-    strbuf_init(&sb);
-    strbuf_printf(&sb, "%.*s:%.*s", file->u.atom.len, file->u.atom.base, line->u.atom.len, line->u.atom.base);
-    *p = strbuf_convert(&sb);
-
-    struct json_value *code = dict_lookup(jv->u.map, "code", 4);
-    assert(code->type == JV_ATOM);
-    fprintf(out, "\"code\": \"%s\"", json_string_encode(code->u.atom.base, code->u.atom.len));
-    fprintf(out, " }");
-}
-
-#endif // notdef
-
 enum busywait { BW_ESCAPE, BW_RETURN, BW_VISITED };
 static enum busywait is_stuck(
     struct node *start,
@@ -2328,7 +2236,7 @@ static enum busywait is_stuck(
     hvalue_t ctx,
     bool change
 ) {
-    if (scc[node->id].component != scc[start->id].component) {
+    if (global.scc[node->id].component != global.scc[start->id].component) {
         return BW_ESCAPE;
     }
     if (node->visited) {
@@ -3080,13 +2988,13 @@ static inline bool stack_empty(struct stack *s) {
     return s->prev == NULL && s->sp == 0;
 }
 
-// Tarjan SCC algorithm
+// Tarjan non-recursive SCC algorithm
 /* Python code:
     i = 0
     stack = []
     call_stack = []
     comps = []
-    for v in vs:
+    for v in vs:        # vertices
         if v.index is None:
             call_stack.append((v,0))
             while call_stack:
@@ -3126,7 +3034,7 @@ static inline bool stack_empty(struct stack *s) {
                     comps.append(comp)
 */
 static void tarjan(){
-    scc = malloc(global.graph.size * sizeof(*scc));
+    struct scc *scc = malloc(global.graph.size * sizeof(*scc));
     for (unsigned int v = 0; v < global.graph.size; v++) {
         scc[v].index = -1;
     }
@@ -3136,6 +3044,8 @@ static void tarjan(){
     struct stack *call_stack = calloc(1, sizeof(*call_stack));
     double now = gettime();
     unsigned int ndone = 0, lastdone = 0;
+
+    // Only need to iterate once as the graph is connected
     for (unsigned int v = 0; v < 1 /*global.graph.size*/; v++) {
         struct node *n = global.graph.nodes[v];
         if (scc[v].index == -1) {
@@ -3195,6 +3105,8 @@ static void tarjan(){
             }
         }
     }
+
+    global.scc = scc;
     global.ncomponents = comp_id;
 }
 
@@ -3409,7 +3321,7 @@ static void charm_dump(bool computed_components){
             assert(node->id == i);
             fprintf(df, "\nNode %d:\n", node->id);
             if (computed_components) {
-                fprintf(df, "    component: %d\n", scc[i].component);
+                fprintf(df, "    component: %d\n", global.scc[i].component);
             }
             fprintf(df, "    len to parent: %d\n", node->len);
             if (node_to_parent(node) != NULL) {
@@ -3451,7 +3363,7 @@ static void charm_dump(bool computed_components){
                 struct context *ctx = value_get(edge_input(edge)->ctx, NULL);
                 struct node *dst = edge_dst(edge);
                 if (computed_components) {
-                    fprintf(df, "            node: %d (%d)\n", dst->id, scc[dst->id].component);
+                    fprintf(df, "            node: %d (%d)\n", dst->id, global.scc[dst->id].component);
                 }
                 else {
                     fprintf(df, "            node: %d\n", dst->id);
@@ -4119,7 +4031,7 @@ int exec_model_checker(int argc, char **argv){
 #ifdef DUMP_GRAPH
         printf("digraph Harmony {\n");
         for (unsigned int i = 0; i < global.graph.size; i++) {
-            printf(" s%u [label=\"%u/%u\"]\n", i, i, scc[i].component);
+            printf(" s%u [label=\"%u/%u\"]\n", i, i, global.scc[i].component);
         }
         for (unsigned int i = 0; i < global.graph.size; i++) {
             struct node *node = global.graph.nodes[i];
@@ -4141,8 +4053,8 @@ int exec_model_checker(int argc, char **argv){
         // must have terminated in each state).
         struct component *components = calloc(global.ncomponents, sizeof(*components));
         for (unsigned int i = 0; i < global.graph.size; i++) {
-            assert(scc[i].component < global.ncomponents);
-            struct component *comp = &components[scc[i].component];
+            assert(global.scc[i].component < global.ncomponents);
+            struct component *comp = &components[global.scc[i].component];
             struct node *node = global.graph.nodes[i];
 
             // See if this is the first state that we are looking at for
@@ -4167,7 +4079,7 @@ int exec_model_checker(int argc, char **argv){
             // If this component has a way out, it is good
             struct edge *edge = node_edges(node);
             for (unsigned int i = 0; i < node->nedges && !comp->good; i++, edge++) {
-                if (scc[edge_dst(edge)->id].component != scc[node->id].component) {
+                if (global.scc[edge_dst(edge)->id].component != global.scc[node->id].component) {
                     comp->good = true;
                     break;
                 }
@@ -4194,8 +4106,8 @@ int exec_model_checker(int argc, char **argv){
         // Look for states in final components
         for (unsigned int i = 0; i < global.graph.size; i++) {
             struct node *node = global.graph.nodes[i];
-            assert(scc[i].component < global.ncomponents);
-            struct component *comp = &components[scc[i].component];
+            assert(global.scc[i].component < global.ncomponents);
+            struct component *comp = &components[global.scc[i].component];
             if (comp->final) {
                 node->final = true;
 
@@ -4230,7 +4142,7 @@ int exec_model_checker(int argc, char **argv){
             int nbad = 0;
             for (unsigned int i = 0; i < global.graph.size; i++) {
                 struct node *node = global.graph.nodes[i];
-                if (!components[scc[i].component].good) {
+                if (!components[global.scc[i].component].good) {
                     nbad++;
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_TERMINATION;
@@ -4257,7 +4169,7 @@ int exec_model_checker(int argc, char **argv){
                     global.graph.nodes[i]->visited = false;
                 }
                 for (unsigned int i = 0; i < global.graph.size; i++) {
-                    if (components[scc[i].component].size > 1) {
+                    if (components[global.scc[i].component].size > 1) {
                         detect_busywait(global.graph.nodes[i]);
                     }
                 }
@@ -4378,7 +4290,7 @@ int exec_model_checker(int argc, char **argv){
             fprintf(out, "    {\n");
             fprintf(out, "      \"idx\": %d,\n", node->id);
             if (computed_components) {
-                fprintf(out, "      \"component\": %d,\n", scc[node->id].component);
+                fprintf(out, "      \"component\": %d,\n", global.scc[node->id].component);
             }
 #ifdef notdef
             if (node->parent != NULL) {

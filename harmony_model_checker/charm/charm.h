@@ -53,6 +53,11 @@ struct macrostep {
     unsigned int nprocesses;        // the number of processes in the list
 };
 
+struct scc {
+    uint32_t component;     // strongly connected component id
+    int32_t index, lowlink; // only needed for Tarjan
+};
+
 // All global variables of Charm should be in here, at least the ones that
 // are used across multiple modules.
 struct global {
@@ -93,6 +98,7 @@ struct global {
     bool run_direct;                // non-model-checked mode
     unsigned long allocated;        // allocated table space
     unsigned int oldpid;            // for thread id computation
+    struct scc *scc;                // strongly connected components
 
     // Reconstructed error trace stored here
     unsigned int nmacrosteps, alloc_macrosteps;
