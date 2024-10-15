@@ -86,7 +86,6 @@ struct global {
     struct graph graph;             // the Kripke structure but also the todo list
     uint8_t *neps;                  // #epsilon edges for each node
     bool printed_something;         // set if anything was printed
-    unsigned int ncomponents;       // to generate component identifiers
     struct failure *failures;       // queue of "struct failure"  (TODO: make part of struct node "issues")
     hvalue_t *processes;            // array of contexts of processes
     struct callstack **callstacks;  // array of callstacks of processes
@@ -100,6 +99,9 @@ struct global {
     unsigned long allocated;        // allocated table space
     unsigned int oldpid;            // for thread id computation
     struct scc *scc;                // strongly connected components
+    unsigned int ncomponents;       // number of components
+    struct scc *eps_scc;            // same as above two for epsilon
+    unsigned int eps_ncomponents;   //    closure computation
 
     // Reconstructed error trace stored here
     unsigned int nmacrosteps, alloc_macrosteps;

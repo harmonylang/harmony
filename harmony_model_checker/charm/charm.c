@@ -3159,6 +3159,84 @@ static void tarjan(){
     global.ncomponents = comp_id;
 }
 
+// This is the same as tarjan(), except that it only considers
+// epsilon edges in the graph.
+static void tarjan_epsclosure(){
+    struct scc *scc = malloc(global.graph.size * sizeof(*scc));
+    for (unsigned int v = 0; v < global.graph.size; v++) {
+        scc[v].index = -1;
+    }
+
+    unsigned int i = 0, comp_id = 0;
+    struct stack *stack = calloc(1, sizeof(*stack));
+    struct stack *call_stack = calloc(1, sizeof(*call_stack));
+    double now = gettime();
+    unsigned int ndone = 0, lastdone = 0;
+
+    for (unsigned int v = 0; v < global.graph.size; v++) {
+        struct node *n = global.graph.nodes[v];
+        if (scc[v].index == -1) {
+            stack_push(&call_stack, n, 0);
+            while (!stack_empty(call_stack)) {
+                unsigned int pi;
+                n = stack_pop(&call_stack, &pi);
+                if (pi == 0) {
+                    scc[n->id].index = i;
+                    scc[n->id].lowlink = i;
+                    i++;
+                    stack_push(&stack, n, 0);
+                    n->on_stack = true;
+                }
+                else {
+                    assert(pi > 0);
+                    struct edge *e = &node_edges(n)[pi - 1];
+                    struct node *prev = edge_dst(e);
+                    if (scc[prev->id].lowlink < scc[n->id].lowlink) {
+                        scc[n->id].lowlink = scc[prev->id].lowlink;
+                    }
+                }
+                while (pi < global.neps[n->id]) {
+                    struct edge *e = &node_edges(n)[pi];
+                    struct node *w = edge_dst(e);
+                    if (scc[w->id].index < 0) {
+                        break;
+                    }
+                    if (w->on_stack && scc[w->id].index < scc[n->id].lowlink) {
+                        scc[n->id].lowlink = scc[w->id].index;
+                    }
+                    pi += 1;
+                }
+                if (pi < global.neps[n->id]) {
+                    struct edge *e = &node_edges(n)[pi];
+                    stack_push(&call_stack, n, pi + 1);
+                    stack_push(&call_stack, edge_dst(e), 0);
+                }
+                else if (scc[n->id].lowlink == scc[n->id].index) {
+                    for (;;) {
+                        ndone++;
+                        if (ndone - lastdone >= 10000000 && gettime() - now > 3) {
+                            printf("        completed %u/%u states (%.2f%%)\n", ndone, global.graph.size, 100.0 * ndone / global.graph.size);
+                            now = gettime();
+                            lastdone = ndone;
+                        }
+                        struct node *n2;
+                        n2 = stack_pop(&stack, NULL);
+                        n2->on_stack = false;
+                        scc[n2->id].component = comp_id;
+                        if (n2 == n) {
+                            break;
+                        }
+                    }
+                    comp_id++;
+                }
+            }
+        }
+    }
+
+    global.eps_scc = scc;
+    global.eps_ncomponents = comp_id;
+}
+
 // This routine removes all nodes that have a single incoming edge and it's
 // an "epsilon" edge (empty print log).  These are essentially useless nodes.
 static void destutter1(FILE *out, bool suppress){
