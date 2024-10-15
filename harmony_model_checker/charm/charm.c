@@ -171,6 +171,7 @@ struct worker {
     unsigned int si_total, si_hits;
     struct edge_list *el_free;
     bool loops_possible;         // loops in Kripke structure are possible
+    bool printed_something;      // worker executed Print op
 
     // Statistics about the three phases for optimization purposes
     double start_wait, middle_wait, end_wait;
@@ -918,6 +919,9 @@ static struct step_output *onestep(
         // Execute the instruction
         w->profile[pc]++;
         (*oi->op)(instrs[pc].env, sc, step);
+        if (step->nlog > 0) {
+            w->printed_something = true;
+        }
         instrcnt++;
         // printf("<-- %u %s %u %u %u\n", pc, oi->name, step->ctx->atomic, as_instrcnt, must_break);
 
@@ -2819,7 +2823,6 @@ static void worker(void *arg){
             }
 
             // If the worker has outgoing messages, we're not done.
-            // if (global.workers[i].mq_first != NULL) {
             if (global.workers[i].sb_index != 0) {
                 done = false;
             }
@@ -2927,6 +2930,52 @@ static void worker(void *arg){
         double end_time = gettime();
         printf("Ran %u rounds in %lf seconds\n", nrounds, end_time - start_time);
         printf("%u values\n", global.values->count);
+    }
+}
+
+// To simplify running Tarjan's algorithm, reorganize all the edges so that
+// the epsilon edges go first.  Also count the number of epsilon edges of
+// each node.
+static void epsilon_closure_prep(){
+    global.neps = malloc(sizeof(*global.neps) * global.graph.size);
+    for (unsigned int i = 0; i < global.graph.size; i++) {
+        struct node *n = global.graph.nodes[i];
+        struct edge *edges = node_edges(n);
+        unsigned int neps = 0;
+        bool must_reorg = false;
+        int first_noneps = -1;
+        for (unsigned int j = 0; j < n->nedges; j++) {
+            struct step_output *so = edge_output(&edges[j]);
+            if (so->nlog == 0) {
+                if (first_noneps >= 0) {
+                    must_reorg = true;
+                }
+                neps++;
+            }
+            else {
+                if (first_noneps < 0) {
+                    first_noneps = j;
+                }
+            }
+        }
+        if (must_reorg) {
+            struct edge eps_edges[256], noneps_edges[256];
+            unsigned int ei = 0, nei = 0;
+            // Copy out the edges into the respective arrays
+            for (unsigned int j = first_noneps; j < n->nedges; j++) {
+                struct step_output *so = edge_output(&edges[j]);
+                if (so->nlog == 0) {
+                    eps_edges[ei++] = edges[j];
+                }
+                else {
+                    noneps_edges[nei++] = edges[j];
+                }
+            }
+            // Copy them back in in the right order
+            memcpy(&edges[first_noneps], eps_edges, ei * sizeof(struct edge));
+            memcpy(&edges[first_noneps + ei], noneps_edges, nei * sizeof(struct edge));
+        }
+        global.neps[i] = neps;
     }
 }
 
@@ -3888,8 +3937,12 @@ int exec_model_checker(int argc, char **argv){
     // Run the last worker.  When it terminates the model checking is done.
     worker(&workers[0]);
 
-    // Collect the failures of all the workers
+    // Collect the failures of all the workers.  Also keep track if
+    // any of the workers printed something
     for (unsigned int i = 0; i < global.nworkers; i++) {
+        if (workers[i].printed_something) {
+            global.printed_something = true;
+        }
         collect_failures(&workers[i]);
     }
 
@@ -3961,6 +4014,10 @@ int exec_model_checker(int argc, char **argv){
     dict_set_sequential(global.computations);
 
     printf("* Phase 3: analysis\n");
+
+    if (global.printed_something) {
+        epsilon_closure_prep();
+    }
 
     bool computed_components = false;
 

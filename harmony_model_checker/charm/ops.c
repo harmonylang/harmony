@@ -676,7 +676,6 @@ void op_Print(const void *env, struct state *state, struct step *step){
         }
         step->log[step->nlog++] = symbol;
     }
-    global.printed_something = true;
     if (step->keep_callstack) {
         strbuf_printf(&step->explain, "pop value (#+) and add to print log");
         step->explain_args[step->explain_nargs++] = symbol;

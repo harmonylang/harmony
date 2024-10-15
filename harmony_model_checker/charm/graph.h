@@ -113,7 +113,7 @@ THIS SHOULD NOT BE DEFINED
     bool invariant_chk : 1;     // fake edge for invariant
 };
 
-#define edge_sc(e)           ((struct step_condition *) (uint64_t) (e->stc_id))
+#define edge_sc(e)           ((struct step_condition *) (uint64_t) ((e)->stc_id))
 #define edge_input(e)        ((struct step_input *) &edge_sc(e)[1])
 #define edge_output(e)       (edge_sc(e)->u.completed)
 

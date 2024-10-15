@@ -84,7 +84,8 @@ struct global {
     hvalue_t *finals;               // contexts of finally preds
 
     struct graph graph;             // the Kripke structure but also the todo list
-    bool printed_something;         // see if anything was printed
+    uint8_t *neps;                  // #epsilon edges for each node
+    bool printed_something;         // set if anything was printed
     unsigned int ncomponents;       // to generate component identifiers
     struct failure *failures;       // queue of "struct failure"  (TODO: make part of struct node "issues")
     hvalue_t *processes;            // array of contexts of processes
