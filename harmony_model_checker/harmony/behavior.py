@@ -360,7 +360,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
     dfa_error_states = find_error_states(dfa_transitions, dfa_final_states)
 
     if outputfiles["hfa"] is not None:
-        with open(outputfiles["hfa"], "w", encoding='utf-8') as fd:
+        with open(outputfiles["hfa"] + ".old", "w", encoding='utf-8') as fd:
             names = {}
             for (i, s) in enumerate(dfa_states):
                 names[s] = i
