@@ -3316,13 +3316,16 @@ static void tarjan_epsclosure(){
 }
 
 struct dfa_node {
+    unsigned int id;            // DFA state id
     struct dict *transitions;   // map of symbol to dfa_node
 };
 
 struct dfa_env {
     struct dict *dfa;           // map of node set to dfa state index
     struct dict_assoc **todo;   // queue of dfa nodes that need to be considered
+    unsigned int allocated;     // current allocated size of queue
     uint32_t next_id;           // id of next dfa node to be created
+    struct dfa_node *current;
 };
 
 static void nfa2dfa_helper(void *env, const void *key, unsigned int key_size, void *value){
@@ -3340,16 +3343,37 @@ static void nfa2dfa_helper(void *env, const void *key, unsigned int key_size, vo
             node_set_add(&uni, clos->list[j]);
         }
     }
+    free(ns->list);
 
     // Find or insert "state" in the dfa state table.
     bool new;
     struct dict_assoc *da = dict_find(de->dfa, &global.workers[0].allocator,
                     uni.list, uni.nnodes * sizeof(uint32_t), &new);
+    free(uni.list);
+    struct dfa_node *dn = (struct dfa_node *) &da[1];
     if (new) {
-        struct dfa_node *dn = (struct dfa_node *) &da[1];
+        dn->id = de->next_id;
         dn->transitions = dict_new("nfa2dfa trans", sizeof(uint32_t), 10, 0, false, false);
+        if (de->next_id == de->allocated) {
+            de->allocated = (de->allocated + 1) * 2;
+            de->todo = realloc(de->todo, de->allocated * sizeof(*de->todo));
+        }
         de->todo[de->next_id++] = da;
     }
+
+    // Add to the transitions.
+    da = dict_find(de->current->transitions, &global.workers[0].allocator, key, key_size, &new);
+    assert(new);
+    uint32_t *pid = (uint32_t *) &da[1];
+    *pid = dn->id;
+}
+
+static void nfa2dfa_dumper(void *env, const void *key, unsigned int key_size, void *value){
+    assert(key_size == sizeof(hvalue_t));       // should be a symbol
+    const hvalue_t *symbol = key;
+    uint32_t *pid = value;
+
+    printf("   %s -> %u\n", value_string(*symbol), *pid);
 }
 
 static void nfa2dfa(){
@@ -3357,7 +3381,8 @@ static void nfa2dfa(){
 
     de.dfa = dict_new("nfa2dfa", sizeof(struct dfa_node), global.graph.size, 0, false, false);
     de.next_id = 0;
-    de.todo = malloc(global.graph.size * sizeof(*de.todo));
+    de.allocated = global.graph.size;   // decent initial estimate
+    de.todo = malloc(de.allocated * sizeof(*de.todo));
 
     // Find the initial state.
     bool new;
@@ -3366,6 +3391,7 @@ static void nfa2dfa(){
                     ns->list, ns->nnodes * sizeof(uint32_t), &new);
     assert(new);
     struct dfa_node *dn = (struct dfa_node *) &da[1];
+    dn->id = de.next_id;
     dn->transitions = dict_new("nfa2dfa trans", sizeof(uint32_t), 10, 0, false, false);
     de.todo[de.next_id++] = da;
 
@@ -3374,13 +3400,13 @@ static void nfa2dfa(){
     while (todo_index < de.next_id) {
         // The next dfa state to consider
         da = de.todo[todo_index];
-        struct dfa_node *dn = (struct dfa_node *) &da[1];
+        de.current = (struct dfa_node *) &da[1];
 
         // Create a "symbol" table for this dfa state
         struct dict *d = dict_new("nfa2dfa symbols", sizeof(struct node_set), 10, 0, false, false);
 
         // Iterate of the nodes in the dfa state
-        uint32_t *nodes = (uint32_t *) &dn[1];
+        uint32_t *nodes = (uint32_t *) &de.current[1];
         unsigned int nnodes = da->len / sizeof(uint32_t);
         for (unsigned int i = 0; i < nnodes; i++) {
             unsigned int ni = nodes[i];                 // node index
@@ -3406,6 +3432,14 @@ static void nfa2dfa(){
         dict_iter(d, nfa2dfa_helper, &de);
 
         todo_index += 1;
+    }
+
+    // Now dump the whole thing
+    for (unsigned int i = 0; i < de.next_id; i++) {
+        struct dict_assoc *da = de.todo[i];
+        struct dfa_node *dn = (struct dfa_node *) &da[1];
+        printf("DFA node %u:\n", i);
+        dict_iter(dn->transitions, nfa2dfa_dumper, NULL);
     }
 }
 
