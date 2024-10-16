@@ -3158,6 +3158,34 @@ static void tarjan(){
     global.ncomponents = comp_id;
 }
 
+// Add a node to the set
+static void node_set_add(struct node_set *ns, uint32_t node){
+    // TODO.  Use binary search
+    unsigned int i = 0;
+    while (i < ns->nnodes) {
+        if (ns->list[i] == node) {
+            return;
+        }
+        if (ns->list[i] > node) {
+            break;
+        }
+    }
+
+    // Make sure we have enough memory
+    if (ns->nnodes == ns->nallocated) {
+        ns->nallocated = (ns->nallocated + 8) * 2;
+        ns->list = realloc(ns->list, ns->nallocated * sizeof(*ns->list));
+    }
+
+    // Make space
+    if (i < ns->nnodes) {
+        memmove(&ns->list[i+1], &ns->list[i], (ns->nnodes - i) * sizeof(*ns->list));
+    }
+
+    ns->list[i] = node;
+    ns->nnodes += 1;
+}
+
 // This is the same as tarjan(), except that it only considers
 // epsilon edges in the graph.
 static void tarjan_epsclosure(){
@@ -3221,7 +3249,15 @@ static void tarjan_epsclosure(){
                         }
                         struct node *n2 = stack_pop(&stack, NULL);
                         n2->eps_on_stack = false;
+                        node_set_add(&ec->ns, n2->id);
                         scc[n2->id].component = ec;
+                        struct edge *e = node_edges(n);
+                        for (unsigned int i = 0; i < global.neps[n2->id]; i++, e++) {
+                            struct node *n3 = edge_dst(e);
+                            if (scc[n3->id].component == NULL) {
+                                printf("PROBLEM\n");
+                            }
+                        }
                         if (n2 == n) {
                             break;
                         }
@@ -4096,6 +4132,15 @@ int exec_model_checker(int argc, char **argv){
         epsilon_closure_prep();
         tarjan_epsclosure();
         printf("EPS %u components\n", global.eps_ncomponents);
+        for (unsigned int i = 0; i < global.graph.size; i++) {
+            struct node *node = global.graph.nodes[i];
+            printf("%u:", i);
+            struct eps_component *ec = global.eps_scc[node->id].component;
+            for (unsigned int j = 0; j < ec->ns.nnodes; j++) {
+                printf(" %u", ec->ns.list[j]);
+            }
+            printf("\n");
+        }
     }
 
     bool computed_components = false;

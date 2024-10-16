@@ -1196,7 +1196,10 @@ static hvalue_t direct_getarg(struct step *step){
     assert(pc != step->ctx->pc);
 
     // Get the remaining arguments
-    hvalue_t args = ctx_pop(step->ctx);
+#ifndef NDEBUG
+    hvalue_t args =
+#endif
+    ctx_pop(step->ctx);
     assert(args == VALUE_LIST);
 
     // Go on to the next instruction after resuming

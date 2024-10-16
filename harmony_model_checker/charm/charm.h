@@ -53,8 +53,14 @@ struct macrostep {
     unsigned int nprocesses;        // the number of processes in the list
 };
 
+struct node_set {
+    unsigned int nnodes;
+    unsigned int nallocated;
+    uint32_t *list;
+};
+
 struct eps_component {
-    int stuff;
+    struct node_set ns;
 };
 
 // TODO. Could this be a union?
