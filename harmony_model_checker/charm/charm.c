@@ -694,6 +694,7 @@ static inline void process_step(
     unsigned int noutgoing;
 
     if (so->printing) {
+        assert(so->choose_count == 0);
         sc->type = STATE_PRINT;
         sc->chooser = new_index;
         noutgoing = 1;
@@ -705,6 +706,7 @@ static inline void process_step(
         noutgoing = so->choose_count;
     }
     else {
+        assert(so->choose_count == 0);
         sc->type = STATE_NORMAL;
         sc->chooser = 0;
         // sc->pre = sc->vars;
@@ -1278,7 +1280,7 @@ static char *ctx_status(struct node *node, hvalue_t ctx) {
     struct state *state = node_state(node);
 
     // if (state->chooser >= 0 && state_ctx(state, state->chooser) == ctx) {
-    if (state->type == STATE_CHOOSE) {
+    if (state->type == STATE_CHOOSE && state_ctx(state, state->chooser) == ctx) {
         return "choosing";
     }
     while (state->type == STATE_CHOOSE) {
