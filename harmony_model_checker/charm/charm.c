@@ -3318,6 +3318,7 @@ static void tarjan_epsclosure(){
 struct dfa_node {
     unsigned int id;            // DFA state id
     struct dict *transitions;   // map of symbol to dfa_node
+    bool final;                 // final state
 };
 
 struct dfa_env {
@@ -3349,17 +3350,24 @@ static void nfa2dfa_helper(void *env, const void *key, unsigned int key_size, vo
     bool new;
     struct dict_assoc *da = dict_find(de->dfa, &global.workers[0].allocator,
                     uni.list, uni.nnodes * sizeof(uint32_t), &new);
-    free(uni.list);
     struct dfa_node *dn = (struct dfa_node *) &da[1];
     if (new) {
         dn->id = de->next_id;
         dn->transitions = dict_new("nfa2dfa trans", sizeof(uint32_t), 10, 0, false, false);
+        for (unsigned int i = 0; i < uni.nnodes; i++) {
+            struct node *n = global.graph.nodes[uni.list[i]];
+            if (n->final) {
+                dn->final = true;
+                break;
+            }
+        }
         if (de->next_id == de->allocated) {
             de->allocated = (de->allocated + 1) * 2;
             de->todo = realloc(de->todo, de->allocated * sizeof(*de->todo));
         }
         de->todo[de->next_id++] = da;
     }
+    free(uni.list);
 
     // Add to the transitions.
     da = dict_find(de->current->transitions, &global.workers[0].allocator, key, key_size, &new);
@@ -3438,7 +3446,7 @@ static void nfa2dfa(){
     for (unsigned int i = 0; i < de.next_id; i++) {
         struct dict_assoc *da = de.todo[i];
         struct dfa_node *dn = (struct dfa_node *) &da[1];
-        printf("DFA node %u:\n", i);
+        printf("DFA node %u (%d):\n", i, dn->final);
         dict_iter(dn->transitions, nfa2dfa_dumper, NULL);
     }
     fflush(stdout);
