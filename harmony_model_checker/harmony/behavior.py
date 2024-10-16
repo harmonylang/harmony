@@ -310,7 +310,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
         )
         intermediate_dfa = DFA.from_nfa(nfa)  # returns an equivalent DFA
         if minify and len(final_states) != 0:
-            if len(intermediate_dfa.states) > 100: 
+            if True or len(intermediate_dfa.states) > 100: 
                 print("    * minify #states=%d"%len(intermediate_dfa.states))
             thread = Thread(target=do_minify, args=(intermediate_dfa,))
             thread.start()

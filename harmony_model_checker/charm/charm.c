@@ -3315,19 +3315,98 @@ static void tarjan_epsclosure(){
     global.eps_ncomponents = comp_id;
 }
 
+struct dfa_node {
+    struct dict *transitions;   // map of symbol to dfa_node
+};
+
+struct dfa_env {
+    struct dict *dfa;           // map of node set to dfa state index
+    struct dict_assoc **todo;   // queue of dfa nodes that need to be considered
+    uint32_t next_id;           // id of next dfa node to be created
+};
+
+static void nfa2dfa_helper(void *env, const void *key, unsigned int key_size, void *value){
+    assert(key_size == sizeof(hvalue_t));       // should be a symbol
+    struct dfa_env *de = env;
+    struct node_set *ns = value;
+
+    // Compute the nodes in this dfa state using precomputed closures
+    struct node_set uni;
+    memset(&uni, 0, sizeof(uni));
+    for (unsigned int i = 0; i < ns->nnodes; i++) {
+        struct node_set *clos = &global.eps_scc[ns->list[i]].component->ns;
+        // TODO.  More efficient union
+        for (unsigned int j = 0; j < clos->nnodes; j++) {
+            node_set_add(&uni, clos->list[j]);
+        }
+    }
+
+    // Find or insert "state" in the dfa state table.
+    bool new;
+    struct dict_assoc *da = dict_find(de->dfa, &global.workers[0].allocator,
+                    uni.list, uni.nnodes * sizeof(uint32_t), &new);
+    if (new) {
+        struct dfa_node *dn = (struct dfa_node *) &da[1];
+        dn->transitions = dict_new("nfa2dfa trans", sizeof(uint32_t), 10, 0, false, false);
+        de->todo[de->next_id++] = da;
+    }
+}
+
 static void nfa2dfa(){
-    struct eps_scc *scc = global.eps_scc;
-    uint32_t next_id = 0;
-    struct dict *d = dict_new("nfa2dfa", sizeof(uint32_t), global.graph.size, 0, false, false);
+    struct dfa_env de;
+
+    de.dfa = dict_new("nfa2dfa", sizeof(struct dfa_node), global.graph.size, 0, false, false);
+    de.next_id = 0;
+    de.todo = malloc(global.graph.size * sizeof(*de.todo));
 
     // Find the initial state.
     bool new;
-    struct node_set *ns = &scc[0].component->ns;
-    struct dict_assoc *da = dict_find(d, &global.workers[0].allocator,
+    struct node_set *ns = &global.eps_scc[0].component->ns;
+    struct dict_assoc *da = dict_find(de.dfa, &global.workers[0].allocator,
                     ns->list, ns->nnodes * sizeof(uint32_t), &new);
     assert(new);
-    uint32_t *pid = (uint32_t *) &da[1];
-    *pid = next_id++;
+    struct dfa_node *dn = (struct dfa_node *) &da[1];
+    dn->transitions = dict_new("nfa2dfa trans", sizeof(uint32_t), 10, 0, false, false);
+    de.todo[de.next_id++] = da;
+
+    // Go through the todo list
+    unsigned int todo_index = 0;
+    while (todo_index < de.next_id) {
+        // The next dfa state to consider
+        da = de.todo[todo_index];
+        struct dfa_node *dn = (struct dfa_node *) &da[1];
+
+        // Create a "symbol" table for this dfa state
+        struct dict *d = dict_new("nfa2dfa symbols", sizeof(struct node_set), 10, 0, false, false);
+
+        // Iterate of the nodes in the dfa state
+        uint32_t *nodes = (uint32_t *) &dn[1];
+        unsigned int nnodes = da->len / sizeof(uint32_t);
+        for (unsigned int i = 0; i < nnodes; i++) {
+            unsigned int ni = nodes[i];                 // node index
+            struct node *n = global.graph.nodes[ni];    // node pointer
+
+            // Iterate of the edges in the node
+            unsigned int neps = global.neps[ni];
+            struct edge *e = node_edges(n) + neps;
+            for (unsigned int j = neps; j < n->nedges; j++, e++) {
+                struct step_output *so = edge_output(e);
+                assert(so->nlog == 1);
+                hvalue_t symbol = *step_log(so);
+
+                // Lookup or create a node set for this symbol
+                struct node_set *ns = dict_insert(d, &global.workers[0].allocator,
+                                            &symbol, sizeof(symbol), &new);
+                node_set_add(ns, edge_dst(e)->id);
+            }
+        }
+
+        // d now contains, for each valid symbol, a node set that still needs to
+        // be epsilon closed and then added to mapping.
+        dict_iter(d, nfa2dfa_helper, &de);
+
+        todo_index += 1;
+    }
 }
 
 // This routine removes all nodes that have a single incoming edge and it's
@@ -3400,6 +3479,9 @@ static void destutter1(FILE *out, bool suppress){
 #endif // OBSOLETE
 }
 
+// This function finds all the printed symbols in the Kripke structure and
+// assigns a small unique identifier to each.
+// TODO.  Perhaps should replace hvalue_t with this id in the graph while at it
 static struct dict *collect_symbols(struct graph *graph){
     struct dict *symbols = dict_new("symbols", sizeof(unsigned int), 0, 0, false, false);
     unsigned int symbol_id = 0;
@@ -4186,22 +4268,6 @@ int exec_model_checker(int argc, char **argv){
 
     printf("* Phase 3: analysis\n");
 
-    if (0 && global.printed_something) {
-        epsilon_closure_prep();
-        tarjan_epsclosure();
-        printf("EPS %u components\n", global.eps_ncomponents);
-        for (unsigned int i = 0; i < global.graph.size; i++) {
-            struct node *node = global.graph.nodes[i];
-            printf("%u:", i);
-            struct eps_component *ec = global.eps_scc[node->id].component;
-            for (unsigned int j = 0; j < ec->ns.nnodes; j++) {
-                printf(" %u", ec->ns.list[j]);
-            }
-            printf("\n");
-        }
-        nfa2dfa();
-    }
-
     bool computed_components = false;
 
     // charm_dump(computed_components);
@@ -4514,6 +4580,20 @@ int exec_model_checker(int argc, char **argv){
         dict_iter(symbols, print_symbol, &se);
         fprintf(out, "\n");
         fprintf(out, "  },\n");
+
+        epsilon_closure_prep();     // move epsilon edges to start of each node
+        tarjan_epsclosure();
+        printf("EPS %u components\n", global.eps_ncomponents);
+        for (unsigned int i = 0; i < global.graph.size; i++) {
+            struct node *node = global.graph.nodes[i];
+            printf("%u:", i);
+            struct eps_component *ec = global.eps_scc[node->id].component;
+            for (unsigned int j = 0; j < ec->ns.nnodes; j++) {
+                printf(" %u", ec->ns.list[j]);
+            }
+            printf("\n");
+        }
+        nfa2dfa(/* symbols */);
 
         // Only output nodes if there are symbols
         fprintf(out, "  \"nodes\": [\n");
