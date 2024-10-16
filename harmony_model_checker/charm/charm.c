@@ -3249,16 +3249,19 @@ static void tarjan_epsclosure(){
                             lastdone = ndone;
                         }
                         struct node *n2 = stack_pop(&stack, NULL);
-                        printf("ASSIGN %u to component %u\n", n2->id, comp_id);
                         n2->eps_on_stack = false;
                         node_set_add(&ec->ns, n2->id);
                         scc[n2->id].component = ec;
                         struct edge *e = node_edges(n2);
                         for (unsigned int i = 0; i < global.neps[n2->id]; i++, e++) {
                             struct node *n3 = edge_dst(e);
-                            printf(" - %u\n", n3->id);
-                            if (scc[n3->id].component == NULL) {
-                                printf("PROBLEM\n");
+                            struct eps_component *ec2 = scc[n3->id].component;
+                            // If the following fails, this means that n3 is in the
+                            // current component but hasn't been "popped" yet.
+                            if (ec2 != NULL) {
+                                for (unsigned int j = 0; j < ec2->ns.nnodes; j++) {
+                                    node_set_add(&ec->ns, ec2->ns.list[j]);
+                                }
                             }
                         }
                         if (n2 == n) {

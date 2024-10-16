@@ -59,6 +59,7 @@ struct node_set {
     uint32_t *list;
 };
 
+// TODO.  Probably don't need both node_set and eps_component
 struct eps_component {
     struct node_set ns;
 };
