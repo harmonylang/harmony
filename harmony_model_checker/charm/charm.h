@@ -121,6 +121,9 @@ struct global {
     struct eps_scc *eps_scc;        // same as above two for epsilon
     unsigned int eps_ncomponents;   //    closure computation
 
+    hvalue_t *symbols;              // list of symbols
+    unsigned int nsymbols;
+
     // Reconstructed error trace stored here
     unsigned int nmacrosteps, alloc_macrosteps;
     struct macrostep **macrosteps;

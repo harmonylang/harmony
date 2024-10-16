@@ -3327,6 +3327,9 @@ struct dfa_env {
     unsigned int allocated;     // current allocated size of queue
     uint32_t next_id;           // id of next dfa node to be created
     struct dfa_node *current;
+    FILE *hfa;                  // .hfa output file
+    struct dict *symbols;       // maps symbols to symbol ids
+    bool first;                 // for "last comma problem"
 };
 
 static void nfa2dfa_helper(void *env, const void *key, unsigned int key_size, void *value){
@@ -3378,19 +3381,33 @@ static void nfa2dfa_helper(void *env, const void *key, unsigned int key_size, vo
 
 static void nfa2dfa_dumper(void *env, const void *key, unsigned int key_size, void *value){
     assert(key_size == sizeof(hvalue_t));       // should be a symbol
-    const hvalue_t *symbol = key;
+    struct dfa_env *de = env;
     uint32_t *pid = value;
 
-    printf("   %s -> %u\n", value_string(*symbol), *pid);
+    bool new;
+    unsigned int *symbol = dict_insert(de->symbols, &global.workers[0].allocator,
+                                key, key_size, &new);
+    assert(!new);
+    if (de->first) {
+        de->first = false;
+    }
+    else {
+        fprintf(de->hfa, ",");
+    }
+    fprintf(de->hfa, "\n");
+    fprintf(de->hfa, "     { \"src\": %u, \"dst\": %u, \"sym\": %u }",
+                        de->current->id + 1, *pid + 1, *symbol - 1);
 }
 
-static void nfa2dfa(){
+static void nfa2dfa(FILE *hfa, struct dict *symbols){
     struct dfa_env de;
 
     de.dfa = dict_new("nfa2dfa", sizeof(struct dfa_node), global.graph.size, 0, false, false);
     de.next_id = 0;
     de.allocated = global.graph.size;   // decent initial estimate
     de.todo = malloc(de.allocated * sizeof(*de.todo));
+    de.hfa = hfa;
+    de.symbols = symbols;
 
     // Find the initial state.
     bool new;
@@ -3443,13 +3460,29 @@ static void nfa2dfa(){
     }
 
     // Now dump the whole thing
+    fprintf(hfa, "  \"nodes\": [\n");
     for (unsigned int i = 0; i < de.next_id; i++) {
         struct dict_assoc *da = de.todo[i];
         struct dfa_node *dn = (struct dfa_node *) &da[1];
-        printf("DFA node %u (%d):\n", i, dn->final);
-        dict_iter(dn->transitions, nfa2dfa_dumper, NULL);
+        fprintf(hfa, "    { \"idx\": %u, \"type\": \"%s\" }", i + 1,
+                    dn->final ? "final" : "normal");
+        if (i + 1 < de.next_id) {
+            fprintf(hfa, ",\n");
+        }
+        else {
+            fprintf(hfa, "\n");
+        }
     }
-    fflush(stdout);
+    fprintf(hfa, "  ],\n");
+    fprintf(hfa, "  \"edges\": [");
+    de.first = true;
+    for (unsigned int i = 0; i < de.next_id; i++) {
+        struct dict_assoc *da = de.todo[i];
+        de.current = (struct dfa_node *) &da[1];
+        dict_iter(de.current->transitions, nfa2dfa_dumper, &de);
+    }
+    fprintf(hfa, "\n");
+    fprintf(hfa, "  ]\n");
 }
 
 // This routine removes all nodes that have a single incoming edge and it's
@@ -3529,15 +3562,26 @@ static struct dict *collect_symbols(struct graph *graph){
     struct dict *symbols = dict_new("symbols", sizeof(unsigned int), 0, 0, false, false);
     unsigned int symbol_id = 0;
 
+    // Also make a global list
+    unsigned int allocated = 10;
+    global.symbols = malloc(allocated * sizeof(*global.symbols));
+
     for (unsigned int i = 0; i < graph->size; i++) {
         struct node *n = graph->nodes[i];
         struct edge *e = node_edges(n);
         for (unsigned int k = 0; k < n->nedges; k++, e++) {
             for (unsigned int j = 0; j < edge_output(e)->nlog; j++) {
+                hvalue_t symbol = step_log(edge_output(e))[j];
                 bool new;
-                unsigned int *p = dict_insert(symbols, NULL, &step_log(edge_output(e))[j], sizeof(hvalue_t), &new);
+                unsigned int *p = dict_insert(symbols, NULL, &symbol, sizeof(symbol), &new);
                 if (new) {
                     *p = ++symbol_id;
+                    if (global.nsymbols == allocated) {
+                        allocated = (allocated + 1) * 2;
+                        global.symbols = realloc(global.symbols,
+                                            allocated * sizeof(*global.symbols));
+                    }
+                    global.symbols[global.nsymbols++] = symbol;
                 }
             }
         }
@@ -4624,19 +4668,27 @@ int exec_model_checker(int argc, char **argv){
         fprintf(out, "\n");
         fprintf(out, "  },\n");
 
+        FILE *hfa = fopen("xxx.hfa", "w");
+        fprintf(hfa, "{\n");
+        fprintf(hfa, "  \"initial\": 0,\n");
+        fprintf(hfa, "  \"symbols\": [\n");
+        for (unsigned int i = 0; i < global.nsymbols; i++) {
+            char *p = value_json(global.symbols[i]);
+            fprintf(hfa, "    %s", p);
+            if (i + 1 < global.nsymbols) {
+                fprintf(hfa, ",\n");
+            }
+            else {
+                fprintf(hfa, "\n");
+            }
+            free(p);
+        }
+        fprintf(hfa, "  ],\n");
         epsilon_closure_prep();     // move epsilon edges to start of each node
         tarjan_epsclosure();
-        printf("EPS %u components\n", global.eps_ncomponents);
-        for (unsigned int i = 0; i < global.graph.size; i++) {
-            struct node *node = global.graph.nodes[i];
-            printf("%u:", i);
-            struct eps_component *ec = global.eps_scc[node->id].component;
-            for (unsigned int j = 0; j < ec->ns.nnodes; j++) {
-                printf(" %u", ec->ns.list[j]);
-            }
-            printf("\n");
-        }
-        nfa2dfa(/* symbols */);
+        nfa2dfa(hfa, symbols);
+        fprintf(hfa, "}\n");
+        fclose(hfa);
 
         // Only output nodes if there are symbols
         fprintf(out, "  \"nodes\": [\n");
