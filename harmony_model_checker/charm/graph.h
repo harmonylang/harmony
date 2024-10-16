@@ -62,6 +62,7 @@ struct step_output {
     bool infinite_loop : 1;    // ran into an infinite loop
 
     uint8_t choose_count;      // number of possible choices
+    // TODO.  nlog can only be 0 or 1
     uint8_t nlog;              // # values printed
     uint8_t nspawned;          // # contexts started
     uint8_t nunstopped;        // # contexts removed from stopbag

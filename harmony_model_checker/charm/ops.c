@@ -670,10 +670,12 @@ void op_Print(const void *env, struct state *state, struct step *step){
         }
     }
     else {
+        // TODO.  Can get rid of this test and MAX_PRINT.
         if (step->nlog == MAX_PRINT) {
             value_ctx_failure(step->ctx, step->allocator, "Print: too many prints");
             return;
         }
+        assert(step->nlog == 0);
         step->log[step->nlog++] = symbol;
     }
     if (step->keep_callstack) {
