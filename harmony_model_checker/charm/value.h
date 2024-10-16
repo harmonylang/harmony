@@ -10,15 +10,22 @@
 #define MAX_CONTEXT_STACK   250        // maximum size of context stack
 #define MAX_CONTEXT_BAG      32        // maximum number of distinct contexts
 
+#define STATE_NORMAL        1
+#define STATE_CHOOSE        2
+#define STATE_PRINT         3
+
 // This contains the state in a Harmony execution.
 //
 // TODO.  State can be reduced in size in various ways;
+//  - vars can probably be reduce to just 48 bits as we know it's a dict
+//  - type only needs 2 bits
 //  - contexts could be represented more efficiently
 //  - the entire thing could be replaced with a collision-resistant hash
 typedef struct state {
     hvalue_t vars;        // shared variables
     uint32_t dfa_state;   // state of input dfa
-    int8_t chooser;       // context that is choosing, -1 if none
+    uint8_t type;         // NORMAL, CHOOSE, or PRINT
+    uint8_t chooser;      // context that is choosing or printing, 0 otherwise
 
     // The state includes two variable-sized bag of contexts.  A context is
     // of type hvalue_t.  We use bits 48..55 (8 bits total) to contain the
@@ -27,7 +34,7 @@ typedef struct state {
     // TODO.  Currently the stopbag is behind the context bag, but if we want
     //        to support more than 256 contexts, maybe the other way around is better
     uint8_t bagsize;      // size of context bag
-    uint16_t total;       // bagsize + size of bag of stopped contexts
+    uint8_t total;        // bagsize + size of bag of stopped contexts
     // hvalue_t contexts[VAR_SIZE];   // context/multiplicity pairs
 } state;
 #define state_size_nctx(n)       (sizeof(struct state) + (n) * sizeof(hvalue_t))

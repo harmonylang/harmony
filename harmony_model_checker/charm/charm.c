@@ -695,12 +695,14 @@ static inline void process_step(
 
     // If choosing, save in state.
     if (so->choose_count > 0) {
+        sc->type = STATE_CHOOSE;
         sc->chooser = new_index;
         // sc->pre = global.inv_pre ? node_state(sh->node)->pre : sc->vars;
         noutgoing = so->choose_count;
     }
     else {
-        sc->chooser = -1;
+        sc->type = STATE_NORMAL;
+        sc->chooser = 0;
         // sc->pre = sc->vars;
         hvalue_t *choices = state_ctxlist(sc);
         noutgoing = sc->bagsize;
@@ -1083,7 +1085,6 @@ static void trystep(
     int ctx_index             // -1 if not in the context bag (i.e., invariant)
 ) {
     assert(ctx_index == -1 || state_ctx(state, ctx_index) == ctx);
-    assert(state->chooser < 0 || choice != 0);
     assert(edge_index >= -1);
     assert(edge_index < 256);
     struct step_condition *stc;
@@ -1105,7 +1106,7 @@ static void trystep(
     stc = (struct step_condition *) &da[1];
 
     if (si_new) {
-        // stc->invariant_chk = edge_index < 0;
+        stc->invariant_chk = edge_index < 0;
         stc->completed = false;
         stc->u.in_progress = NULL;
     }
@@ -1256,10 +1257,11 @@ static void trystep(
 static char *ctx_status(struct node *node, hvalue_t ctx) {
     struct state *state = node_state(node);
 
-    if (state->chooser >= 0 && state_ctx(state, state->chooser) == ctx) {
+    // if (state->chooser >= 0 && state_ctx(state, state->chooser) == ctx) {
+    if (state->type == STATE_CHOOSE) {
         return "choosing";
     }
-    while (state->chooser >= 0) {
+    while (state->type == STATE_CHOOSE) {
         node = node->parent;
         state = node_state(node);
     }
@@ -1478,7 +1480,8 @@ static void twostep(
     unsigned int pid,
     struct macrostep *macro
 ){
-    sc->chooser = -1;
+    sc->type = STATE_NORMAL;
+    sc->chooser = 0;
 
     struct step step;
     memset(&step, 0, sizeof(step));
@@ -2320,27 +2323,38 @@ static inline void step_init(struct worker *w, struct step *step){
 static void do_work1(struct worker *w, struct node *node){
     struct step step;
     struct state *state = node_state(node);
-    if (state->chooser >= 0) {
-        // The actual set of choices is on top of its stack
-        hvalue_t chooser = state_ctx(state, state->chooser);
-        struct context *cc = value_get(chooser, NULL);
-        assert(cc != NULL);
-        assert(cc->sp > 0);
-        hvalue_t s = ctx_stack(cc)[cc->sp - 1];
-        assert(VALUE_TYPE(s) == VALUE_SET);
-        unsigned int size;
-        hvalue_t *vals = value_get(s, &size);
-        size /= sizeof(hvalue_t);
-        assert(size > 0);
-        assert(size == node->nedges);
+    switch (state->type) {
+    case STATE_CHOOSE:
+        {
+            // The actual set of choices is on top of its stack
+            hvalue_t chooser = state_ctx(state, state->chooser);
+            struct context *cc = value_get(chooser, NULL);
+            assert(cc != NULL);
+            assert(cc->sp > 0);
+            hvalue_t s = ctx_stack(cc)[cc->sp - 1];
+            assert(VALUE_TYPE(s) == VALUE_SET);
+            unsigned int size;
+            hvalue_t *vals = value_get(s, &size);
+            size /= sizeof(hvalue_t);
+            assert(size > 0);
+            assert(size == node->nedges);
 
-        // Explore each choice.
-        for (unsigned int i = 0; i < size; i++) {
-            step_init(w, &step);
-            trystep(w, node, i, state, chooser, &step, vals[i], state->chooser);
+            // Explore each choice.
+            for (unsigned int i = 0; i < size; i++) {
+                step_init(w, &step);
+                trystep(w, node, i, state, chooser, &step, vals[i], state->chooser);
+            }
         }
-    }
-    else {
+        break;
+    case STATE_PRINT:
+        assert(node->nedges == 1);
+        hvalue_t chooser = state_ctx(state, state->chooser);
+        step_init(w, &step);
+        trystep(w, node, 0, state, chooser, &step, (hvalue_t) -1, state->chooser);
+        break;
+    default:
+        assert(state->type == STATE_NORMAL);
+
         // Explore each thread that can make a step.
         for (unsigned int i = 0; i < state->bagsize; i++) {
             step_init(w, &step);
@@ -2360,7 +2374,7 @@ static void do_work1(struct worker *w, struct node *node){
 
     // Also check the invariants after initialization
     if (!node->initial)
-	if (state->chooser < 0)
+	if (state->type == STATE_NORMAL)
 	if (global.ninvs > 0) {
         step_init(w, &step);
 
@@ -3270,6 +3284,7 @@ static void tarjan_epsclosure(){
                         if (n2 == n) {
                             ec->ns.list = realloc(ec->ns.list,
                                     ec->ns.nnodes * sizeof(*ec->ns.list));
+                            ec->ns.nallocated = ec->ns.nnodes;
                             break;
                         }
                     }
@@ -3281,6 +3296,21 @@ static void tarjan_epsclosure(){
 
     global.eps_scc = scc;
     global.eps_ncomponents = comp_id;
+}
+
+static void nfa2dfa(){
+    struct eps_scc *scc = global.eps_scc;
+    uint32_t next_id = 0;
+    struct dict *d = dict_new("nfa2dfa", sizeof(uint32_t), global.graph.size, 0, false, false);
+
+    // Find the initial state.
+    bool new;
+    struct node_set *ns = &scc[0].component->ns;
+    struct dict_assoc *da = dict_find(d, &global.workers[0].allocator,
+                    ns->list, ns->nnodes * sizeof(uint32_t), &new);
+    assert(new);
+    uint32_t *pid = (uint32_t *) &da[1];
+    *pid = next_id++;
 }
 
 // This routine removes all nodes that have a single incoming edge and it's
@@ -3989,7 +4019,7 @@ int exec_model_checker(int argc, char **argv){
             (dflag ? 256 : 1) * (sizeof(hvalue_t) + 1));
     state->vars = VALUE_DICT;
     hvalue_t ictx = value_put_context(&workers[0].allocator, init_ctx);
-    state->chooser = -1;
+    state->type = STATE_NORMAL;
     state->bagsize = state->total = 1;
     state_ctxlist(state)[0] = ictx | ((hvalue_t) 1 << STATE_M_SHIFT);
     state->dfa_state = global.dfa == NULL ? 0 : dfa_initial(global.dfa);
@@ -4139,7 +4169,7 @@ int exec_model_checker(int argc, char **argv){
 
     printf("* Phase 3: analysis\n");
 
-    if (global.printed_something) {
+    if (0 && global.printed_something) {
         epsilon_closure_prep();
         tarjan_epsclosure();
         printf("EPS %u components\n", global.eps_ncomponents);
@@ -4152,6 +4182,7 @@ int exec_model_checker(int argc, char **argv){
             }
             printf("\n");
         }
+        nfa2dfa();
     }
 
     bool computed_components = false;
