@@ -1239,7 +1239,7 @@ static void trystep(
         assert(sh->edge_index < 256);
         sc = (struct state *) &sh[1];
         if (el->ctx_index >= 0) {
-            assert(state_ctx(sc, cl->ctx_index) == ctx);
+            assert(state_ctx(sc, el->ctx_index) == ctx);
             context_remove_by_index(sc, el->ctx_index);
         }
         process_step(w, stc, sh);
@@ -3169,6 +3169,7 @@ static void node_set_add(struct node_set *ns, uint32_t node){
         if (ns->list[i] > node) {
             break;
         }
+        i++;
     }
 
     // Make sure we have enough memory
@@ -3248,12 +3249,14 @@ static void tarjan_epsclosure(){
                             lastdone = ndone;
                         }
                         struct node *n2 = stack_pop(&stack, NULL);
+                        printf("ASSIGN %u to component %u\n", n2->id, comp_id);
                         n2->eps_on_stack = false;
                         node_set_add(&ec->ns, n2->id);
                         scc[n2->id].component = ec;
-                        struct edge *e = node_edges(n);
+                        struct edge *e = node_edges(n2);
                         for (unsigned int i = 0; i < global.neps[n2->id]; i++, e++) {
                             struct node *n3 = edge_dst(e);
+                            printf(" - %u\n", n3->id);
                             if (scc[n3->id].component == NULL) {
                                 printf("PROBLEM\n");
                             }
