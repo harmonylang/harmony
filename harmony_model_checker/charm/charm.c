@@ -3441,6 +3441,7 @@ static void nfa2dfa(){
         printf("DFA node %u:\n", i);
         dict_iter(dn->transitions, nfa2dfa_dumper, NULL);
     }
+    fflush(stdout);
 }
 
 // This routine removes all nodes that have a single incoming edge and it's
