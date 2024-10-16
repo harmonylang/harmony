@@ -3268,6 +3268,8 @@ static void tarjan_epsclosure(){
                             }
                         }
                         if (n2 == n) {
+                            ec->ns.list = realloc(ec->ns.list,
+                                    ec->ns.nnodes * sizeof(*ec->ns.list));
                             break;
                         }
                     }
