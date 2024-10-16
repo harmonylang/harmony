@@ -55,6 +55,7 @@ struct step_output {
 
     // TODO It would be good if these bits would be crammed into this structure
     //      more efficiently
+    bool printing : 1;         // step involves a Print
     bool terminated : 1;       // thread has terminated
     bool stopped : 1;          // thread has stopped
     bool failed : 1;           // context failed

@@ -693,8 +693,12 @@ static inline void process_step(
     // Determine the number of outgoing edges of the new state below
     unsigned int noutgoing;
 
-    // If choosing, save in state.
-    if (so->choose_count > 0) {
+    if (so->printing) {
+        sc->type = STATE_PRINT;
+        sc->chooser = new_index;
+        noutgoing = 1;
+    }
+    else if (so->choose_count > 0) {
         sc->type = STATE_CHOOSE;
         sc->chooser = new_index;
         // sc->pre = global.inv_pre ? node_state(sh->node)->pre : sc->vars;
@@ -795,6 +799,7 @@ static struct step_output *onestep(
     bool stopped = false;
     bool terminated = false;
     bool rollback = false;
+    bool printing = false;
 
     // See if we should first try an interrupt or make a choice.
     if (choice == (hvalue_t) -1) {
@@ -804,6 +809,7 @@ static struct step_output *onestep(
     }
     else if (choice != 0) {
         assert(instrs[step->ctx->pc].choose);
+        assert(sc->type == STATE_CHOOSE);
         assert(step->ctx->sp > 0);
         ctx_stack(step->ctx)[step->ctx->sp - 1] = choice;
         w->profile[step->ctx->pc]++;
@@ -848,6 +854,17 @@ static struct step_output *onestep(
             }
             else {
                 rollback = true;
+            }
+            break;
+        }
+
+        // If it's a Print instruction, we should break if it's not the first instruction
+        if (instrcnt > 0 && instrs[pc].print) {
+            if (as_instrcnt != 0) {
+                rollback = true;
+            }
+            else {
+                printing = true;
             }
             break;
         }
@@ -1020,6 +1037,8 @@ static struct step_output *onestep(
         }
     }
 
+    assert(step->nlog == 0 || step->nlog == 1);
+
     // No longer need 'infloop' state.
     // TODO.  Perhaps this suggests a way to automatically determine the
     //        number of instructions to run before trying to detect an
@@ -1047,6 +1066,7 @@ static struct step_output *onestep(
 
     assert(choose_count <= 255);
     so->choose_count = choose_count;
+    so->printing = printing;
     so->terminated = terminated;
     so->stopped = stopped;
     so->failed = step->ctx->failed;
@@ -2350,7 +2370,7 @@ static void do_work1(struct worker *w, struct node *node){
         assert(node->nedges == 1);
         hvalue_t chooser = state_ctx(state, state->chooser);
         step_init(w, &step);
-        trystep(w, node, 0, state, chooser, &step, (hvalue_t) -1, state->chooser);
+        trystep(w, node, 0, state, chooser, &step, 0, state->chooser);
         break;
     default:
         assert(state->type == STATE_NORMAL);
