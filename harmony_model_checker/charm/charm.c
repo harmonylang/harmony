@@ -860,17 +860,6 @@ static struct step_output *onestep(
             break;
         }
 
-        // If it's a Print instruction, we should break if it's not the first instruction
-        if (instrcnt > 0 && instrs[pc].print) {
-            if (as_instrcnt != 0) {
-                rollback = true;
-            }
-            else {
-                printing = true;
-            }
-            break;
-        }
-
         if (instrs[pc].atomicinc && step->ctx->atomic == 0) {
             if (must_break) {
                 memcpy(w->as_state, sc, state_size(sc));
@@ -935,6 +924,12 @@ static struct step_output *onestep(
                     break;
                 }
             }
+        }
+        // If it's a Print instruction in atomic mode, we should break if it's not the
+        // first instruction.
+        else if (instrcnt > 0 && instrs[pc].print) {
+            printing = true;
+            break;
         }
 
         // Execute the instruction
