@@ -3396,7 +3396,7 @@ static void nfa2dfa_dumper(void *env, const void *key, unsigned int key_size, vo
     }
     fprintf(de->hfa, "\n");
     fprintf(de->hfa, "     { \"src\": %u, \"dst\": %u, \"sym\": %u }",
-                        de->current->id + 1, *pid + 1, *symbol - 1);
+                        de->current->id, *pid, *symbol - 1);
 }
 
 static void nfa2dfa(FILE *hfa, struct dict *symbols){
@@ -3464,7 +3464,7 @@ static void nfa2dfa(FILE *hfa, struct dict *symbols){
     for (unsigned int i = 0; i < de.next_id; i++) {
         struct dict_assoc *da = de.todo[i];
         struct dfa_node *dn = (struct dfa_node *) &da[1];
-        fprintf(hfa, "    { \"idx\": %u, \"type\": \"%s\" }", i + 1,
+        fprintf(hfa, "    { \"idx\": %u, \"type\": \"%s\" }", i,
                     dn->final ? "final" : "normal");
         if (i + 1 < de.next_id) {
             fprintf(hfa, ",\n");
