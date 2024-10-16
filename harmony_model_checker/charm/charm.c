@@ -3158,18 +3158,21 @@ static void tarjan(){
     global.ncomponents = comp_id;
 }
 
-// Add a node to the set
+// Add a single node to the given node set
 static void node_set_add(struct node_set *ns, uint32_t node){
-    // TODO.  Use binary search
-    unsigned int i = 0;
-    while (i < ns->nnodes) {
-        if (ns->list[i] == node) {
+    // Use binary search to try to find the entry.
+    unsigned int b = 0, e = ns->nnodes, m = 0;
+    while (b < e) {
+        m = (b + e) / 2;
+        if (ns->list[m] == node) {
             return;
         }
-        if (ns->list[i] > node) {
-            break;
+        if (ns->list[m] < node) {
+            b = m + 1;
         }
-        i++;
+        else {
+            e = m;
+        }
     }
 
     // Make sure we have enough memory
@@ -3179,11 +3182,11 @@ static void node_set_add(struct node_set *ns, uint32_t node){
     }
 
     // Make space
-    if (i < ns->nnodes) {
-        memmove(&ns->list[i+1], &ns->list[i], (ns->nnodes - i) * sizeof(*ns->list));
+    if (b < ns->nnodes) {
+        memmove(&ns->list[b+1], &ns->list[b], (ns->nnodes - b) * sizeof(*ns->list));
     }
 
-    ns->list[i] = node;
+    ns->list[b] = node;
     ns->nnodes += 1;
 }
 
