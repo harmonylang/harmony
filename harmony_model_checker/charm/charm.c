@@ -4721,6 +4721,7 @@ int exec_model_checker(int argc, char **argv){
             fclose(hfa);
         }
 
+#ifdef notdef
         // Only output nodes if there are symbols
         fprintf(out, "  \"nodes\": [\n");
         bool first = true;
@@ -4738,14 +4739,6 @@ int exec_model_checker(int argc, char **argv){
             if (computed_components) {
                 fprintf(out, "      \"component\": %d,\n", global.scc[node->id].component);
             }
-#ifdef notdef
-            if (node->parent != NULL) {
-                fprintf(out, "      \"parent\": %d,\n", node->parent->id);
-            }
-            char *val = json_escape_value(node_state(node)->vars);
-            fprintf(out, "      \"value\": \"%s:%d\",\n", val, node_state(node)->choosing != 0);
-            free(val);
-#endif
             print_transitions(out, symbols, node);
             if (i == 0) {
                 fprintf(out, "      \"type\": \"initial\"\n");
@@ -4760,6 +4753,7 @@ int exec_model_checker(int argc, char **argv){
         }
         fprintf(out, "\n");
         fprintf(out, "  ],\n");
+#endif // notdef
 
         fprintf(out, "  \"profile\": [\n");
         for (unsigned int pc = 0; pc < global.code.len; pc++) {

@@ -239,6 +239,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
         return
     minify = outputfiles["png"] is not None or outputfiles["gv"] is not None
 
+    """ THIS CODE IS OBSOLETE
     states: Set[str] = set()
     initial_state = None
     final_states = set()
@@ -422,7 +423,9 @@ def behavior_parse(js, minify, outputfiles, behavior):
             print("  ]", file=fd)
 
             print("}", file=fd)
+    """
 
+    """ THE FOLLOWING CODE MUST BE REWRITTEN
     if outputfiles["gv"] is not None:
         with open(outputfiles["gv"], "w", encoding='utf-8') as fd:
             names = {}
@@ -473,3 +476,4 @@ def behavior_parse(js, minify, outputfiles, behavior):
                 read_hfa(behavior, dfa, nfa)
         else:
             print("Can't check behavior subset because automata-lib is not available")
+    """
