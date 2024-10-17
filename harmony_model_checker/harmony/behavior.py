@@ -116,8 +116,35 @@ def is_dfa_equivalent(dfa: DFA, hfa: DFA) -> bool:
         for s in sets.values()
     )
 
+def read_hfa_file(file):
+    with open(file, encoding='utf-8') as fd:
+        js = json.load(fd, strict=False)
+        initial = js["initial"]
+        states = { "{}" }
+        final = set()
+        symbols = set()
+        for e in js["edges"]:
+            symbol = e["sym"]
+            symbols.add(json_string(js["symbols"][symbol]))
+        transitions = { "{}": { s: "{}" for s in symbols } }
+        for n in js["nodes"]:
+            idx: str = n["idx"]
+            states.add(idx)
+            if n["type"] == "final":
+                final.add(idx)
+            transitions[idx] = { s: "{}" for s in symbols }
+        for e in js["edges"]:
+            symbol = e["sym"]
+            transitions[e["src"]][json_string(js["symbols"][symbol])] = e["dst"]
+    return DFA(
+        states=states,
+        input_symbols=symbols,
+        transitions=transitions,
+        initial_state=initial,
+        final_states=final
+    )
 
-def read_hfa(file, dfa, nfa):
+def read_hfa(file, dfa):
     with open(file, encoding='utf-8') as fd:
         js = json.load(fd, strict=False)
         initial = js["initial"]
@@ -361,7 +388,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
     dfa_error_states = find_error_states(dfa_transitions, dfa_final_states)
 
     if outputfiles["hfa"] is not None:
-        with open(outputfiles["hfa"] + ".old", "w", encoding='utf-8') as fd:
+        with open(outputfiles["hfa"], "w", encoding='utf-8') as fd:
             names = {}
             for (i, s) in enumerate(dfa_states):
                 names[s] = i
@@ -425,7 +452,16 @@ def behavior_parse(js, minify, outputfiles, behavior):
             print("}", file=fd)
     """
 
-    """ THE FOLLOWING CODE MUST BE REWRITTEN
+    # Read the hfa file
+    if outputfiles["hfa"] is None:
+        return
+    dfa = read_hfa_file(outputfiles["hfa"])
+    dfa_states = dfa.states
+    (dfa_transitions,) = dfa.transitions,
+    dfa_initial_state = dfa.initial_state
+    dfa_final_states = dfa.final_states
+    dfa_error_states = set()
+
     if outputfiles["gv"] is not None:
         with open(outputfiles["gv"], "w", encoding='utf-8') as fd:
             names = {}
@@ -473,7 +509,6 @@ def behavior_parse(js, minify, outputfiles, behavior):
             if "suppressed" in js:
                 print("behavior subset checking suppressed; use -b flag to enable")
             else:
-                read_hfa(behavior, dfa, nfa)
+                read_hfa(behavior, dfa)
         else:
             print("Can't check behavior subset because automata-lib is not available")
-    """
