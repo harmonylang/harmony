@@ -3479,7 +3479,7 @@ static void nfa2dfa_dumper(void *env, const void *key, unsigned int key_size, vo
                         de->current->id, *pid, *symbol - 1);
 }
 
-static void nfa2dfa(FILE *hfa, struct dict *symbols){
+static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
     struct dfa_env de;
     double start = gettime();
 
@@ -3565,6 +3565,8 @@ static void nfa2dfa(FILE *hfa, struct dict *symbols){
     }
     fprintf(hfa, "\n");
     fprintf(hfa, "  ]\n");
+
+    return de.next_id;
 }
 
 // This routine removes all nodes that have a single incoming edge and it's
@@ -3691,65 +3693,6 @@ static void print_symbol(void *env, const void *key, unsigned int key_size, void
     fprintf(se->out, "     \"%u\": %s", * (unsigned int *) value, p);
     free(p);
 }
-
-#ifdef OBSOLETE
-struct print_trans_env {
-    FILE *out;
-    bool first;
-    struct dict *symbols;
-};
-
-static void print_trans_upcall(void *env, const void *key, unsigned int key_size, void *value){
-    struct print_trans_env *pte = env;
-    const hvalue_t *log = key;
-    unsigned int nkeys = key_size / sizeof(hvalue_t);
-    struct strbuf *sb = value;
-
-    if (pte->first) {
-        pte->first = false;
-    }
-    else {
-        fprintf(pte->out, ",\n");
-    }
-    fprintf(pte->out, "        [[");
-    for (unsigned int i = 0; i < nkeys; i++) {
-        bool new;
-        unsigned int *p = dict_insert(pte->symbols, NULL, &log[i], sizeof(log[i]), &new);
-        assert(!new);
-        if (i != 0) {
-            fprintf(pte->out, ",");
-        }
-        fprintf(pte->out, "%u", *p);
-    }
-    fprintf(pte->out, "],[%s]]", strbuf_getstr(sb));
-    strbuf_deinit(sb);
-}
-
-static void print_transitions(FILE *out, struct dict *symbols, struct node *node) {
-    struct dict *d = dict_new("transitions", sizeof(struct strbuf), 0, 0, false, false);
-
-    fprintf(out, "      \"transitions\": [\n");
-    struct edge *e = node_edges(node);
-    for (unsigned int i = 0; i < node->nedges; i++, e++) {
-        bool new;
-        struct strbuf *sb = dict_insert(d, NULL, step_log(edge_output(e)), edge_output(e)->nlog * sizeof(hvalue_t), &new);
-        if (new) {
-            strbuf_init(sb);
-            strbuf_printf(sb, "%d", edge_dst(e)->id);
-        }
-        else {
-            strbuf_printf(sb, ",%d", edge_dst(e)->id);
-        }
-    }
-    struct print_trans_env pte = {
-        .out = out, .first = true, .symbols = symbols
-    };
-    dict_iter(d, print_trans_upcall, &pte);
-    fprintf(out, "\n");
-    fprintf(out, "      ],\n");
-    dict_delete(d);
-}
-#endif // OBSOLETE
 
 // Split s into components separated by sep.  Returns #components.
 // Return the components themselves into *parts.  All is malloc'd.
@@ -4801,44 +4744,11 @@ int exec_model_checker(int argc, char **argv){
             epsilon_closure_prep();     // move epsilon edges to start of each node
             tarjan_epsclosure();
             printf("* Phase 4c: convert NFA to DFA\n");
-            nfa2dfa(hfa, symbols);
+            unsigned int size = nfa2dfa(hfa, symbols);
             fprintf(hfa, "}\n");
             fclose(hfa);
+            fprintf(out, "  \"dfasize\": %u,\n", size);
         }
-
-#ifdef notdef
-        // Only output nodes if there are symbols
-        fprintf(out, "  \"nodes\": [\n");
-        bool first = true;
-        for (unsigned int i = 0; i < global.graph.size; i++) {
-            struct node *node = global.graph.nodes[i];
-            assert(node->id == i);
-            if (first) {
-                first = false;
-            }
-            else {
-                fprintf(out, ",\n");
-            }
-            fprintf(out, "    {\n");
-            fprintf(out, "      \"idx\": %d,\n", node->id);
-            if (computed_components) {
-                fprintf(out, "      \"component\": %d,\n", global.scc[node->id].component);
-            }
-            print_transitions(out, symbols, node);
-            if (i == 0) {
-                fprintf(out, "      \"type\": \"initial\"\n");
-            }
-            else if (node->final) {
-                fprintf(out, "      \"type\": \"terminal\"\n");
-            }
-            else {
-                fprintf(out, "      \"type\": \"normal\"\n");
-            }
-            fprintf(out, "    }");
-        }
-        fprintf(out, "\n");
-        fprintf(out, "  ],\n");
-#endif // notdef
 
         fprintf(out, "  \"profile\": [\n");
         for (unsigned int pc = 0; pc < global.code.len; pc++) {

@@ -264,6 +264,15 @@ def do_minify(intermediate_dfa):
 def behavior_parse(js, minify, outputfiles, behavior):
     if outputfiles["hfa"] is None and outputfiles["png"] is None and outputfiles["gv"] is None and behavior is None:
         return
+
+    if "dfasize" in js and js["dfasize"] > 1024:
+        print("    * too many states for post-analysis") 
+        if outputfiles["png"] is not None:
+            print("    * png output file suppressed") 
+        elif outputfiles["gv"] is not None:
+            print("    * gv output file suppressed") 
+        return
+
     minify = outputfiles["png"] is not None or outputfiles["gv"] is not None
 
     # Read the hfa file
