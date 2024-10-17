@@ -3221,6 +3221,65 @@ static void node_set_add(struct node_set *ns, uint32_t node){
     ns->nnodes += 1;
 }
 
+// Check if ns is a subset of ns2
+static inline bool node_set_issubset(struct node_set *ns, struct node_set *ns2){
+    for (unsigned int i = 0, j = 0; i < ns->nnodes; j++) {
+        if (j == ns2->nnodes) {
+            return false;
+        }
+        if (ns->list[i] < ns2->list[j]) {
+            return false;
+        }
+        if (ns->list[i] == ns2->list[j]) {
+            i++;
+        }
+    }
+    return true;
+}
+
+// Compute the union of ns and ns2 and store in ns.
+static inline void node_set_union(struct node_set *ns, struct node_set *ns2){
+    // If there's just one node in ns2, node_set_add is more efficient.
+    if (ns2->nnodes == 1) {
+        node_set_add(ns, ns2->list[0]);
+        return;
+    }
+
+    // If ns2 is a subset of ns we're done.
+    if (node_set_issubset(ns2, ns)) {
+        return;
+    }
+
+    // Allocate enough space for the union
+    uint32_t *list = malloc((ns->nnodes + ns2->nnodes) * sizeof(uint32_t));
+
+    unsigned int i = 0, j = 0, k = 0;
+    for (; i < ns->nnodes && j < ns2->nnodes; k++) {
+        if (ns->list[i] < ns2->list[j]) {
+            list[k] = ns->list[i++];
+        }
+        else if (ns->list[i] > ns2->list[j]) {
+            list[k] = ns2->list[j++];
+        }
+        else {
+            assert(ns->list[i] == ns2->list[j]);
+            list[k] = ns->list[i++];
+            j++;
+        }
+    }
+    while (i < ns->nnodes) {
+        list[k++] = ns->list[i++];
+    }
+    while (j < ns2->nnodes) {
+        list[k++] = ns2->list[j++];
+    }
+
+    free(ns->list);
+    ns->list = list;
+    ns->nallocated = ns->nnodes + ns2->nnodes;
+    ns->nnodes = k;
+}
+
 // This is the same as tarjan(), except that it only considers
 // epsilon edges in the graph.
 static void tarjan_epsclosure(){
@@ -3293,9 +3352,13 @@ static void tarjan_epsclosure(){
                             // If the following fails, this means that n3 is in the
                             // current component but hasn't been "popped" yet.
                             if (ec2 != NULL) {
+#ifdef notdef
                                 for (unsigned int j = 0; j < ec2->ns.nnodes; j++) {
                                     node_set_add(&ec->ns, ec2->ns.list[j]);
                                 }
+#else
+                                node_set_union(&ec->ns, &ec2->ns);
+#endif
                             }
                         }
                         if (n2 == n) {
@@ -3367,9 +3430,18 @@ static void nfa2dfa_helper(void *env, const void *key, unsigned int key_size, vo
     memset(&uni, 0, sizeof(uni));
     for (unsigned int i = 0; i < ns->nnodes; i++) {
         struct node_set *clos = &global.eps_scc[ns->list[i]].component->ns;
-        // TODO.  More efficient union
-        for (unsigned int j = 0; j < clos->nnodes; j++) {
-            node_set_add(&uni, clos->list[j]);
+
+        // TODO.  Curiously, adding a node at a time is often more efficient
+        //        than computing the union.  In fact, it seems that computing
+        //        the union is never worth it here in the few experiments that
+        //        I've tried.  Surprising to me...
+        if (clos->nnodes <= 5) {
+            for (unsigned int j = 0; j < clos->nnodes; j++) {
+                node_set_add(&uni, clos->list[j]);
+            }
+        }
+        else {
+            node_set_union(&uni, clos);
         }
     }
     free(ns->list);
