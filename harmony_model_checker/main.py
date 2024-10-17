@@ -69,6 +69,13 @@ args.add_argument("--cf", action="append", type=str, help=argparse.SUPPRESS)
 args.add_argument("args", metavar="args", type=str, nargs='*', help="arguments")
 
 def handle_hny(ns, output_files, parse_code_only, filenames):
+    for suffix, file in output_files.items():
+        if file is not None:
+            try:
+                os.remove(file)
+            except:
+                pass
+
     print("* Phase 1: compile Harmony program to bytecode", flush=True)
 
     consts: List[str] = ns.const or []
