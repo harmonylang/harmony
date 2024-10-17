@@ -3611,6 +3611,7 @@ static void print_symbol(void *env, const void *key, unsigned int key_size, void
     free(p);
 }
 
+#ifdef OBSOLETE
 struct print_trans_env {
     FILE *out;
     bool first;
@@ -3667,6 +3668,7 @@ static void print_transitions(FILE *out, struct dict *symbols, struct node *node
     fprintf(out, "      ],\n");
     dict_delete(d);
 }
+#endif // OBSOLETE
 
 // Split s into components separated by sep.  Returns #components.
 // Return the components themselves into *parts.  All is malloc'd.
@@ -4694,6 +4696,7 @@ int exec_model_checker(int argc, char **argv){
         fprintf(out, "  },\n");
 
         if (hfaout != NULL) {
+            printf("* Phase 4b: convert NFA to DFA\n");
             FILE *hfa = fopen(hfaout, "w");
             if (hfa == NULL) {
                 fprintf(stderr, "%s: can't create %s\n", argv[0], hfaout);

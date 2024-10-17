@@ -338,7 +338,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
         )
         intermediate_dfa = DFA.from_nfa(nfa)  # returns an equivalent DFA
         if minify and len(final_states) != 0:
-            if True or len(intermediate_dfa.states) > 100: 
+            if len(intermediate_dfa.states) > 100: 
                 print("    * minify #states=%d"%len(intermediate_dfa.states))
             thread = Thread(target=do_minify, args=(intermediate_dfa,))
             thread.start()
@@ -456,6 +456,20 @@ def behavior_parse(js, minify, outputfiles, behavior):
     if outputfiles["hfa"] is None:
         return
     dfa = read_hfa_file(outputfiles["hfa"])
+    if got_automata and minify:
+        intermediate_dfa = dfa
+        if True or len(intermediate_dfa.states) > 100: 
+            print("    * minify #states=%d"%len(intermediate_dfa.states))
+        thread = Thread(target=do_minify, args=(intermediate_dfa,))
+        thread.start()
+        thread.join(30)   # was 10
+        if thread.is_alive():
+            print("    * minify: taking too long and giving up")
+        else:
+            global minified_dfa
+            dfa = minified_dfa
+            if True or len(intermediate_dfa.states) > 100: 
+                print("    * minify done #states=%d"%len(dfa.states))
     dfa_states = dfa.states
     (dfa_transitions,) = dfa.transitions,
     dfa_initial_state = dfa.initial_state
