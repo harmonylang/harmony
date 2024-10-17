@@ -14,7 +14,6 @@ except Exception as e:
     got_pydot = False
 
 try:
-    from automata.fa.nfa import NFA  # type: ignore
     from automata.fa.dfa import DFA  # type: ignore
     got_automata = True
 except Exception as e:
@@ -144,7 +143,8 @@ def read_hfa_file(file):
         final_states=final
     )
 
-def read_hfa(file, dfa):
+def compare_behaviors(file, dfa):
+    # TODO.  The following code can use read_hfa_file() I believe
     with open(file, encoding='utf-8') as fd:
         js = json.load(fd, strict=False)
         initial = js["initial"]
@@ -266,193 +266,8 @@ def behavior_parse(js, minify, outputfiles, behavior):
         return
     minify = outputfiles["png"] is not None or outputfiles["gv"] is not None
 
-    """ THIS CODE IS OBSOLETE
-    states: Set[str] = set()
-    initial_state = None
-    final_states = set()
-    transitions: Transitions_t = {}
-    labels = {}
-
-    for s in js["nodes"]:
-        idx = str(s["idx"])
-        transitions[idx] = {}
-        if s["type"] == "initial":
-            assert initial_state is None
-            initial_state = idx
-            val = "__init__"
-        elif s["type"] == "terminal":
-            final_states.add(idx)
-        states.add(idx)
-    assert initial_state is not None
-    if len(final_states) == 0:
-        final_states = { initial_state }
-
-    def add_edge(src, val, dst):
-        assert dst != initial_state
-        # assert src not in final_states
-        if val in transitions[src]:
-            transitions[src][val].add(dst)
-        else:
-            transitions[src][val] = {dst}
-
-    intermediate = 0
-    symbols = js['symbols']
-    input_symbols = { json_string(v) for v in symbols.values() }
-    labels = { json_string(v):v for v in symbols.values() }
-    for s in js['nodes']:
-        for [path, dsts] in s["transitions"]:
-            for dest_node in dsts:
-                src = str(s["idx"])
-                dst = str(dest_node)
-                if path == []:
-                    add_edge(src, "", dst)
-                else:
-                    for e in path[:-1]:
-                        symbol = json_string(symbols[str(e)])
-                        inter = "s%d"%intermediate
-                        intermediate += 1
-                        states.add(inter)
-                        transitions[inter] = {}
-                        add_edge(src, symbol, inter)
-                        src = inter
-                    e = path[-1]
-                    symbol = json_string(symbols[str(e)])
-                    add_edge(src, symbol, dst)
-
-    # print("states", states)
-    # print("initial", initial_state)
-    # print("final", final_states)
-    # print("symbols", input_symbols)
-    # print("transitions", transitions)
-
-    if len(states) > 1:
-        print("* Phase 6: convert NFA (%d states) to DFA"%len(states))
-
-    if got_automata:
-        nfa = NFA(
-            states=states,
-            input_symbols=input_symbols,
-            transitions=transitions,
-            initial_state=initial_state,
-            final_states=final_states
-        )
-        intermediate_dfa = DFA.from_nfa(nfa)  # returns an equivalent DFA
-        if minify and len(final_states) != 0:
-            if len(intermediate_dfa.states) > 100: 
-                print("    * minify #states=%d"%len(intermediate_dfa.states))
-            thread = Thread(target=do_minify, args=(intermediate_dfa,))
-            thread.start()
-            thread.join(30)   # was 10
-            if thread.is_alive():
-                print("    * minify: taking too long and giving up")
-                dfa = intermediate_dfa
-            else:
-                global minified_dfa
-                dfa = minified_dfa
-                if len(intermediate_dfa.states) > 100: 
-                    print("    * minify done #states=%d"%len(dfa.states))
-        else:
-            dfa = intermediate_dfa
-        dfa_states = dfa.states
-        (dfa_transitions,) = dfa.transitions,
-        dfa_initial_state = dfa.initial_state
-        dfa_final_states = dfa.final_states
-    else:
-        # Compute the epsilon closure for each state
-        eps_closures = { s:eps_closure(states, transitions, s) for s in states }
-
-        # Convert the NFA into a DFA
-        dfa_transitions = {}
-        dfa_initial_state = eps_closures[initial_state]
-        q = [dfa_initial_state]       # queue of states to handle
-        while q != []:
-            current = q.pop()
-            if current in dfa_transitions:
-                continue
-            dfa_transitions[current] = {}
-            for symbol in input_symbols:
-                ec = set()
-                for nfa_state in current:
-                    if symbol in transitions[nfa_state]:
-                        for next in transitions[nfa_state][symbol]:
-                            ec |= eps_closures[next]
-                n = dfa_transitions[current][symbol] = frozenset(ec)
-                q.append(n)
-        dfa_states = set(dfa_transitions.keys())
-        dfa_final_states = set()
-        for dfa_state in dfa_states:
-            for nfa_state in dfa_state:
-                if nfa_state in final_states:
-                    dfa_final_states.add(dfa_state)
-        print("conversion done")
-    dfa_error_states = find_error_states(dfa_transitions, dfa_final_states)
-
-    if outputfiles["hfa"] is not None:
-        with open(outputfiles["hfa"], "w", encoding='utf-8') as fd:
-            names = {}
-            for (i, s) in enumerate(dfa_states):
-                names[s] = i
-            print("{", file=fd)
-            print("  \"initial\": \"%s\","%names[dfa_initial_state], file=fd)
-            print("  \"nodes\": [", file=fd)
-            first = True
-            for s in dfa_states:
-                if s in dfa_error_states:
-                    continue
-                if first:
-                    first = False
-                else:
-                    print(",", file=fd)
-                print("    {", file=fd, end="")
-                print(" \"idx\": \"%s\","%names[s], file=fd, end="")
-                if s in dfa_final_states:
-                    t = "final"
-                else:
-                    t = "normal"
-                print(" \"type\": \"%s\""%t, file=fd, end="")
-                print(" }", end="", file=fd)
-            print(file=fd)
-            print("  ],", file=fd)
-
-            # Assign a small integer to each symbol
-            sym2index = {}
-            index2sym = {}
-            for i, v in enumerate(labels):
-                sym2index[v] = i
-                index2sym[i] = v
-
-            first = True
-            print("  \"symbols\": [", file=fd)
-            for i in range(len(index2sym)):
-                if first:
-                    first = False
-                else:
-                    print(",", file=fd)
-                print("    %s"%json.dumps(labels[index2sym[i]], ensure_ascii=False), file=fd, end="")
-            print(file=fd)
-            print("  ],", file=fd)
-
-            print("  \"edges\": [", file=fd)
-            first = True
-            for (src, edges) in dfa_transitions.items():
-                for (input, dst) in edges.items():
-                    if dst not in dfa_error_states:
-                        if first:
-                            first = False
-                        else:
-                            print(",", file=fd)
-                        print("    {", file=fd, end="")
-                        print(" \"src\": \"%s\","%names[src], file=fd, end="")
-                        print(" \"dst\": \"%s\","%names[dst], file=fd, end="")
-                        print(" \"sym\": %d"%sym2index[input], file=fd, end="")
-                        print(" }", end="", file=fd)
-            print(file=fd)
-            print("  ]", file=fd)
-
-            print("}", file=fd)
-    """
-
     # Read the hfa file
+    # TODO: only do this if there are not too many nodes
     if outputfiles["hfa"] is None:
         return
     dfa = read_hfa_file(outputfiles["hfa"])
@@ -462,9 +277,9 @@ def behavior_parse(js, minify, outputfiles, behavior):
             print("    * minify #states=%d"%len(intermediate_dfa.states))
         thread = Thread(target=do_minify, args=(intermediate_dfa,))
         thread.start()
-        thread.join(30)   # was 10
+        thread.join(15)
         if thread.is_alive():
-            print("    * minify: taking too long and giving up")
+            print("    * minify: taking too long and giving up (not fatal)")
         else:
             global minified_dfa
             dfa = minified_dfa
@@ -523,6 +338,6 @@ def behavior_parse(js, minify, outputfiles, behavior):
             if "suppressed" in js:
                 print("behavior subset checking suppressed; use -b flag to enable")
             else:
-                read_hfa(behavior, dfa)
+                compare_behaviors(behavior, dfa)
         else:
             print("Can't check behavior subset because automata-lib is not available")

@@ -3409,6 +3409,7 @@ static void nfa2dfa_dumper(void *env, const void *key, unsigned int key_size, vo
 
 static void nfa2dfa(FILE *hfa, struct dict *symbols){
     struct dfa_env de;
+    double start = gettime();
 
     de.dfa = dict_new("nfa2dfa", sizeof(struct dfa_node), global.graph.size, 0, false, false);
     de.next_id = 0;
@@ -3423,6 +3424,12 @@ static void nfa2dfa(FILE *hfa, struct dict *symbols){
     // Go through the todo list
     unsigned int todo_index = 0;
     while (todo_index < de.next_id) {
+        // Pacifier
+        if (gettime() - start > 3) {
+            printf("  NFA to DFA progress %u/%u=%.1f%%\n", todo_index, de.next_id, 100.0 * todo_index / de.next_id);
+            start = gettime();
+        }
+
         // The next dfa state to consider
         struct dict_assoc *da = de.todo[todo_index];
         de.current = (struct dfa_node *) &da[1];
@@ -3459,6 +3466,8 @@ static void nfa2dfa(FILE *hfa, struct dict *symbols){
 
         todo_index += 1;
     }
+
+    printf("* Phase 4d: output the DFA (%u states)\n", de.next_id);
 
     // Now dump the whole thing
     fprintf(hfa, "  \"nodes\": [\n");
@@ -4696,7 +4705,6 @@ int exec_model_checker(int argc, char **argv){
         fprintf(out, "  },\n");
 
         if (hfaout != NULL) {
-            printf("* Phase 4b: convert NFA to DFA\n");
             FILE *hfa = fopen(hfaout, "w");
             if (hfa == NULL) {
                 fprintf(stderr, "%s: can't create %s\n", argv[0], hfaout);
@@ -4717,8 +4725,10 @@ int exec_model_checker(int argc, char **argv){
                 free(p);
             }
             fprintf(hfa, "  ],\n");
+            printf("* Phase 4b: epsilon closure\n");
             epsilon_closure_prep();     // move epsilon edges to start of each node
             tarjan_epsclosure();
+            printf("* Phase 4c: convert NFA to DFA\n");
             nfa2dfa(hfa, symbols);
             fprintf(hfa, "}\n");
             fclose(hfa);
