@@ -3332,6 +3332,31 @@ struct dfa_env {
     bool first;                 // for "last comma problem"
 };
 
+static struct dfa_node *nfa2dfa_add_node(struct dfa_env *de, struct node_set *ns){
+    bool new;
+    struct dict_assoc *da = dict_find(de->dfa, &global.workers[0].allocator,
+                    ns->list, ns->nnodes * sizeof(uint32_t), &new);
+    struct dfa_node *dn = (struct dfa_node *) &da[1];
+    if (new) {
+        dn->id = de->next_id;
+        dn->transitions = dict_new("nfa2dfa trans", sizeof(uint32_t), 10, 0, false, false);
+        for (unsigned int i = 0; i < ns->nnodes; i++) {
+            struct node *n = global.graph.nodes[ns->list[i]];
+            if (n->final) {
+                dn->final = true;
+                break;
+            }
+        }
+        if (de->next_id == de->allocated) {
+            de->allocated = (de->allocated + 1) * 2;
+            de->todo = realloc(de->todo, de->allocated * sizeof(*de->todo));
+        }
+        de->todo[de->next_id++] = da;
+    }
+
+    return dn;
+}
+
 static void nfa2dfa_helper(void *env, const void *key, unsigned int key_size, void *value){
     assert(key_size == sizeof(hvalue_t));       // should be a symbol
     struct dfa_env *de = env;
@@ -3350,30 +3375,13 @@ static void nfa2dfa_helper(void *env, const void *key, unsigned int key_size, vo
     free(ns->list);
 
     // Find or insert "state" in the dfa state table.
-    bool new;
-    struct dict_assoc *da = dict_find(de->dfa, &global.workers[0].allocator,
-                    uni.list, uni.nnodes * sizeof(uint32_t), &new);
-    struct dfa_node *dn = (struct dfa_node *) &da[1];
-    if (new) {
-        dn->id = de->next_id;
-        dn->transitions = dict_new("nfa2dfa trans", sizeof(uint32_t), 10, 0, false, false);
-        for (unsigned int i = 0; i < uni.nnodes; i++) {
-            struct node *n = global.graph.nodes[uni.list[i]];
-            if (n->final) {
-                dn->final = true;
-                break;
-            }
-        }
-        if (de->next_id == de->allocated) {
-            de->allocated = (de->allocated + 1) * 2;
-            de->todo = realloc(de->todo, de->allocated * sizeof(*de->todo));
-        }
-        de->todo[de->next_id++] = da;
-    }
+    struct dfa_node *dn = nfa2dfa_add_node(de, &uni);
     free(uni.list);
 
     // Add to the transitions.
-    da = dict_find(de->current->transitions, &global.workers[0].allocator, key, key_size, &new);
+    bool new;
+    struct dict_assoc *da = dict_find(de->current->transitions,
+                    &global.workers[0].allocator, key, key_size, &new);
     assert(new);
     uint32_t *pid = (uint32_t *) &da[1];
     *pid = dn->id;
@@ -3395,7 +3403,7 @@ static void nfa2dfa_dumper(void *env, const void *key, unsigned int key_size, vo
         fprintf(de->hfa, ",");
     }
     fprintf(de->hfa, "\n");
-    fprintf(de->hfa, "     { \"src\": %u, \"dst\": %u, \"sym\": %u }",
+    fprintf(de->hfa, "     { \"src\": \"%u\", \"dst\": \"%u\", \"sym\": %u }",
                         de->current->id, *pid, *symbol - 1);
 }
 
@@ -3410,21 +3418,13 @@ static void nfa2dfa(FILE *hfa, struct dict *symbols){
     de.symbols = symbols;
 
     // Find the initial state.
-    bool new;
-    struct node_set *ns = &global.eps_scc[0].component->ns;
-    struct dict_assoc *da = dict_find(de.dfa, &global.workers[0].allocator,
-                    ns->list, ns->nnodes * sizeof(uint32_t), &new);
-    assert(new);
-    struct dfa_node *dn = (struct dfa_node *) &da[1];
-    dn->id = de.next_id;
-    dn->transitions = dict_new("nfa2dfa trans", sizeof(uint32_t), 10, 0, false, false);
-    de.todo[de.next_id++] = da;
+    nfa2dfa_add_node(&de, &global.eps_scc[0].component->ns);
 
     // Go through the todo list
     unsigned int todo_index = 0;
     while (todo_index < de.next_id) {
         // The next dfa state to consider
-        da = de.todo[todo_index];
+        struct dict_assoc *da = de.todo[todo_index];
         de.current = (struct dfa_node *) &da[1];
 
         // Create a "symbol" table for this dfa state
@@ -3446,6 +3446,7 @@ static void nfa2dfa(FILE *hfa, struct dict *symbols){
                 hvalue_t symbol = *step_log(so);
 
                 // Lookup or create a node set for this symbol
+                bool new;
                 struct node_set *ns = dict_insert(d, &global.workers[0].allocator,
                                             &symbol, sizeof(symbol), &new);
                 node_set_add(ns, edge_dst(e)->id);
@@ -3464,7 +3465,7 @@ static void nfa2dfa(FILE *hfa, struct dict *symbols){
     for (unsigned int i = 0; i < de.next_id; i++) {
         struct dict_assoc *da = de.todo[i];
         struct dfa_node *dn = (struct dfa_node *) &da[1];
-        fprintf(hfa, "    { \"idx\": %u, \"type\": \"%s\" }", i,
+        fprintf(hfa, "    { \"idx\": \"%u\", \"type\": \"%s\" }", i,
                     dn->final ? "final" : "normal");
         if (i + 1 < de.next_id) {
             fprintf(hfa, ",\n");
@@ -3711,6 +3712,9 @@ static void charm_dump(bool computed_components){
             fprintf(df, "\nNode %d:\n", node->id);
             if (computed_components) {
                 fprintf(df, "    component: %d\n", global.scc[i].component);
+            }
+            if (node->final) {
+                fprintf(df, "    final\n");
             }
             fprintf(df, "    len to parent: %d\n", node->len);
             if (node_to_parent(node) != NULL) {
@@ -4696,7 +4700,7 @@ int exec_model_checker(int argc, char **argv){
                 exit(1);
             }
             fprintf(hfa, "{\n");
-            fprintf(hfa, "  \"initial\": 0,\n");
+            fprintf(hfa, "  \"initial\": \"0\",\n");
             fprintf(hfa, "  \"symbols\": [\n");
             for (unsigned int i = 0; i < global.nsymbols; i++) {
                 char *p = value_json(global.symbols[i]);
