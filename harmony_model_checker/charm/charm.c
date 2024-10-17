@@ -3222,6 +3222,7 @@ static void node_set_add(struct node_set *ns, uint32_t node){
 }
 
 // Check if ns is a subset of ns2
+// TODO.  Should probably use binary search for efficiency
 static inline bool node_set_issubset(struct node_set *ns, struct node_set *ns2){
     for (unsigned int i = 0, j = 0; i < ns->nnodes; j++) {
         if (j == ns2->nnodes) {
@@ -3240,12 +3241,14 @@ static inline bool node_set_issubset(struct node_set *ns, struct node_set *ns2){
 // Compute the union of ns and ns2 and store in ns.
 static inline void node_set_union(struct node_set *ns, struct node_set *ns2){
     // If there's just one node in ns2, node_set_add is more efficient.
+    // TODO.  Maybe true for two or three nodes too...
     if (ns2->nnodes == 1) {
         node_set_add(ns, ns2->list[0]);
         return;
     }
 
     // If ns2 is a subset of ns we're done.
+    // TODO.  Might not be worth the overhead.
     if (node_set_issubset(ns2, ns)) {
         return;
     }
@@ -3267,12 +3270,12 @@ static inline void node_set_union(struct node_set *ns, struct node_set *ns2){
             j++;
         }
     }
-    while (i < ns->nnodes) {
-        list[k++] = ns->list[i++];
-    }
-    while (j < ns2->nnodes) {
-        list[k++] = ns2->list[j++];
-    }
+    unsigned int todo = (ns->nnodes - i);
+    memcpy(&list[k], &ns->list[i], todo * sizeof(uint32_t));
+    k += todo;
+    todo = (ns2->nnodes - j);
+    memcpy(&list[k], &ns2->list[j], todo * sizeof(uint32_t));
+    k += todo;
 
     free(ns->list);
     ns->list = list;
