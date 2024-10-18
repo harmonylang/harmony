@@ -2836,7 +2836,8 @@ static void worker(void *arg){
         w->middle_wait += after - before;
         w->middle_count++;
 
-        // Nobody's doing work.  Great time to see if we are done.
+        // Nobody's doing work.  Great time to see if we are done
+        // by looking at all peers.
         unsigned int nstates = 0, local_node_id = 0;
         done = true;
         for (unsigned int i = 0; i < w->nworkers; i++) {
@@ -3014,7 +3015,7 @@ static void worker(void *arg){
                     assert(local_node_id < global.graph.size);
                     global.graph.nodes[local_node_id++] = node;
 
-                    // Check for deadlock
+                    // Check for deadlock and data races.
                     if (!w->found_failures) {
                         struct state *state = node_state(node);
                         bool dead_end = true;
@@ -3050,6 +3051,10 @@ static void worker(void *arg){
                                 assert(f->edge != NULL);
                                 add_failure(&w->failures, f);
                             }
+                        }
+
+                        if (w->failures == NULL) {
+                            graph_check_for_data_race(&w->failures, node, NULL);
                         }
                     }
                 }
@@ -4708,6 +4713,7 @@ int exec_model_checker(int argc, char **argv){
         charm_dump(computed_components);
     }
 
+#ifdef notdef
     // Look for data races
     // TODO.  Could be parallelized
     if (!Rflag && global.failures == NULL) {
@@ -4720,6 +4726,7 @@ int exec_model_checker(int argc, char **argv){
             }
         }
     }
+#endif
 
     if (global.failures == NULL) {
         printf("    * **No issues found**\n");
