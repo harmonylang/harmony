@@ -38,5 +38,6 @@ def corey():
                 msgs |= {{ .dst: dst, .contents: { .type: 3, .nonce: n }}}
             send(choose(msgs - network))
 
-spawn alice(); spawn bob()
+spawn alice()
+spawn eternal bob()
 spawn eternal corey()

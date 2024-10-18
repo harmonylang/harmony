@@ -2390,15 +2390,66 @@ static void do_work1(struct worker *w, struct node *node){
         assert(j == node->nedges);
     }
 
-    // Also check the invariants after initialization
-    if (!node->initial)
-	if (state->type == STATE_NORMAL)
+    // About to check invariants etc.
+    if (node->initial || state->type != STATE_NORMAL) {
+        return;
+    }
+
+    // Check invariants.
 	if (global.ninvs > 0) {
         step_init(w, &step);
 
         // Check each invariant
         for (unsigned int i = 0; i < global.ninvs; i++) {
             trystep(w, node, -1, state, global.invs[i].context, &step, 0, -1);
+        }
+    }
+
+    // See if this is a final state.  It's a final state if all threads
+    // are eternal and all outgoing edges are self-edges.
+    bool dead_end = true;
+    struct edge *e = node_edges(node);
+    for (unsigned int j = 0; j < node->nedges; j++, e++) {
+        if (edge_dst(e) != node) {
+            dead_end = false;
+            break;
+        }
+    }
+    if (dead_end) {
+        bool final = value_state_all_eternal(state);
+        if (final) {
+            // If an input dfa was specified, it should also be in the
+            // final state.
+            if (global.dfa != NULL &&
+                    !dfa_is_final(global.dfa, state->dfa_state)) {
+                struct failure *f = new_alloc(struct failure);
+                f->type = FAIL_BEHAVIOR_FINAL;
+                f->node = node->parent;
+                f->edge = node_to_parent(node);
+                add_failure(&w->failures, f);
+            }
+            else {
+                node->final = true;
+            }
+
+            // Check the finally predicates
+            if (global.nfinals > 0) {
+                struct step step;
+                step_init(w, &step);
+
+                // Check each "finally" predicate
+                for (unsigned int i = 0; i < global.nfinals; i++) {
+                    trystep(w, node, -1, state, global.finals[i], &step, 0, -1);
+                }
+            }
+        }
+        else {
+            struct failure *f = new_alloc(struct failure);
+            f->type = FAIL_TERMINATION;
+            f->node = node->parent;
+            f->edge = node_to_parent(node);
+            assert(f->edge != NULL);
+            add_failure(&w->failures, f);
         }
     }
 }
@@ -3029,6 +3080,7 @@ static void worker(void *arg){
                         before = gettime();
                     }
 
+#ifdef notdef
                     // Check for deadlock and data races.
                     if (!w->found_failures) {
                         struct state *state = node_state(node);
@@ -3071,6 +3123,7 @@ static void worker(void *arg){
                             graph_check_for_data_race(&w->failures, node, NULL);
                         }
                     }
+#endif
                 }
             }
         }
@@ -4606,6 +4659,7 @@ int exec_model_checker(int argc, char **argv){
         // that that dfa is in the final state as welll.
 
         // Look for states in final components
+#ifdef notdef
         for (unsigned int i = 0; i < global.graph.size; i++) {
             struct node *node = global.graph.nodes[i];
             assert(global.scc[i].component < global.ncomponents);
@@ -4637,6 +4691,7 @@ int exec_model_checker(int argc, char **argv){
                 }
             }
         }
+#endif
 
         // If we haven't found any failures yet, look for states in bad components.
         // If there are none, look for busy waiting states.
