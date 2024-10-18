@@ -2879,11 +2879,70 @@ static void worker(void *arg){
         // of the nodes.
         if (w->index == 0 % w->nworkers) {
             if (done) {
+                // Compute how much memory was used, approximately
+                unsigned long allocated = global.allocated;
+#define REPORT_WORKERS
+#ifdef REPORT_WORKERS
+                double phase1 = 0, phase2a = 0, phase2b = 0, phase3 = 0, start_wait = 0, middle_wait = 0, end_wait = 0;
+                for (unsigned int i = 0; i < global.nworkers; i++) {
+                    struct worker *w = &global.workers[i];
+                    allocated += w->allocated;
+                    phase1 += w->phase1;
+                    phase2a += w->phase2a;
+                    phase2b += w->phase2b;
+                    phase3 += w->phase3;
+                    start_wait += w->start_wait;
+                    middle_wait += w->middle_wait;
+                    end_wait += w->end_wait;
+#ifdef notdef
+                    printf("W%2u: %.3lf %.3lf %.3lf %.3lf %.3lf %.3lf %.3lf %u\n", i,
+                            w->phase1,
+                            w->phase2a,
+                            w->phase2b,
+                            w->phase3,
+                            w->start_wait/w->start_count,
+                            w->middle_wait/w->middle_count,
+                            w->end_wait/w->end_count,
+                            w->shard.tb_size);
+#endif
+                }
+#else
+                for (unsigned int i = 0; i < global.nworkers; i++) {
+                    struct worker *w = &workers[i];
+                    allocated += w->allocated;
+                }
+#endif // REPORT_WORKERS
+#ifndef notdef
+                // printf("computing: %lf %lf %lf %lf (%lf %lf %lf %lf); waiting: %lf %lf %lf\n",
+                printf("computing: %lf %lf %lf %lf; waiting: %lf %lf %lf\n",
+                    phase1 / global.nworkers,
+                    phase2a / global.nworkers,
+                    phase2b / global.nworkers,
+                    phase3 / global.nworkers,
+                    // phase1,
+                    // phase2a,
+                    // phase2b,
+                    // phase3,
+                    start_wait / global.nworkers,
+                    middle_wait / global.nworkers,
+                    end_wait / global.nworkers);
+#endif
+
+                printf("    * %u states (time %.2lfs, mem=%.3lfGB)\n", nstates, gettime() - global.starttime, (double) allocated / (1L << 30));
+                unsigned int si_hits = 0, si_total = 0;
+                for (unsigned int i = 0; i < global.nworkers; i++) {
+                    struct worker *w = &global.workers[i];
+                    si_hits += w->si_hits;
+                    si_total += w->si_total;
+                }
+
+                printf("    * %u/%u computations/edges\n", (si_total - si_hits), si_total);
+
                 graph_add_multiple(&global.graph, nstates);
             }
 
             // Worker 0 periodically prints some stats for long runs.
-            if (after - global.lasttime > 3) {
+            else if (after - global.lasttime > 3) {
                 if (global.lasttime != 0) {
                     unsigned int enqueued = 0, dequeued = 0;
                     unsigned long allocated = global.allocated;
@@ -2938,6 +2997,8 @@ static void worker(void *arg){
         dict_make_stable(global.computations, w->index);
 
         // If done, fill in the graph table
+        // TODO: can do deadlock and race condition checks here
+        // TODO: add pacifier
         if (done) {
             assert(global.graph.size == nstates);
             for (struct results_block *rb = w->shard.todo_buffer;
@@ -4326,7 +4387,7 @@ int exec_model_checker(int argc, char **argv){
         thread_create(worker, &workers[i]);
     }
 
-    double before = gettime();
+    global.starttime = gettime();
 
     // Run the last worker.  When it terminates the model checking is done.
     worker(&workers[0]);
@@ -4339,64 +4400,6 @@ int exec_model_checker(int argc, char **argv){
         }
         collect_failures(&workers[i]);
     }
-
-    // Compute how much memory was used, approximately
-    unsigned long allocated = global.allocated;
-#define REPORT_WORKERS
-#ifdef REPORT_WORKERS
-    double phase1 = 0, phase2a = 0, phase2b = 0, phase3 = 0, start_wait = 0, middle_wait = 0, end_wait = 0;
-    for (unsigned int i = 0; i < global.nworkers; i++) {
-        struct worker *w = &workers[i];
-        allocated += w->allocated;
-        phase1 += w->phase1;
-        phase2a += w->phase2a;
-        phase2b += w->phase2b;
-        phase3 += w->phase3;
-        start_wait += w->start_wait;
-        middle_wait += w->middle_wait;
-        end_wait += w->end_wait;
-#ifdef notdef
-        printf("W%2u: %.3lf %.3lf %.3lf %.3lf %.3lf %.3lf %.3lf %u\n", i,
-                w->phase1,
-                w->phase2a,
-                w->phase2b,
-                w->phase3,
-                w->start_wait/w->start_count,
-                w->middle_wait/w->middle_count,
-                w->end_wait/w->end_count,
-                w->shard.tb_size);
-#endif
-    }
-#else
-    for (unsigned int i = 0; i < global.nworkers; i++) {
-        struct worker *w = &workers[i];
-        allocated += w->allocated;
-    }
-#endif // REPORT_WORKERS
-#ifndef notdef
-    // printf("computing: %lf %lf %lf %lf (%lf %lf %lf %lf); waiting: %lf %lf %lf\n",
-    printf("computing: %lf %lf %lf %lf; waiting: %lf %lf %lf\n",
-        phase1 / global.nworkers,
-        phase2a / global.nworkers,
-        phase2b / global.nworkers,
-        phase3 / global.nworkers,
-        // phase1,
-        // phase2a,
-        // phase2b,
-        // phase3,
-        start_wait / global.nworkers,
-        middle_wait / global.nworkers,
-        end_wait / global.nworkers);
-#endif
-
-    printf("    * %u states (time %.2lfs, mem=%.3lfGB)\n", global.graph.size, gettime() - before, (double) allocated / (1L << 30));
-    unsigned int si_hits = 0, si_total = 0;
-    for (unsigned int i = 0; i < global.nworkers; i++) {
-        struct worker *w = &workers[i];
-        si_hits += w->si_hits;
-        si_total += w->si_total;
-    }
-    printf("    * %u/%u computations/edges\n", (si_total - si_hits), si_total);
 
     // If no output file is desired, we're done.
     if (outfile == NULL) {

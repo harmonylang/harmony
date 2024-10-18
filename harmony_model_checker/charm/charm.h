@@ -85,6 +85,7 @@ struct global {
     hvalue_t seqs;                  // sequential variables
     struct worker *workers;         // points to array of workers
     unsigned int nworkers;          // total number of workers
+    double starttime;               // when model checking started for real
 
     // The worker thread loops through three phases:
     //  1: evaluate states on the todo list
