@@ -2991,7 +2991,7 @@ static void worker(void *arg){
                 printf("    * %u/%u computations/edges\n", (si_total - si_hits), si_total);
                 printf("    * %u rounds\n", nrounds);
                 printf("    * %u values\n", global.values->count);
-                printf("* Phase 3a: Check for deadlock\n");
+                printf("* Phase 3a: Check for data races\n");
 
                 // Allocate an array for all the nodes.
                 graph_add_multiple(&global.graph, nstates);
