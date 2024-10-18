@@ -631,6 +631,7 @@ static inline void process_step(
         assert(stc->invariant_chk);
         if (so->failed || so->infinite_loop) {
             struct failure *f = new_alloc(struct failure);
+            printf("SAFETY FAIL\n");
             f->type = so->failed ? FAIL_SAFETY : FAIL_TERMINATION;
             f->node = sh->node;
             f->edge = walloc_fast(w, sizeof(struct edge));
@@ -644,7 +645,7 @@ static inline void process_step(
             f->edge->stc_id = (uint64_t) stc;
             f->edge->failed = true;
             f->edge->invariant_chk = true;
-            add_failure(&global.failures, f);
+            add_failure(&w->failures, f);
         }
         state_header_free(w, sh);
         return;
@@ -745,7 +746,7 @@ static inline void process_step(
                 f->node = sh->node;
                 f->edge = edge;
                 edge->failed = true;
-                add_failure(&global.failures, f);
+                add_failure(&w->failures, f);
                 break;
             }
             sc->dfa_state = nstate;
@@ -4615,7 +4616,7 @@ int exec_model_checker(int argc, char **argv){
                     // break;
                 }
 
-                if (global.nfinals > 0) {
+                if (global.failures == NULL && global.nfinals > 0) {
                     struct step step;
                     step_init(&workers[0], &step);
 
@@ -4623,6 +4624,7 @@ int exec_model_checker(int argc, char **argv){
                     for (unsigned int i = 0; i < global.nfinals; i++) {
                         trystep(&workers[0], node, -1, node_state(node), global.finals[i], &step, 0, -1);
                     }
+                    global.failures = workers[0].failures;
                 }
             }
         }
