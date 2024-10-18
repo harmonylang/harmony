@@ -2940,7 +2940,7 @@ static void worker(void *arg){
                 printf("    * %u/%u computations/edges\n", (si_total - si_hits), si_total);
                 printf("    * %u rounds\n", nrounds);
                 printf("    * %u values\n", global.values->count);
-                printf("* Phase 3a: analysis\n");
+                printf("* Phase 3a: Check for deadlock\n");
 
                 // Allocate an array for all the nodes.
                 graph_add_multiple(&global.graph, nstates);
@@ -2960,7 +2960,8 @@ static void worker(void *arg){
                     double gigs = (double) allocated / (1 << 30);
                     fprintf(stderr, "    states=%u diam=%u q=%d mem=%.3lfGB\n",
                             enqueued, global.diameter,
-                            enqueued - dequeued, gigs);
+                            enqueued - dequeued,
+                            gigs);
                     global.last_nstates = enqueued;
                 }
                 global.lasttime = after;
@@ -2996,25 +2997,37 @@ static void worker(void *arg){
         w->end_count++;
         before = after;
 
+        assert(global.graph.size == nstates);
+
         // In parallel, the workers copy the old hash table entries into the
         // new buckets.
         dict_make_stable(global.values, w->index);
         dict_make_stable(global.computations, w->index);
 
+        after = gettime();
+        w->phase3 += after - before;
+        before = after;
+
         // If done, fill in the graph table
-        // TODO: can do deadlock and race condition checks here
-        // TODO: add pacifier
+        // TODO: check for race condition here?
         if (done) {
-            assert(global.graph.size == nstates);
+            unsigned int total = 0;
             for (struct results_block *rb = w->shard.todo_buffer;
                                             rb != NULL; rb = rb->next) {
                 assert(rb->nresults <= nstates);
                 assert(rb->nresults <= w->shard.tb_size);
                 for (unsigned int k = 0; k < rb->nresults; k++) {
+                    total += 1;
                     struct node *node = rb->results[k];
                     node->id = local_node_id;
                     assert(local_node_id < global.graph.size);
                     global.graph.nodes[local_node_id++] = node;
+
+                    // Pacifier
+                    if (w->index == 0 && gettime() - before > 3) {
+                        printf("  Progress %.1f%%\n", 100.0 * total / w->shard.tb_size);
+                        before = gettime();
+                    }
 
                     // Check for deadlock and data races.
                     if (!w->found_failures) {
@@ -3061,10 +3074,6 @@ static void worker(void *arg){
                 }
             }
         }
-
-        after = gettime();
-        w->phase3 += after - before;
-        before = after;
     }
 }
 
@@ -4453,7 +4462,7 @@ int exec_model_checker(int argc, char **argv){
     dict_set_sequential(global.values);
     dict_set_sequential(global.computations);
 
-    printf("* Phase 3b: analysis\n");
+    printf("* Phase 3b: Further analysis\n");
 
     bool computed_components = false;
 
