@@ -3053,7 +3053,7 @@ static void worker(void *arg){
                             }
                         }
 
-                        if (w->failures == NULL) {
+                        if (0 && w->failures == NULL) {
                             graph_check_for_data_race(&w->failures, node, NULL);
                         }
                     }
@@ -4713,7 +4713,7 @@ int exec_model_checker(int argc, char **argv){
         charm_dump(computed_components);
     }
 
-#ifdef notdef
+// #ifdef notdef
     // Look for data races
     // TODO.  Could be parallelized
     if (!Rflag && global.failures == NULL) {
@@ -4726,7 +4726,7 @@ int exec_model_checker(int argc, char **argv){
             }
         }
     }
-#endif
+// #endif
 
     if (global.failures == NULL) {
         printf("    * **No issues found**\n");
