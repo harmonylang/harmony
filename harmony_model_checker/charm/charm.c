@@ -3080,9 +3080,9 @@ static void worker(void *arg){
                         before = gettime();
                     }
 
-#ifdef notdef
                     // Check for deadlock and data races.
                     if (!w->found_failures) {
+#ifdef notdef
                         struct state *state = node_state(node);
                         bool dead_end = true;
                         struct edge *e = node_edges(node);
@@ -3118,12 +3118,11 @@ static void worker(void *arg){
                                 add_failure(&w->failures, f);
                             }
                         }
-
-                        if (0 && w->failures == NULL) {
+#endif
+                        if (w->failures == NULL) {
                             graph_check_for_data_race(&w->failures, node, NULL);
                         }
                     }
-#endif
                 }
             }
         }
@@ -4779,7 +4778,7 @@ int exec_model_checker(int argc, char **argv){
         charm_dump(computed_components);
     }
 
-// #ifdef notdef
+#ifdef notdef
     // Look for data races
     // TODO.  Could be parallelized
     if (!Rflag && global.failures == NULL) {
@@ -4792,7 +4791,7 @@ int exec_model_checker(int argc, char **argv){
             }
         }
     }
-// #endif
+#endif
 
     if (global.failures == NULL) {
         printf("    * **No issues found**\n");
