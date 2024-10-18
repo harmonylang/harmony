@@ -2804,7 +2804,6 @@ static void worker(void *arg){
     // The worker now goes into a loop.  Each iteration consists of three phases.
     // Only worker 0 ever breaks out of this loop.
     double before = gettime();
-    double start_time = before;
     unsigned int nrounds = 0;
     bool done = false;
     for (;; nrounds++) {
@@ -2937,7 +2936,11 @@ static void worker(void *arg){
                 }
 
                 printf("    * %u/%u computations/edges\n", (si_total - si_hits), si_total);
+                printf("    * %u rounds\n", nrounds);
+                printf("    * %u values\n", global.values->count);
+                printf("* Phase 3a: analysis\n");
 
+                // Allocate an array for all the nodes.
                 graph_add_multiple(&global.graph, nstates);
             }
 
@@ -3006,10 +3009,49 @@ static void worker(void *arg){
                 assert(rb->nresults <= nstates);
                 assert(rb->nresults <= w->shard.tb_size);
                 for (unsigned int k = 0; k < rb->nresults; k++) {
-                    struct node *n = rb->results[k];
-                    n->id = local_node_id;
+                    struct node *node = rb->results[k];
+                    node->id = local_node_id;
                     assert(local_node_id < global.graph.size);
-                    global.graph.nodes[local_node_id++] = n;
+                    global.graph.nodes[local_node_id++] = node;
+
+                    // Check for deadlock
+                    if (!w->found_failures) {
+                        struct state *state = node_state(node);
+                        bool dead_end = true;
+                        struct edge *e = node_edges(node);
+                        for (unsigned int j = 0; j < node->nedges; j++, e++) {
+                            if (edge_dst(e) != node) {
+                                dead_end = false;
+                                break;
+                            }
+                        }
+                        if (dead_end) {
+                            bool final = value_state_all_eternal(state);
+                            if (final) {
+                                // If an input dfa was specified, it should also be in the
+                                // final state.
+                                if (global.dfa != NULL &&
+                                        !dfa_is_final(global.dfa, state->dfa_state)) {
+                                    struct failure *f = new_alloc(struct failure);
+                                    f->type = FAIL_BEHAVIOR_FINAL;
+                                    f->node = node->parent;
+                                    f->edge = node_to_parent(node);
+                                    add_failure(&w->failures, f);
+                                }
+                                else {
+                                    node->final = true;
+                                }
+                            }
+                            else {
+                                struct failure *f = new_alloc(struct failure);
+                                f->type = FAIL_TERMINATION;
+                                f->node = node->parent;
+                                f->edge = node_to_parent(node);
+                                assert(f->edge != NULL);
+                                add_failure(&w->failures, f);
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -3017,11 +3059,6 @@ static void worker(void *arg){
         after = gettime();
         w->phase3 += after - before;
         before = after;
-    }
-    if (w->index == 0) {
-        double end_time = gettime();
-        printf("Ran %u rounds in %lf seconds\n", nrounds, end_time - start_time);
-        printf("%u values\n", global.values->count);
     }
 }
 
@@ -4410,7 +4447,7 @@ int exec_model_checker(int argc, char **argv){
     dict_set_sequential(global.values);
     dict_set_sequential(global.computations);
 
-    printf("* Phase 3: analysis\n");
+    printf("* Phase 3b: analysis\n");
 
     bool computed_components = false;
 
