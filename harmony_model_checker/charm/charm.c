@@ -373,9 +373,21 @@ static void direct_run(struct state *state, unsigned int id){
         struct context ctx;
         hvalue_t stack[MAX_CONTEXT_STACK];
     } fullctx;
-
+    struct worker w;
+    struct allocator allocator;
     struct step step;
+
+    memset(&w, 0, sizeof(w));
+    w.alloc_buf = malloc(WALLOC_CHUNK);
+    w.alloc_ptr = w.alloc_buf;
+    w.alloc_buf16 = malloc(WALLOC_CHUNK);
+    w.alloc_ptr16 = w.alloc_buf16;
+    w.allocator.alloc = walloc;
+    w.allocator.free = wfree;
+    w.allocator.ctx = &w;
+
     memset(&step, 0, sizeof(step));
+    step.allocator = &w.allocator;
     step.ctx = &fullctx.ctx;
     unsigned int interrupt_count = 1;
 
