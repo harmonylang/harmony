@@ -103,21 +103,23 @@ void barrier_init(barrier_t *barrier, unsigned int count){
 }
 
 void barrier_wait(barrier_t *barrier){
-    EnterCriticalSection(&barrier->mutex);
+    if (barrier->threads_required > 1) {
+        EnterCriticalSection(&barrier->mutex);
 
-    if (--barrier->threads_left == 0) {
-        barrier->cycle++;
-        barrier->threads_left = barrier->threads_required;
-        WakeAllConditionVariable(&barrier->cond);
-    }
-    else {
-        unsigned int cycle = barrier->cycle;
-        while (cycle == barrier->cycle)
-            SleepConditionVariableCS(&barrier->cond,
-                        &barrier->mutex, INFINITE);
-    }
+        if (--barrier->threads_left == 0) {
+            barrier->cycle++;
+            barrier->threads_left = barrier->threads_required;
+            WakeAllConditionVariable(&barrier->cond);
+        }
+        else {
+            unsigned int cycle = barrier->cycle;
+            while (cycle == barrier->cycle)
+                SleepConditionVariableCS(&barrier->cond,
+                            &barrier->mutex, INFINITE);
+        }
 
-    LeaveCriticalSection(&barrier->mutex);
+        LeaveCriticalSection(&barrier->mutex);
+    }
 }
 
 void barrier_destroy(barrier_t *barrier){
@@ -159,19 +161,21 @@ void barrier_init(barrier_t *barrier, unsigned int count){
 }
 
 void barrier_wait(barrier_t *barrier){
-    pthread_mutex_lock(&barrier->mutex);
+    if (barrier->threads_required > 1) {
+        pthread_mutex_lock(&barrier->mutex);
 
-    if (--barrier->threads_left == 0) {
-        barrier->cycle++;
-        barrier->threads_left = barrier->threads_required;
-        pthread_cond_broadcast(&barrier->cond);
+        if (--barrier->threads_left == 0) {
+            barrier->cycle++;
+            barrier->threads_left = barrier->threads_required;
+            pthread_cond_broadcast(&barrier->cond);
+        }
+        else {
+            unsigned int cycle = barrier->cycle;
+            while (cycle == barrier->cycle)
+                pthread_cond_wait(&barrier->cond, &barrier->mutex);
+        }
+        pthread_mutex_unlock(&barrier->mutex);
     }
-    else {
-        unsigned int cycle = barrier->cycle;
-        while (cycle == barrier->cycle)
-            pthread_cond_wait(&barrier->cond, &barrier->mutex);
-    }
-    pthread_mutex_unlock(&barrier->mutex);
 }
 
 void barrier_destroy(barrier_t *barrier){
