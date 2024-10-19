@@ -126,6 +126,8 @@ enum fail_type {
     FAIL_BEHAVIOR_BAD,      // output behavior not allowed by input DFA
     FAIL_BEHAVIOR_FINAL,    // DFA should end up in final state
     FAIL_TERMINATION,       // a non-terminating state exists
+    FAIL_DEADLOCK,          // all threads are "stuck"
+    FAIL_INFLOOP,           // some thread is in an infinite loop
     FAIL_BUSYWAIT,          // the program allows busy waiting
     FAIL_RACE               // the program has a race condition
 };

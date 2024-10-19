@@ -631,8 +631,7 @@ static inline void process_step(
         assert(stc->invariant_chk);
         if (so->failed || so->infinite_loop) {
             struct failure *f = new_alloc(struct failure);
-            printf("SAFETY FAIL\n");
-            f->type = so->failed ? FAIL_SAFETY : FAIL_TERMINATION;
+            f->type = so->failed ? FAIL_SAFETY : FAIL_INFLOOP;
             f->node = sh->node;
             f->edge = walloc_fast(w, sizeof(struct edge));
 #ifdef SHORT_PTR
@@ -729,7 +728,7 @@ static inline void process_step(
         edge->failed = true;
         noutgoing = 0;
         struct failure *f = new_alloc(struct failure);
-        f->type = so->infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
+        f->type = so->infinite_loop ? FAIL_INFLOOP : FAIL_SAFETY;
         f->node = sh->node;
         f->edge = edge;
         f->next = w->failures;
@@ -2445,7 +2444,7 @@ static void do_work1(struct worker *w, struct node *node){
         }
         else {
             struct failure *f = new_alloc(struct failure);
-            f->type = FAIL_TERMINATION;
+            f->type = FAIL_DEADLOCK;
             f->node = node->parent;
             f->edge = node_to_parent(node);
             assert(f->edge != NULL);
@@ -4482,6 +4481,7 @@ int exec_model_checker(int argc, char **argv){
 
     // charm_dump(computed_components);
 
+#ifdef OBSOLETE
     // Do a cheap check for deadlock if no other errors have been detected
     // TODO.  Could be parallelized
     if (global.failures == NULL) {
@@ -4519,7 +4519,7 @@ int exec_model_checker(int argc, char **argv){
                 }
                 else {
                     struct failure *f = new_alloc(struct failure);
-                    f->type = FAIL_TERMINATION;
+                    f->type = FAIL_DEADLOCK;
                     f->node = node->parent;
                     f->edge = node_to_parent(node);
                     assert(f->edge != NULL);
@@ -4528,6 +4528,7 @@ int exec_model_checker(int argc, char **argv){
             }
         }
     }
+#endif
 
     // If no failures were detected (yet), look for deadlock and busy
     // waiting.
@@ -4828,6 +4829,14 @@ int exec_model_checker(int argc, char **argv){
         case FAIL_BEHAVIOR_FINAL:
             printf("    * **Behavior Violation**: terminal state not final\n");
             fprintf(out, "  \"issue\": \"Behavior violation: terminal state not final\",\n");
+            break;
+        case FAIL_INFLOOP:
+            printf("    * **Infinite Loop**\n");
+            fprintf(out, "  \"issue\": \"Non-terminating state\",\n");
+            break;
+        case FAIL_DEADLOCK:
+            printf("    * **Non-terminating state (possibly deadlock)**\n");
+            fprintf(out, "  \"issue\": \"Non-terminating state\",\n");
             break;
         case FAIL_TERMINATION:
             printf("    * **Non-terminating state**\n");
