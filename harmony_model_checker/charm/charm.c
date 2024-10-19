@@ -369,12 +369,7 @@ static inline int local_context_add(struct state *state, hvalue_t ctx){
 
 // Part of experimental -d option, running Harmony programs "for real".
 static void direct_run(struct state *state, unsigned int id){
-    struct {
-        struct context ctx;
-        hvalue_t stack[MAX_CONTEXT_STACK];
-    } fullctx;
     struct worker w;
-    struct allocator allocator;
     struct step step;
 
     memset(&w, 0, sizeof(w));
@@ -388,7 +383,7 @@ static void direct_run(struct state *state, unsigned int id){
 
     memset(&step, 0, sizeof(step));
     step.allocator = &w.allocator;
-    step.ctx = &fullctx.ctx;
+    step.ctx = &w.ctx;
     unsigned int interrupt_count = 1;
 
     setbuf(stdout, NULL);
@@ -527,7 +522,7 @@ static void direct_run(struct state *state, unsigned int id){
         assert(ctx_size(cc) == size);
         assert(!cc->terminated);
         assert(!cc->failed);
-        memcpy(&fullctx, cc, ctx_size(cc));
+        memcpy(&w.ctx, cc, ctx_size(cc));
 
         // Check if an interrupt is in order
         if (pick & VALUE_CONTEXT_INTERRUPTABLE) {
@@ -2854,14 +2849,16 @@ static void worker(void *arg){
 
     // Pin the thread to its virtual processor.
 #ifdef __linux__
-    if (w->index == 0) {
-        printf("pinning cores\n");
+    if (!global.do_not_pin) {
+        if (w->index == 0) {
+            printf("pinning cores\n");
+        }
+        // Pin worker to a core
+        cpu_set_t cpuset;
+        CPU_ZERO(&cpuset);
+        CPU_SET(w->vproc, &cpuset);
+        sched_setaffinity(0, sizeof(cpuset), &cpuset);
     }
-    // Pin worker to a core
-    cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
-    CPU_SET(w->vproc, &cpuset);
-    sched_setaffinity(0, sizeof(cpuset), &cpuset);
 #endif // __linux__
 
     // The worker now goes into a loop.  Each iteration consists of three phases.
@@ -3002,7 +2999,7 @@ static void worker(void *arg){
                 printf("    * %u/%u computations/edges\n", (si_total - si_hits), si_total);
                 printf("    * %u rounds\n", nrounds);
                 printf("    * %u values\n", global.values->count);
-                printf("* Phase 3a: Check for data races\n");
+                printf("* Phase 3a: Scan states\n");
 
                 // Allocate an array for all the nodes.
                 graph_add_multiple(&global.graph, nstates);
@@ -3093,7 +3090,7 @@ static void worker(void *arg){
 
                     // Check for deadlock and data races.
                     // TODO.  Should check -R flag
-                    if (!w->found_failures && w->failures == NULL) {
+                    if (!w->found_failures && w->failures == NULL && !global.no_race_detect) {
                         graph_check_for_data_race(&w->failures, node, NULL);
                     }
                 }
@@ -4012,7 +4009,7 @@ static bool endsWith(char *s, char *suffix){
 //    -w<workers>: specifies what and how many workers to use (see below)
 //
 int exec_model_checker(int argc, char **argv){
-    bool cflag = false, dflag = false, Dflag = false, Rflag = false, bflag = false;
+    bool cflag = false, dflag = false, Dflag = false, bflag = false;
     int i, maxtime = 300000000 /* about 10 years */;
     char *outfile = NULL, *hfaout = NULL, *dfafile = NULL, *worker_flag = NULL;
     for (i = 1; i < argc; i++) {
@@ -4030,7 +4027,10 @@ int exec_model_checker(int argc, char **argv){
             Dflag = true;
             break;
         case 'R':
-            Rflag = true;
+            global.no_race_detect = true;
+            break;
+        case 'U':
+            global.do_not_pin = true;
             break;
         case 't':
             maxtime = atoi(&argv[i][2]);

@@ -86,6 +86,8 @@ struct global {
     struct worker *workers;         // points to array of workers
     unsigned int nworkers;          // total number of workers
     double starttime;               // when model checking started for real
+    bool no_race_detect;            // do not detect data races
+    bool do_not_pin;                // don't pin workers
 
     // The worker thread loops through three phases:
     //  1: evaluate states on the todo list

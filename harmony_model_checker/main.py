@@ -40,6 +40,8 @@ args.add_argument("-W", action="store_true",
                   help="suppress busy waiting check")
 args.add_argument("-R", action="store_true",
                   help="suppress race condition warnings")
+args.add_argument("-U", action="store_true",
+                  help="do not pin workers")
 args.add_argument("--module", "-m", action="append", type=str,
                   metavar="module=version", help="select a module version")
 args.add_argument("-i", "--intf", type=str, metavar="expr",
@@ -127,6 +129,8 @@ def handle_hvm(ns, output_files, parse_code_only, code, scope):
         charm_options.append("-D")
     if ns.R:
         charm_options.append("-R")
+    if ns.U:
+        charm_options.append("-U")
     if ns.W:
         charm_options.append("-c")
 
