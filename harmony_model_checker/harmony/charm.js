@@ -13,6 +13,7 @@ var coderow = document.getElementById("coderow");
 var container = document.getElementById('table-scroll');
 var currOffset = 0;
 var currCloc = null;
+var colors = [ "green", "orange", "blueviolet" ];
 
 // printing contexts
 var contexts = {};
@@ -187,7 +188,7 @@ function getCode(pc) {
 //  return noloc;
 }
 
-function drawTimeLine(mes) {
+function drawTimeLine(mes, mis) {
   var c = mes.canvas.getContext("2d");
   c.beginPath();
   c.clearRect(0, 0, mes.canvas.width, mes.canvas.height);
@@ -200,7 +201,13 @@ function drawTimeLine(mes) {
   for (var y = 0; y < yboxes; y++) {
     var xboxes = nsteps > timeWidth ? timeWidth : nsteps;
     for (var x = 0; x < xboxes; x++) {
-      c.fillStyle = t < currentTime ? "orange" : "white";
+      if (t >= currentTime) {
+        c.fillStyle = "white";
+      }
+      else {
+        c.fillStyle = colors[mis[t].trace.length % colors.length];
+      }
+      // c.fillStyle = t < currentTime ? "orange" : "white";
       c.fillRect(x * boxSize, y * boxSize, boxSize, boxSize);
       c.rect(x * boxSize, y * boxSize, boxSize, boxSize);
       t += 1;
@@ -330,13 +337,16 @@ function stackTrace(tid, trace, failure) {
     mcell.innerHTML = method_call(trace[i].method_name, trace[i].method_arg);
     switch (trace[i].calltype) {
     case "process":
-        mcell.style.color = "blue";
+        // mcell.style.color = "blue";
+        mcell.style.color = colors[(i + 1) % colors.length];
         break;
     case "normal":
-        mcell.style.color = "black";
+        // mcell.style.color = "black";
+        mcell.style.color = colors[(i + 1) % colors.length];
         break;
     case "interrupt":
-        mcell.style.color = "orange";
+        // mcell.style.color = "orange";
+        mcell.style.color = colors[(i + 1) % colors.length];
         break;
     default:
         mcell.style.color = "red";
@@ -802,11 +812,11 @@ function run_microsteps() {
     threadtable.rows[tid].cells[3].innerHTML = threads[tid].stack;
   }
 
-  for (var i = 0; i < nmegasteps; i++) {
-    drawTimeLine(megasteps[i]);
-  }
   for (var t = 0; t < currentTime; t++) {
     run_microstep(t);
+  }
+  for (var i = 0; i < nmegasteps; i++) {
+    drawTimeLine(megasteps[i], microsteps);
   }
   if (currentTime < microsteps.length && (currentTime == 0 ||
             microsteps[currentTime - 1].tid != microsteps[currentTime].tid)) {
