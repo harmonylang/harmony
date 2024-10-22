@@ -839,7 +839,7 @@ function run_microsteps() {
     currCloc.style.color = "red";
   }
 
-  var curmes = currentTime < totalTime ? microsteps[currentTime].mesidx : -1;
+  var curmes = currentTime > 0 ? microsteps[currentTime - 1].mesidx : -1;
   for (var mes = 0; mes < nmegasteps; mes++) {
     var row = document.getElementById("mes" + mes);
     if (mes == curmes) {
@@ -850,7 +850,7 @@ function run_microsteps() {
     }
   }
 
-  var curtid = currentTime < totalTime ? microsteps[currentTime].tid : -1;
+  var curtid = currentTime > 0 ? microsteps[currentTime - 1].tid : -1;
   for (var tid = 0; tid < nthreads; tid++) {
     var row = document.getElementById("thread" + tid);
     if (tid == curtid) {
