@@ -400,22 +400,40 @@ function handleKeyPress(e) {
       run_microsteps();
       break;
     case 'ArrowUp':
-      var mesidx = currentMegaStep();
-      var mes = megasteps[mesidx];
-      if (currentTime == mes.startTime && mesidx > 0) {
-          mes = megasteps[mesidx - 1];
+      if (currentTime > 0) {
+        currentTime--;
+        var mesidx = currentMegaStep();
+        var mes = megasteps[mesidx];
+        var mis = microsteps[currentTime];
+        var tl = mis.trace.length;
+        var endTime = mes.startTime + mes.nsteps;
+        while (currentTime > mes.startTime) {
+          mis = microsteps[currentTime - 1];
+          tl2 = mis.trace.length;
+          if (tl2 < tl) {
+            break;
+          }
+          currentTime--;
+        }
+        run_microsteps();
       }
-      currentTime = mes.startTime;
-      run_microsteps();
       break;
     case 'ArrowDown':
-      var mesidx = currentMegaStep();
-      var mes = megasteps[mesidx];
-      currentTime = mes.startTime + mes.nsteps;
-      if (currentTime > totalTime) {
-        currentTime = totalTime;
+      if (currentTime < totalTime) {
+        var mesidx = currentMegaStep();
+        var mes = megasteps[mesidx];
+        var mis = microsteps[currentTime];
+        var tl = mis.trace.length;
+        var endTime = mes.startTime + mes.nsteps;
+        while (++currentTime < endTime) {
+          mis = microsteps[currentTime];
+          tl2 = mis.trace.length;
+          if (tl2 < tl) {
+            break;
+          }
+        }
+        run_microsteps();
       }
-      run_microsteps();
       break;
     case 'Enter':
       if (currentTime < totalTime) {
