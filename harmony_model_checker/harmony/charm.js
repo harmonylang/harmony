@@ -192,19 +192,22 @@ function drawTimeLine(mes) {
   c.beginPath();
   c.clearRect(0, 0, mes.canvas.width, mes.canvas.height);
   var t = mes.startTime;
-  var yboxes = Math.floor((mes.nsteps + timeWidth - 1) / timeWidth);
   var nsteps = mes.nsteps;
+
+  // Compute the total number of rows
+  var yboxes = Math.ceil(mes.nsteps / timeWidth);
+
   for (var y = 0; y < yboxes; y++) {
     var xboxes = nsteps > timeWidth ? timeWidth : nsteps;
     for (var x = 0; x < xboxes; x++) {
       c.fillStyle = t < currentTime ? "orange" : "white";
       c.fillRect(x * boxSize, y * boxSize, boxSize, boxSize);
       c.rect(x * boxSize, y * boxSize, boxSize, boxSize);
-      c.stroke();
       t += 1;
     }
     nsteps -= xboxes;
   }
+  c.stroke();
   mes.nextstep.innerHTML = "";
   return t;
 }
