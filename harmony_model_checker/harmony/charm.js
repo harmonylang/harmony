@@ -13,7 +13,7 @@ var coderow = document.getElementById("coderow");
 var container = document.getElementById('table-scroll');
 var currOffset = 0;
 var currCloc = null;
-var colors = [ "green", "orange", "blueviolet" ];
+var colors = [ "green", "coral", "blueviolet" ];
 
 // printing contexts
 var contexts = {};
