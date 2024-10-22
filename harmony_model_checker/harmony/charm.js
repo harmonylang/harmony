@@ -861,7 +861,8 @@ function run_microsteps() {
   for (var mes = 0; mes < nmegasteps; mes++) {
     var row = document.getElementById("mes" + mes);
     if (mes == curmes) {
-      row.style = 'background-color: #A5FF33;';
+      // row.style = 'background-color: #A5FF33;';
+      row.style = 'background-color: #99FF99;';
     }
     else {
       row.style = 'background-color: white;';
@@ -872,7 +873,8 @@ function run_microsteps() {
   for (var tid = 0; tid < nthreads; tid++) {
     var row = document.getElementById("thread" + tid);
     if (tid == curtid) {
-      row.style = 'background-color: #A5FF33;';
+      // row.style = 'background-color: #A5FF33;';
+      row.style = 'background-color: #99FF99;';
     }
     else {
       row.style = 'background-color: white;';
