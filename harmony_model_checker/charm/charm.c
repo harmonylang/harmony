@@ -3314,6 +3314,7 @@ static void tarjan(){
                         ndone++;
                         if (ndone - lastdone >= 10000000 && gettime() - now > 3) {
                             printf("        completed %u/%u states (%.2f%%)\n", ndone, global.graph.size, 100.0 * ndone / global.graph.size);
+                            fflush(stdout);
                             now = gettime();
                             lastdone = ndone;
                         }
@@ -3486,6 +3487,7 @@ static void tarjan_epsclosure(){
                         ndone++;
                         if (ndone - lastdone >= 10000000 && gettime() - now > 3) {
                             printf("        completed %u/%u states (%.2f%%)\n", ndone, global.graph.size, 100.0 * ndone / global.graph.size);
+                            fflush(stdout);
                             now = gettime();
                             lastdone = ndone;
                         }
@@ -3796,7 +3798,7 @@ static struct dict *collect_symbols(struct graph *graph){
     struct dict *symbols = dict_new("symbols", sizeof(unsigned int), 0, 0, false, false);
 
     // If nothing got printed we're done
-    if (global.printed_something) {
+    if (!global.printed_something) {
         return symbols;
     }
 
@@ -4707,13 +4709,21 @@ int exec_model_checker(int argc, char **argv){
                 free(p);
             }
             fprintf(hfa, "  ],\n");
-            printf("* Phase 4b: epsilon closure\n");
-            fflush(stdout);
-            epsilon_closure_prep();     // move epsilon edges to start of each node
-            tarjan_epsclosure();
-            printf("* Phase 4c: convert NFA to DFA\n");
-            fflush(stdout);
-            dfasize = nfa2dfa(hfa, symbols);
+            if (global.printed_something) {
+                printf("* Phase 4b: epsilon closure\n");
+                fflush(stdout);
+                epsilon_closure_prep();     // move epsilon edges to start of each node
+                tarjan_epsclosure();
+                printf("* Phase 4c: convert NFA to DFA\n");
+                fflush(stdout);
+                dfasize = nfa2dfa(hfa, symbols);
+            }
+            else {
+                fprintf(hfa, "  \"nodes\": [\n");
+                fprintf(hfa, "    { \"idx\": \"0\", \"type\": \"final\" }\n");
+                fprintf(hfa, "  ],\n");
+                fprintf(hfa, "  \"edges\": []\n");
+            }
             fprintf(hfa, "}\n");
             fclose(hfa);
         }
