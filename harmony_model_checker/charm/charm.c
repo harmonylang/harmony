@@ -6,8 +6,6 @@
 #define _GNU_SOURCE
 #endif
 
-#define NEW_STUFF
-
 #include "head.h"
 
 #ifdef __linux__
@@ -18,10 +16,6 @@
 #endif
 
 #include <stdint.h>
-
-#ifdef USE_ATOMIC
-#include <stdatomic.h>
-#endif
 
 #ifdef _WIN32
 #include <windows.h>
@@ -70,10 +64,10 @@
 // Convenient constant
 #define MAX_STATE_SIZE (sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1))
 
-// Average buffer per shard per worker
+// Important performance parameter that represents the number of states that
+// each worker produces for each other worker before going to the barrier.
+// TODO.  How to tune this thing?
 #define STATE_BUFFER_HWM    50
-
-#define SHARDS_PER_WORKER   1
 
 // All global variables should be here
 struct global global;
@@ -85,21 +79,12 @@ struct state_header {
     // unsigned int source;        // for return to sender and free-ing
     unsigned int nctxs;         // for free list maintenance
     struct node *node;          // old state
-    unsigned int edge_index;    // index of the edge in the old state
+    int edge_index;             // index of edge in the old state (-1 is invarinat)
     unsigned int noutgoing;     // number of outgoing edges of new state
     uint32_t hash;              // to speed up hash lookup
 };
 
 extern bool has_countLabel;     // TODO.  Hack for backward compatibility
-
-#define LOAD_ORDER memory_order_acquire
-#define STORE_ORDER memory_order_release
-
-// TODO.  Move into global
-struct scc {
-    uint32_t component;     // strongly connected component id
-    int32_t index, lowlink; // only needed for Tarjan
-} *scc;
 
 // Info about virtual processors (cores or hyperthreads).  Virtual
 // processors are thought of a organized in a tree, for example based
@@ -112,6 +97,8 @@ struct vproc_info {
     bool selected;       // selected to be used for a worker
 } *vproc_info;
 unsigned int n_vproc_info;
+unsigned int n_sockets = 1;
+unsigned int n_hyper = 2;
 
 // To select virtual processors, the user specifies a disjunct
 // of patterns using the -w flag.  Each pattern is a list of
@@ -136,7 +123,7 @@ struct vproc_tree {
     unsigned int virtual_id;     // virtual processor id, only for leaf nodes
     unsigned int nchildren;
     struct vproc_map *children;
-} *vproc_root;
+};
 
 struct results_block {
     struct results_block *next;
@@ -148,17 +135,7 @@ struct state_queue {
     struct state_header *first, **last;
 };
 
-// Shard of the Kripke structure.  There is an array of shards.  Each shard
-// holds the states that hash onto the index into the array.
-struct shard {
-    struct dict *states;          // maps states to nodes
-    struct state_queue *peers;    // peers[nshards]
-
-    struct results_block *todo_buffer, *tb_head, *tb_tail;
-    unsigned int tb_size, tb_index;
-    bool idle;                    // nothing on TODO list
-};
-
+// TODO.  Is this a problem?
 #define MAX_THREADS 100
 
 // One of these per worker thread
@@ -168,22 +145,22 @@ struct worker {
     unsigned int index;          // index of worker
     double timeout;              // deadline for model checker (-t option)
 
-    // TODO.  The following should probably just be in global
-    struct worker *workers;      // points to array of workers
-    unsigned int nworkers;       // total number of workers
+    // Shard of the Kripke structure.  There is an array of shards.  Each shard
+    // holds the states that hash onto the index into the array.
+    struct shard {
+        struct dict *states;          // maps states to nodes
+        struct state_queue *peers;    // peers[nshards]
+
+        struct results_block *todo_buffer, *tb_head, *tb_tail;
+        unsigned int tb_size, tb_index;
+    } shard;
 
     // free lists of state_headers for various numbers of threads
     struct state_header *state_header_free[MAX_THREADS];
 
     unsigned int vproc;          // virtual processor for pinning
     struct failure *failures;    // list of discovered failures (not data races)
-
-    // The worker thread loop through three phases:
-    //  1: model check part of the state space
-    //  2: fix forward edges and allocate larger tables if needed
-    //  3: copy from old to new hash table
-    // The barriers are to synchronize these three phases.
-    barrier_t *start_barrier, *middle_barrier, *end_barrier;
+    bool found_failures;         // some worker found failures
 
     // Each worker keeps track of how often it executes a particular
     // instruction for profiling purposes.
@@ -193,28 +170,18 @@ struct worker {
     // Below are the things that are likely to change more often
     //
 
-    // TODO.  Next two should probably just be in "global".
     unsigned int si_total, si_hits;
     struct edge_list *el_free;
     bool loops_possible;         // loops in Kripke structure are possible
+    bool printed_something;      // worker executed Print op
 
     // Statistics about the three phases for optimization purposes
     double start_wait, middle_wait, end_wait;
     unsigned int start_count, middle_count, end_count;
     double phase1, phase2a, phase2b, phase3;
-    unsigned int dequeued;      // total number of dequeued states
-    unsigned int enqueued;      // total number of enqueued states
-
-    // Thread 0 periodically prints some information on what it's
-    // working on.  To avoid it getting the time too much, which might
-    // involve an expensive system call, we do it every timecnt steps.
-    int timecnt;                 // to reduce gettime() overhead
 
     // State maintained while evaluating invariants
     struct step inv_step;        // for evaluating invariants
-
-    unsigned int total_results;
-    unsigned int process_step;
 
     // Workers optimize memory allocation.  In particular, it is not
     // necessary for the memory to ever be freed.  So the worker allocates
@@ -245,14 +212,9 @@ struct worker {
 
     unsigned int sb_index;
 
-#ifdef notdef
-    // Lock protected message queue
-    mutex_t mq_mutex;
-    struct state_header *mq_first, **mq_last;
-
-    // Non-lock protected message queue
-    struct state_header *umq_first, **umq_last;
-#endif
+    // Some cached info from global to reduce contention
+    unsigned int nworkers;
+    struct dfa *dfa;
 };
 
 #ifdef CACHE_LINE_ALIGNED
@@ -377,16 +339,53 @@ static inline void context_remove_by_index(struct state *state, int i){
     }
 }
 
+// Copy of value::context_add
+static inline int local_context_add(struct state *state, hvalue_t ctx){
+    hvalue_t *ctxlist = state_ctxlist(state);
+
+    unsigned int i;
+    for (i = 0; i < state->bagsize; i++) {
+        hvalue_t ctxi = ctxlist[i] & ~STATE_MULTIPLICITY;
+        if (ctxi == ctx) {
+            ctxlist[i] += (hvalue_t) 1 << STATE_M_SHIFT;
+            return i;
+        }
+        if (ctxi > ctx) {
+            break;
+        }
+    }
+
+    if (state->total >= MAX_CONTEXT_BAG) {
+        return -1;
+    }
+ 
+    // Move the last contexts
+    memmove(&ctxlist[i+1], &ctxlist[i],
+                    (state->total - i) * sizeof(hvalue_t));
+
+    state->bagsize++;
+    state->total++;
+    ctxlist[i] = ctx | ((hvalue_t) 1 << STATE_M_SHIFT);
+    return i;
+}
+
 // Part of experimental -d option, running Harmony programs "for real".
 static void direct_run(struct state *state, unsigned int id){
-    struct {
-        struct context ctx;
-        hvalue_t stack[MAX_CONTEXT_STACK];
-    } fullctx;
-
+    struct worker w;
     struct step step;
+
+    memset(&w, 0, sizeof(w));
+    w.alloc_buf = malloc(WALLOC_CHUNK);
+    w.alloc_ptr = w.alloc_buf;
+    w.alloc_buf16 = malloc(WALLOC_CHUNK);
+    w.alloc_ptr16 = w.alloc_buf16;
+    w.allocator.alloc = walloc;
+    w.allocator.free = wfree;
+    w.allocator.ctx = &w;
+
     memset(&step, 0, sizeof(step));
-    step.ctx = &fullctx.ctx;
+    step.allocator = &w.allocator;
+    step.ctx = &w.ctx;
     unsigned int interrupt_count = 1;
 
     setbuf(stdout, NULL);
@@ -525,10 +524,11 @@ static void direct_run(struct state *state, unsigned int id){
         assert(ctx_size(cc) == size);
         assert(!cc->terminated);
         assert(!cc->failed);
-        memcpy(&fullctx, cc, ctx_size(cc));
+        memcpy(&w.ctx, cc, ctx_size(cc));
 
         // Check if an interrupt is in order
-        if (cc->extended && ctx_trap_pc(cc) != 0 && !cc->interruptlevel) {
+        if (pick & VALUE_CONTEXT_INTERRUPTABLE) {
+        // if (cc->extended && ctx_trap_pc(cc) != 0 && !cc->interruptlevel) {
             interrupt_count += 1;
             if (rand() % interrupt_count == 0) {
                 interrupt_invoke(&step);
@@ -594,12 +594,6 @@ static void direct_run(struct state *state, unsigned int id){
             return;
         }
 
-#ifdef notdef
-        // Remove the original context from the state
-        // assert(state_ctx(state, ctx_index) == ctx);
-        context_remove_by_index(state, ctx_index);
-#endif
-
         // Add updated context to state unless terminated or stopped
         if (step.ctx->stopped) {
             hvalue_t after = value_put_context(step.allocator, step.ctx);
@@ -607,7 +601,7 @@ static void direct_run(struct state *state, unsigned int id){
         }
         else if (!step.ctx->terminated) {
             hvalue_t after = value_put_context(step.allocator, step.ctx);
-            context_add(state, after);
+            local_context_add(state, after);
         }
     }
 
@@ -616,37 +610,37 @@ static void direct_run(struct state *state, unsigned int id){
     }
 }
 
-static inline uint32_t meiyan(const char *key, int count) {
+// Specialized hash function for states
+static inline uint32_t meiyan2(const struct state *s){
 	typedef uint32_t *P;
+    unsigned int count = sizeof(*s) / 8 + s->total;
+    P key = (P) s;
+
 	uint32_t h = 0x811c9dc5;
-	while (count >= 8) {
-		h = (h ^ ((((*(P)key) << 5) | ((*(P)key) >> 27)) ^ *(P)(key + 4))) * 0xad3e7;
-		count -= 8;
-		key += 8;
+	while (count > 0) {
+		h = (h ^ ((((*key) << 5) | ((*key) >> 27)) ^ *(key + 1))) * 0xad3e7;
+		count--;
+		key += 2;
 	}
-	#define tmp h = (h ^ *(uint16_t*)key) * 0xad3e7; key += 2;
-	if (count & 4) { tmp tmp }
-	if (count & 2) { tmp }
-	if (count & 1) { h = (h ^ *key) * 0xad3e7; }
-	#undef tmp
 	return h ^ (h >> 16);
 }
 
 // Apply the effect of evaluating a context (for a particular assignment
 // of shared variables and possibly some choice) to a state.  This leads
 // to a new edge in the Kripke structure, possibly to a new state.
-static void process_step(
+static inline void process_step(
     struct worker *w,
-    unsigned int shard_index,
     struct step_condition *stc,
     struct state_header *sh
 ) {
     struct step_output *so = stc->u.completed;
 
     if (sh->edge_index < 0) { // invariant
+        assert(stc->completed);
+        assert(stc->invariant_chk);
         if (so->failed || so->infinite_loop) {
             struct failure *f = new_alloc(struct failure);
-            f->type = so->failed ? FAIL_SAFETY : FAIL_TERMINATION;
+            f->type = so->failed ? FAIL_SAFETY : FAIL_INFLOOP;
             f->node = sh->node;
             f->edge = walloc_fast(w, sizeof(struct edge));
 #ifdef SHORT_PTR
@@ -655,21 +649,22 @@ static void process_step(
 #else
             f->edge->dst = sh->node;
 #endif
-            f->edge->stc_id = stc->id;
+            assert(f->edge->dst != NULL);
+            f->edge->stc_id = (uint64_t) stc;
             f->edge->failed = true;
-            add_failure(&global.failures, f);
+            f->edge->invariant_chk = true;
+            add_failure(&w->failures, f);
         }
         state_header_free(w, sh);
         return;
     }
 
-    w->process_step++;
     struct state *sc = (struct state *) &sh[1];
     sc->vars = so->vars;
 
     // Update state with spawned and resumed threads.
     for (unsigned int i = 0; i < so->nspawned; i++) {
-        if (context_add(sc, step_spawned(so)[i]) < 0) {
+        if (local_context_add(sc, step_spawned(so)[i]) < 0) {
             panic("too many threads 1");
         }
     }
@@ -698,7 +693,7 @@ static void process_step(
         stopped_context_add(sc, so->after);
     }
     else if (!so->terminated) {
-        new_index = context_add(sc, so->after);
+        new_index = local_context_add(sc, so->after);
         if (new_index < 0) {
             panic("too many threads 0");
         }
@@ -707,61 +702,59 @@ static void process_step(
     // Determine the number of outgoing edges of the new state below
     unsigned int noutgoing;
 
-    // If choosing, save in state.
-    hvalue_t *choices;
-    if (so->choosing) {
+    if (so->printing) {
+        assert(so->choose_count == 0);
+        sc->type = STATE_PRINT;
+        sc->chooser = new_index;
+        noutgoing = 1;
+    }
+    else if (so->choose_count > 0) {
+        sc->type = STATE_CHOOSE;
         sc->chooser = new_index;
         // sc->pre = global.inv_pre ? node_state(sh->node)->pre : sc->vars;
-        // TODO.  Maybe more efficient to keep the following info
-        //        as it's already computed in onestep
-        struct context *ctx = value_get(so->after, NULL);
-        assert(ctx->sp > 0);
-        hvalue_t s = ctx_stack(ctx)[ctx->sp - 1];
-        if (VALUE_TYPE(s) != VALUE_SET) {
-            printf("CHOOSING FROM %s\n", value_string(s));
-            panic("choose of non-set\n");
-        }
-        assert(VALUE_TYPE(s) == VALUE_SET);
-        unsigned int size;
-        choices = value_get(s, &size);
-        noutgoing = size / sizeof(hvalue_t);
+        noutgoing = so->choose_count;
     }
     else {
-        sc->chooser = -1;
+        assert(so->choose_count == 0);
+        sc->type = STATE_NORMAL;
+        sc->chooser = 0;
         // sc->pre = sc->vars;
-        choices = state_ctxlist(sc);
+        hvalue_t *choices = state_ctxlist(sc);
         noutgoing = sc->bagsize;
         for (unsigned int i = 0; i < sc->bagsize; i++) {
-            struct context *ctx = value_get(choices[i], NULL);
-            if (ctx->extended && ctx_trap_pc(ctx) != 0 && !ctx->interruptlevel) {
+            if (choices[i] & VALUE_CONTEXT_INTERRUPTABLE) {
                 noutgoing++;
             }
         }
     }
 
     // If a failure has occurred, keep track of that too.
-    struct edge *edge = &node_edges(sh->node)[sh->edge_index];
+    assert(sh->edge_index >= 0);
+    assert(sh->edge_index < 256);
+    // assert(edge->dst != NULL);
     if (so->failed || so->infinite_loop) {
+        struct edge *edge = &node_edges(sh->node)[sh->edge_index];
         edge->failed = true;
         noutgoing = 0;
         struct failure *f = new_alloc(struct failure);
-        f->type = so->infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
+        f->type = so->infinite_loop ? FAIL_INFLOOP : FAIL_SAFETY;
         f->node = sh->node;
         f->edge = edge;
         f->next = w->failures;
         w->failures = f;
     }
 
-    if (global.dfa != NULL) {
+    if (w->dfa != NULL) {
         for (unsigned int i = 0; i < so->nlog; i++) {
-            int nstate = dfa_step(global.dfa, sc->dfa_state, step_log(so)[i]);
+            int nstate = dfa_step(w->dfa, sc->dfa_state, step_log(so)[i]);
             if (nstate < 0) {
+                struct edge *edge = &node_edges(sh->node)[sh->edge_index];
                 struct failure *f = new_alloc(struct failure);
                 f->type = FAIL_BEHAVIOR_BAD;
                 f->node = sh->node;
                 f->edge = edge;
                 edge->failed = true;
-                add_failure(&global.failures, f);
+                add_failure(&w->failures, f);
                 break;
             }
             sc->dfa_state = nstate;
@@ -769,17 +762,17 @@ static void process_step(
     }
 
     sh->noutgoing = noutgoing;
-    sh->hash = meiyan((char *) sc, state_size(sc));
+    sh->hash = meiyan2(sc);
 
     // Add to the linked list of the responsible peer shard
-    struct shard *shard = &global.shards[shard_index];
-    unsigned int responsible = (sh->hash >> 16) % global.nshards;
+    struct shard *shard = &w->shard;
+    unsigned int responsible = (sh->hash >> 16) % w->nworkers;
     struct state_queue *sq = &shard->peers[responsible];
     *sq->last = sh;
     sq->last = &sh->next;
     sh->next = NULL;
 
-    w->sb_index++;      // TODOTODO
+    w->sb_index++;
 }
 
 // This is the main workhorse function of model checking: explore a state and
@@ -811,12 +804,13 @@ static struct step_output *onestep(
     bool infinite_loop = false;
     unsigned int instrcnt = 0;          // keeps track of #instruction executed
     bool must_break = true;
-    bool choosing = false;              // set when ending in choosing state
+    unsigned int choose_count = 0;      // number of choices
     struct dict *infloop = NULL;        // infinite loop detector
     unsigned int as_instrcnt = 0;       // for rollback
     bool stopped = false;
     bool terminated = false;
     bool rollback = false;
+    bool printing = false;
 
     // See if we should first try an interrupt or make a choice.
     if (choice == (hvalue_t) -1) {
@@ -826,6 +820,7 @@ static struct step_output *onestep(
     }
     else if (choice != 0) {
         assert(instrs[step->ctx->pc].choose);
+        assert(sc->type == STATE_CHOOSE);
         assert(step->ctx->sp > 0);
         ctx_stack(step->ctx)[step->ctx->sp - 1] = choice;
         w->profile[step->ctx->pc]++;
@@ -863,7 +858,10 @@ static struct step_output *onestep(
             }
 
             if (as_instrcnt == 0) {
-                choosing = true;
+                unsigned int size;
+                (void) value_get(s, &size);
+                choose_count = size / sizeof(hvalue_t);
+                assert(choose_count > 0);
             }
             else {
                 rollback = true;
@@ -936,10 +934,19 @@ static struct step_output *onestep(
                 }
             }
         }
+        // If it's a Print instruction in atomic mode, we should break if it's not the
+        // first instruction.
+        else if (instrcnt > 0 && instrs[pc].print) {
+            printing = true;
+            break;
+        }
 
         // Execute the instruction
         w->profile[pc]++;
         (*oi->op)(instrs[pc].env, sc, step);
+        if (step->nlog > 0) {
+            w->printed_something = true;
+        }
         instrcnt++;
         // printf("<-- %u %s %u %u %u\n", pc, oi->name, step->ctx->atomic, as_instrcnt, must_break);
 
@@ -1036,6 +1043,8 @@ static struct step_output *onestep(
         }
     }
 
+    assert(step->nlog == 0 || step->nlog == 1);
+
     // No longer need 'infloop' state.
     // TODO.  Perhaps this suggests a way to automatically determine the
     //        number of instructions to run before trying to detect an
@@ -1061,7 +1070,9 @@ static struct step_output *onestep(
     so->ai = step->ai;     step->ai = NULL;
     so->nsteps = instrcnt;
 
-    so->choosing = choosing;
+    assert(choose_count <= 255);
+    so->choose_count = choose_count;
+    so->printing = printing;
     so->terminated = terminated;
     so->stopped = stopped;
     so->failed = step->ctx->failed;
@@ -1091,7 +1102,6 @@ static struct step_output *onestep(
 // printing values, spawning threads, and deleting contexts from the stopbag.
 static void trystep(
     struct worker *w,         // thread info
-    unsigned int shard_index, // shard id
     struct node *node,        // starting node
     int edge_index,           // edge index (-1 if an invariant)
     struct state *state,      // actual state
@@ -1101,60 +1111,39 @@ static void trystep(
     int ctx_index             // -1 if not in the context bag (i.e., invariant)
 ) {
     assert(ctx_index == -1 || state_ctx(state, ctx_index) == ctx);
-    assert(state->chooser < 0 || choice != 0);
+    assert(edge_index >= -1);
+    assert(edge_index < 256);
     struct step_condition *stc;
     bool si_new;
     mutex_t *si_lock;
 
     w->si_total++;          // counts the number of edges
 
+    // Key to find (vars, choice, ctx) pair in hash table.
     struct step_input si = {
         .vars = state->vars,
         .choice = choice,
         .ctx = ctx
     };
 
-    // For backward compatibility, we still support countLabel().  If the
-    // Harmony program uses it, we circumvent the cache.
-    if (has_countLabel) {
-        struct step_comp *comp = walloc_fast(w, sizeof(struct step_comp));
-        si_new = true;
-        stc = &comp->cond;
-        comp->input = si;
-    }
-    else {
-        // See if we did this already (or are doing this already)
-        struct dict_assoc *da = dict_find_lock(global.computations,
-            &w->allocator, &si, sizeof(si), &si_new, &si_lock);
-        stc = (struct step_condition *) &da[1];
-    }
+    // See if we did this already (or are doing this already)
+    struct dict_assoc *da = dict_find_lock(global.computations,
+        &w->allocator, &si, sizeof(si), &si_new, &si_lock);
+    stc = (struct step_condition *) &da[1];
 
     if (si_new) {
-        // Add to global array to create an id
-        mutex_acquire(&global.stc_lock);
-        if (global.nstc == global.stc_allocated) {
-            global.stc_allocated *= 4;
-            global.stc_table = realloc(global.stc_table,
-                global.stc_allocated * sizeof(*global.stc_table));
-        }
-        stc->id = global.nstc;
+        stc->invariant_chk = edge_index < 0;
         stc->completed = false;
         stc->u.in_progress = NULL;
-        global.stc_table[global.nstc] = stc;
-        global.nstc++;
-        mutex_release(&global.stc_lock);
     }
 
+    // edge_index < 0 ==> invariant check
     if (edge_index >= 0) {
         struct edge *edge = &node_edges(node)[edge_index];
-        edge->stc_id = stc->id;
+        edge->stc_id = (uint64_t) stc;
         edge->multiple = ctx_index >= 0 &&
                             state_multiplicity(state, ctx_index) > 1;
         edge->failed = false;
-        stc->invariant_chk = false;
-    }
-    else {
-        stc->invariant_chk = true;
     }
 
     if (!si_new) {
@@ -1168,6 +1157,7 @@ static void trystep(
                 w->el_free = el->next;
             }
             el->node = node;
+            el->ctx_index = ctx_index;
             el->edge_index = edge_index;
             el->next = stc->u.in_progress;
             stc->u.in_progress = el;
@@ -1177,9 +1167,7 @@ static void trystep(
         assert(stc->completed);
     }
 
-    if (!has_countLabel) {
-        mutex_release(si_lock);
-    }
+    mutex_release(si_lock);
 
     // If this is a new step, perform it
     struct edge_list *el = NULL;
@@ -1210,42 +1198,49 @@ static void trystep(
             so = onestep(w, node, state, ctx, step, choice, true);
         }
 
-        if (has_countLabel) {
-            assert(!stc->completed);
-            assert(stc->u.in_progress == NULL);
-            el = stc->u.in_progress;
-            stc->completed = true;
-            stc->u.completed = so;
-        }
-        else {
-            mutex_acquire(si_lock);
-            assert(!stc->completed);
-            el = stc->u.in_progress;
-            stc->completed = true;
-            stc->u.completed = so;
-            mutex_release(si_lock);
-        }
+        // Mark as completed
+        mutex_acquire(si_lock);
+        assert(!stc->completed);
+        el = stc->u.in_progress;
+        stc->completed = true;
+        stc->u.completed = so;
+        mutex_release(si_lock);
     }
-    else {
-        assert(stc->completed);
-    }
+
+    assert(stc->completed);
 
     // Conservative size.  Actual size hard to estimate because of
     // multiplicities.
     struct step_output *so2 = stc->u.completed;
-    unsigned int est_total_ctxs = state->total + so2->nspawned;
 
-    // Allocate a state_header
-    // TODO. Don't need to copy if ctx in readonly mode (unless it stops being in
-    //       readonly mode...
-    // TODO. Alternatively, it seems easy to check if the state is going to be updated or not
-    // TODO. Also copy not needed if ctx_index == -1 (invariant check)
-    // struct shard *shard = &global.shards[shard_index];
+    // If there was no change, then we don't need to look up the state.
+    // We can simply create a self-edge.
+    if (so2->vars == state->vars && so2->after == ctx &&
+            so2->nlog == 0 && so2->nspawned == 0 && so2->nunstopped == 0 &&
+            !so2->failed && !so2->infinite_loop) {
+        if (edge_index >= 0) {
+            node_edges(node)[edge_index].dst = node;
+        }
+        while (el != NULL) {
+            node = el->node;
+            if (el->edge_index >= 0) {
+                node_edges(node)[el->edge_index].dst = node;
+            }
+            struct edge_list *next = el->next;
+            el->next = w->el_free;
+            w->el_free = el;
+            el = next;
+        }
+        return;
+    }
+
+    // Allocate a state_header, essentially a message to another worker
+    unsigned int est_total_ctxs = state->total + so2->nspawned + 1;
     struct state_header *sh = state_header_alloc(w, state, est_total_ctxs);
-    // sh->garbage = false;
-    // sh->source = shard_index;
     sh->node = node;
     sh->edge_index = edge_index;
+    assert(sh->edge_index >= -1);
+    assert(sh->edge_index < 256);
     struct state *sc = (struct state *) &sh[1];
 
     // Remove original context from context bag
@@ -1255,7 +1250,7 @@ static void trystep(
     }
 
     // Process the effect of the step
-    process_step(w, shard_index, stc, sh);
+    process_step(w, stc, sh);
     assert(sc->total <= est_total_ctxs);
 
     // See if any other edges were waiting for the result of this
@@ -1263,16 +1258,21 @@ static void trystep(
     while (el != NULL) {
         node = el->node;
         state = node_state(node);
-        est_total_ctxs = state->total + so2->nspawned;
+        est_total_ctxs = state->total + so2->nspawned + 1;
         sh = state_header_alloc(w, state, est_total_ctxs);
         sh->node = node;
         sh->edge_index = el->edge_index;
+        assert(sh->edge_index >= -1);
+        assert(sh->edge_index < 256);
         sc = (struct state *) &sh[1];
-
-        context_remove(sc, ctx);
-        process_step(w, shard_index, stc, sh);
+        if (el->ctx_index >= 0) {
+            assert(state_ctx(sc, el->ctx_index) == ctx);
+            context_remove_by_index(sc, el->ctx_index);
+        }
+        process_step(w, stc, sh);
         assert(sc->total <= est_total_ctxs);
 
+        // Put edge_list node back on the free list
         struct edge_list *next = el->next;
         el->next = w->el_free;
         w->el_free = el;
@@ -1280,13 +1280,14 @@ static void trystep(
     }
 }
 
-char *ctx_status(struct node *node, hvalue_t ctx) {
+static char *ctx_status(struct node *node, hvalue_t ctx) {
     struct state *state = node_state(node);
 
-    if (state->chooser >= 0 && state_ctx(state, state->chooser) == ctx) {
+    // if (state->chooser >= 0 && state_ctx(state, state->chooser) == ctx) {
+    if (state->type == STATE_CHOOSE && state_ctx(state, state->chooser) == ctx) {
         return "choosing";
     }
-    while (state->chooser >= 0) {
+    while (state->type == STATE_CHOOSE) {
         node = node->parent;
         state = node_state(node);
     }
@@ -1302,7 +1303,7 @@ char *ctx_status(struct node *node, hvalue_t ctx) {
     return "runnable";
 }
 
-void print_context(
+static void print_context(
     FILE *file,
     hvalue_t ctx,
     struct callstack *cs,
@@ -1505,7 +1506,8 @@ static void twostep(
     unsigned int pid,
     struct macrostep *macro
 ){
-    sc->chooser = -1;
+    sc->type = STATE_NORMAL;
+    sc->chooser = 0;
 
     struct step step;
     memset(&step, 0, sizeof(step));
@@ -1640,7 +1642,7 @@ static void twostep(
     }
     else if (!step.ctx->terminated) {
         // TODO.  Check failure of context_add
-        (void) context_add(sc, after);
+        (void) local_context_add(sc, after);
     }
 
     free(step.ctx);
@@ -1658,7 +1660,7 @@ static void *copy(void *p, unsigned int size){
 }
 
 // Take the path and put it in an array
-void path_serialize(struct node *parent, struct edge *e){
+static void path_serialize(struct node *parent, struct edge *e){
     // First recurse to the previous step
     assert(parent != NULL);
     struct edge *to_grandparent = node_to_parent(parent);
@@ -1681,7 +1683,7 @@ void path_serialize(struct node *parent, struct edge *e){
     global.macrosteps[global.nmacrosteps++] = macro;
 }
 
-void path_recompute(){
+static void path_recompute(){
     struct node *node = global.graph.nodes[0];
     struct state *sc = calloc(1, MAX_STATE_SIZE);
     memcpy(sc, node_state(node), state_size(node_state(node)));
@@ -1689,9 +1691,10 @@ void path_recompute(){
     for (unsigned int i = 0; i < global.nmacrosteps; i++) {
         struct macrostep *macro = global.macrosteps[i];
         struct edge *e = macro->edge;
+        // assert(e->dst != NULL);
         hvalue_t ctx = edge_input(e)->ctx;
 
-        if (edge_invariant(e)) {
+        if (e->invariant_chk) {
             global.processes = realloc(global.processes, (global.nprocesses + 1) * sizeof(hvalue_t));
             global.callstacks = realloc(global.callstacks, (global.nprocesses + 1) * sizeof(struct callstack *));
             global.processes[global.nprocesses] = ctx;
@@ -2016,7 +2019,7 @@ static void path_output_macrostep(FILE *file, struct macrostep *macro, struct st
 // of the accesses is a store.  An access is identified by a path.  Two
 // accesses are to the same variable if one of the paths is a prefix of
 // the other.
-bool path_edge_conflict(
+static bool path_edge_conflict(
     struct edge *edge,
     struct edge *edge2
 ) {
@@ -2163,6 +2166,7 @@ static void path_output(FILE *file){
     struct state *oldstate = calloc(1, MAX_STATE_SIZE);
     oldstate->vars = VALUE_DICT;
     for (unsigned int i = 0; i < global.nmacrosteps; i++) {
+        // assert(global.macrosteps[i]->edge->dst != NULL);
         path_output_macrostep(file, global.macrosteps[i], oldstate);
         if (i == global.nmacrosteps - 1) {
             fprintf(file, "\n");
@@ -2258,89 +2262,6 @@ static char *json_string_encode(char *s, int len){
     return result;
 }
 
-#ifdef notdef
-
-struct enum_loc_env_t {
-    FILE *out;
-    struct dict *code_map;
-};
-
-static void enum_loc(
-    void *env,
-    const void *key,
-    unsigned int key_size,
-    void *value
-) {
-    static bool notfirst = false;
-    struct enum_loc_env_t *enum_loc_env = env;
-    FILE *out = enum_loc_env->out;
-    struct dict *code_map = enum_loc_env->code_map;
-
-    if (notfirst) {
-        fprintf(out, ",\n");
-    }
-    else {
-        notfirst = true;
-        fprintf(out, "\n");
-    }
-
-    // Get program counter
-    char *pcc = malloc(key_size + 1);
-    memcpy(pcc, key, key_size);
-    pcc[key_size] = 0;
-    int pc = atoi(pcc);
-    free(pcc);
-
-    fprintf(out, "    \"%.*s\": { ", key_size, (char *) key);
-
-    struct json_value **pjv = value;
-    struct json_value *jv = *pjv;
-    assert(jv->type == JV_MAP);
-
-    struct json_value *file = dict_lookup(jv->u.map, "file", 4);
-    assert(file->type == JV_ATOM);
-    fprintf(out, "\"file\": \"%s\", ", json_string_encode(file->u.atom.base, file->u.atom.len));
-
-    struct json_value *line = dict_lookup(jv->u.map, "line", 4);
-    assert(line->type == JV_ATOM);
-    fprintf(out, "\"line\": \"%.*s\", ", line->u.atom.len, line->u.atom.base);
-
-    static char *tocopy[] = { "column", "endline", "endcolumn", NULL };
-    for (unsigned int i = 0; tocopy[i] != NULL; i++) {
-        char *key2 = tocopy[i];
-        struct json_value *jv2 = dict_lookup(jv->u.map, key2, strlen(key2));
-        assert(jv2->type == JV_ATOM);
-        fprintf(out, "\"%s\": \"%.*s\", ", key2, jv2->u.atom.len, jv2->u.atom.base);
-    }
-
-    struct json_value *stmt = dict_lookup(jv->u.map, "stmt", 4);
-    assert(stmt->type == JV_LIST);
-    assert(stmt->u.list.nvals == 4);
-    fprintf(out, "\"stmt\": [");
-    for (unsigned int i = 0; i < 4; i++) {
-        if (i != 0) {
-            fprintf(out, ",");
-        }
-        struct json_value *jv2 = stmt->u.list.vals[i];
-        assert(jv2->type == JV_ATOM);
-        fprintf(out, "%.*s", jv2->u.atom.len, jv2->u.atom.base);
-    }
-    fprintf(out, "], ");
-
-    char **p = dict_insert(code_map, NULL, &pc, sizeof(pc), NULL);
-    struct strbuf sb;
-    strbuf_init(&sb);
-    strbuf_printf(&sb, "%.*s:%.*s", file->u.atom.len, file->u.atom.base, line->u.atom.len, line->u.atom.base);
-    *p = strbuf_convert(&sb);
-
-    struct json_value *code = dict_lookup(jv->u.map, "code", 4);
-    assert(code->type == JV_ATOM);
-    fprintf(out, "\"code\": \"%s\"", json_string_encode(code->u.atom.base, code->u.atom.len));
-    fprintf(out, " }");
-}
-
-#endif // notdef
-
 enum busywait { BW_ESCAPE, BW_RETURN, BW_VISITED };
 static enum busywait is_stuck(
     struct node *start,
@@ -2348,7 +2269,7 @@ static enum busywait is_stuck(
     hvalue_t ctx,
     bool change
 ) {
-    if (scc[node->id].component != scc[start->id].component) {
+    if (global.scc[node->id].component != global.scc[start->id].component) {
         return BW_ESCAPE;
     }
     if (node->visited) {
@@ -2422,99 +2343,121 @@ static inline void step_init(struct worker *w, struct step *step){
     step->keep_callstack = false;
 }
 
-// This function evaluates a node just taken from the todo list by the worker.
-// Any new nodes that are found are kept in w->workers and not yet added to
-// the todo list or the graph.
-void do_work1(struct worker *w, unsigned int shard_index, struct node *node){
-    // If the node is the result of a failed transition, don't explore it
-    if (node->failed) {
-        return;
-    }
-
-    struct state *state = node_state(node);
-
-    // Worker 0 periodically (every second) prints some stats for long runs.
-    // To avoid calling gettime() very often, which may involve an expensive
-    // system call, worker 0 only checks every 100 instructions.
-    if (w->index == 0 && w->timecnt-- == 0) {
-        double now = gettime();
-        if (now - global.lasttime > 3) {
-            if (global.lasttime != 0) {
-                unsigned int enqueued = 0, dequeued = 0;
-                unsigned long allocated = global.allocated;
-
-                for (unsigned int i = 0; i < w->nworkers; i++) {
-                    struct worker *w2 = &w->workers[i];
-                    enqueued += w2->enqueued;
-                    dequeued += w2->dequeued;
-                    allocated += w2->allocated;
-                }
-                double gigs = (double) allocated / (1 << 30);
-                fprintf(stderr, "    states=%u diam=%u q=%d mem=%.3lfGB\n",
-                        enqueued, global.diameter,
-                        enqueued - dequeued, gigs);
-                fprintf(stderr, "    vars=%s\n", value_string(state->vars));
-                global.last_nstates = enqueued;
-            }
-            global.lasttime = now;
-            if (now > w->timeout) {
-                fprintf(stderr, "charm: timeout exceeded\n");
-                exit(1);
-            }
-        }
-        w->timecnt = 1000;
-    }
-
-    // Explore the non-deterministic choices from this node
+// This function explores the non-deterministic choices of a node just
+// taken from the todo list by the worker. Any new nodes that are found are
+// kept in w->results and not yet added to the todo list or the graph.
+static void do_work1(struct worker *w, struct node *node){
     struct step step;
-    if (state->chooser >= 0) {
-        // The actual set of choices is on top of its stack
-        hvalue_t chooser = state_ctx(state, state->chooser);
-        struct context *cc = value_get(chooser, NULL);
-        assert(cc != NULL);
-        assert(cc->sp > 0);
-        hvalue_t s = ctx_stack(cc)[cc->sp - 1];
-        assert(VALUE_TYPE(s) == VALUE_SET);
-        unsigned int size;
-        hvalue_t *vals = value_get(s, &size);
-        size /= sizeof(hvalue_t);
-        assert(size > 0);
-        assert(size == node->nedges);
+    struct state *state = node_state(node);
+    switch (state->type) {
+    case STATE_CHOOSE:
+        {
+            // The actual set of choices is on top of its stack
+            hvalue_t chooser = state_ctx(state, state->chooser);
+            struct context *cc = value_get(chooser, NULL);
+            assert(cc != NULL);
+            assert(cc->sp > 0);
+            hvalue_t s = ctx_stack(cc)[cc->sp - 1];
+            assert(VALUE_TYPE(s) == VALUE_SET);
+            unsigned int size;
+            hvalue_t *vals = value_get(s, &size);
+            size /= sizeof(hvalue_t);
+            assert(size > 0);
+            assert(size == node->nedges);
 
-        // Explore each choice.
-        for (unsigned int i = 0; i < size; i++) {
-            step_init(w, &step);
-            trystep(w, shard_index, node, i, state, chooser, &step, vals[i], state->chooser);
+            // Explore each choice.
+            for (unsigned int i = 0; i < size; i++) {
+                step_init(w, &step);
+                trystep(w, node, i, state, chooser, &step, vals[i], state->chooser);
+            }
         }
-    }
-    else {
+        break;
+    case STATE_PRINT:
+        assert(node->nedges == 1);
+        hvalue_t chooser = state_ctx(state, state->chooser);
+        step_init(w, &step);
+        trystep(w, node, 0, state, chooser, &step, 0, state->chooser);
+        break;
+    default:
+        assert(state->type == STATE_NORMAL);
+
         // Explore each thread that can make a step.
         for (unsigned int i = 0; i < state->bagsize; i++) {
             step_init(w, &step);
-            trystep(w, shard_index, node, i, state, state_ctx(state, i), &step, 0, i);
+            trystep(w, node, i, state, state_ctx(state, i), &step, 0, i);
         }
         unsigned int j = state->bagsize;
         for (unsigned int i = 0; i < state->bagsize; i++) {
             hvalue_t ctx = state_ctx(state, i);
-            struct context *cc = value_get(ctx, NULL);
-            if (cc->extended && ctx_trap_pc(cc) != 0 && !cc->interruptlevel) {
+            if (ctx & VALUE_CONTEXT_INTERRUPTABLE) {
                 step_init(w, &step);
-                trystep(w, shard_index, node, j, state, state_ctx(state, i), &step, (hvalue_t) -1, i);
+                trystep(w, node, j, state, state_ctx(state, i), &step, (hvalue_t) -1, i);
                 j++;
             }
         }
         assert(j == node->nedges);
     }
 
-    // Also check the invariants after initialization
-    if (!node->initial)
-	if (state->chooser < 0)
+    // About to check invariants etc.
+    if (node->initial || state->type != STATE_NORMAL) {
+        return;
+    }
+
+    // Check invariants.
 	if (global.ninvs > 0) {
         step_init(w, &step);
 
         // Check each invariant
         for (unsigned int i = 0; i < global.ninvs; i++) {
-            trystep(w, shard_index, node, -1, state, global.invs[i].context, &step, 0, -1);
+            trystep(w, node, -1, state, global.invs[i].context, &step, 0, -1);
+        }
+    }
+
+    // See if this is a final state.  It's a final state if all threads
+    // are eternal and all outgoing edges are self-edges.
+    bool dead_end = true;
+    struct edge *e = node_edges(node);
+    for (unsigned int j = 0; j < node->nedges; j++, e++) {
+        if (edge_dst(e) != node) {
+            dead_end = false;
+            break;
+        }
+    }
+    if (dead_end) {
+        bool final = value_state_all_eternal(state);
+        if (final) {
+            // If an input dfa was specified, it should also be in the
+            // final state.
+            if (global.dfa != NULL &&
+                    !dfa_is_final(global.dfa, state->dfa_state)) {
+                struct failure *f = new_alloc(struct failure);
+                f->type = FAIL_BEHAVIOR_FINAL;
+                f->node = node->parent;
+                f->edge = node_to_parent(node);
+                add_failure(&w->failures, f);
+            }
+            else {
+                node->final = true;
+            }
+
+            // Check the finally predicates
+            if (global.nfinals > 0) {
+                struct step step;
+                step_init(w, &step);
+
+                // Check each "finally" predicate
+                for (unsigned int i = 0; i < global.nfinals; i++) {
+                    trystep(w, node, -1, state, global.finals[i], &step, 0, -1);
+                }
+            }
+        }
+        else {
+            struct failure *f = new_alloc(struct failure);
+            f->type = FAIL_DEADLOCK;
+            f->node = node->parent;
+            f->edge = node_to_parent(node);
+            assert(f->edge != NULL);
+            add_failure(&w->failures, f);
         }
     }
 }
@@ -2527,13 +2470,12 @@ void do_work1(struct worker *w, unsigned int shard_index, struct node *node){
 // into this array.  All the nodes before todo have been explored, while the
 // ones after todo should be explored.  In other words, the "todo list" starts
 // at global.graph.nodes[global.todo] and ends at graph.nodes[graph.size];
-static void do_work(struct worker *w, unsigned int shard_index){
+static void do_work(struct worker *w){
     // double start = gettime(), now;
-    struct shard *shard = &global.shards[shard_index];
+    struct shard *shard = &w->shard;
 
-// printf("FREE MESSAGES\n");
     // Put any messages from the prior round on the appropriate free lists
-    for (unsigned int i = 0; i < global.nshards; i++) {
+    for (unsigned int i = 0; i < w->nworkers; i++) {
         struct state_queue *sq = &shard->peers[i];
         struct state_header *sh;
         while ((sh = sq->first) != NULL) {
@@ -2543,151 +2485,33 @@ static void do_work(struct worker *w, unsigned int shard_index){
         sq->last = &sq->first;
     }
 
-    shard->idle = false;
-#ifdef notdef
-    for (;;) {
-        // Send the computed states to their respective destinations
-        for (unsigned int i = 0; i < global.nshards; i++) {
-            struct state_queue *sq = &shard->peers[i];
-            if (sq->first != NULL) {
-                struct worker *w2 = &w->workers[i];
-                mutex_acquire(&w2->mq_mutex);
-                *w2->mq_last = sq->first;
-                w2->mq_last = sq->last;
-                assert(*w2->mq_last == NULL);
-                mutex_release(&w2->mq_mutex);
-                sq->first = NULL;
-                sq->last = &sq->first;
-            }
+    // See if there's anything on my TODO list.
+    w->sb_index = 0;
+    while (shard->tb_index < shard->tb_size) {
+        struct node *n = shard->tb_head->results[shard->tb_index % NRESULTS];
+        if (!w->found_failures && !n->failed) {
+            do_work1(w, n);
+        }
+        shard->tb_index++;
+        if (shard->tb_index % NRESULTS == 0) {
+            shard->tb_head = shard->tb_head->next;
         }
 
-        // Get my messages
-        // TODO.  Optimize by incorporating into loop above.
-        mutex_acquire(&w->mq_mutex);
-        if (w->mq_first != NULL) {
-            *w->umq_last = w->mq_first;
-            w->umq_last = w->mq_last;
-            w->mq_first = NULL;
-            w->mq_last = &w->mq_first;
-        }
-        mutex_release(&w->mq_mutex);
-
-        // If there are no messages and my todo list is empty, go to the barrier.
-        if (w->umq_first == NULL && shard->tb_index == shard->tb_size) {
-            shard->idle = true;
+        // Stop if about to run out of state buffer space
+        if (w->sb_index > STATE_BUFFER_HWM * w->nworkers) {
             break;
         }
-
-        // Look up the states, and if they're new add them to my todo list
-        struct state_header *sh;
-        // now = gettime();
-        while ((sh = w->umq_first) != NULL) {
-            w->umq_first = sh->next;
-
-            if (sh->garbage) {
-                state_header_free(w, sh);
-                continue;
-            }
-
-            struct state *sc = (struct state *) &sh[1];
-            unsigned int size = state_size(sc);
-
-            // See if this state has been computed before by looking up the node,
-            // or allocate if not.
-            bool new;
-            struct dict_assoc *hn = dict_find_new(shard->states, &w->allocator,
-                        sc, size, sh->noutgoing * sizeof(struct edge), &new, NULL, sh->hash);
-            struct node *next = (struct node *) &hn[1];
-            struct edge *edge = &node_edges(sh->node)[sh->edge_index];
-            edge->dst = next;
-
-            if (new) {
-                next->failed = edge->failed;
-                next->initial = false;
-                next->parent = sh->node;
-                next->len = sh->node->len + 1;
-                next->nedges = sh->noutgoing;
-
-                assert(shard->tb_tail->nresults == shard->tb_size % NRESULTS);
-                assert(shard->tb_tail->next == NULL);
-                shard->tb_size++;
-                shard->tb_tail->results[shard->tb_tail->nresults++] = next;
-                if (shard->tb_tail->nresults == NRESULTS) {
-                    struct results_block *rb = walloc_fast(w, sizeof(*shard->tb_tail));
-                    rb->nresults = 0;
-                    rb->next = NULL;
-                    shard->tb_tail->next = rb;
-                    shard->tb_tail = rb;
-                }
-                assert(shard->tb_tail->nresults == shard->tb_size % NRESULTS);
-
-#ifndef NEW_STUFF
-                w->count++;
-#endif
-                w->enqueued++;
-                w->total_results++;
-            }
-
-            // See if the node points sideways or backwards, in which
-            // case cycles in the graph are possible
-            else if (next != sh->node && next->len <= sh->node->len) {
-                w->loops_possible = true;
-            }
-
-            // Send the state back to the source
-            sh->garbage = true;
-            struct state_queue *sq = &shard->peers[sh->source];
-            *sq->last = sh;
-            sq->last = &sh->next;
-            sh->next = NULL;
-
-            now = gettime();
-            if (now - start > .1) {
-                break;
-            }
-        }
-        if (w->umq_first == NULL) {
-            w->umq_last = &w->umq_first;
-        }
-
-        if (now - start > .1) {
-            break;
-        }
-#endif // notdef
-
-        // See if there's anything on my TODO list.
-        w->sb_index = 0;
-        while (shard->tb_index < shard->tb_size) {
-            struct node *n = shard->tb_head->results[shard->tb_index % NRESULTS];
-            do_work1(w, shard_index, n);
-            shard->tb_index++;
-            if (shard->tb_index % NRESULTS == 0) {
-                shard->tb_head = shard->tb_head->next;
-            }
-
-            // Stop if about to run out of state buffer space
-            if (w->sb_index > STATE_BUFFER_HWM * global.nworkers) {
-                break;
-            }
-
-#ifdef notdef
-            now = gettime();
-            if (now - start > .1) {
-                break;
-            }
-#endif
-        }
-    // }
+    }
 }
 
-static void do_work2(struct worker *w, unsigned int shard_index){
-    struct shard *shard = &global.shards[shard_index]; 
+static void do_work2(struct worker *w){
+    struct shard *shard = &w->shard; 
 
     // printf("WORK 2: %u: %u %lu\n", w->index, shard->sb_index, sizeof(shard->state_buffer));
 
-    for (unsigned int i = 0; i < global.nshards; i++) {
-        struct shard *s2 = &global.shards[i];
-        for (struct state_header *sh = s2->peers[shard_index].first;
+    for (unsigned int i = 0; i < w->nworkers; i++) {
+        struct shard *s2 = &global.workers[i].shard;
+        for (struct state_header *sh = s2->peers[w->index].first;
                                     sh != NULL; sh = sh->next) {
             struct state *sc = (struct state *) &sh[1];
             unsigned int size = state_size(sc);
@@ -2696,7 +2520,7 @@ static void do_work2(struct worker *w, unsigned int shard_index){
             // or allocate if not.
             bool new;
             struct dict_assoc *hn = dict_find_new(shard->states, &w->allocator,
-                        sc, size, sh->noutgoing * sizeof(struct edge), &new, NULL, sh->hash);
+                        sc, size, sh->noutgoing * sizeof(struct edge), &new, sh->hash);
             struct node *next = (struct node *) &hn[1];
             struct edge *edge = &node_edges(sh->node)[sh->edge_index];
             edge->dst = next;
@@ -2720,12 +2544,6 @@ static void do_work2(struct worker *w, unsigned int shard_index){
                     shard->tb_tail = rb;
                 }
                 assert(shard->tb_tail->nresults == shard->tb_size % NRESULTS);
-
-#ifndef NEW_STUFF
-                w->count++;
-#endif
-                w->enqueued++;
-                w->total_results++;
             }
 
             // See if the node points sideways or backwards, in which
@@ -2737,8 +2555,6 @@ static void do_work2(struct worker *w, unsigned int shard_index){
     }
 
     assert(shard->tb_index <= shard->tb_size);
-    shard->idle = shard->tb_index == shard->tb_size;
-
     // printf("WORK 2: %u DONE\n", w->index);
 }
 
@@ -2764,6 +2580,9 @@ static bool cpuinfo_addrecord(int processor, int phys_id, int core_id){
         fprintf(stderr, "cpuinfo_addrecord: processor without physical id\n");
         return false;
     }
+    if ((unsigned) phys_id >= n_sockets) {
+        n_sockets = (unsigned) phys_id + 1;
+    }
     if (core_id < 0) {
         fprintf(stderr, "cpuinfo_addrecord: processor without core id\n");
         return false;
@@ -2785,7 +2604,7 @@ static bool cpuinfo_addrecord(int processor, int phys_id, int core_id){
 }
 
 // Like POSIX getline, but works in Windows too
-int my_getline(char **buf, size_t *cap, FILE *fp) {
+static int my_getline(char **buf, size_t *cap, FILE *fp) {
     int c = fgetc(fp);
     if (c == EOF) {
         return -1;
@@ -2969,19 +2788,21 @@ static struct vproc_tree *vproc_tree_insert(
 
 // This function creates a tree, more or less representing the memory
 // hierarchy, with the selected virtual processors at its leaves.
-static void vproc_tree_create(){
+static struct vproc_tree *vproc_tree_create(){
     // Create the virtual processor tree.
-    vproc_root = calloc(1, sizeof(*vproc_root));
+    struct vproc_tree *root = new_alloc(struct vproc_tree);
     for (unsigned int i = 0; i < n_vproc_info; i++) {
         if (vproc_info[i].selected) {
-            struct vproc_tree *vt = vproc_tree_insert(vproc_root, vproc_info[i].ids, vproc_info[i].nids, 0);
+            struct vproc_tree *vt = vproc_tree_insert(root,
+                        vproc_info[i].ids, vproc_info[i].nids, 0);
             vt->virtual_id = i;
         }
     }
+    return root;
 }
 
 // Allocate n virtual processors, eagerly.
-void vproc_tree_alloc(struct vproc_tree *vt, struct worker *workers, unsigned int *index, unsigned int n){
+static void vproc_tree_alloc(struct vproc_tree *vt, struct worker *workers, unsigned int *index, unsigned int n){
     assert(n > 0);
     assert(n <= vt->n_vprocessors);
 
@@ -3035,26 +2856,27 @@ static void worker(void *arg){
 
     // Pin the thread to its virtual processor.
 #ifdef __linux__
-    if (w->index == 0) {
-        printf("pinning cores\n");
+    if (!global.do_not_pin) {
+        if (w->index == 0) {
+            printf("pinning cores\n");
+        }
+        // Pin worker to a core
+        cpu_set_t cpuset;
+        CPU_ZERO(&cpuset);
+        CPU_SET(w->vproc, &cpuset);
+        sched_setaffinity(0, sizeof(cpuset), &cpuset);
     }
-    // Pin worker to a core
-    cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
-    CPU_SET(w->vproc, &cpuset);
-    sched_setaffinity(0, sizeof(cpuset), &cpuset);
 #endif // __linux__
 
     // The worker now goes into a loop.  Each iteration consists of three phases.
     // Only worker 0 ever breaks out of this loop.
     double before = gettime();
-    double start_time = before;
     unsigned int nrounds = 0;
     bool done = false;
     for (;; nrounds++) {
         // Wait for the first barrier (and keep stats)
         // This is where the worker is waiting for stabilizing hash tables
-        barrier_wait(w->start_barrier);
+        barrier_wait(&global.start_barrier);
         double after = gettime();
         w->start_wait += after - before;
         w->start_count++;
@@ -3067,7 +2889,7 @@ static void worker(void *arg){
         // First phase starts now.  Call do_work() to do that actual work.
         // Also keep stats.
         before = after;
-        do_work(w, w->index);
+        do_work(w);
         after = gettime();
         w->phase1 += after - before;
 
@@ -3075,14 +2897,14 @@ static void worker(void *arg){
         // Here we are waiting for everybody's todo list processing
         before = after;
         // printf("WAIT FOR MIDDLE %u\n", w->index);
-        barrier_wait(w->middle_barrier);
+        barrier_wait(&global.middle_barrier);
         // printf("DONE WITH MIDDLE %u\n", w->index);
         after = gettime();
         w->middle_wait += after - before;
         w->middle_count++;
 
-        // Nobody's doing work.  Great time to see if we are done.
-        bool found_fail = false;
+        // Nobody's doing work.  Great time to see if we are done
+        // by looking at all peers.
         unsigned int nstates = 0, local_node_id = 0;
         done = true;
         for (unsigned int i = 0; i < w->nworkers; i++) {
@@ -3091,43 +2913,128 @@ static void worker(void *arg){
             }
 
             // Keep track of the total number of states
-            nstates += global.shards[i].tb_size;
+            nstates += global.workers[i].shard.tb_size;
 
             // See if the worker found a failure.
-            if (w->workers[i].failures != NULL) {
-                found_fail = true;
+            if (global.workers[i].failures != NULL) {
+                w->found_failures = true;
             }
 
             // If the worker has outgoing messages, we're not done.
-            // if (w->workers[i].mq_first != NULL) {
-            if (w->workers[i].sb_index != 0) {
+            if (global.workers[i].sb_index != 0) {
                 done = false;
             }
 
             // TODO.  Should we also check for outgoing messages?
 
             // If the worker has anything on its todo list, we're not done.
-            struct shard *shard = &global.shards[i];
+            struct shard *shard = &global.workers[i].shard;
             if (shard->tb_index != shard->tb_size) {
                 done = false;
             }
         }
-        if (found_fail) {
-            done = true;
-        }
 
         before = after;
-        do_work2(w, w->index);
+        do_work2(w);
         after = gettime();
-
         w->phase2a += after - before;
         before = after;
 
-        // If we're done, allocate the array of nodes, which is easier
-        // for graph analysis than a linked list
-        if (w->index == 0 % global.nworkers) {
+        // If we're done, allocate an array of nodes, which is easier
+        // for graph analysis than a linked list.  The entriews themselves
+        // are filled in parallel later, while also assigning ids to each
+        // of the nodes.
+        if (w->index == 0 % w->nworkers) {
             if (done) {
+                // Compute how much memory was used, approximately
+                unsigned long allocated = global.allocated;
+#define REPORT_WORKERS
+#ifdef REPORT_WORKERS
+                double phase1 = 0, phase2a = 0, phase2b = 0, phase3 = 0, start_wait = 0, middle_wait = 0, end_wait = 0;
+                for (unsigned int i = 0; i < global.nworkers; i++) {
+                    struct worker *w = &global.workers[i];
+                    allocated += w->allocated;
+                    phase1 += w->phase1;
+                    phase2a += w->phase2a;
+                    phase2b += w->phase2b;
+                    phase3 += w->phase3;
+                    start_wait += w->start_wait;
+                    middle_wait += w->middle_wait;
+                    end_wait += w->end_wait;
+#ifdef notdef
+                    printf("W%2u: %.3lf %.3lf %.3lf %.3lf %.3lf %.3lf %.3lf %u\n", i,
+                            w->phase1,
+                            w->phase2a,
+                            w->phase2b,
+                            w->phase3,
+                            w->start_wait/w->start_count,
+                            w->middle_wait/w->middle_count,
+                            w->end_wait/w->end_count,
+                            w->shard.tb_size);
+#endif
+                }
+#else
+                for (unsigned int i = 0; i < global.nworkers; i++) {
+                    struct worker *w = &workers[i];
+                    allocated += w->allocated;
+                }
+#endif // REPORT_WORKERS
+#ifndef notdef
+                // printf("computing: %lf %lf %lf %lf (%lf %lf %lf %lf); waiting: %lf %lf %lf\n",
+                printf("computing: %lf %lf %lf %lf; waiting: %lf %lf %lf\n",
+                    phase1 / global.nworkers,
+                    phase2a / global.nworkers,
+                    phase2b / global.nworkers,
+                    phase3 / global.nworkers,
+                    // phase1,
+                    // phase2a,
+                    // phase2b,
+                    // phase3,
+                    start_wait / global.nworkers,
+                    middle_wait / global.nworkers,
+                    end_wait / global.nworkers);
+#endif
+
+                printf("    * %u states (time %.2lfs, mem=%.3lfGB)\n", nstates, gettime() - global.starttime, (double) allocated / (1L << 30));
+                unsigned int si_hits = 0, si_total = 0;
+                for (unsigned int i = 0; i < global.nworkers; i++) {
+                    struct worker *w = &global.workers[i];
+                    si_hits += w->si_hits;
+                    si_total += w->si_total;
+                }
+
+                printf("    * %u/%u computations/edges\n", (si_total - si_hits), si_total);
+                printf("    * %u rounds\n", nrounds);
+                printf("    * %u values\n", global.values->count);
+                printf("* Phase 3a: Scan states\n");
+
+                // Allocate an array for all the nodes.
                 graph_add_multiple(&global.graph, nstates);
+            }
+
+            // Worker 0 periodically prints some stats for long runs.
+            else if (after - global.lasttime > 3) {
+                if (global.lasttime != 0) {
+                    unsigned int enqueued = 0, dequeued = 0;
+                    unsigned long allocated = global.allocated;
+                    for (unsigned int i = 0; i < w->nworkers; i++) {
+                        struct worker *w2 = &global.workers[i];
+                        enqueued += w2->shard.tb_size;
+                        dequeued += w2->shard.tb_index;
+                        allocated += w2->allocated;
+                    }
+                    double gigs = (double) allocated / (1 << 30);
+                    fprintf(stderr, "    states=%u diam=%u q=%d mem=%.3lfGB\n",
+                            enqueued, global.diameter,
+                            enqueued - dequeued,
+                            gigs);
+                    global.last_nstates = enqueued;
+                }
+                global.lasttime = after;
+                if (after > w->timeout) {
+                    fprintf(stderr, "charm: timeout exceeded\n");
+                    exit(1);
+                }
             }
         }
 
@@ -3135,10 +3042,10 @@ static void worker(void *arg){
         // rehashing is distributed among the threads in the next phase
         // The only parallelism here is that workers 1 and 2 grow different
         // hash tables, while worker 0 deals with the graph table
-        if (w->index == 1 % global.nworkers) {
+        if (w->index == 1 % w->nworkers) {
             dict_grow_prepare(global.values);
         }
-        if (w->index == 2 % global.nworkers) {
+        if (w->index == 2 % w->nworkers) {
             dict_grow_prepare(global.computations);
         }
 
@@ -3149,38 +3056,99 @@ static void worker(void *arg){
         w->phase2b += after - before;
         before = after;
         // printf("WAIT FOR END %u\n", w->index);
-        barrier_wait(w->end_barrier);
+        barrier_wait(&global.end_barrier);
         // printf("DONE WITH END %u\n", w->index);
         after = gettime();
         w->end_wait += after - before;
         w->end_count++;
         before = after;
 
+        assert(global.graph.size == nstates);
+
         // In parallel, the workers copy the old hash table entries into the
         // new buckets.
         dict_make_stable(global.values, w->index);
         dict_make_stable(global.computations, w->index);
 
-        // If done, fill in the graph table
-        if (done) {
-            for (struct results_block *rb = global.shards[w->index].todo_buffer;
-                                            rb != NULL; rb = rb->next) {
-                for (unsigned int k = 0; k < rb->nresults; k++) {
-                    struct node *n = rb->results[k];
-                    n->id = local_node_id;
-                    global.graph.nodes[local_node_id++] = n;
-                }
-            }
-        }
-
         after = gettime();
         w->phase3 += after - before;
         before = after;
+
+        // If done, fill in the graph table
+        // TODO: check for race condition here?
+        if (done) {
+            unsigned int total = 0;
+            for (struct results_block *rb = w->shard.todo_buffer;
+                                            rb != NULL; rb = rb->next) {
+                assert(rb->nresults <= nstates);
+                assert(rb->nresults <= w->shard.tb_size);
+                for (unsigned int k = 0; k < rb->nresults; k++) {
+                    total += 1;
+                    struct node *node = rb->results[k];
+                    node->id = local_node_id;
+                    assert(local_node_id < global.graph.size);
+                    global.graph.nodes[local_node_id++] = node;
+
+                    // Pacifier
+                    if (w->index == 0 && gettime() - before > 3) {
+                        printf("  Progress %.1f%%\n", 100.0 * total / w->shard.tb_size);
+                        before = gettime();
+                    }
+
+                    // Check for deadlock and data races.
+                    // TODO.  Should check -R flag
+                    if (!w->found_failures && w->failures == NULL && !global.no_race_detect) {
+                        graph_check_for_data_race(&w->failures, node, NULL);
+                    }
+                }
+            }
+        }
     }
-    if (w->index == 0) {
-        double end_time = gettime();
-        printf("Ran %u rounds in %lf seconds\n", nrounds, end_time - start_time);
-        printf("%u values\n", global.values->count);
+}
+
+// To simplify running Tarjan's algorithm, reorganize all the edges so that
+// the epsilon edges go first.  Also count the number of epsilon edges of
+// each node.
+static void epsilon_closure_prep(){
+    global.neps = malloc(sizeof(*global.neps) * global.graph.size);
+    for (unsigned int i = 0; i < global.graph.size; i++) {
+        struct node *n = global.graph.nodes[i];
+        struct edge *edges = node_edges(n);
+        unsigned int neps = 0;
+        bool must_reorg = false;
+        int first_noneps = -1;
+        for (unsigned int j = 0; j < n->nedges; j++) {
+            struct step_output *so = edge_output(&edges[j]);
+            if (so->nlog == 0) {
+                if (first_noneps >= 0) {
+                    must_reorg = true;
+                }
+                neps++;
+            }
+            else {
+                if (first_noneps < 0) {
+                    first_noneps = j;
+                }
+            }
+        }
+        if (must_reorg) {
+            struct edge eps_edges[256], noneps_edges[256];
+            unsigned int ei = 0, nei = 0;
+            // Copy out the edges into the respective arrays
+            for (unsigned int j = first_noneps; j < n->nedges; j++) {
+                struct step_output *so = edge_output(&edges[j]);
+                if (so->nlog == 0) {
+                    eps_edges[ei++] = edges[j];
+                }
+                else {
+                    noneps_edges[nei++] = edges[j];
+                }
+            }
+            // Copy them back in in the right order
+            memcpy(&edges[first_noneps], eps_edges, ei * sizeof(struct edge));
+            memcpy(&edges[first_noneps + ei], noneps_edges, nei * sizeof(struct edge));
+        }
+        global.neps[i] = neps;
     }
 }
 
@@ -3242,13 +3210,13 @@ static inline bool stack_empty(struct stack *s) {
     return s->prev == NULL && s->sp == 0;
 }
 
-// Tarjan SCC algorithm
+// Tarjan non-recursive SCC algorithm
 /* Python code:
     i = 0
     stack = []
     call_stack = []
     comps = []
-    for v in vs:
+    for v in vs:        # vertices
         if v.index is None:
             call_stack.append((v,0))
             while call_stack:
@@ -3288,7 +3256,7 @@ static inline bool stack_empty(struct stack *s) {
                     comps.append(comp)
 */
 static void tarjan(){
-    scc = malloc(global.graph.size * sizeof(*scc));
+    struct scc *scc = malloc(global.graph.size * sizeof(*scc));
     for (unsigned int v = 0; v < global.graph.size; v++) {
         scc[v].index = -1;
     }
@@ -3298,6 +3266,8 @@ static void tarjan(){
     struct stack *call_stack = calloc(1, sizeof(*call_stack));
     double now = gettime();
     unsigned int ndone = 0, lastdone = 0;
+
+    // Only need to iterate once as the graph is connected
     for (unsigned int v = 0; v < 1 /*global.graph.size*/; v++) {
         struct node *n = global.graph.nodes[v];
         if (scc[v].index == -1) {
@@ -3344,8 +3314,7 @@ static void tarjan(){
                             now = gettime();
                             lastdone = ndone;
                         }
-                        struct node *n2;
-                        n2 = stack_pop(&stack, NULL);
+                        struct node *n2 = stack_pop(&stack, NULL);
                         n2->on_stack = false;
                         scc[n2->id].component = comp_id;
                         if (n2 == n) {
@@ -3357,7 +3326,392 @@ static void tarjan(){
             }
         }
     }
+
+    global.scc = scc;
     global.ncomponents = comp_id;
+}
+
+// Add a single node to the given node set
+static void node_set_add(struct node_set *ns, uint32_t node){
+    // Use binary search to try to find the entry.
+    unsigned int b = 0, e = ns->nnodes, m = 0;
+    while (b < e) {
+        m = (b + e) / 2;
+        if (ns->list[m] == node) {
+            return;
+        }
+        if (ns->list[m] < node) {
+            b = m + 1;
+        }
+        else {
+            e = m;
+        }
+    }
+
+    // Make sure we have enough memory
+    if (ns->nnodes == ns->nallocated) {
+        ns->nallocated = (ns->nallocated + 8) * 2;
+        ns->list = realloc(ns->list, ns->nallocated * sizeof(*ns->list));
+    }
+
+    // Make space
+    if (b < ns->nnodes) {
+        memmove(&ns->list[b+1], &ns->list[b], (ns->nnodes - b) * sizeof(*ns->list));
+    }
+
+    ns->list[b] = node;
+    ns->nnodes += 1;
+}
+
+// Check if ns is a subset of ns2
+// TODO.  Should probably use binary search for efficiency
+static inline bool node_set_issubset(struct node_set *ns, struct node_set *ns2){
+    for (unsigned int i = 0, j = 0; i < ns->nnodes; j++) {
+        if (j == ns2->nnodes) {
+            return false;
+        }
+        if (ns->list[i] < ns2->list[j]) {
+            return false;
+        }
+        if (ns->list[i] == ns2->list[j]) {
+            i++;
+        }
+    }
+    return true;
+}
+
+// Compute the union of ns and ns2 and store in ns.
+static inline void node_set_union(struct node_set *ns, struct node_set *ns2){
+    // If there's just one node in ns2, node_set_add is more efficient.
+    // TODO.  Maybe true for two or three nodes too...
+    if (ns2->nnodes == 1) {
+        node_set_add(ns, ns2->list[0]);
+        return;
+    }
+
+    // If ns2 is a subset of ns we're done.
+    // TODO.  Might not be worth the overhead.
+    if (node_set_issubset(ns2, ns)) {
+        return;
+    }
+
+    // Allocate enough space for the union
+    uint32_t *list = malloc((ns->nnodes + ns2->nnodes) * sizeof(uint32_t));
+
+    unsigned int i = 0, j = 0, k = 0;
+    for (; i < ns->nnodes && j < ns2->nnodes; k++) {
+        if (ns->list[i] < ns2->list[j]) {
+            list[k] = ns->list[i++];
+        }
+        else if (ns->list[i] > ns2->list[j]) {
+            list[k] = ns2->list[j++];
+        }
+        else {
+            assert(ns->list[i] == ns2->list[j]);
+            list[k] = ns->list[i++];
+            j++;
+        }
+    }
+    unsigned int todo = (ns->nnodes - i);
+    memcpy(&list[k], &ns->list[i], todo * sizeof(uint32_t));
+    k += todo;
+    todo = (ns2->nnodes - j);
+    memcpy(&list[k], &ns2->list[j], todo * sizeof(uint32_t));
+    k += todo;
+
+    free(ns->list);
+    ns->list = list;
+    ns->nallocated = ns->nnodes + ns2->nnodes;
+    ns->nnodes = k;
+}
+
+// This is the same as tarjan(), except that it only considers
+// epsilon edges in the graph.
+static void tarjan_epsclosure(){
+    struct eps_scc *scc = malloc(global.graph.size * sizeof(*scc));
+    for (unsigned int v = 0; v < global.graph.size; v++) {
+        scc[v].index = -1;
+    }
+
+    unsigned int i = 0, comp_id = 0;
+    struct stack *stack = calloc(1, sizeof(*stack));
+    struct stack *call_stack = calloc(1, sizeof(*call_stack));
+    double now = gettime();
+    unsigned int ndone = 0, lastdone = 0;
+
+    for (unsigned int v = 0; v < global.graph.size; v++) {
+        struct node *n = global.graph.nodes[v];
+        if (scc[v].index == -1) {
+            stack_push(&call_stack, n, 0);
+            while (!stack_empty(call_stack)) {
+                unsigned int pi;
+                n = stack_pop(&call_stack, &pi);
+                if (pi == 0) {
+                    scc[n->id].index = i;
+                    scc[n->id].lowlink = i;
+                    i++;
+                    stack_push(&stack, n, 0);
+                    n->eps_on_stack = true;
+                }
+                else {
+                    assert(pi > 0);
+                    struct edge *e = &node_edges(n)[pi - 1];
+                    struct node *prev = edge_dst(e);
+                    if (scc[prev->id].lowlink < scc[n->id].lowlink) {
+                        scc[n->id].lowlink = scc[prev->id].lowlink;
+                    }
+                }
+                while (pi < global.neps[n->id]) {
+                    struct edge *e = &node_edges(n)[pi];
+                    struct node *w = edge_dst(e);
+                    if (scc[w->id].index < 0) {
+                        break;
+                    }
+                    if (w->eps_on_stack && scc[w->id].index < scc[n->id].lowlink) {
+                        scc[n->id].lowlink = scc[w->id].index;
+                    }
+                    pi += 1;
+                }
+                if (pi < global.neps[n->id]) {
+                    struct edge *e = &node_edges(n)[pi];
+                    stack_push(&call_stack, n, pi + 1);
+                    stack_push(&call_stack, edge_dst(e), 0);
+                }
+                else if (scc[n->id].lowlink == scc[n->id].index) {
+                    struct eps_component *ec = new_alloc(struct eps_component);
+                    for (;;) {
+                        ndone++;
+                        if (ndone - lastdone >= 10000000 && gettime() - now > 3) {
+                            printf("        completed %u/%u states (%.2f%%)\n", ndone, global.graph.size, 100.0 * ndone / global.graph.size);
+                            now = gettime();
+                            lastdone = ndone;
+                        }
+                        struct node *n2 = stack_pop(&stack, NULL);
+                        n2->eps_on_stack = false;
+                        node_set_add(&ec->ns, n2->id);
+                        scc[n2->id].component = ec;
+                        struct edge *e = node_edges(n2);
+                        for (unsigned int i = 0; i < global.neps[n2->id]; i++, e++) {
+                            struct node *n3 = edge_dst(e);
+                            struct eps_component *ec2 = scc[n3->id].component;
+                            // If the following fails, this means that n3 is in the
+                            // current component but hasn't been "popped" yet.
+                            if (ec2 != NULL) {
+#ifdef notdef
+                                for (unsigned int j = 0; j < ec2->ns.nnodes; j++) {
+                                    node_set_add(&ec->ns, ec2->ns.list[j]);
+                                }
+#else
+                                node_set_union(&ec->ns, &ec2->ns);
+#endif
+                            }
+                        }
+                        if (n2 == n) {
+                            ec->ns.list = realloc(ec->ns.list,
+                                    ec->ns.nnodes * sizeof(*ec->ns.list));
+                            ec->ns.nallocated = ec->ns.nnodes;
+                            break;
+                        }
+                    }
+                    comp_id++;
+                }
+            }
+        }
+    }
+
+    global.eps_scc = scc;
+    global.eps_ncomponents = comp_id;
+}
+
+struct dfa_node {
+    unsigned int id;            // DFA state id
+    struct dict *transitions;   // map of symbol to dfa_node
+    bool final;                 // final state
+};
+
+struct dfa_env {
+    struct dict *dfa;           // map of node set to dfa state index
+    struct dict_assoc **todo;   // queue of dfa nodes that need to be considered
+    unsigned int allocated;     // current allocated size of queue
+    uint32_t next_id;           // id of next dfa node to be created
+    struct dfa_node *current;
+    FILE *hfa;                  // .hfa output file
+    struct dict *symbols;       // maps symbols to symbol ids
+    bool first;                 // for "last comma problem"
+};
+
+static struct dfa_node *nfa2dfa_add_node(struct dfa_env *de, struct node_set *ns){
+    bool new;
+    struct dict_assoc *da = dict_find(de->dfa, &global.workers[0].allocator,
+                    ns->list, ns->nnodes * sizeof(uint32_t), &new);
+    struct dfa_node *dn = (struct dfa_node *) &da[1];
+    if (new) {
+        dn->id = de->next_id;
+        dn->transitions = dict_new("nfa2dfa trans", sizeof(uint32_t), 10, 0, false, false);
+        for (unsigned int i = 0; i < ns->nnodes; i++) {
+            struct node *n = global.graph.nodes[ns->list[i]];
+            if (n->final) {
+                dn->final = true;
+                break;
+            }
+        }
+        if (de->next_id == de->allocated) {
+            de->allocated = (de->allocated + 1) * 2;
+            de->todo = realloc(de->todo, de->allocated * sizeof(*de->todo));
+        }
+        de->todo[de->next_id++] = da;
+    }
+
+    return dn;
+}
+
+static void nfa2dfa_helper(void *env, const void *key, unsigned int key_size, void *value){
+    assert(key_size == sizeof(hvalue_t));       // should be a symbol
+    struct dfa_env *de = env;
+    struct node_set *ns = value;
+
+    // Compute the nodes in this dfa state using precomputed closures
+    struct node_set uni;
+    memset(&uni, 0, sizeof(uni));
+    for (unsigned int i = 0; i < ns->nnodes; i++) {
+        struct node_set *clos = &global.eps_scc[ns->list[i]].component->ns;
+
+        // TODO.  Curiously, adding a node at a time is often more efficient
+        //        than computing the union.  In fact, it seems that computing
+        //        the union is never worth it here in the few experiments that
+        //        I've tried.  Surprising to me...
+        if (clos->nnodes <= 5) {
+            for (unsigned int j = 0; j < clos->nnodes; j++) {
+                node_set_add(&uni, clos->list[j]);
+            }
+        }
+        else {
+            node_set_union(&uni, clos);
+        }
+    }
+    free(ns->list);
+
+    // Find or insert "state" in the dfa state table.
+    struct dfa_node *dn = nfa2dfa_add_node(de, &uni);
+    free(uni.list);
+
+    // Add to the transitions.
+    bool new;
+    struct dict_assoc *da = dict_find(de->current->transitions,
+                    &global.workers[0].allocator, key, key_size, &new);
+    assert(new);
+    uint32_t *pid = (uint32_t *) &da[1];
+    *pid = dn->id;
+}
+
+static void nfa2dfa_dumper(void *env, const void *key, unsigned int key_size, void *value){
+    assert(key_size == sizeof(hvalue_t));       // should be a symbol
+    struct dfa_env *de = env;
+    uint32_t *pid = value;
+
+    bool new;
+    unsigned int *symbol = dict_insert(de->symbols, &global.workers[0].allocator,
+                                key, key_size, &new);
+    assert(!new);
+    if (de->first) {
+        de->first = false;
+    }
+    else {
+        fprintf(de->hfa, ",");
+    }
+    fprintf(de->hfa, "\n");
+    fprintf(de->hfa, "     { \"src\": \"%u\", \"dst\": \"%u\", \"sym\": %u }",
+                        de->current->id, *pid, *symbol - 1);
+}
+
+static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
+    struct dfa_env de;
+    double start = gettime();
+
+    de.dfa = dict_new("nfa2dfa", sizeof(struct dfa_node), global.graph.size, 0, false, false);
+    de.next_id = 0;
+    de.allocated = global.graph.size;   // decent initial estimate
+    de.todo = malloc(de.allocated * sizeof(*de.todo));
+    de.hfa = hfa;
+    de.symbols = symbols;
+
+    // Find the initial state.
+    nfa2dfa_add_node(&de, &global.eps_scc[0].component->ns);
+
+    // Go through the todo list
+    unsigned int todo_index = 0;
+    while (todo_index < de.next_id) {
+        // Pacifier
+        if (gettime() - start > 3) {
+            printf("  NFA to DFA progress %u/%u=%.1f%%\n", todo_index, de.next_id, 100.0 * todo_index / de.next_id);
+            start = gettime();
+        }
+
+        // The next dfa state to consider
+        struct dict_assoc *da = de.todo[todo_index];
+        de.current = (struct dfa_node *) &da[1];
+
+        // Create a "symbol" table for this dfa state
+        struct dict *d = dict_new("nfa2dfa symbols", sizeof(struct node_set), 10, 0, false, false);
+
+        // Iterate of the nodes in the dfa state
+        uint32_t *nodes = (uint32_t *) &de.current[1];
+        unsigned int nnodes = da->len / sizeof(uint32_t);
+        for (unsigned int i = 0; i < nnodes; i++) {
+            unsigned int ni = nodes[i];                 // node index
+            struct node *n = global.graph.nodes[ni];    // node pointer
+
+            // Iterate of the edges in the node
+            unsigned int neps = global.neps[ni];
+            struct edge *e = node_edges(n) + neps;
+            for (unsigned int j = neps; j < n->nedges; j++, e++) {
+                struct step_output *so = edge_output(e);
+                assert(so->nlog == 1);
+                hvalue_t symbol = *step_log(so);
+
+                // Lookup or create a node set for this symbol
+                bool new;
+                struct node_set *ns = dict_insert(d, &global.workers[0].allocator,
+                                            &symbol, sizeof(symbol), &new);
+                node_set_add(ns, edge_dst(e)->id);
+            }
+        }
+
+        // d now contains, for each valid symbol, a node set that still needs to
+        // be epsilon closed and then added to mapping.
+        dict_iter(d, nfa2dfa_helper, &de);
+
+        todo_index += 1;
+    }
+
+    printf("* Phase 4d: output the DFA (%u states)\n", de.next_id);
+
+    // Now dump the whole thing
+    fprintf(hfa, "  \"nodes\": [\n");
+    for (unsigned int i = 0; i < de.next_id; i++) {
+        struct dict_assoc *da = de.todo[i];
+        struct dfa_node *dn = (struct dfa_node *) &da[1];
+        fprintf(hfa, "    { \"idx\": \"%u\", \"type\": \"%s\" }", i,
+                    dn->final ? "final" : "normal");
+        if (i + 1 < de.next_id) {
+            fprintf(hfa, ",\n");
+        }
+        else {
+            fprintf(hfa, "\n");
+        }
+    }
+    fprintf(hfa, "  ],\n");
+    fprintf(hfa, "  \"edges\": [");
+    de.first = true;
+    for (unsigned int i = 0; i < de.next_id; i++) {
+        struct dict_assoc *da = de.todo[i];
+        de.current = (struct dfa_node *) &da[1];
+        dict_iter(de.current->transitions, nfa2dfa_dumper, &de);
+    }
+    fprintf(hfa, "\n");
+    fprintf(hfa, "  ]\n");
+
+    return de.next_id;
 }
 
 // This routine removes all nodes that have a single incoming edge and it's
@@ -3430,19 +3784,33 @@ static void destutter1(FILE *out, bool suppress){
 #endif // OBSOLETE
 }
 
+// This function finds all the printed symbols in the Kripke structure and
+// assigns a small unique identifier to each.
+// TODO.  Perhaps should replace hvalue_t with this id in the graph while at it
 static struct dict *collect_symbols(struct graph *graph){
     struct dict *symbols = dict_new("symbols", sizeof(unsigned int), 0, 0, false, false);
     unsigned int symbol_id = 0;
+
+    // Also make a global list
+    unsigned int allocated = 10;
+    global.symbols = malloc(allocated * sizeof(*global.symbols));
 
     for (unsigned int i = 0; i < graph->size; i++) {
         struct node *n = graph->nodes[i];
         struct edge *e = node_edges(n);
         for (unsigned int k = 0; k < n->nedges; k++, e++) {
             for (unsigned int j = 0; j < edge_output(e)->nlog; j++) {
+                hvalue_t symbol = step_log(edge_output(e))[j];
                 bool new;
-                unsigned int *p = dict_insert(symbols, NULL, &step_log(edge_output(e))[j], sizeof(hvalue_t), &new);
+                unsigned int *p = dict_insert(symbols, NULL, &symbol, sizeof(symbol), &new);
                 if (new) {
                     *p = ++symbol_id;
+                    if (global.nsymbols == allocated) {
+                        allocated = (allocated + 1) * 2;
+                        global.symbols = realloc(global.symbols,
+                                            allocated * sizeof(*global.symbols));
+                    }
+                    global.symbols[global.nsymbols++] = symbol;
                 }
             }
         }
@@ -3471,66 +3839,9 @@ static void print_symbol(void *env, const void *key, unsigned int key_size, void
     free(p);
 }
 
-struct print_trans_env {
-    FILE *out;
-    bool first;
-    struct dict *symbols;
-};
-
-static void print_trans_upcall(void *env, const void *key, unsigned int key_size, void *value){
-    struct print_trans_env *pte = env;
-    const hvalue_t *log = key;
-    unsigned int nkeys = key_size / sizeof(hvalue_t);
-    struct strbuf *sb = value;
-
-    if (pte->first) {
-        pte->first = false;
-    }
-    else {
-        fprintf(pte->out, ",\n");
-    }
-    fprintf(pte->out, "        [[");
-    for (unsigned int i = 0; i < nkeys; i++) {
-        bool new;
-        unsigned int *p = dict_insert(pte->symbols, NULL, &log[i], sizeof(log[i]), &new);
-        assert(!new);
-        if (i != 0) {
-            fprintf(pte->out, ",");
-        }
-        fprintf(pte->out, "%u", *p);
-    }
-    fprintf(pte->out, "],[%s]]", strbuf_getstr(sb));
-    strbuf_deinit(sb);
-}
-
-static void print_transitions(FILE *out, struct dict *symbols, struct node *node) {
-    struct dict *d = dict_new("transitions", sizeof(struct strbuf), 0, 0, false, false);
-
-    fprintf(out, "      \"transitions\": [\n");
-    struct edge *e = node_edges(node);
-    for (unsigned int i = 0; i < node->nedges; i++, e++) {
-        bool new;
-        struct strbuf *sb = dict_insert(d, NULL, step_log(edge_output(e)), edge_output(e)->nlog * sizeof(hvalue_t), &new);
-        if (new) {
-            strbuf_init(sb);
-            strbuf_printf(sb, "%d", edge_dst(e)->id);
-        }
-        else {
-            strbuf_printf(sb, ",%d", edge_dst(e)->id);
-        }
-    }
-    struct print_trans_env pte = {
-        .out = out, .first = true, .symbols = symbols
-    };
-    dict_iter(d, print_trans_upcall, &pte);
-    fprintf(out, "\n");
-    fprintf(out, "      ],\n");
-    dict_delete(d);
-}
-
 // Split s into components separated by sep.  Returns #components.
 // Return the components themselves into *parts.  All is malloc'd.
-unsigned int str_split(const char *s, char sep, char ***parts){
+static unsigned int str_split(const char *s, char sep, char ***parts){
     // Count the number of components
     unsigned int n = 1;
     for (const char *p = s; *p != '\0'; p++) {
@@ -3571,7 +3882,10 @@ static void charm_dump(bool computed_components){
             assert(node->id == i);
             fprintf(df, "\nNode %d:\n", node->id);
             if (computed_components) {
-                fprintf(df, "    component: %d\n", scc[i].component);
+                fprintf(df, "    component: %d\n", global.scc[i].component);
+            }
+            if (node->final) {
+                fprintf(df, "    final\n");
             }
             fprintf(df, "    len to parent: %d\n", node->len);
             if (node_to_parent(node) != NULL) {
@@ -3613,7 +3927,7 @@ static void charm_dump(bool computed_components){
                 struct context *ctx = value_get(edge_input(edge)->ctx, NULL);
                 struct node *dst = edge_dst(edge);
                 if (computed_components) {
-                    fprintf(df, "            node: %d (%d)\n", dst->id, scc[dst->id].component);
+                    fprintf(df, "            node: %d (%d)\n", dst->id, global.scc[dst->id].component);
                 }
                 else {
                     fprintf(df, "            node: %d\n", dst->id);
@@ -3678,6 +3992,15 @@ static void usage(char *prog){
     exit(1);
 }
 
+static bool endsWith(char *s, char *suffix){
+    unsigned int n = strlen(s);
+    unsigned int m = strlen(suffix);
+    if (n < m) {
+        return false;
+    }
+    return strcmp(s + n - m, suffix) == 0;
+}
+
 // This is the main function.  The general form is
 //          charm [arguments] source.hvm
 // where source.hvm is a JSON file generated by the compiler containing the code
@@ -3693,9 +4016,9 @@ static void usage(char *prog){
 //    -w<workers>: specifies what and how many workers to use (see below)
 //
 int exec_model_checker(int argc, char **argv){
-    bool cflag = false, dflag = false, Dflag = false, Rflag = false, bflag = false;
+    bool cflag = false, dflag = false, Dflag = false, bflag = false;
     int i, maxtime = 300000000 /* about 10 years */;
-    char *outfile = NULL, *dfafile = NULL, *worker_flag = NULL;
+    char *outfile = NULL, *hfaout = NULL, *dfafile = NULL, *worker_flag = NULL;
     for (i = 1; i < argc; i++) {
         if (*argv[i] != '-') {
             break;
@@ -3711,7 +4034,10 @@ int exec_model_checker(int argc, char **argv){
             Dflag = true;
             break;
         case 'R':
-            Rflag = true;
+            global.no_race_detect = true;
+            break;
+        case 'U':
+            global.do_not_pin = true;
             break;
         case 't':
             maxtime = atoi(&argv[i][2]);
@@ -3727,7 +4053,19 @@ int exec_model_checker(int argc, char **argv){
             bflag = true;
             break;
         case 'o':
-            outfile = &argv[i][2];
+            {
+                char *name = &argv[i][2];
+                if (endsWith(name, ".hco")) {
+                    outfile = name;
+                }
+                else if (endsWith(name, ".hfa")) {
+                    hfaout = name;
+                }
+                else {
+                    fprintf(stderr, "%s: unknown suffix in %s\n", argv[0], argv[i]);
+                    exit(1);
+                }
+            }
             break;
         case 'w':
             worker_flag = &argv[i][2];
@@ -3831,8 +4169,21 @@ int exec_model_checker(int argc, char **argv){
     // If -w is not specified, simply use all virtual processors.
     bool print_vproc_info = false;
     if (worker_flag == NULL) {
-        global.nworkers = n_vproc_info;
-        for (unsigned int i = 0; i < n_vproc_info; i++) {
+        // We make the default a little conservative, essentially trying
+        // to keep one whole core free on each socket or per L3 cache
+        // or something
+        unsigned int skip = n_sockets * n_hyper;
+        if (skip > 4) {
+            skip = 4;
+        }
+        if (skip < n_vproc_info) {
+            global.nworkers = n_vproc_info - skip;
+        }
+        else {
+            global.nworkers = n_vproc_info;
+        }
+
+        for (unsigned int i = 0; i < global.nworkers; i++) {
             vproc_info[i].selected = true;
         }
     }
@@ -3852,7 +4203,7 @@ int exec_model_checker(int argc, char **argv){
         }
 
         // See if the workers are specified.
-        if (*worker_flag == '\0') {
+        if (*worker_flag == '\0' || strcmp(worker_flag, "@") == 0) {
             if (global.nworkers == 0) {
                 global.nworkers = n_vproc_info;
             }
@@ -3910,7 +4261,7 @@ int exec_model_checker(int argc, char **argv){
     }
 
     // Create a tree of the selected processors
-    vproc_tree_create();
+    struct vproc_tree *vproc_root = vproc_tree_create();
 
     if (print_vproc_info) {
         vproc_info_dump();
@@ -3924,30 +4275,17 @@ int exec_model_checker(int argc, char **argv){
     }
 
     // Initialize barriers for the three phases (see struct worker definition)
-    barrier_t start_barrier, middle_barrier, end_barrier;
-    barrier_init(&start_barrier, global.nworkers);
-    barrier_init(&middle_barrier, global.nworkers);
-    barrier_init(&end_barrier, global.nworkers);
+    barrier_init(&global.start_barrier, global.nworkers);
+    barrier_init(&global.middle_barrier, global.nworkers);
+    barrier_init(&global.end_barrier, global.nworkers);
 
     // initialize modules
     mutex_init(&global.inv_lock);
-    global.values = dict_new("values", 0, 0, global.nworkers, true, true);
+    global.values = dict_new("values", 0, 4096, global.nworkers, true, true);
 
     graph_init(&global.graph);
     global.failures = NULL;
     global.seqs = VALUE_SET;
-
-    mutex_init(&global.stc_lock);
-    global.stc_allocated = 4096;
-    global.stc_table = malloc(global.stc_allocated * sizeof(*global.stc_table));
-
-    // First read and parse the DFA if any
-    if (dfafile != NULL) {
-        global.dfa = dfa_read(NULL, dfafile);
-        if (global.dfa == NULL) {
-            exit(1);
-        }
-    }
 
     // open the HVM file
     FILE *fp = fopen(fname, "r");
@@ -3976,27 +4314,14 @@ int exec_model_checker(int argc, char **argv){
     }
     free(buf_orig);
 
-    // Allocate the shards array.
-    global.nshards = global.nworkers * SHARDS_PER_WORKER;
-    global.shards = calloc(global.nshards, sizeof(*global.shards));
-#ifdef notdef
-    printf("-> %p %u\n", global.shards, (unsigned int) (global.nshards * sizeof(*global.shards)));
-    atomic_init(&global.sh_index1, 0);
-    atomic_init(&global.sh_index2, 0);
-#endif
-
     // Allocate space for worker info
     struct worker *workers = calloc(global.nworkers, sizeof(*workers));
+    global.workers = workers;
     for (unsigned int i = 0; i < global.nworkers; i++) {
         struct worker *w = &workers[i];
 
         w->timeout = timeout;
-        w->start_barrier = &start_barrier;
-        w->middle_barrier = &middle_barrier;
-        w->end_barrier = &end_barrier;
         w->index = i;
-        w->workers = workers;
-        w->nworkers = global.nworkers;
 
         // Create a context for evaluating invariants
         w->inv_step.ctx = calloc(1, sizeof(struct context) +
@@ -4017,31 +4342,15 @@ int exec_model_checker(int argc, char **argv){
         w->allocator.ctx = w;
         w->allocator.worker = i;
 
-        // Initialize the shards assigned to this worker
-        unsigned int first_shard = i * SHARDS_PER_WORKER;
-        for (unsigned int si = 0; si < SHARDS_PER_WORKER; si++) {
-            struct shard *shard = &global.shards[first_shard + si];
-            shard->states = dict_new("shard states", sizeof(struct node), 0, 0, false, false);
-            // shard->states->autogrow = false;
-            shard->peers = calloc(global.nshards, sizeof(*shard->peers));
-            for (unsigned int si2 = 0; si2 < global.nshards; si2++) {
-                shard->peers[si2].last = &shard->peers[si2].first;
-            }
-            shard->todo_buffer = shard->tb_head = shard->tb_tail = walloc_fast(w, sizeof(*shard->tb_tail));
-            shard->todo_buffer->nresults = 0;
-            shard->todo_buffer->next = NULL;
+        struct shard *shard = &w->shard;
+        shard->states = dict_new("shard states", sizeof(struct node), 0, 0, false, false);
+        shard->peers = calloc(global.nworkers, sizeof(*shard->peers));
+        for (unsigned int si2 = 0; si2 < global.nworkers; si2++) {
+            shard->peers[si2].last = &shard->peers[si2].first;
         }
-
-#ifdef notdef
-        // Initialize the worker's message queue
-        mutex_init(&w->mq_mutex);
-        w->mq_first = NULL;
-        w->mq_last = &w->mq_first;
-
-        // Locally buffered message queue
-        w->umq_first = NULL;
-        w->umq_last = &w->umq_first;
-#endif
+        shard->todo_buffer = shard->tb_head = shard->tb_tail = walloc_fast(w, sizeof(*shard->tb_tail));
+        shard->todo_buffer->nresults = 0;
+        shard->todo_buffer->next = NULL;
     }
 
     // Pin workers to particular virtual processors
@@ -4070,19 +4379,30 @@ int exec_model_checker(int argc, char **argv){
 
     ops_init(&workers[0].allocator);
 
+    // Read and parse the DFA if any
+    if (dfafile != NULL) {
+        global.dfa = dfa_read(&workers[0].allocator, dfafile);
+        if (global.dfa == NULL) {
+            exit(1);
+        }
+    }
+
     // travel through the json code contents to create the code array
     struct json_value *jc = dict_lookup(jv->u.map, "code", 4);
     assert(jc->type == JV_LIST);
     global.code = code_init_parse(&workers[0].allocator, jc);
 
     if (has_countLabel) {
-        printf("    * compability with countLabel\n");
+        fprintf(stderr, "countLabel no longer supported\n");
+        exit(1);
     }
 
-    // Initialize the profile arrays of the workers.
+    // Initialize some more of the worker info.
     for (unsigned int i = 0; i < global.nworkers; i++) {
         struct worker *w = &workers[i];
         w->profile = calloc(global.code.len, sizeof(*w->profile));
+        w->nworkers = global.nworkers;
+        w->dfa = global.dfa;
     }
 
     // Create an initial state.  Start with the initial context.
@@ -4097,7 +4417,7 @@ int exec_model_checker(int argc, char **argv){
             (dflag ? 256 : 1) * (sizeof(hvalue_t) + 1));
     state->vars = VALUE_DICT;
     hvalue_t ictx = value_put_context(&workers[0].allocator, init_ctx);
-    state->chooser = -1;
+    state->type = STATE_NORMAL;
     state->bagsize = state->total = 1;
     state_ctxlist(state)[0] = ictx | ((hvalue_t) 1 << STATE_M_SHIFT);
     state->dfa_state = global.dfa == NULL ? 0 : dfa_initial(global.dfa);
@@ -4138,10 +4458,10 @@ int exec_model_checker(int argc, char **argv){
         exit(0);
     }
 
-    global.computations = dict_new("computations", sizeof(struct step_condition), 0, global.nworkers, false, true);
+    global.computations = dict_new("computations", sizeof(struct step_condition), 16 * 1024, global.nworkers, false, true);
 
     bool new;
-    struct dict_assoc *hn = dict_find_new(global.shards[0].states, &workers[0].allocator, state, state_size(state), sizeof(struct edge), &new, NULL, meiyan((char *) state, state_size(state)));
+    struct dict_assoc *hn = dict_find_new(global.workers[0].shard.states, &workers[0].allocator, state, state_size(state), sizeof(struct edge), &new, meiyan2(state));
     struct node *node = (struct node *) &hn[1];
     memset(node, 0, sizeof(*node));
     node->initial = true;
@@ -4150,9 +4470,9 @@ int exec_model_checker(int argc, char **argv){
 
     // Add node to the todo list of shard 0
     // TODO.  Should probably just add the state, not the node
-    global.shards[0].todo_buffer->results[0] = node;
-    global.shards[0].todo_buffer->nresults = 1;
-    global.shards[0].tb_size = 1;
+    global.workers[0].shard.todo_buffer->results[0] = node;
+    global.workers[0].shard.todo_buffer->nresults = 1;
+    global.workers[0].shard.tb_size = 1;
 
     // Compute how much table space is allocated
     // TODO.  Add per worker stuff
@@ -4164,79 +4484,21 @@ int exec_model_checker(int argc, char **argv){
         thread_create(worker, &workers[i]);
     }
 
-    double before = gettime();
+    global.starttime = gettime();
 
     // Run the last worker.  When it terminates the model checking is done.
     worker(&workers[0]);
 
-    // Collect the failures of all the workers
+    // Collect the failures of all the workers.  Also keep track if
+    // any of the workers printed something
     for (unsigned int i = 0; i < global.nworkers; i++) {
+        if (workers[i].printed_something) {
+            global.printed_something = true;
+        }
         collect_failures(&workers[i]);
     }
 
-    // Compute how much memory was used, approximately
-    unsigned long allocated = global.allocated;
-#define REPORT_WORKERS
-#ifdef REPORT_WORKERS
-    double phase1 = 0, phase2a = 0, phase2b = 0, phase3 = 0, start_wait = 0, middle_wait = 0, end_wait = 0;
-    for (unsigned int i = 0; i < global.nworkers; i++) {
-        struct worker *w = &workers[i];
-        allocated += w->allocated;
-        phase1 += w->phase1;
-        phase2a += w->phase2a;
-        phase2b += w->phase2b;
-        phase3 += w->phase3;
-        start_wait += w->start_wait;
-        middle_wait += w->middle_wait;
-        end_wait += w->end_wait;
-#ifndef notdef
-        printf("W%2u: %.3lf %.3lf %.3lf %.3lf %.3lf %.3lf %.3lf %u %u\n", i,
-                w->phase1,
-                w->phase2a,
-                w->phase2b,
-                w->phase3,
-                w->start_wait/w->start_count,
-                w->middle_wait/w->middle_count,
-                w->end_wait/w->end_count,
-                w->total_results,
-                w->process_step);
-#endif
-    }
-#else
-    for (unsigned int i = 0; i < global.nworkers; i++) {
-        struct worker *w = &workers[i];
-        allocated += w->allocated;
-    }
-#endif // REPORT_WORKERS
-#ifndef notdef
-    // printf("computing: %lf %lf %lf %lf (%lf %lf %lf %lf); waiting: %lf %lf %lf\n",
-    printf("computing: %lf %lf %lf %lf; waiting: %lf %lf %lf\n",
-        phase1 / global.nworkers,
-        phase2a / global.nworkers,
-        phase2b / global.nworkers,
-        phase3 / global.nworkers,
-        // phase1,
-        // phase2a,
-        // phase2b,
-        // phase3,
-        start_wait / global.nworkers,
-        middle_wait / global.nworkers,
-        end_wait / global.nworkers);
-#endif
-
-    printf("    * %u states (time %.2lfs, mem=%.3lfGB)\n", global.graph.size, gettime() - before, (double) allocated / (1L << 30));
-    unsigned int si_hits = 0, si_total = 0;
-    for (unsigned int i = 0; i < global.nworkers; i++) {
-        struct worker *w = &workers[i];
-        si_hits += w->si_hits;
-        si_total += w->si_total;
-    }
-    printf("    * %u/%u computations/edges\n", (si_total - si_hits), si_total);
-#ifdef HASHDICT_STATS
-    float atotal = atomic_load(&visited->nstable_hits) + atomic_load(&visited->nunstable_hits) + atomic_load(&visited->nmisses);
-    printf("    * hashtable %.2f/%.2f/%.2f\n", atomic_load(&visited->nstable_hits)/atotal, atomic_load(&visited->nunstable_hits)/atotal, atomic_load(&visited->nmisses)/atotal);
-#endif
-
+    // If no output file is desired, we're done.
     if (outfile == NULL) {
         exit(0);
     }
@@ -4245,12 +4507,13 @@ int exec_model_checker(int argc, char **argv){
     dict_set_sequential(global.values);
     dict_set_sequential(global.computations);
 
-    printf("* Phase 3: analysis\n");
+    printf("* Phase 3b: Further analysis\n");
 
     bool computed_components = false;
 
     // charm_dump(computed_components);
 
+#ifdef OBSOLETE
     // Do a cheap check for deadlock if no other errors have been detected
     // TODO.  Could be parallelized
     if (global.failures == NULL) {
@@ -4288,7 +4551,7 @@ int exec_model_checker(int argc, char **argv){
                 }
                 else {
                     struct failure *f = new_alloc(struct failure);
-                    f->type = FAIL_TERMINATION;
+                    f->type = FAIL_DEADLOCK;
                     f->node = node->parent;
                     f->edge = node_to_parent(node);
                     assert(f->edge != NULL);
@@ -4297,6 +4560,7 @@ int exec_model_checker(int argc, char **argv){
             }
         }
     }
+#endif
 
     // If no failures were detected (yet), look for deadlock and busy
     // waiting.
@@ -4316,7 +4580,7 @@ int exec_model_checker(int argc, char **argv){
 #ifdef DUMP_GRAPH
         printf("digraph Harmony {\n");
         for (unsigned int i = 0; i < global.graph.size; i++) {
-            printf(" s%u [label=\"%u/%u\"]\n", i, i, scc[i].component);
+            printf(" s%u [label=\"%u/%u\"]\n", i, i, global.scc[i].component);
         }
         for (unsigned int i = 0; i < global.graph.size; i++) {
             struct node *node = global.graph.nodes[i];
@@ -4338,8 +4602,8 @@ int exec_model_checker(int argc, char **argv){
         // must have terminated in each state).
         struct component *components = calloc(global.ncomponents, sizeof(*components));
         for (unsigned int i = 0; i < global.graph.size; i++) {
-            assert(scc[i].component < global.ncomponents);
-            struct component *comp = &components[scc[i].component];
+            assert(global.scc[i].component < global.ncomponents);
+            struct component *comp = &components[global.scc[i].component];
             struct node *node = global.graph.nodes[i];
 
             // See if this is the first state that we are looking at for
@@ -4364,7 +4628,7 @@ int exec_model_checker(int argc, char **argv){
             // If this component has a way out, it is good
             struct edge *edge = node_edges(node);
             for (unsigned int i = 0; i < node->nedges && !comp->good; i++, edge++) {
-                if (scc[edge_dst(edge)->id].component != scc[node->id].component) {
+                if (global.scc[edge_dst(edge)->id].component != global.scc[node->id].component) {
                     comp->good = true;
                     break;
                 }
@@ -4384,42 +4648,6 @@ int exec_model_checker(int argc, char **argv){
             }
         }
 
-        // Next we'll determine for all 'final' states if they satisfy the
-        // 'finally' clauses.  Also, if an input dfa was specified, we check
-        // that that dfa is in the final state as welll.
-
-        // Look for states in final components
-        for (unsigned int i = 0; i < global.graph.size; i++) {
-            struct node *node = global.graph.nodes[i];
-            assert(scc[i].component < global.ncomponents);
-            struct component *comp = &components[scc[i].component];
-            if (comp->final) {
-                node->final = true;
-
-                // If an input dfa was specified, it should also be in the
-                // final state.
-                if (global.dfa != NULL &&
-                            !dfa_is_final(global.dfa, node_state(node)->dfa_state)) {
-                    struct failure *f = new_alloc(struct failure);
-                    f->type = FAIL_BEHAVIOR_FINAL;
-                    f->node = node->parent;
-                    f->edge = node_to_parent(node);
-                    add_failure(&global.failures, f);
-                    // break;
-                }
-
-                if (global.nfinals > 0) {
-                    struct step step;
-                    step_init(&workers[0], &step);
-
-                    // Check each "finally" predicate
-                    for (unsigned int i = 0; i < global.nfinals; i++) {
-                        trystep(&workers[0], 0, node, -1, node_state(node), global.finals[i], &step, 0, -1);
-                    }
-                }
-            }
-        }
-
         // If we haven't found any failures yet, look for states in bad components.
         // If there are none, look for busy waiting states.
         if (global.failures == NULL) {
@@ -4427,7 +4655,7 @@ int exec_model_checker(int argc, char **argv){
             int nbad = 0;
             for (unsigned int i = 0; i < global.graph.size; i++) {
                 struct node *node = global.graph.nodes[i];
-                if (!components[scc[i].component].good) {
+                if (!components[global.scc[i].component].good) {
                     nbad++;
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_TERMINATION;
@@ -4454,7 +4682,7 @@ int exec_model_checker(int argc, char **argv){
                     global.graph.nodes[i]->visited = false;
                 }
                 for (unsigned int i = 0; i < global.graph.size; i++) {
-                    if (components[scc[i].component].size > 1) {
+                    if (components[global.scc[i].component].size > 1) {
                         detect_busywait(global.graph.nodes[i]);
                     }
                 }
@@ -4506,19 +4734,6 @@ int exec_model_checker(int argc, char **argv){
         charm_dump(computed_components);
     }
 
-    // Look for data races
-    // TODO.  Could be parallelized
-    if (!Rflag && global.failures == NULL) {
-        printf("    * Check for data races\n");
-        for (unsigned int i = 0; i < global.graph.size; i++) {
-            struct node *node = global.graph.nodes[i];
-            graph_check_for_data_race(&global.failures, node, NULL);
-            if (global.failures != NULL) {
-                break;
-            }
-        }
-    }
-
     if (global.failures == NULL) {
         printf("    * **No issues found**\n");
     }
@@ -4560,45 +4775,36 @@ int exec_model_checker(int argc, char **argv){
         fprintf(out, "\n");
         fprintf(out, "  },\n");
 
-        // Only output nodes if there are symbols
-        fprintf(out, "  \"nodes\": [\n");
-        bool first = true;
-        for (unsigned int i = 0; i < global.graph.size; i++) {
-            struct node *node = global.graph.nodes[i];
-            assert(node->id == i);
-            if (first) {
-                first = false;
+        if (hfaout != NULL) {
+            FILE *hfa = fopen(hfaout, "w");
+            if (hfa == NULL) {
+                fprintf(stderr, "%s: can't create %s\n", argv[0], hfaout);
+                exit(1);
             }
-            else {
-                fprintf(out, ",\n");
+            fprintf(hfa, "{\n");
+            fprintf(hfa, "  \"initial\": \"0\",\n");
+            fprintf(hfa, "  \"symbols\": [\n");
+            for (unsigned int i = 0; i < global.nsymbols; i++) {
+                char *p = value_json(global.symbols[i]);
+                fprintf(hfa, "    %s", p);
+                if (i + 1 < global.nsymbols) {
+                    fprintf(hfa, ",\n");
+                }
+                else {
+                    fprintf(hfa, "\n");
+                }
+                free(p);
             }
-            fprintf(out, "    {\n");
-            fprintf(out, "      \"idx\": %d,\n", node->id);
-            if (computed_components) {
-                fprintf(out, "      \"component\": %d,\n", scc[node->id].component);
-            }
-#ifdef notdef
-            if (node->parent != NULL) {
-                fprintf(out, "      \"parent\": %d,\n", node->parent->id);
-            }
-            char *val = json_escape_value(node_state(node)->vars);
-            fprintf(out, "      \"value\": \"%s:%d\",\n", val, node_state(node)->choosing != 0);
-            free(val);
-#endif
-            print_transitions(out, symbols, node);
-            if (i == 0) {
-                fprintf(out, "      \"type\": \"initial\"\n");
-            }
-            else if (node->final) {
-                fprintf(out, "      \"type\": \"terminal\"\n");
-            }
-            else {
-                fprintf(out, "      \"type\": \"normal\"\n");
-            }
-            fprintf(out, "    }");
+            fprintf(hfa, "  ],\n");
+            printf("* Phase 4b: epsilon closure\n");
+            epsilon_closure_prep();     // move epsilon edges to start of each node
+            tarjan_epsclosure();
+            printf("* Phase 4c: convert NFA to DFA\n");
+            unsigned int size = nfa2dfa(hfa, symbols);
+            fprintf(hfa, "}\n");
+            fclose(hfa);
+            fprintf(out, "  \"dfasize\": %u,\n", size);
         }
-        fprintf(out, "\n");
-        fprintf(out, "  ],\n");
 
         fprintf(out, "  \"profile\": [\n");
         for (unsigned int pc = 0; pc < global.code.len; pc++) {
@@ -4656,6 +4862,14 @@ int exec_model_checker(int argc, char **argv){
             printf("    * **Behavior Violation**: terminal state not final\n");
             fprintf(out, "  \"issue\": \"Behavior violation: terminal state not final\",\n");
             break;
+        case FAIL_INFLOOP:
+            printf("    * **Infinite Loop**\n");
+            fprintf(out, "  \"issue\": \"Non-terminating state\",\n");
+            break;
+        case FAIL_DEADLOCK:
+            printf("    * **Non-terminating state (possibly deadlock)**\n");
+            fprintf(out, "  \"issue\": \"Non-terminating state\",\n");
+            break;
         case FAIL_TERMINATION:
             printf("    * **Non-terminating state**\n");
             fprintf(out, "  \"issue\": \"Non-terminating state\",\n");
@@ -4694,6 +4908,7 @@ int exec_model_checker(int argc, char **argv){
 
         // First copy the path to the bad state into an array for easier sorting
         assert(bad->node != NULL);
+        // assert(bad->edge->dst != NULL);
         path_serialize(bad->node, bad->edge);
 
         // The optimal path minimizes the number of context switches.  Here we

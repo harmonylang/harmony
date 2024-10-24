@@ -40,6 +40,8 @@ args.add_argument("-W", action="store_true",
                   help="suppress busy waiting check")
 args.add_argument("-R", action="store_true",
                   help="suppress race condition warnings")
+args.add_argument("-U", action="store_true",
+                  help="do not pin workers")
 args.add_argument("--module", "-m", action="append", type=str,
                   metavar="module=version", help="select a module version")
 args.add_argument("-i", "--intf", type=str, metavar="expr",
@@ -69,6 +71,13 @@ args.add_argument("--cf", action="append", type=str, help=argparse.SUPPRESS)
 args.add_argument("args", metavar="args", type=str, nargs='*', help="arguments")
 
 def handle_hny(ns, output_files, parse_code_only, filenames):
+    for suffix, file in output_files.items():
+        if file is not None:
+            try:
+                os.remove(file)
+            except:
+                pass
+
     print("* Phase 1: compile Harmony program to bytecode", flush=True)
 
     consts: List[str] = ns.const or []
@@ -120,6 +129,8 @@ def handle_hvm(ns, output_files, parse_code_only, code, scope):
         charm_options.append("-D")
     if ns.R:
         charm_options.append("-R")
+    if ns.U:
+        charm_options.append("-U")
     if ns.W:
         charm_options.append("-c")
 
@@ -143,11 +154,19 @@ def handle_hvm(ns, output_files, parse_code_only, code, scope):
             exit(r)
     else:
         # print("* Phase 2: run the model checker", flush=True)
-        r = charm.run_model_checker(
-            *charm_options,
-            "-o" + output_files["hco"],
-            output_files["hvm"]
-        )
+        if "hfa" in output_files and output_files["hfa"] != None:
+            r = charm.run_model_checker(
+                *charm_options,
+                "-o" + output_files["hco"],
+                "-o" + output_files["hfa"],
+                output_files["hvm"]
+            )
+        else:
+            r = charm.run_model_checker(
+                *charm_options,
+                "-o" + output_files["hco"],
+                output_files["hvm"]
+            )
         if r != 0:
             print("charm model checker failed")
             exit(r)
@@ -268,6 +287,8 @@ def main():
         output_files["htm"] = stem + ".htm"
     if output_files["hvb"] is None:
         output_files["hvb"] = stem + ".hvb"
+    if output_files["hfa"] is None:
+        output_files["hfa"] = stem + ".hfa"
     if output_files["png"] is None:
         output_files["png"] = stem + ".png"
     if output_files["png"] is not None and output_files["gv"] is None:

@@ -326,8 +326,15 @@ class NameAST(AST):
             (lexeme, file, line, column) = v
             code.append(PushOp((AddressValue(PcValue(-2), [lexeme]), file, line, column)), self.token, self.endtoken, stmt=stmt)
         else:
-            assert t == "global", t
             (lexeme, file, line, column) = self.name
+            if t != "global":
+                raise HarmonyCompilerError(
+                    message="not a variable: " + lexeme,
+                    lexeme=lexeme,
+                    filename=file,
+                    line=line,
+                    column=column
+                )
             if scope.prefix is None:
                 code.append(PushOp((AddressValue(PcValue(-1), [lexeme]), file, line, column)), self.token, self.endtoken, stmt=stmt)
             else:

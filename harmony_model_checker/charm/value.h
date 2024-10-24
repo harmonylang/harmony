@@ -5,19 +5,27 @@
 #include "global.h"
 #include "strbuf.h"
 #include "charm.h"
+#include "hashdict.h"
 
 #define MAX_CONTEXT_STACK   250        // maximum size of context stack
 #define MAX_CONTEXT_BAG      32        // maximum number of distinct contexts
 
+#define STATE_NORMAL        1
+#define STATE_CHOOSE        2
+#define STATE_PRINT         3
+
 // This contains the state in a Harmony execution.
 //
 // TODO.  State can be reduced in size in various ways;
+//  - vars can probably be reduce to just 48 bits as we know it's a dict
+//  - type only needs 2 bits
 //  - contexts could be represented more efficiently
 //  - the entire thing could be replaced with a collision-resistant hash
 typedef struct state {
     hvalue_t vars;        // shared variables
     uint32_t dfa_state;   // state of input dfa
-    int8_t chooser;       // context that is choosing, -1 if none
+    uint8_t type;         // NORMAL, CHOOSE, or PRINT
+    uint8_t chooser;      // context that is choosing or printing, 0 otherwise
 
     // The state includes two variable-sized bag of contexts.  A context is
     // of type hvalue_t.  We use bits 48..55 (8 bits total) to contain the
@@ -26,7 +34,7 @@ typedef struct state {
     // TODO.  Currently the stopbag is behind the context bag, but if we want
     //        to support more than 256 contexts, maybe the other way around is better
     uint8_t bagsize;      // size of context bag
-    uint16_t total;       // bagsize + size of bag of stopped contexts
+    uint8_t total;        // bagsize + size of bag of stopped contexts
     // hvalue_t contexts[VAR_SIZE];   // context/multiplicity pairs
 } state;
 #define state_size_nctx(n)       (sizeof(struct state) + (n) * sizeof(hvalue_t))
@@ -39,6 +47,9 @@ typedef struct state {
 
 // A context is the state of a Harmony thread.  The state, which is part of the
 // state of a thread, immediately follows this structure.
+//
+// TODO.  Some of this info should be kept in the ctx pointer itself.
+//        In fact, the eternal bit already is.
 struct context {   // context value
     hvalue_t vars;            // method-local variables
     uint16_t pc;              // program counter
@@ -83,7 +94,7 @@ struct val_external {
 
 hvalue_t value_from_json(struct allocator *allocator, struct dict *map);
 int value_cmp(hvalue_t v1, hvalue_t v2);
-void *value_get(hvalue_t v, unsigned int *size);
+// void *value_get(hvalue_t v, unsigned int *size);
 struct val_external *value_get_external(hvalue_t v);
 void *value_copy(hvalue_t v, unsigned int *size);
 void *value_copy_extend(hvalue_t v, unsigned int inc, unsigned int *psize);
@@ -125,7 +136,8 @@ void strbuf_value_json(strbuf *sb, hvalue_t v);
 #define VALUE_CONTEXT  10
 #define VALUE_EXTERNAL 11
 
-#define VALUE_CONTEXT_ETERNAL   ((hvalue_t) 1 << 56)
+#define VALUE_CONTEXT_ETERNAL         ((hvalue_t) 1 << 56)
+#define VALUE_CONTEXT_INTERRUPTABLE   ((hvalue_t) 1 << 57)
 
 #define VALUE_FALSE     VALUE_BOOL
 #define VALUE_TRUE      ((1 << VALUE_BITS) | VALUE_BOOL)
@@ -144,6 +156,20 @@ void strbuf_value_json(strbuf *sb, hvalue_t v);
 
 #define VALUE_PC_SHARED    VALUE_TO_PC(-1)
 #define VALUE_PC_LOCAL     VALUE_TO_PC(-2)
+
+// Return the value represented by v.  If psize != NULL, return the size
+// in bytes in *psize.  The value should be stored in the global.values
+// hash table.
+static inline void *value_get(hvalue_t v, unsigned int *psize){
+    v &= ~VALUE_MASK;
+    if (v == 0) {
+        if (psize != NULL) {
+            *psize = 0;
+        }
+        return NULL;
+    }
+    return dict_retrieve((void *) v, psize);
+}
 
 bool value_trystore(struct allocator *allocator, hvalue_t dict, hvalue_t key, hvalue_t value, bool allow_inserts, hvalue_t *result);
 hvalue_t value_store(struct allocator *allocator, hvalue_t root, hvalue_t key, hvalue_t value);

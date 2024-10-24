@@ -670,13 +670,14 @@ void op_Print(const void *env, struct state *state, struct step *step){
         }
     }
     else {
+        // TODO.  Can get rid of this test and MAX_PRINT.
         if (step->nlog == MAX_PRINT) {
             value_ctx_failure(step->ctx, step->allocator, "Print: too many prints");
             return;
         }
+        assert(step->nlog == 0);
         step->log[step->nlog++] = symbol;
     }
-    global.printed_something = true;
     if (step->keep_callstack) {
         strbuf_printf(&step->explain, "pop value (#+) and add to print log");
         step->explain_args[step->explain_nargs++] = symbol;
@@ -1197,7 +1198,10 @@ static hvalue_t direct_getarg(struct step *step){
     assert(pc != step->ctx->pc);
 
     // Get the remaining arguments
-    hvalue_t args = ctx_pop(step->ctx);
+#ifndef NDEBUG
+    hvalue_t args =
+#endif
+    ctx_pop(step->ctx);
     assert(args == VALUE_LIST);
 
     // Go on to the next instruction after resuming
@@ -2965,7 +2969,8 @@ void next_Store(const void *env, struct context *ctx, FILE *fp){
 // where x is assigned 4 but fails if y is not 3.
 static bool store_match(struct state *state, struct step *step,
                     hvalue_t av, hvalue_t v){
-    if (VALUE_TYPE(av) != VALUE_ADDRESS_SHARED) {
+    if (VALUE_TYPE(av) != VALUE_ADDRESS_SHARED &&
+                            VALUE_TYPE(av) != VALUE_ADDRESS_PRIVATE) {
         char *p = value_string(av);
         value_ctx_failure(step->ctx, step->allocator, "Store %s: not an address", p);
         free(p);

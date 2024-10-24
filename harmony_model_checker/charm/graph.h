@@ -48,23 +48,27 @@ struct step_input {
 // a failure is found, that information is recovered by re-executing the path to
 // the faulty state.
 struct step_output {
-    hvalue_t vars;           // updated shared variables
-    hvalue_t after;          // context at end
-    struct access_info *ai;  // to detect data races
-    uint16_t nsteps;         // # microsteps
+    hvalue_t vars;             // updated shared variables
+    hvalue_t after;            // context at end
+    struct access_info *ai;    // to detect data races
+    uint16_t nsteps;           // # microsteps
 
-    bool choosing : 1;       // destination state is choosing
-    bool terminated : 1;     // thread has terminated
-    bool stopped : 1;        // thread has stopped
-    bool failed : 1;         // context failed
-    bool infinite_loop : 1;  // ran into an infinite loop
+    // TODO It would be good if these bits would be crammed into this structure
+    //      more efficiently
+    bool printing : 1;         // step involves a Print
+    bool terminated : 1;       // thread has terminated
+    bool stopped : 1;          // thread has stopped
+    bool failed : 1;           // context failed
+    bool infinite_loop : 1;    // ran into an infinite loop
 
-    uint8_t nlog;            // # values printed
-    uint8_t nspawned;        // # contexts started
-    uint8_t nunstopped;      // # contexts removed from stopbag
-    // hvalue_t log[];       // print history (immediately follows this structure)
-    // hvalue_t spawned[];   // spawn history (immediately follows log)
-    // hvalue_t unstopped[]; // unstop history (immediately follows spawn history)
+    uint8_t choose_count;      // number of possible choices
+    // TODO.  nlog can only be 0 or 1
+    uint8_t nlog;              // # values printed
+    uint8_t nspawned;          // # contexts started
+    uint8_t nunstopped;        // # contexts removed from stopbag
+    // hvalue_t log[];         // print history (immediately follows this structure)
+    // hvalue_t spawned[];     // spawn history (immediately follows log)
+    // hvalue_t unstopped[];   // unstop history (immediately follows spawn history)
 };
 #define step_log(x)          ((hvalue_t *) ((x) + 1))
 #define step_spawned(x)      ((hvalue_t *) ((x) + 1) + (x)->nlog)
@@ -76,6 +80,7 @@ struct edge_list {
     struct edge_list *next; // linked list
     struct node *node;      // source node
     int edge_index;         // index into edges of the source node
+    int ctx_index;          // index of context in state
 };
 
 // Each edge points to one of these (by id).  It describes either a
@@ -83,19 +88,12 @@ struct edge_list {
 // multiple edges may be ``waiting'' for it to complete in order to
 // compute the next state.
 struct step_condition {
-    unsigned int id : 30;    // index into global.stc_table
-    bool completed : 1;      // step has been computed
-    bool invariant_chk : 1;  // step is part of invariant check
+    bool completed;      // step has been computed
+    bool invariant_chk;  // step is part of invariant check
     union {
         struct edge_list *in_progress;
         struct step_output *completed;
     } u;
-};
-
-// Mostly for backward compatibility with countlabel()
-struct step_comp {
-    struct step_condition cond;
-    struct step_input input;
 };
 
 // For each (directed) edge in the Kripke structure (a graph of states), we maintain
@@ -103,23 +101,23 @@ struct step_comp {
 // state.
 struct edge {
 #ifdef SHORT_PTR
-XYXZZ
+THIS SHOULD NOT BE DEFINED
     int64_t dest : 37;          // "short" pointer to dst node
     uint32_t stc_id : 25;       // id of step_condition
 #define edge_dst(e)          ((struct node *) ((int64_t *) (e) + (e)->dest))
 #else
     struct node *dst;           // pointer to destination node
-    uint32_t stc_id : 30;       // id of step_condition
+    uint64_t stc_id : 48;       // pointer to step_condition / step_input
 #define edge_dst(e)          ((e)->dst)
 #endif
     bool multiple : 1;          // multiplicity > 1
     bool failed : 1;            // edge has failed (safety violation)
+    bool invariant_chk : 1;     // fake edge for invariant
 };
 
-#define edge_sc(e)           (global.stc_table[(e)->stc_id])
+#define edge_sc(e)           ((struct step_condition *) (uint64_t) ((e)->stc_id))
 #define edge_input(e)        ((struct step_input *) &edge_sc(e)[1])
 #define edge_output(e)       (edge_sc(e)->u.completed)
-#define edge_invariant(e)    (edge_sc(e)->invariant_chk)
 
 // Charm can detect a variety of failure types:
 enum fail_type {
@@ -128,6 +126,8 @@ enum fail_type {
     FAIL_BEHAVIOR_BAD,      // output behavior not allowed by input DFA
     FAIL_BEHAVIOR_FINAL,    // DFA should end up in final state
     FAIL_TERMINATION,       // a non-terminating state exists
+    FAIL_DEADLOCK,          // all threads are "stuck"
+    FAIL_INFLOOP,           // some thread is in an infinite loop
     FAIL_BUSYWAIT,          // the program allows busy waiting
     FAIL_RACE               // the program has a race condition
 };
@@ -135,13 +135,13 @@ enum fail_type {
 // This is information about a node in the Kripke structure.  The node is directly followed
 // by the array of outgoing edges and then the Harmony state corresponding to this node.
 struct node {
-    // struct edge *fwd;       // forward edges
     struct node *parent;    // path to initial state
     uint32_t id;            // nodes are numbered starting from 0
     uint16_t len;           // length of path to initial state
-    uint8_t nedges;         // number of outgoing edges  // TODO also maintained by hash table
+    uint8_t nedges;         // number of outgoing edges  // TODO also maintained indirectly by hash table
     bool initial : 1;       // initial state
     bool on_stack : 1;      // for Tarjan
+    bool eps_on_stack : 1;  // for Tarjan epsilon closure
     bool failed : 1;        // state resulted from failed transition
     bool final : 1;         // final state
     bool visited : 1;       // for busy wait detection

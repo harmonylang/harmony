@@ -3,11 +3,6 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdbool.h>
-
-#ifdef USE_ATOMIC
-#include <stdatomic.h>
-#endif
-
 #include "global.h"
 #include "hashdict.h"
 #include "thread.h"
@@ -58,7 +53,6 @@ struct dict *dict_new(char *whoami, unsigned int value_len, unsigned int initial
 	dict->count = dict->old_count = 0;
 	dict->growth_threshold = 2;
 	dict->growth_factor = 10;
-    dict->autogrow = true;
 	dict->concurrent = concurrent;
     dict->align16 = align16;
 	dict->stable = dict->old_stable = calloc(sizeof(*dict->stable), initial_size);
@@ -75,11 +69,6 @@ struct dict *dict_new(char *whoami, unsigned int value_len, unsigned int initial
             dict->workers[i].unstable = calloc(sizeof(struct dict_unstable), nworkers);
         }
     }
-#ifdef HASHDICT_STATS
-    atomic_init(&dict->nstable_hits, 0);
-    atomic_init(&dict->nunstable_hits, 0);
-    atomic_init(&dict->nmisses, 0);
-#endif
 	return dict;
 }
 
@@ -92,7 +81,7 @@ void dict_delete(struct dict *dict) {
 	for (unsigned int i = 0; i < dict->length; i++) {
 		if (dict->stable[i] != NULL)
 			dict_assoc_delete(dict, dict->stable[i]);
-		if (dict->unstable[i] != NULL)
+		if (dict->concurrent && dict->unstable[i] != NULL)
 			dict_assoc_delete(dict, dict->unstable[i]);
 	}
 	for (unsigned int i = 0; i < dict->nlocks; i++) {
@@ -103,7 +92,7 @@ void dict_delete(struct dict *dict) {
 	free(dict);
 }
 
-static inline void dict_reinsert_when_resizing(struct dict *dict, struct dict_assoc *k) {
+static inline void dict_reinsert(struct dict *dict, struct dict_assoc *k) {
     unsigned int n = hash_func((char *) &k[1] + k->val_len, k->len) % dict->length;
 	struct dict_assoc **sdb = &dict->stable[n];
     k->next = *sdb;
@@ -125,10 +114,10 @@ void dict_resize(struct dict *dict, unsigned int newsize) {
 	for (unsigned int i = 0; i < o; i++) {
 		struct dict_assoc **b = &old[i];
         struct dict_assoc *k = *b;
-		*b = NULL;
+		// *b = NULL;
 		while (k != NULL) {
 			struct dict_assoc *next = k->next;
-			dict_reinsert_when_resizing(dict, k);
+			dict_reinsert(dict, k);
 			k = next;
 		}
 	}
@@ -167,21 +156,18 @@ struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
     // a lock
     unsigned int index = hash % dict->length;
     struct dict_assoc **sdb = &dict->stable[index];
-    struct dict_assoc **udb = &dict->unstable[index];
 	struct dict_assoc *k = *sdb;
 	while (k != NULL) {
 		if (k->len == keylen && memcmp((char *) &k[1] + k->val_len, key, keylen) == 0) {
             if (new != NULL) {
                 *new = false;
             }
-#ifdef HASHDICT_STATS
-            (void) atomic_fetch_add(&dict->nstable_hits, 1);
-#endif
 			return k;
 		}
 		k = k->next;
 	}
 
+    struct dict_assoc **udb = &dict->unstable[index];
     if (dict->concurrent) {
         mutex_acquire(&dict->locks[index % dict->nlocks]);
 
@@ -193,9 +179,6 @@ struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
                 if (new != NULL) {
                     *new = false;
                 }
-#ifdef HASHDICT_STATS
-                (void) atomic_fetch_add(&dict->nunstable_hits, 1);
-#endif
                 return k;
             }
             k = k->next;
@@ -204,7 +187,7 @@ struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
 
     // If not concurrent may have to grow the table now
 	// if (!dict->concurrent && db->stable == NULL) {
-	if (dict->autogrow && !dict->concurrent) {
+	if (!dict->concurrent) {
 		double f = (double) dict->count / (double) dict->length;
 		if (f > dict->growth_threshold) {
 			dict_resize(dict, dict->length * dict->growth_factor - 1);
@@ -212,9 +195,6 @@ struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
 		}
 	}
 
-#ifdef HASHDICT_STATS
-    (void) atomic_fetch_add(&dict->nmisses, 1);
-#endif
     k = dict_assoc_new(dict, al, (char *) key, keylen, 0);
     if (dict->concurrent) {
         k->next = *udb;
@@ -243,34 +223,27 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
     unsigned int index = hash % dict->length;
     *lock = &dict->locks[index % dict->nlocks];
 
-    struct dict_assoc **sdb = &dict->stable[index];
-    struct dict_assoc **udb = &dict->unstable[index];
-	struct dict_assoc *k = *sdb;
+	struct dict_assoc *k = dict->stable[index];
 	while (k != NULL) {
 		if (k->len == keylen && memcmp((char *) &k[1] + k->val_len, key, keylen) == 0) {
             if (new != NULL) {
                 *new = false;
             }
             mutex_acquire(*lock);
-#ifdef HASHDICT_STATS
-            (void) atomic_fetch_add(&dict->nstable_hits, 1);
-#endif
 			return k;
 		}
 		k = k->next;
 	}
 
-    mutex_acquire(*lock);
     // See if the item is in the unstable list
+    struct dict_assoc **udb = &dict->unstable[index];
+    mutex_acquire(*lock);
     k = *udb;
     while (k != NULL) {
         if (k->len == keylen && memcmp((char *) &k[1] + k->val_len, key, keylen) == 0) {
             if (new != NULL) {
                 *new = false;
             }
-#ifdef HASHDICT_STATS
-            (void) atomic_fetch_add(&dict->nunstable_hits, 1);
-#endif
             return k;
         }
         k = k->next;
@@ -284,9 +257,6 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
     if (new != NULL) {
         *new = true;
     }
-#ifdef HASHDICT_STATS
-    (void) atomic_fetch_add(&dict->nmisses, 1);
-#endif
 	return k;
 }
 
@@ -294,72 +264,35 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
 // 'extra' is an additional number of bytes added to the value.
 struct dict_assoc *dict_find_new(struct dict *dict, struct allocator *al,
                             const void *key, unsigned int keylen,
-                            unsigned int extra, bool *new, mutex_t **lock, uint32_t hash){
+                            unsigned int extra, bool *new, uint32_t hash){
     assert(al != NULL);
+    assert(!dict->concurrent);
     // uint32_t hash = hash_func(key, keylen);
     unsigned int index = hash % dict->length;
 
-    if (lock != NULL) {
-        *lock = &dict->locks[index % dict->nlocks];
-    }
-
     struct dict_assoc **sdb = &dict->stable[index];
-    struct dict_assoc **udb = &dict->unstable[index];
 	struct dict_assoc *k = *sdb;
 	while (k != NULL) {
 		if (k->len == keylen && memcmp((char *) &k[1] + k->val_len, key, keylen) == 0) {
             *new = false;
-#ifdef HASHDICT_STATS
-            (void) atomic_fetch_add(&dict->nstable_hits, 1);
-#endif
 			return k;
 		}
 		k = k->next;
 	}
 
-    if (dict->concurrent) {
-        mutex_acquire(*lock);
-        // See if the item is in the unstable list
-        k = *udb;
-        while (k != NULL) {
-            if (k->len == keylen && memcmp((char *) &k[1] + k->val_len, key, keylen) == 0) {
-                *new = false;
-#ifdef HASHDICT_STATS
-                (void) atomic_fetch_add(&dict->nunstable_hits, 1);
-#endif
-                mutex_release(*lock);
-                return k;
-            }
-            k = k->next;
-        }
+    // See if we need to grow the table
+    double f = (double) dict->count / (double) dict->length;
+    if (f > dict->growth_threshold) {
+        dict_resize(dict, dict->length * dict->growth_factor - 1);
+        return dict_find_new(dict, al, key, keylen, extra, new, hash);
     }
 
-    // If not concurrent may have to grow the table now
-	// if (!dict->concurrent && db->stable == NULL) {
-	if (dict->autogrow && !dict->concurrent) {
-		double f = (double) dict->count / (double) dict->length;
-		if (f > dict->growth_threshold) {
-			dict_resize(dict, dict->length * dict->growth_factor - 1);
-			return dict_find_new(dict, al, key, keylen, extra, new, lock, hash);
-		}
-	}
-
+    // Add new entry
     k = dict_assoc_new(dict, al, (char *) key, keylen, extra);
-    if (dict->concurrent) {
-        k->next = *udb;
-        *udb = k;
-        dict_unstable(dict, al, index, k);
-    }
-    else {
-        k->next = *sdb;
-        *sdb = k;
-		dict->count++;
-    }
-
+    k->next = *sdb;
+    *sdb = k;
+    dict->count++;
     *new = true;
-#ifdef HASHDICT_STATS
-    (void) atomic_fetch_add(&dict->nmisses, 1);
-#endif
 	return k;
 }
 
@@ -367,14 +300,6 @@ struct dict_assoc *dict_find_new(struct dict *dict, struct allocator *al,
 void *dict_insert(struct dict *dict, struct allocator *al,
                             const void *key, unsigned int keylen, bool *new){
     struct dict_assoc *k = dict_find(dict, al, key, keylen, new);
-    return (char *) &k[1];
-}
-
-void *dict_retrieve(const void *p, unsigned int *psize){
-    const struct dict_assoc *k = p;
-    if (psize != NULL) {
-        *psize = k->len;
-    }
     return (char *) &k[1];
 }
 
@@ -465,7 +390,7 @@ void dict_make_stable(struct dict *dict, unsigned int worker){
             struct dict_assoc *k = dict->old_stable[i];
             while (k != NULL) {
                 struct dict_assoc *next = k->next;
-                dict_reinsert_when_resizing(dict, k);
+                dict_reinsert(dict, k);
                 k = next;
             }
         }

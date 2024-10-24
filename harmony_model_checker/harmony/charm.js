@@ -13,6 +13,7 @@ var coderow = document.getElementById("coderow");
 var container = document.getElementById('table-scroll');
 var currOffset = 0;
 var currCloc = null;
+var colors = [ "green", "coral", "blueviolet" ];
 
 // printing contexts
 var contexts = {};
@@ -187,24 +188,33 @@ function getCode(pc) {
 //  return noloc;
 }
 
-function drawTimeLine(mes) {
+function drawTimeLine(mes, mis) {
   var c = mes.canvas.getContext("2d");
   c.beginPath();
   c.clearRect(0, 0, mes.canvas.width, mes.canvas.height);
   var t = mes.startTime;
-  var yboxes = Math.floor((mes.nsteps + timeWidth - 1) / timeWidth);
   var nsteps = mes.nsteps;
+
+  // Compute the total number of rows
+  var yboxes = Math.ceil(mes.nsteps / timeWidth);
+
   for (var y = 0; y < yboxes; y++) {
     var xboxes = nsteps > timeWidth ? timeWidth : nsteps;
     for (var x = 0; x < xboxes; x++) {
-      c.fillStyle = t < currentTime ? "orange" : "white";
+      if (t >= currentTime) {
+        c.fillStyle = "white";
+      }
+      else {
+        c.fillStyle = colors[mis[t].trace.length % colors.length];
+      }
+      // c.fillStyle = t < currentTime ? "orange" : "white";
       c.fillRect(x * boxSize, y * boxSize, boxSize, boxSize);
       c.rect(x * boxSize, y * boxSize, boxSize, boxSize);
-      c.stroke();
       t += 1;
     }
     nsteps -= xboxes;
   }
+  c.stroke();
   mes.nextstep.innerHTML = "";
   return t;
 }
@@ -327,13 +337,16 @@ function stackTrace(tid, trace, failure) {
     mcell.innerHTML = method_call(trace[i].method_name, trace[i].method_arg);
     switch (trace[i].calltype) {
     case "process":
-        mcell.style.color = "blue";
+        // mcell.style.color = "blue";
+        mcell.style.color = colors[(i + 1) % colors.length];
         break;
     case "normal":
-        mcell.style.color = "black";
+        // mcell.style.color = "black";
+        mcell.style.color = colors[(i + 1) % colors.length];
         break;
     case "interrupt":
-        mcell.style.color = "orange";
+        // mcell.style.color = "orange";
+        mcell.style.color = colors[(i + 1) % colors.length];
         break;
     default:
         mcell.style.color = "red";
@@ -387,22 +400,40 @@ function handleKeyPress(e) {
       run_microsteps();
       break;
     case 'ArrowUp':
-      var mesidx = currentMegaStep();
-      var mes = megasteps[mesidx];
-      if (currentTime == mes.startTime && mesidx > 0) {
-          mes = megasteps[mesidx - 1];
+      if (currentTime > 0) {
+        currentTime--;
+        var mesidx = currentMegaStep();
+        var mes = megasteps[mesidx];
+        var mis = microsteps[currentTime];
+        var tl = mis.trace.length;
+        var endTime = mes.startTime + mes.nsteps;
+        while (currentTime > mes.startTime) {
+          mis = microsteps[currentTime - 1];
+          tl2 = mis.trace.length;
+          if (tl2 < tl) {
+            break;
+          }
+          currentTime--;
+        }
+        run_microsteps();
       }
-      currentTime = mes.startTime;
-      run_microsteps();
       break;
     case 'ArrowDown':
-      var mesidx = currentMegaStep();
-      var mes = megasteps[mesidx];
-      currentTime = mes.startTime + mes.nsteps;
-      if (currentTime > totalTime) {
-        currentTime = totalTime;
+      if (currentTime < totalTime) {
+        var mesidx = currentMegaStep();
+        var mes = megasteps[mesidx];
+        var mis = microsteps[currentTime];
+        var tl = mis.trace.length;
+        var endTime = mes.startTime + mes.nsteps;
+        while (++currentTime < endTime) {
+          mis = microsteps[currentTime];
+          tl2 = mis.trace.length;
+          if (tl2 < tl) {
+            break;
+          }
+        }
+        run_microsteps();
       }
-      run_microsteps();
       break;
     case 'Enter':
       if (currentTime < totalTime) {
@@ -799,11 +830,11 @@ function run_microsteps() {
     threadtable.rows[tid].cells[3].innerHTML = threads[tid].stack;
   }
 
-  for (var i = 0; i < nmegasteps; i++) {
-    drawTimeLine(megasteps[i]);
-  }
   for (var t = 0; t < currentTime; t++) {
     run_microstep(t);
+  }
+  for (var i = 0; i < nmegasteps; i++) {
+    drawTimeLine(megasteps[i], microsteps);
   }
   if (currentTime < microsteps.length && (currentTime == 0 ||
             microsteps[currentTime - 1].tid != microsteps[currentTime].tid)) {
@@ -826,22 +857,24 @@ function run_microsteps() {
     currCloc.style.color = "red";
   }
 
-  var curmes = currentTime < totalTime ? microsteps[currentTime].mesidx : -1;
+  var curmes = currentTime > 0 ? microsteps[currentTime - 1].mesidx : -1;
   for (var mes = 0; mes < nmegasteps; mes++) {
     var row = document.getElementById("mes" + mes);
     if (mes == curmes) {
-      row.style = 'background-color: #A5FF33;';
+      // row.style = 'background-color: #A5FF33;';
+      row.style = 'background-color: #99FF99;';
     }
     else {
       row.style = 'background-color: white;';
     }
   }
 
-  var curtid = currentTime < totalTime ? microsteps[currentTime].tid : -1;
+  var curtid = currentTime > 0 ? microsteps[currentTime - 1].tid : -1;
   for (var tid = 0; tid < nthreads; tid++) {
     var row = document.getElementById("thread" + tid);
     if (tid == curtid) {
-      row.style = 'background-color: #A5FF33;';
+      // row.style = 'background-color: #A5FF33;';
+      row.style = 'background-color: #99FF99;';
     }
     else {
       row.style = 'background-color: white;';

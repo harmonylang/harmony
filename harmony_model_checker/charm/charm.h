@@ -53,6 +53,29 @@ struct macrostep {
     unsigned int nprocesses;        // the number of processes in the list
 };
 
+struct node_set {
+    unsigned int nnodes;
+    unsigned int nallocated;
+    uint32_t *list;
+};
+
+// TODO.  Probably don't need both node_set and eps_component
+struct eps_component {
+    struct node_set ns;
+};
+
+// TODO. Could this be a union?
+struct eps_scc {
+    struct eps_component *component;
+    int32_t index, lowlink; // only needed for Tarjan
+};
+
+// TODO. Could this be a union?
+struct scc {
+    uint32_t component;     // strongly connected component id
+    int32_t index, lowlink; // only needed for Tarjan
+};
+
 // All global variables of Charm should be in here, at least the ones that
 // are used across multiple modules.
 struct global {
@@ -60,6 +83,18 @@ struct global {
     struct dict *values;            // dictionary of values
     struct dict *computations;      // evaluated Harmony byte code
     hvalue_t seqs;                  // sequential variables
+    struct worker *workers;         // points to array of workers
+    unsigned int nworkers;          // total number of workers
+    double starttime;               // when model checking started for real
+    bool no_race_detect;            // do not detect data races
+    bool do_not_pin;                // don't pin workers
+
+    // The worker thread loops through three phases:
+    //  1: evaluate states on the todo list
+    //  2: look up states and add to the todo list if new
+    //  3: resize tables
+    // The barriers are to synchronize these three phases.
+    barrier_t start_barrier, middle_barrier, end_barrier;
 
     // invariants
     mutex_t inv_lock;               // lock on list of invariants and finals
@@ -70,19 +105,8 @@ struct global {
     hvalue_t *finals;               // contexts of finally preds
 
     struct graph graph;             // the Kripke structure but also the todo list
-
-    bool layer_done;                // all states in a layer completed
-    bool printed_something;         // see if anything was printed
-
-    unsigned int nshards;           // total number of Kripke structure shards
-    struct shard *shards;           // array of shards
-#ifdef notdef
-    _Atomic(unsigned int) sh_index1; // shard index for phase 1
-    _Atomic(unsigned int) sh_index2; // shard index for phase 2
-#endif
-
-    unsigned int nworkers;          // total number of threads
-    unsigned int ncomponents;       // to generate component identifiers
+    uint8_t *neps;                  // #epsilon edges for each node
+    bool printed_something;         // set if anything was printed
     struct failure *failures;       // queue of "struct failure"  (TODO: make part of struct node "issues")
     hvalue_t *processes;            // array of contexts of processes
     struct callstack **callstacks;  // array of callstacks of processes
@@ -95,14 +119,17 @@ struct global {
     bool run_direct;                // non-model-checked mode
     unsigned long allocated;        // allocated table space
     unsigned int oldpid;            // for thread id computation
+    struct scc *scc;                // strongly connected components
+    unsigned int ncomponents;       // number of components
+    struct eps_scc *eps_scc;        // same as above two for epsilon
+    unsigned int eps_ncomponents;   //    closure computation
+
+    hvalue_t *symbols;              // list of symbols
+    unsigned int nsymbols;
 
     // Reconstructed error trace stored here
     unsigned int nmacrosteps, alloc_macrosteps;
     struct macrostep **macrosteps;
-
-    mutex_t stc_lock;
-    struct step_condition **stc_table;
-    unsigned int nstc, stc_allocated;
 };
 
 extern struct global global;
