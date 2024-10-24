@@ -121,7 +121,7 @@ struct vproc_tree {
     unsigned int virtual_id;     // virtual processor id, only for leaf nodes
     unsigned int nchildren;
     struct vproc_map *children;
-} *vproc_root;
+};
 
 struct results_block {
     struct results_block *next;
@@ -2783,15 +2783,17 @@ static struct vproc_tree *vproc_tree_insert(
 
 // This function creates a tree, more or less representing the memory
 // hierarchy, with the selected virtual processors at its leaves.
-static void vproc_tree_create(){
+static struct vproc_tree *vproc_tree_create(){
     // Create the virtual processor tree.
-    vproc_root = calloc(1, sizeof(*vproc_root));
+    struct vproc_tree *root = new_alloc(struct vproc_tree);
     for (unsigned int i = 0; i < n_vproc_info; i++) {
         if (vproc_info[i].selected) {
-            struct vproc_tree *vt = vproc_tree_insert(vproc_root, vproc_info[i].ids, vproc_info[i].nids, 0);
+            struct vproc_tree *vt = vproc_tree_insert(root,
+                        vproc_info[i].ids, vproc_info[i].nids, 0);
             vt->virtual_id = i;
         }
     }
+    return root;
 }
 
 // Allocate n virtual processors, eagerly.
@@ -4241,7 +4243,7 @@ int exec_model_checker(int argc, char **argv){
     }
 
     // Create a tree of the selected processors
-    vproc_tree_create();
+    struct vproc_tree *vproc_root = vproc_tree_create();
 
     if (print_vproc_info) {
         vproc_info_dump();

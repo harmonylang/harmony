@@ -336,8 +336,8 @@ class GenHTML:
         d = {}
         for (k, v) in shared.items():
             val = self.var_convert(v)
-            if val != {}:
-                d[k] = val
+            # if val != {}:
+            d[k] = val
         self.dict_merge(vardir, d)
 
     def run(self, outputfiles):
