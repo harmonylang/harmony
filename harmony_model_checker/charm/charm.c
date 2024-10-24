@@ -97,6 +97,8 @@ struct vproc_info {
     bool selected;       // selected to be used for a worker
 } *vproc_info;
 unsigned int n_vproc_info;
+unsigned int n_sockets = 1;
+unsigned int n_hyper = 2;
 
 // To select virtual processors, the user specifies a disjunct
 // of patterns using the -w flag.  Each pattern is a list of
@@ -2578,6 +2580,9 @@ static bool cpuinfo_addrecord(int processor, int phys_id, int core_id){
         fprintf(stderr, "cpuinfo_addrecord: processor without physical id\n");
         return false;
     }
+    if ((unsigned) phys_id >= n_sockets) {
+        n_sockets = (unsigned) phys_id + 1;
+    }
     if (core_id < 0) {
         fprintf(stderr, "cpuinfo_addrecord: processor without core id\n");
         return false;
@@ -4164,8 +4169,21 @@ int exec_model_checker(int argc, char **argv){
     // If -w is not specified, simply use all virtual processors.
     bool print_vproc_info = false;
     if (worker_flag == NULL) {
-        global.nworkers = n_vproc_info;
-        for (unsigned int i = 0; i < n_vproc_info; i++) {
+        // We make the default a little conservative, essentially trying
+        // to keep one whole core free on each socket or per L3 cache
+        // or something
+        unsigned int skip = n_sockets * n_hyper;
+        if (skip > 4) {
+            skip = 4;
+        }
+        if (skip < n_vproc_info) {
+            global.nworkers = n_vproc_info - skip;
+        }
+        else {
+            global.nworkers = n_vproc_info;
+        }
+
+        for (unsigned int i = 0; i < global.nworkers; i++) {
             vproc_info[i].selected = true;
         }
     }
