@@ -116,32 +116,35 @@ def is_dfa_equivalent(dfa: DFA, hfa: DFA) -> bool:
     )
 
 def read_hfa_file(file):
-    with open(file, encoding='utf-8') as fd:
-        js = json.load(fd, strict=False)
-        initial = js["initial"]
-        states = { "{}" }
-        final = set()
-        symbols = set()
-        for e in js["edges"]:
-            symbol = e["sym"]
-            symbols.add(json_string(js["symbols"][symbol]))
-        transitions = { "{}": { s: "{}" for s in symbols } }
-        for n in js["nodes"]:
-            idx: str = n["idx"]
-            states.add(idx)
-            if n["type"] == "final":
-                final.add(idx)
-            transitions[idx] = { s: "{}" for s in symbols }
-        for e in js["edges"]:
-            symbol = e["sym"]
-            transitions[e["src"]][json_string(js["symbols"][symbol])] = e["dst"]
-    return DFA(
-        states=states,
-        input_symbols=symbols,
-        transitions=transitions,
-        initial_state=initial,
-        final_states=final
-    )
+    try:
+        with open(file, encoding='utf-8') as fd:
+            js = json.load(fd, strict=False)
+            initial = js["initial"]
+            states = { "{}" }
+            final = set()
+            symbols = set()
+            for e in js["edges"]:
+                symbol = e["sym"]
+                symbols.add(json_string(js["symbols"][symbol]))
+            transitions = { "{}": { s: "{}" for s in symbols } }
+            for n in js["nodes"]:
+                idx: str = n["idx"]
+                states.add(idx)
+                if n["type"] == "final":
+                    final.add(idx)
+                transitions[idx] = { s: "{}" for s in symbols }
+            for e in js["edges"]:
+                symbol = e["sym"]
+                transitions[e["src"]][json_string(js["symbols"][symbol])] = e["dst"]
+        return DFA(
+            states=states,
+            input_symbols=symbols,
+            transitions=transitions,
+            initial_state=initial,
+            final_states=final
+        )
+    except IOError:
+        return False
 
 def compare_behaviors(file, dfa):
     # TODO.  The following code can use read_hfa_file() I believe
@@ -280,6 +283,9 @@ def behavior_parse(js, minify, outputfiles, behavior):
     if outputfiles["hfa"] is None:
         return
     dfa = read_hfa_file(outputfiles["hfa"])
+    if not dfa:
+        return
+
     if got_automata and minify:
         intermediate_dfa = dfa
         if True or len(intermediate_dfa.states) > 100: 
