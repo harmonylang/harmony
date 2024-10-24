@@ -76,6 +76,15 @@ struct scc {
     int32_t index, lowlink; // only needed for Tarjan
 };
 
+enum phases {
+    PHASE_START,
+    PHASE_MODELCHECK_END,
+    PHASE_SCAN_END,
+    PHASE_ANALYSIS_END,
+    PHASE_END,
+    PHASE_COUNT
+};
+
 // All global variables of Charm should be in here, at least the ones that
 // are used across multiple modules.
 struct global {
@@ -85,7 +94,7 @@ struct global {
     hvalue_t seqs;                  // sequential variables
     struct worker *workers;         // points to array of workers
     unsigned int nworkers;          // total number of workers
-    double starttime;               // when model checking started for real
+    double times[PHASE_COUNT];      // series of timestamps
     bool no_race_detect;            // do not detect data races
     bool do_not_pin;                // don't pin workers
 
