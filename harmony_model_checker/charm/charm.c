@@ -2398,6 +2398,8 @@ static void do_work1(struct worker *w, struct node *node){
         assert(j == node->nedges);
     }
 
+	node->final = false;	// may be updated later
+
     // About to check invariants etc.
     if (node->initial || state->type != STATE_NORMAL) {
         return;
@@ -2426,6 +2428,8 @@ static void do_work1(struct worker *w, struct node *node){
     if (dead_end) {
         bool final = value_state_all_eternal(state);
         if (final) {
+			node->final = true;
+
             // If an input dfa was specified, it should also be in the
             // final state.
             if (global.dfa != NULL &&
@@ -2435,9 +2439,6 @@ static void do_work1(struct worker *w, struct node *node){
                 f->node = node->parent;
                 f->edge = node_to_parent(node);
                 add_failure(&w->failures, f);
-            }
-            else {
-                node->final = true;
             }
 
             // Check the finally predicates
@@ -3430,7 +3431,7 @@ static inline void node_set_union(struct node_set *ns, struct node_set *ns2){
 // This is the same as tarjan(), except that it only considers
 // epsilon edges in the graph.
 static void tarjan_epsclosure(){
-    struct eps_scc *scc = malloc(global.graph.size * sizeof(*scc));
+    struct eps_scc *scc = calloc(global.graph.size, sizeof(*scc));
     for (unsigned int v = 0; v < global.graph.size; v++) {
         scc[v].index = -1;
     }
