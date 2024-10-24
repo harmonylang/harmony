@@ -2398,6 +2398,8 @@ static void do_work1(struct worker *w, struct node *node){
         assert(j == node->nedges);
     }
 
+	node->final = false;	// may be updated later
+
     // About to check invariants etc.
     if (node->initial || state->type != STATE_NORMAL) {
         return;
@@ -2426,6 +2428,8 @@ static void do_work1(struct worker *w, struct node *node){
     if (dead_end) {
         bool final = value_state_all_eternal(state);
         if (final) {
+			node->final = true;
+
             // If an input dfa was specified, it should also be in the
             // final state.
             if (global.dfa != NULL &&
@@ -2435,9 +2439,6 @@ static void do_work1(struct worker *w, struct node *node){
                 f->node = node->parent;
                 f->edge = node_to_parent(node);
                 add_failure(&w->failures, f);
-            }
-            else {
-                node->final = true;
             }
 
             // Check the finally predicates
@@ -2946,9 +2947,10 @@ static void worker(void *arg){
         // of the nodes.
         if (w->index == 0 % w->nworkers) {
             if (done) {
+                global.times[PHASE_MODELCHECK_END] = after;
+
                 // Compute how much memory was used, approximately
                 unsigned long allocated = global.allocated;
-#define REPORT_WORKERS
 #ifdef REPORT_WORKERS
                 double phase1 = 0, phase2a = 0, phase2b = 0, phase3 = 0, start_wait = 0, middle_wait = 0, end_wait = 0;
                 for (unsigned int i = 0; i < global.nworkers; i++) {
@@ -2975,11 +2977,11 @@ static void worker(void *arg){
                 }
 #else
                 for (unsigned int i = 0; i < global.nworkers; i++) {
-                    struct worker *w = &workers[i];
+                    struct worker *w = &global.workers[i];
                     allocated += w->allocated;
                 }
 #endif // REPORT_WORKERS
-#ifndef notdef
+#ifdef notdef
                 // printf("computing: %lf %lf %lf %lf (%lf %lf %lf %lf); waiting: %lf %lf %lf\n",
                 printf("computing: %lf %lf %lf %lf; waiting: %lf %lf %lf\n",
                     phase1 / global.nworkers,
@@ -2995,7 +2997,9 @@ static void worker(void *arg){
                     end_wait / global.nworkers);
 #endif
 
-                printf("    * %u states (time %.2lfs, mem=%.3lfGB)\n", nstates, gettime() - global.starttime, (double) allocated / (1L << 30));
+                printf("    * %u states (time %.2lfs, mem=%.3lfGB)\n", nstates,
+                    global.times[PHASE_MODELCHECK_END] - global.times[PHASE_START],
+                    (double) allocated / (1L << 30));
                 unsigned int si_hits = 0, si_total = 0;
                 for (unsigned int i = 0; i < global.nworkers; i++) {
                     struct worker *w = &global.workers[i];
@@ -3004,9 +3008,10 @@ static void worker(void *arg){
                 }
 
                 printf("    * %u/%u computations/edges\n", (si_total - si_hits), si_total);
-                printf("    * %u rounds\n", nrounds);
-                printf("    * %u values\n", global.values->count);
-                printf("* Phase 3a: Scan states\n");
+                printf("    * %u rounds, %u values\n",
+                                    nrounds, global.values->count);
+                printf("* Phase 3: Scan states\n");
+                fflush(stdout);
 
                 // Allocate an array for all the nodes.
                 graph_add_multiple(&global.graph, nstates);
@@ -3062,8 +3067,6 @@ static void worker(void *arg){
         w->end_wait += after - before;
         w->end_count++;
         before = after;
-
-        assert(global.graph.size == nstates);
 
         // In parallel, the workers copy the old hash table entries into the
         // new buckets.
@@ -3311,6 +3314,7 @@ static void tarjan(){
                         ndone++;
                         if (ndone - lastdone >= 10000000 && gettime() - now > 3) {
                             printf("        completed %u/%u states (%.2f%%)\n", ndone, global.graph.size, 100.0 * ndone / global.graph.size);
+                            fflush(stdout);
                             now = gettime();
                             lastdone = ndone;
                         }
@@ -3428,7 +3432,7 @@ static inline void node_set_union(struct node_set *ns, struct node_set *ns2){
 // This is the same as tarjan(), except that it only considers
 // epsilon edges in the graph.
 static void tarjan_epsclosure(){
-    struct eps_scc *scc = malloc(global.graph.size * sizeof(*scc));
+    struct eps_scc *scc = calloc(global.graph.size, sizeof(*scc));
     for (unsigned int v = 0; v < global.graph.size; v++) {
         scc[v].index = -1;
     }
@@ -3483,6 +3487,7 @@ static void tarjan_epsclosure(){
                         ndone++;
                         if (ndone - lastdone >= 10000000 && gettime() - now > 3) {
                             printf("        completed %u/%u states (%.2f%%)\n", ndone, global.graph.size, 100.0 * ndone / global.graph.size);
+                            fflush(stdout);
                             now = gettime();
                             lastdone = ndone;
                         }
@@ -3685,6 +3690,7 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
     }
 
     printf("* Phase 4d: output the DFA (%u states)\n", de.next_id);
+    fflush(stdout);
 
     // Now dump the whole thing
     fprintf(hfa, "  \"nodes\": [\n");
@@ -3714,6 +3720,8 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
     return de.next_id;
 }
 
+#ifdef OBSOLETE
+
 // This routine removes all nodes that have a single incoming edge and it's
 // an "epsilon" edge (empty print log).  These are essentially useless nodes.
 static void destutter1(FILE *out, bool suppress){
@@ -3736,7 +3744,6 @@ static void destutter1(FILE *out, bool suppress){
         return;
     }
 
-#ifdef OBSOLETE
     graph->nodes[0]->reachable = true;
     int ndropped = 0;
     for (unsigned int i = 0; i < graph->size; i++) {
@@ -3781,14 +3788,20 @@ static void destutter1(FILE *out, bool suppress){
         }
     }
     // printf("DROPPED %d / %d\n", ndropped, graph->size);
-#endif // OBSOLETE
 }
+#endif // OBSOLETE
 
 // This function finds all the printed symbols in the Kripke structure and
 // assigns a small unique identifier to each.
 // TODO.  Perhaps should replace hvalue_t with this id in the graph while at it
 static struct dict *collect_symbols(struct graph *graph){
     struct dict *symbols = dict_new("symbols", sizeof(unsigned int), 0, 0, false, false);
+
+    // If nothing got printed we're done
+    if (!global.printed_something) {
+        return symbols;
+    }
+
     unsigned int symbol_id = 0;
 
     // Also make a global list
@@ -3816,27 +3829,6 @@ static struct dict *collect_symbols(struct graph *graph){
         }
     }
     return symbols;
-}
-
-struct symbol_env {
-    FILE *out;
-    bool first;
-};
-
-static void print_symbol(void *env, const void *key, unsigned int key_size, void *value){
-    struct symbol_env *se = env;
-    const hvalue_t *symbol = key;
-
-    assert(key_size == sizeof(*symbol));
-    char *p = value_json(*symbol);
-    if (se->first) {
-        se->first = false;
-    }
-    else {
-        fprintf(se->out, ",\n");
-    }
-    fprintf(se->out, "     \"%u\": %s", * (unsigned int *) value, p);
-    free(p);
 }
 
 // Split s into components separated by sep.  Returns #components.
@@ -4016,7 +4008,7 @@ static bool endsWith(char *s, char *suffix){
 //    -w<workers>: specifies what and how many workers to use (see below)
 //
 int exec_model_checker(int argc, char **argv){
-    bool cflag = false, dflag = false, Dflag = false, bflag = false;
+    bool cflag = false, dflag = false, Dflag = false;
     int i, maxtime = 300000000 /* about 10 years */;
     char *outfile = NULL, *hfaout = NULL, *dfafile = NULL, *worker_flag = NULL;
     for (i = 1; i < argc; i++) {
@@ -4048,9 +4040,6 @@ int exec_model_checker(int argc, char **argv){
             break;
         case 'B':
             dfafile = &argv[i][2];
-            break;
-        case 'b':
-            bflag = true;
             break;
         case 'o':
             {
@@ -4273,6 +4262,7 @@ int exec_model_checker(int argc, char **argv){
     else {
         printf("* Phase 2: run the model checker (nworkers = %d)\n", global.nworkers);
     }
+    fflush(stdout);
 
     // Initialize barriers for the three phases (see struct worker definition)
     barrier_init(&global.start_barrier, global.nworkers);
@@ -4484,10 +4474,10 @@ int exec_model_checker(int argc, char **argv){
         thread_create(worker, &workers[i]);
     }
 
-    global.starttime = gettime();
-
     // Run the last worker.  When it terminates the model checking is done.
+    global.times[PHASE_START] = gettime();
     worker(&workers[0]);
+    global.times[PHASE_SCAN_END] = gettime();
 
     // Collect the failures of all the workers.  Also keep track if
     // any of the workers printed something
@@ -4507,60 +4497,12 @@ int exec_model_checker(int argc, char **argv){
     dict_set_sequential(global.values);
     dict_set_sequential(global.computations);
 
-    printf("* Phase 3b: Further analysis\n");
+    printf("* Phase 4: Further analysis\n");
+    fflush(stdout);
 
     bool computed_components = false;
 
     // charm_dump(computed_components);
-
-#ifdef OBSOLETE
-    // Do a cheap check for deadlock if no other errors have been detected
-    // TODO.  Could be parallelized
-    if (global.failures == NULL) {
-        if (global.graph.size > 10000) {
-            printf("    * Check for deadlock\n");
-            fflush(stdout);
-        }
-        for (unsigned int i = 0; i < global.graph.size; i++) {
-            struct node *node = global.graph.nodes[i];
-            struct state *state = node_state(node);
-            bool dead_end = true;
-            struct edge *e = node_edges(node);
-            for (unsigned int j = 0; j < node->nedges; j++, e++) {
-                if (edge_dst(e) != node) {
-                    dead_end = false;
-                    break;
-                }
-            }
-            if (dead_end) {
-                bool final = value_state_all_eternal(state);
-                if (final) {
-                    // If an input dfa was specified, it should also be in the
-                    // final state.
-                    if (global.dfa != NULL &&
-                            !dfa_is_final(global.dfa, state->dfa_state)) {
-                        struct failure *f = new_alloc(struct failure);
-                        f->type = FAIL_BEHAVIOR_FINAL;
-                        f->node = node->parent;
-                        f->edge = node_to_parent(node);
-                        add_failure(&global.failures, f);
-                    }
-                    else {
-                        node->final = true;
-                    }
-                }
-                else {
-                    struct failure *f = new_alloc(struct failure);
-                    f->type = FAIL_DEADLOCK;
-                    f->node = node->parent;
-                    f->edge = node_to_parent(node);
-                    assert(f->edge != NULL);
-                    add_failure(&global.failures, f);
-                }
-            }
-        }
-    }
-#endif
 
     // If no failures were detected (yet), look for deadlock and busy
     // waiting.
@@ -4568,14 +4510,12 @@ int exec_model_checker(int argc, char **argv){
     //        clauses.  This can happen if an eternal thread sits in
     //        a loop like:  await x and y
     if (global.failures == NULL /* && loops_possible */) {
-        if (global.graph.size > 10000) {
-            printf("    * Determine strongly connected components\n");
-            fflush(stdout);
-        }
+        printf("    * Determine strongly connected components\n");
+        fflush(stdout);
         double now = gettime();
         tarjan();
         computed_components = true;
-        printf("        * %u components (%.2lf seconds)\n", global.ncomponents, gettime() - now);
+        printf("    * %u components (%.2lf seconds)\n", global.ncomponents, gettime() - now);
 
 #ifdef DUMP_GRAPH
         printf("digraph Harmony {\n");
@@ -4690,6 +4630,8 @@ int exec_model_checker(int argc, char **argv){
         }
     }
 
+    global.times[PHASE_ANALYSIS_END] = gettime();
+
     // The -D flag is used to dump debug files
     if (Dflag) {
         FILE *df = fopen("charm.gv", "w");
@@ -4734,48 +4676,19 @@ int exec_model_checker(int argc, char **argv){
         charm_dump(computed_components);
     }
 
+    unsigned int dfasize = 0;
     if (global.failures == NULL) {
         printf("    * **No issues found**\n");
-    }
 
-    // Start creating the output (.hco) file.
-    FILE *out = fopen(outfile, "w");
-    if (out == NULL) {
-        fprintf(stderr, "charm: can't create %s\n", outfile);
-        exit(1);
-    }
+        // Output an HFA file
+        if (dfafile == NULL && hfaout != NULL) {
+            // Collect the symbols
+            // TODO.  This can probably be done more efficiently
+            //        (and in parallel if needed)
+            printf("* Phase 4a: convert Kripke structure to DFA\n");
+            fflush(stdout);
+            struct dict *symbols = collect_symbols(&global.graph);
 
-    global.pretty = dict_lookup(jv->u.map, "pretty", 6);
-    assert(global.pretty->type == JV_LIST);
-
-    fprintf(out, "{\n");
-    fprintf(out, "  \"nstates\": %d,\n", global.graph.size);
-
-    // In case no issues were found, we output a summary of the Kripke structure
-    // with the 'print' outputs.
-    if (global.failures == NULL) {
-        printf("* Phase 4: write results to %s\n", outfile);
-        fflush(stdout);
-
-        fprintf(out, "  \"issue\": \"No issues\",\n");
-        fprintf(out, "  \"hvm\": ");
-        json_dump(jv, out, 2);
-        fprintf(out, ",\n");
-
-        // Reduce the output graph by removing nodes with only
-        // one incoming edge that is an epsilon edge
-        destutter1(out, dfafile != NULL && !bflag);
-
-        // Output the symbols
-        // TODO.  This can probably be done more efficiently (and in parallel if needed)
-        struct dict *symbols = collect_symbols(&global.graph);
-        fprintf(out, "  \"symbols\": {\n");
-        struct symbol_env se = { .out = out, .first = true };
-        dict_iter(symbols, print_symbol, &se);
-        fprintf(out, "\n");
-        fprintf(out, "  },\n");
-
-        if (hfaout != NULL) {
             FILE *hfa = fopen(hfaout, "w");
             if (hfa == NULL) {
                 fprintf(stderr, "%s: can't create %s\n", argv[0], hfaout);
@@ -4796,15 +4709,52 @@ int exec_model_checker(int argc, char **argv){
                 free(p);
             }
             fprintf(hfa, "  ],\n");
-            printf("* Phase 4b: epsilon closure\n");
-            epsilon_closure_prep();     // move epsilon edges to start of each node
-            tarjan_epsclosure();
-            printf("* Phase 4c: convert NFA to DFA\n");
-            unsigned int size = nfa2dfa(hfa, symbols);
+            if (global.printed_something) {
+                printf("* Phase 4b: epsilon closure\n");
+                fflush(stdout);
+                epsilon_closure_prep();     // move epsilon edges to start of each node
+                tarjan_epsclosure();
+                printf("* Phase 4c: convert NFA to DFA\n");
+                fflush(stdout);
+                dfasize = nfa2dfa(hfa, symbols);
+            }
+            else {
+                fprintf(hfa, "  \"nodes\": [\n");
+                fprintf(hfa, "    { \"idx\": \"0\", \"type\": \"final\" }\n");
+                fprintf(hfa, "  ],\n");
+                fprintf(hfa, "  \"edges\": []\n");
+            }
             fprintf(hfa, "}\n");
             fclose(hfa);
-            fprintf(out, "  \"dfasize\": %u,\n", size);
         }
+    }
+
+    printf("* Phase 5: write results to %s\n", outfile);
+    fflush(stdout);
+
+    // Start creating the output (.hco) file.
+    FILE *out = fopen(outfile, "w");
+    if (out == NULL) {
+        fprintf(stderr, "charm: can't create %s\n", outfile);
+        exit(1);
+    }
+
+    global.pretty = dict_lookup(jv->u.map, "pretty", 6);
+    assert(global.pretty->type == JV_LIST);
+
+    fprintf(out, "{\n");
+    fprintf(out, "  \"nstates\": %d,\n", global.graph.size);
+
+    // In case no issues were found, we output a summary of the Kripke structure
+    // with the 'print' outputs.
+    if (global.failures == NULL) {
+        fprintf(out, "  \"issue\": \"No issues\",\n");
+        if (hfaout != 0) {
+            fprintf(out, "  \"dfasize\": %u,\n", dfasize);
+        }
+        fprintf(out, "  \"hvm\": ");
+        json_dump(jv, out, 2);
+        fprintf(out, ",\n");
 
         fprintf(out, "  \"profile\": [\n");
         for (unsigned int pc = 0; pc < global.code.len; pc++) {
@@ -4891,9 +4841,6 @@ int exec_model_checker(int argc, char **argv){
         default:
             panic("main: bad fail type");
         }
-
-        printf("* Phase 4: write results to %s\n", outfile);
-        fflush(stdout);
 
         fprintf(out, "  \"hvm\": ");
         json_dump(jv, out, 2);
