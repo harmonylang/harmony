@@ -4203,7 +4203,7 @@ int exec_model_checker(int argc, char **argv){
         }
 
         // See if the workers are specified.
-        if (*worker_flag == '\0') {
+        if (*worker_flag == '\0' || strcmp(worker_flag, "@") == 0) {
             if (global.nworkers == 0) {
                 global.nworkers = n_vproc_info;
             }
