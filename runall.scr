@@ -85,9 +85,9 @@ $HARMONY --noweb -mrwlock=rwlock_cv code/rwlock_test1.hny
 
 $HARMONY --noweb -mrwlock=rwlock_cv -msynch=synchS code/rwlock_test1.hny
 
-$HARMONY --noweb -mrwlock=rwlock_fair code/rwlock_test1.hny
+$HARMONY --noweb -mrwlock=rwlock_cv_fair code/rwlock_test1.hny
 
-$HARMONY --noweb -mrwlock=rwlock_fair -msynch=synchS code/rwlock_test1.hny
+$HARMONY --noweb -mrwlock=rwlock_cv_fair -msynch=synchS code/rwlock_test1.hny
 
 $HARMONY --noweb -o rw.hfa -cNOPS=2 code/rwlock_btest.hny
 
@@ -97,7 +97,7 @@ $HARMONY --noweb -o rw.hfa -cNOPS=2 code/rwlock_btest.hny
 
 $HARMONY --noweb -B rw.hfa -cNOPS=2 -m rwlock=rwlock_cv code/rwlock_btest.hny
 
-$HARMONY --noweb -B rw.hfa -cNOPS=2 -m rwlock=rwlock_fair code/rwlock_btest.hny
+$HARMONY --noweb -B rw.hfa -cNOPS=2 -m rwlock=rwlock_cv_fair code/rwlock_btest.hny
 
 $HARMONY --noweb -B rw.hfa -cNOPS=2 -m rwlock=rwlock_cheat code/rwlock_btest.hny
 
