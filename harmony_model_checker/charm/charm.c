@@ -70,8 +70,8 @@
 // Convenient constant
 #define MAX_STATE_SIZE (sizeof(struct state) + MAX_CONTEXT_BAG * (sizeof(hvalue_t) + 1))
 
-// Buffer per shard
-#define STATE_BUFFER_HWM    50000
+// Average buffer per shard per worker
+#define STATE_BUFFER_HWM    50
 
 #define SHARDS_PER_WORKER   1
 
@@ -2666,7 +2666,7 @@ static void do_work(struct worker *w, unsigned int shard_index){
             }
 
             // Stop if about to run out of state buffer space
-            if (w->sb_index > STATE_BUFFER_HWM) {
+            if (w->sb_index > STATE_BUFFER_HWM * global.nworkers) {
                 break;
             }
 
