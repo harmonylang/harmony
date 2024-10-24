@@ -3067,8 +3067,6 @@ static void worker(void *arg){
         w->end_count++;
         before = after;
 
-        assert(global.graph.size == nstates);
-
         // In parallel, the workers copy the old hash table entries into the
         // new buckets.
         dict_make_stable(global.values, w->index);
@@ -3795,6 +3793,12 @@ static void destutter1(FILE *out, bool suppress){
 // TODO.  Perhaps should replace hvalue_t with this id in the graph while at it
 static struct dict *collect_symbols(struct graph *graph){
     struct dict *symbols = dict_new("symbols", sizeof(unsigned int), 0, 0, false, false);
+
+    // If nothing got printed we're done
+    if (global.printed_something) {
+        return symbols;
+    }
+
     unsigned int symbol_id = 0;
 
     // Also make a global list
@@ -4001,7 +4005,7 @@ static bool endsWith(char *s, char *suffix){
 //    -w<workers>: specifies what and how many workers to use (see below)
 //
 int exec_model_checker(int argc, char **argv){
-    bool cflag = false, dflag = false, Dflag = false, bflag = false;
+    bool cflag = false, dflag = false, Dflag = false;
     int i, maxtime = 300000000 /* about 10 years */;
     char *outfile = NULL, *hfaout = NULL, *dfafile = NULL, *worker_flag = NULL;
     for (i = 1; i < argc; i++) {
@@ -4033,9 +4037,6 @@ int exec_model_checker(int argc, char **argv){
             break;
         case 'B':
             dfafile = &argv[i][2];
-            break;
-        case 'b':
-            bflag = true;
             break;
         case 'o':
             {
@@ -4676,6 +4677,7 @@ int exec_model_checker(int argc, char **argv){
     if (global.failures == NULL) {
         printf("    * **No issues found**\n");
 
+        // Output an HFA file
         if (hfaout != NULL) {
             // Collect the symbols
             // TODO.  This can probably be done more efficiently
