@@ -172,7 +172,7 @@ struct worker {
 
     unsigned int si_total, si_hits;
     struct edge_list *el_free;
-    bool loops_possible;         // loops in Kripke structure are possible
+    bool cycles_possible;         // loops in Kripke structure are possible
     bool printed_something;      // worker executed Print op
 
     // Statistics about the three phases for optimization purposes
@@ -2550,7 +2550,7 @@ static void do_work2(struct worker *w){
             // See if the node points sideways or backwards, in which
             // case cycles in the graph are possible
             else if (next != sh->node && next->len <= sh->node->len) {
-                w->loops_possible = true;
+                w->cycles_possible = true;
             }
         }
     }
@@ -4493,10 +4493,15 @@ int exec_model_checker(int argc, char **argv){
     global.times[PHASE_SCAN_END] = gettime();
 
     // Collect the failures of all the workers.  Also keep track if
-    // any of the workers printed something
+    // any of the workers printed something and if there may be
+    // cycles in the Kripke structure
+    bool cycles_possible = false;
     for (unsigned int i = 0; i < global.nworkers; i++) {
         if (workers[i].printed_something) {
             global.printed_something = true;
+        }
+        if (workers[i].cycles_possible) {
+            cycles_possible = true;
         }
         collect_failures(&workers[i]);
     }
@@ -4511,6 +4516,9 @@ int exec_model_checker(int argc, char **argv){
     dict_set_sequential(global.computations);
 
     printf("* Phase 4: Further analysis\n");
+    if (!cycles_possible) {
+        printf("    * cycles impossible\n");
+    }
     fflush(stdout);
 
     bool computed_components = false;
@@ -4521,10 +4529,7 @@ int exec_model_checker(int argc, char **argv){
 
     // If no failures were detected (yet), look for deadlock and busy
     // waiting.
-    // TODO.  Also look for other final states and evaluate more finally
-    //        clauses.  This can happen if an eternal thread sits in
-    //        a loop like:  await x and y
-    if (global.failures == NULL /* && loops_possible */) {
+    if (global.failures == NULL && cycles_possible) {
         printf("    * Determine strongly connected components\n");
         fflush(stdout);
         double now = gettime();
