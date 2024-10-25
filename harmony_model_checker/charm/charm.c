@@ -3635,6 +3635,7 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
     struct dfa_env de;
     double start = gettime();
 
+    global.times[PHASE_NFA2DFA_START] = start;
     de.dfa = dict_new("nfa2dfa", sizeof(struct dfa_node), global.graph.size, 0, false, false);
     de.next_id = 0;
     de.allocated = global.graph.size;   // decent initial estimate
@@ -3690,11 +3691,13 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
 
         todo_index += 1;
     }
+    global.times[PHASE_NFA2DFA_END] = gettime();
 
     printf("* Phase 4d: output the DFA (%u states)\n", de.next_id);
     fflush(stdout);
 
     // Now dump the whole thing
+    global.times[PHASE_DFADUMP_START] = gettime();
     fprintf(hfa, "  \"nodes\": [\n");
     for (unsigned int i = 0; i < de.next_id; i++) {
         struct dict_assoc *da = de.todo[i];
@@ -3718,6 +3721,7 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
     }
     fprintf(hfa, "\n");
     fprintf(hfa, "  ]\n");
+    global.times[PHASE_DFADUMP_END] = gettime();
 
     return de.next_id;
 }
@@ -4693,14 +4697,15 @@ int exec_model_checker(int argc, char **argv){
 
         // Output an HFA file
         if (dfafile == NULL && hfaout != NULL) {
-            global.times[PHASE_NFA2DFA_START] = gettime();
-
             // Collect the symbols
             // TODO.  This can probably be done more efficiently
             //        (and in parallel if needed)
             printf("* Phase 4a: convert Kripke structure to DFA\n");
             fflush(stdout);
+
+            global.times[PHASE_COLLECTSYM_START] = gettime();
             struct dict *symbols = collect_symbols(&global.graph);
+            global.times[PHASE_COLLECTSYM_END] = gettime();
 
             FILE *hfa = fopen(hfaout, "w");
             if (hfa == NULL) {
@@ -4725,8 +4730,12 @@ int exec_model_checker(int argc, char **argv){
             if (global.printed_something) {
                 printf("* Phase 4b: epsilon closure\n");
                 fflush(stdout);
+                global.times[PHASE_EPSCLOSPREP_START] = gettime();
                 epsilon_closure_prep();     // move epsilon edges to start of each node
+                global.times[PHASE_EPSCLOSPREP_END] =
+                global.times[PHASE_EPSCLOSURE_START] = gettime();
                 tarjan_epsclosure();
+                global.times[PHASE_EPSCLOSURE_END] = gettime();
                 printf("* Phase 4c: convert NFA to DFA\n");
                 fflush(stdout);
                 dfasize = nfa2dfa(hfa, symbols);
@@ -4739,7 +4748,6 @@ int exec_model_checker(int argc, char **argv){
             }
             fprintf(hfa, "}\n");
             fclose(hfa);
-            global.times[PHASE_NFA2DFA_END] = gettime();
         }
     }
 
@@ -4908,8 +4916,12 @@ int exec_model_checker(int argc, char **argv){
         time_info("model checking", PHASE_MODELCHECK_START, PHASE_MODELCHECK_END);
         time_info("scanning states", PHASE_SCAN_START, PHASE_SCAN_END);
         time_info("analysis", PHASE_ANALYSIS_START, PHASE_ANALYSIS_END);
-        time_info("nfa to dfa", PHASE_NFA2DFA_START, PHASE_NFA2DFA_END);
-        time_info("write output", PHASE_DUMP_START, PHASE_DUMP_END);
+        time_info("collect symbols", PHASE_COLLECTSYM_START, PHASE_COLLECTSYM_END);
+        time_info("eps closure prep", PHASE_EPSCLOSPREP_START, PHASE_EPSCLOSPREP_END);
+        time_info("epsilon closure", PHASE_EPSCLOSURE_START, PHASE_EPSCLOSURE_END);
+        time_info("nfa to dfa conversion", PHASE_NFA2DFA_START, PHASE_NFA2DFA_END);
+        time_info("write hfa file", PHASE_DFADUMP_START, PHASE_DFADUMP_END);
+        time_info("write hco file", PHASE_DUMP_START, PHASE_DUMP_END);
     }
 
     return 0;
