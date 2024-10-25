@@ -172,7 +172,7 @@ struct worker {
 
     unsigned int si_total, si_hits;
     struct edge_list *el_free;
-    bool cycles_possible;         // loops in Kripke structure are possible
+    bool cycles_possible;        // loops in Kripke structure are possible
     bool printed_something;      // worker executed Print op
 
     // Statistics about the three phases for optimization purposes
