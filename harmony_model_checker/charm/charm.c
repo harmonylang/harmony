@@ -2484,14 +2484,19 @@ static double percent(unsigned int x, unsigned int y){
     return 100.0 * x / y;
 }
 
-static inline void report_reset(){
+static inline void report_reset(char *header){
     global.last_report = gettime();
+    global.lazy_header = header;
 }
 
 // See if we should report, which we do periodically during long computations.
 static inline bool report_time(){
     double now = gettime();
     if (now - global.last_report > 3) {
+        if (global.lazy_header != NULL) {
+            printf("%s\n", global.lazy_header);
+            global.lazy_header = NULL;
+        }
         global.last_report = now;
         return true;
     }
@@ -3128,7 +3133,7 @@ static void worker(void *arg){
                     assert(local_node_id < global.graph.size);
                     global.graph.nodes[local_node_id++] = node;
 
-                    // Pacifier
+                    // Pacifier for scanning states
                     if (w->index == 0 && gettime() - before > 3) {
                         printf("  Progress %.1f%%\n", percent(total, w->shard.tb_size));
                         before = gettime();
@@ -3149,10 +3154,9 @@ static void worker(void *arg){
 // the epsilon edges go first.  Also count the number of epsilon edges of
 // each node.
 static void epsilon_closure_prep(){
-    report_reset();
     global.neps = malloc(sizeof(*global.neps) * global.graph.size);
     for (unsigned int i = 0; i < global.graph.size; i++) {
-        if (report_time()) {
+        if (i % 100 == 0 && report_time()) {
             printf("    Prepping epsilon closure %u/%u = %.2f%%\n", i,
                     global.graph.size, percent(i, global.graph.size));
             fflush(stdout);
@@ -3309,7 +3313,6 @@ static void tarjan(){
     unsigned int i = 0, comp_id = 0;
     struct stack *stack = calloc(1, sizeof(*stack));
     struct stack *call_stack = calloc(1, sizeof(*call_stack));
-    double now = gettime();
     unsigned int ndone = 0, lastdone = 0;
 
     // Only need to iterate once as the graph is connected
@@ -3320,6 +3323,9 @@ static void tarjan(){
             while (!stack_empty(call_stack)) {
                 unsigned int pi;
                 n = stack_pop(&call_stack, &pi);
+                if (report_time()) {
+                    printf("        Node %u\n", n->id);
+                }
                 if (pi == 0) {
                     scc[n->id].index = i;
                     scc[n->id].lowlink = i;
@@ -3354,10 +3360,9 @@ static void tarjan(){
                 else if (scc[n->id].lowlink == scc[n->id].index) {
                     for (;;) {
                         ndone++;
-                        if (ndone - lastdone >= 10000000 && gettime() - now > 3) {
+                        if (ndone - lastdone >= 10000000 && report_time()) {
                             printf("        completed %u/%u states (%.2f%%)\n", ndone, global.graph.size, percent(ndone, global.graph.size));
                             fflush(stdout);
-                            now = gettime();
                             lastdone = ndone;
                         }
                         struct node *n2 = stack_pop(&stack, NULL);
@@ -4570,8 +4575,7 @@ int exec_model_checker(int argc, char **argv){
     // If no failures were detected (yet), look for deadlock and busy
     // waiting.
     if (global.failures == NULL && cycles_possible) {
-        printf("    * Determine strongly connected components\n");
-        fflush(stdout);
+        report_reset("    * Determine strongly connected components");
         double now = gettime();
         tarjan();
         computed_components = true;
@@ -4600,12 +4604,13 @@ int exec_model_checker(int argc, char **argv){
         // states in the component have the same variable assignment, but also
         // all remaining contexts must be 'eternal' (i.e., all normal threads
         // must have terminated in each state).
-        printf("    * Look for non-terminating states\n");
-        report_reset();
+        report_reset("    * Look for non-terminating states");
         struct component *components = calloc(global.ncomponents, sizeof(*components));
         for (unsigned int i = 0; i < global.graph.size; i++) {
-            if (report_time()) {
-                printf("  Scanning for sink components %.1f%%\n", percent(i, global.graph.size));
+            if (i % 1000 == 0 && report_time()) {
+                printf("        Scanning for sink components %.1f%%\n",
+                                            percent(i, global.graph.size));
+                fflush(stdout);
             }
             assert(global.scc[i].component < global.ncomponents);
             struct component *comp = &components[global.scc[i].component];
@@ -4645,8 +4650,9 @@ int exec_model_checker(int argc, char **argv){
         // eternal threads are blocked and all other threads have terminated.
         // It also means that these are final states.
         for (unsigned int i = 0; i < global.ncomponents; i++) {
-            if (report_time()) {
-                printf("  Scanning for final states %.1f%%\n", percent(i, global.ncomponents));
+            if (i % 1000 == 0 && report_time()) {
+                printf("        Scanning for final states %.1f%%\n", percent(i, global.ncomponents));
+                fflush(stdout);
             }
             struct component *comp = &components[i];
             assert(comp->size > 0);
@@ -4662,8 +4668,9 @@ int exec_model_checker(int argc, char **argv){
             // Report the states in bad components as non-terminating.
             int nbad = 0;
             for (unsigned int i = 0; i < global.graph.size; i++) {
-                if (report_time()) {
-                    printf("  Scanning for non-terminating states %.1f%%\n", percent(i, global.graph.size));
+                if (i % 10000 == 0 && report_time()) {
+                    printf("        Scanning for non-terminating states %.1f%%\n", percent(i, global.graph.size));
+                    fflush(stdout);
                 }
                 struct node *node = global.graph.nodes[i];
                 if (!components[global.scc[i].component].good) {
@@ -4693,8 +4700,9 @@ int exec_model_checker(int argc, char **argv){
                 }
                 for (unsigned int i = 0; i < global.graph.size; i++) {
                     if (components[global.scc[i].component].size > 1) {
-                        if (report_time()) {
-                            printf("  Scanning for busy-waiting states %.1f%%\n", percent(i, global.graph.size));
+                        if (i % 100 == 0 && report_time()) {
+                            printf("        Scanning for busy-waiting states %.1f%%\n", percent(i, global.graph.size));
+                            fflush(stdout);
                         }
                         detect_busywait(global.graph.nodes[i]);
                     }

@@ -111,6 +111,7 @@ struct global {
     bool no_race_detect;            // do not detect data races
     bool do_not_pin;                // don't pin workers
     double last_report;             // used for periodic reporting
+    char *lazy_header;              // report header
 
     // The worker thread loops through three phases:
     //  1: evaluate states on the todo list
