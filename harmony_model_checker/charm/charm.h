@@ -76,26 +76,12 @@ struct scc {
     int32_t index, lowlink; // only needed for Tarjan
 };
 
-enum phases {
-    PHASE_MODELCHECK_START,
-    PHASE_MODELCHECK_END,
-    PHASE_SCAN_START,
-    PHASE_SCAN_END,
-    PHASE_ANALYSIS_START,
-    PHASE_ANALYSIS_END,
-    PHASE_COLLECTSYM_START,
-    PHASE_COLLECTSYM_END,
-    PHASE_EPSCLOSPREP_START,
-    PHASE_EPSCLOSPREP_END,
-    PHASE_EPSCLOSURE_START,
-    PHASE_EPSCLOSURE_END,
-    PHASE_NFA2DFA_START,
-    PHASE_NFA2DFA_END,
-    PHASE_DFADUMP_START,
-    PHASE_DFADUMP_END,
-    PHASE_DUMP_START,
-    PHASE_DUMP_END,
-    PHASE_COUNT
+#define MAX_PHASES  20
+
+struct phase {
+    char *descr;
+    double start, finish;
+    bool in_progress;
 };
 
 // All global variables of Charm should be in here, at least the ones that
@@ -107,11 +93,13 @@ struct global {
     hvalue_t seqs;                  // sequential variables
     struct worker *workers;         // points to array of workers
     unsigned int nworkers;          // total number of workers
-    double times[PHASE_COUNT];      // series of timestamps
+    struct phase phases[MAX_PHASES];// for reporting
+    unsigned int nphases;           // ditto
     bool no_race_detect;            // do not detect data races
     bool do_not_pin;                // don't pin workers
     double last_report;             // used for periodic reporting
     char *lazy_header;              // report header
+    double start_model_checking;    // time when model checking started
 
     // The worker thread loops through three phases:
     //  1: evaluate states on the todo list
