@@ -110,6 +110,7 @@ struct global {
     double times[PHASE_COUNT];      // series of timestamps
     bool no_race_detect;            // do not detect data races
     bool do_not_pin;                // don't pin workers
+    double last_report;             // used for periodic reporting
 
     // The worker thread loops through three phases:
     //  1: evaluate states on the todo list

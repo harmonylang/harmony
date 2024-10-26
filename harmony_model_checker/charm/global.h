@@ -33,7 +33,6 @@ typedef uint64_t            hvalue_t;
 
 void panic(char *s);
 unsigned long to_ulong(const char *p, int len);
-double gettime();
 
 // Sometimes during allocation it is more efficient to allocate in "chunks".
 // Here is a chunk size that some Charm functions use.

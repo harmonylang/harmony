@@ -33,6 +33,10 @@
 #include <assert.h>
 #include <time.h>
 
+#if !defined(TIME_UTC) || defined(__APPLE__)
+#include <sys/time.h>
+#endif
+
 #include "global.h"
 #include "thread.h"
 #include "value.h"
@@ -2463,6 +2467,37 @@ static void do_work1(struct worker *w, struct node *node){
     }
 }
 
+// Get the current time as a double value for easy computation
+static inline double gettime(){
+#if defined(TIME_UTC) && !defined(__APPLE__)
+    struct timespec ts;
+    timespec_get(&ts, TIME_UTC);
+    return ts.tv_sec + (double) ts.tv_nsec / 1000000000;
+#else
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return tv.tv_sec + (double) tv.tv_usec / 1000000;
+#endif
+}
+
+static double percent(unsigned int x, unsigned int y){
+    return 100.0 * x / y;
+}
+
+static inline void report_reset(){
+    global.last_report = gettime();
+}
+
+// See if we should report, which we do periodically during long computations.
+static inline bool report_time(){
+    double now = gettime();
+    if (now - global.last_report > 3) {
+        global.last_report = now;
+        return true;
+    }
+    return false;
+}
+
 // A worker thread executes this in "phase 1" of the worker loop, when all
 // workers are evaluating states and their transitions.  The states are
 // stored in global.graph as an array.  global.graph.size contains the
@@ -3080,7 +3115,6 @@ static void worker(void *arg){
         before = after;
 
         // If done, fill in the graph table
-        // TODO: check for race condition here?
         if (done) {
             unsigned int total = 0;
             for (struct results_block *rb = w->shard.todo_buffer;
@@ -3096,7 +3130,7 @@ static void worker(void *arg){
 
                     // Pacifier
                     if (w->index == 0 && gettime() - before > 3) {
-                        printf("  Progress %.1f%%\n", 100.0 * total / w->shard.tb_size);
+                        printf("  Progress %.1f%%\n", percent(total, w->shard.tb_size));
                         before = gettime();
                     }
 
@@ -3115,8 +3149,14 @@ static void worker(void *arg){
 // the epsilon edges go first.  Also count the number of epsilon edges of
 // each node.
 static void epsilon_closure_prep(){
+    report_reset();
     global.neps = malloc(sizeof(*global.neps) * global.graph.size);
     for (unsigned int i = 0; i < global.graph.size; i++) {
+        if (report_time()) {
+            printf("    Prepping epsilon closure %u/%u = %.2f%%\n", i,
+                    global.graph.size, percent(i, global.graph.size));
+            fflush(stdout);
+        }
         struct node *n = global.graph.nodes[i];
         struct edge *edges = node_edges(n);
         unsigned int neps = 0;
@@ -3315,7 +3355,7 @@ static void tarjan(){
                     for (;;) {
                         ndone++;
                         if (ndone - lastdone >= 10000000 && gettime() - now > 3) {
-                            printf("        completed %u/%u states (%.2f%%)\n", ndone, global.graph.size, 100.0 * ndone / global.graph.size);
+                            printf("        completed %u/%u states (%.2f%%)\n", ndone, global.graph.size, percent(ndone, global.graph.size));
                             fflush(stdout);
                             now = gettime();
                             lastdone = ndone;
@@ -3488,7 +3528,7 @@ static void tarjan_epsclosure(){
                     for (;;) {
                         ndone++;
                         if (ndone - lastdone >= 10000000 && gettime() - now > 3) {
-                            printf("        completed %u/%u states (%.2f%%)\n", ndone, global.graph.size, 100.0 * ndone / global.graph.size);
+                            printf("        completed %u/%u states (%.2f%%)\n", ndone, global.graph.size, percent(ndone, global.graph.size));
                             fflush(stdout);
                             now = gettime();
                             lastdone = ndone;
@@ -3651,7 +3691,7 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
     while (todo_index < de.next_id) {
         // Pacifier
         if (gettime() - start > 3) {
-            printf("  NFA to DFA progress %u/%u=%.1f%%\n", todo_index, de.next_id, 100.0 * todo_index / de.next_id);
+            printf("  NFA to DFA progress %u/%u=%.1f%%\n", todo_index, de.next_id, percent(todo_index, de.next_id));
             start = gettime();
         }
 
