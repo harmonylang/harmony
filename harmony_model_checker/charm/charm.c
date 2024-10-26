@@ -4600,8 +4600,13 @@ int exec_model_checker(int argc, char **argv){
         // states in the component have the same variable assignment, but also
         // all remaining contexts must be 'eternal' (i.e., all normal threads
         // must have terminated in each state).
+        printf("    * Look for non-terminating states\n");
+        report_reset();
         struct component *components = calloc(global.ncomponents, sizeof(*components));
         for (unsigned int i = 0; i < global.graph.size; i++) {
+            if (report_time()) {
+                printf("  Scanning for sink components %.1f%%\n", percent(i, global.graph.size));
+            }
             assert(global.scc[i].component < global.ncomponents);
             struct component *comp = &components[global.scc[i].component];
             struct node *node = global.graph.nodes[i];
@@ -4640,6 +4645,9 @@ int exec_model_checker(int argc, char **argv){
         // eternal threads are blocked and all other threads have terminated.
         // It also means that these are final states.
         for (unsigned int i = 0; i < global.ncomponents; i++) {
+            if (report_time()) {
+                printf("  Scanning for final states %.1f%%\n", percent(i, global.ncomponents));
+            }
             struct component *comp = &components[i];
             assert(comp->size > 0);
             if (!comp->good && comp->all_same) {
@@ -4654,6 +4662,9 @@ int exec_model_checker(int argc, char **argv){
             // Report the states in bad components as non-terminating.
             int nbad = 0;
             for (unsigned int i = 0; i < global.graph.size; i++) {
+                if (report_time()) {
+                    printf("  Scanning for non-terminating states %.1f%%\n", percent(i, global.graph.size));
+                }
                 struct node *node = global.graph.nodes[i];
                 if (!components[global.scc[i].component].good) {
                     nbad++;
@@ -4677,12 +4688,14 @@ int exec_model_checker(int argc, char **argv){
             // If there are no non-terminating states, look for busy-waiting
             // states.
             if (nbad == 0 && !cflag) {
-                // TODO.  Why are we clearing the visited flags??
                 for (unsigned int i = 0; i < global.graph.size; i++) {
                     global.graph.nodes[i]->visited = false;
                 }
                 for (unsigned int i = 0; i < global.graph.size; i++) {
                     if (components[global.scc[i].component].size > 1) {
+                        if (report_time()) {
+                            printf("  Scanning for busy-waiting states %.1f%%\n", percent(i, global.graph.size));
+                        }
                         detect_busywait(global.graph.nodes[i]);
                     }
                 }
