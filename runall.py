@@ -107,7 +107,7 @@ for t in tests:
     print("Running harmony %s"%t["args"], flush=True)
     start = time.time()
     args = t["args"].split(" ")
-    cp = subprocess.run(["harmony", "--noweb"] + args, capture_output=True)
+    cp = subprocess.run(["./harmony", "--noweb"] + args, capture_output=True)
     end = time.time()
     if cp.returncode == 0:
         (base, ext) = os.path.splitext(args[-1])
