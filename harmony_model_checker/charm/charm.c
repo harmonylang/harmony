@@ -3329,6 +3329,7 @@ static void tarjan(){
     struct stack *stack = calloc(1, sizeof(*stack));
     struct stack *call_stack = calloc(1, sizeof(*call_stack));
     unsigned int ndone = 0, lastdone = 0;
+    unsigned int report = 0;
 
     // Only need to iterate once as the graph is connected
     for (unsigned int v = 0; v < 1 /*global.graph.size*/; v++) {
@@ -3338,8 +3339,9 @@ static void tarjan(){
             while (!stack_empty(call_stack)) {
                 unsigned int pi;
                 n = stack_pop(&call_stack, &pi);
-                if (report_time()) {
+                if (++report > 1000 && report_time()) {
                     printf("        Node %u\n", n->id);
+                    report = 0;
                 }
                 if (pi == 0) {
                     scc[n->id].index = i;
@@ -3504,6 +3506,7 @@ static void tarjan_epsclosure(){
     struct stack *call_stack = calloc(1, sizeof(*call_stack));
     double now = gettime();
     unsigned int ndone = 0, lastdone = 0;
+    unsigned int report = 0;
 
     for (unsigned int v = 0; v < global.graph.size; v++) {
         struct node *n = global.graph.nodes[v];
@@ -3512,6 +3515,10 @@ static void tarjan_epsclosure(){
             while (!stack_empty(call_stack)) {
                 unsigned int pi;
                 n = stack_pop(&call_stack, &pi);
+                if (++report > 1000 && report_time()) {
+                    printf("        Node %u\n", n->id);
+                    report = 0;
+                }
                 if (pi == 0) {
                     scc[n->id].index = i;
                     scc[n->id].lowlink = i;
@@ -4340,7 +4347,7 @@ int exec_model_checker(int argc, char **argv){
     }
     fflush(stdout);
 
-    phase_start("Initialize data structure");
+    phase_start("Initialize data structures");
 
     // Initialize barriers for the three phases (see struct worker definition)
     barrier_init(&global.start_barrier, global.nworkers);
