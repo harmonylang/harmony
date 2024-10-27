@@ -25,6 +25,8 @@ args.add_argument("-a", action="store_true",
                   help="list machine code (with labels)")
 args.add_argument("-b", action="store_true",
                   help="enable behavior subset check")
+args.add_argument("-T", action="store_true",
+                  help="print timing info")
 args.add_argument("-A", action="store_true",
                   help="list machine code (without labels)")
 args.add_argument("-B", type=str, help="check against the given behavior")
@@ -123,6 +125,8 @@ def handle_hvm(ns, output_files, parse_code_only, code, scope):
         charm_options.append("-B" + ns.B)
     if ns.b:
         charm_options.append("-b")
+    if ns.T:
+        charm_options.append("-T")
     if ns.w:
         charm_options.append("-w" + ns.w)
     if ns.D:

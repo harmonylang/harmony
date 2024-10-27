@@ -33,6 +33,10 @@
 #include <assert.h>
 #include <time.h>
 
+#if !defined(TIME_UTC) || defined(__APPLE__)
+#include <sys/time.h>
+#endif
+
 #include "global.h"
 #include "thread.h"
 #include "value.h"
@@ -172,7 +176,7 @@ struct worker {
 
     unsigned int si_total, si_hits;
     struct edge_list *el_free;
-    bool loops_possible;         // loops in Kripke structure are possible
+    bool cycles_possible;        // loops in Kripke structure are possible
     bool printed_something;      // worker executed Print op
 
     // Statistics about the three phases for optimization purposes
@@ -2463,6 +2467,57 @@ static void do_work1(struct worker *w, struct node *node){
     }
 }
 
+// Get the current time as a double value for easy computation
+static inline double gettime(){
+#if defined(TIME_UTC) && !defined(__APPLE__)
+    struct timespec ts;
+    timespec_get(&ts, TIME_UTC);
+    return ts.tv_sec + (double) ts.tv_nsec / 1000000000;
+#else
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return tv.tv_sec + (double) tv.tv_usec / 1000000;
+#endif
+}
+
+static double percent(unsigned int x, unsigned int y){
+    return 100.0 * x / y;
+}
+
+static void phase_start(char *descr){
+    if (global.nphases == MAX_PHASES) {
+        panic("too many phases");
+    }
+    assert(!global.phases[global.nphases].in_progress);
+    global.phases[global.nphases].in_progress = true;
+    global.phases[global.nphases].descr = descr;
+    global.phases[global.nphases].start = gettime();
+}
+
+static void phase_finish(){
+    assert(global.phases[global.nphases].in_progress);
+    global.phases[global.nphases++].finish = gettime();
+}
+
+static inline void report_reset(char *header){
+    global.last_report = gettime();
+    global.lazy_header = header;
+}
+
+// See if we should report, which we do periodically during long computations.
+static inline bool report_time(){
+    double now = gettime();
+    if (now - global.last_report > 3) {
+        if (global.lazy_header != NULL) {
+            printf("%s\n", global.lazy_header);
+            global.lazy_header = NULL;
+        }
+        global.last_report = now;
+        return true;
+    }
+    return false;
+}
+
 // A worker thread executes this in "phase 1" of the worker loop, when all
 // workers are evaluating states and their transitions.  The states are
 // stored in global.graph as an array.  global.graph.size contains the
@@ -2550,7 +2605,7 @@ static void do_work2(struct worker *w){
             // See if the node points sideways or backwards, in which
             // case cycles in the graph are possible
             else if (next != sh->node && next->len <= sh->node->len) {
-                w->loops_possible = true;
+                w->cycles_possible = true;
             }
         }
     }
@@ -2947,7 +3002,7 @@ static void worker(void *arg){
         // of the nodes.
         if (w->index == 0 % w->nworkers) {
             if (done) {
-                global.times[PHASE_MODELCHECK_END] = after;
+                phase_finish();
 
                 // Compute how much memory was used, approximately
                 unsigned long allocated = global.allocated;
@@ -2998,7 +3053,7 @@ static void worker(void *arg){
 #endif
 
                 printf("    * %u states (time %.2lfs, mem=%.3lfGB)\n", nstates,
-                    global.times[PHASE_MODELCHECK_END] - global.times[PHASE_START],
+                    gettime() - global.start_model_checking,
                     (double) allocated / (1L << 30));
                 unsigned int si_hits = 0, si_total = 0;
                 for (unsigned int i = 0; i < global.nworkers; i++) {
@@ -3012,6 +3067,8 @@ static void worker(void *arg){
                                     nrounds, global.values->count);
                 printf("* Phase 3: Scan states\n");
                 fflush(stdout);
+
+                phase_start("Scan states");
 
                 // Allocate an array for all the nodes.
                 graph_add_multiple(&global.graph, nstates);
@@ -3078,7 +3135,6 @@ static void worker(void *arg){
         before = after;
 
         // If done, fill in the graph table
-        // TODO: check for race condition here?
         if (done) {
             unsigned int total = 0;
             for (struct results_block *rb = w->shard.todo_buffer;
@@ -3092,9 +3148,9 @@ static void worker(void *arg){
                     assert(local_node_id < global.graph.size);
                     global.graph.nodes[local_node_id++] = node;
 
-                    // Pacifier
+                    // Pacifier for scanning states
                     if (w->index == 0 && gettime() - before > 3) {
-                        printf("  Progress %.1f%%\n", 100.0 * total / w->shard.tb_size);
+                        printf("  Progress %.1f%%\n", percent(total, w->shard.tb_size));
                         before = gettime();
                     }
 
@@ -3115,6 +3171,11 @@ static void worker(void *arg){
 static void epsilon_closure_prep(){
     global.neps = malloc(sizeof(*global.neps) * global.graph.size);
     for (unsigned int i = 0; i < global.graph.size; i++) {
+        if (i % 100 == 0 && report_time()) {
+            printf("    Prepping epsilon closure %u/%u = %.2f%%\n", i,
+                    global.graph.size, percent(i, global.graph.size));
+            fflush(stdout);
+        }
         struct node *n = global.graph.nodes[i];
         struct edge *edges = node_edges(n);
         unsigned int neps = 0;
@@ -3267,8 +3328,8 @@ static void tarjan(){
     unsigned int i = 0, comp_id = 0;
     struct stack *stack = calloc(1, sizeof(*stack));
     struct stack *call_stack = calloc(1, sizeof(*call_stack));
-    double now = gettime();
     unsigned int ndone = 0, lastdone = 0;
+    unsigned int report = 0;
 
     // Only need to iterate once as the graph is connected
     for (unsigned int v = 0; v < 1 /*global.graph.size*/; v++) {
@@ -3278,6 +3339,10 @@ static void tarjan(){
             while (!stack_empty(call_stack)) {
                 unsigned int pi;
                 n = stack_pop(&call_stack, &pi);
+                if (++report > 1000 && report_time()) {
+                    printf("        Node %u\n", n->id);
+                    report = 0;
+                }
                 if (pi == 0) {
                     scc[n->id].index = i;
                     scc[n->id].lowlink = i;
@@ -3312,10 +3377,9 @@ static void tarjan(){
                 else if (scc[n->id].lowlink == scc[n->id].index) {
                     for (;;) {
                         ndone++;
-                        if (ndone - lastdone >= 10000000 && gettime() - now > 3) {
-                            printf("        completed %u/%u states (%.2f%%)\n", ndone, global.graph.size, 100.0 * ndone / global.graph.size);
+                        if (ndone - lastdone >= 10000000 && report_time()) {
+                            printf("        completed %u/%u states (%.2f%%)\n", ndone, global.graph.size, percent(ndone, global.graph.size));
                             fflush(stdout);
-                            now = gettime();
                             lastdone = ndone;
                         }
                         struct node *n2 = stack_pop(&stack, NULL);
@@ -3442,6 +3506,7 @@ static void tarjan_epsclosure(){
     struct stack *call_stack = calloc(1, sizeof(*call_stack));
     double now = gettime();
     unsigned int ndone = 0, lastdone = 0;
+    unsigned int report = 0;
 
     for (unsigned int v = 0; v < global.graph.size; v++) {
         struct node *n = global.graph.nodes[v];
@@ -3450,6 +3515,10 @@ static void tarjan_epsclosure(){
             while (!stack_empty(call_stack)) {
                 unsigned int pi;
                 n = stack_pop(&call_stack, &pi);
+                if (++report > 1000 && report_time()) {
+                    printf("        Node %u\n", n->id);
+                    report = 0;
+                }
                 if (pi == 0) {
                     scc[n->id].index = i;
                     scc[n->id].lowlink = i;
@@ -3486,7 +3555,7 @@ static void tarjan_epsclosure(){
                     for (;;) {
                         ndone++;
                         if (ndone - lastdone >= 10000000 && gettime() - now > 3) {
-                            printf("        completed %u/%u states (%.2f%%)\n", ndone, global.graph.size, 100.0 * ndone / global.graph.size);
+                            printf("        completed %u/%u states (%.2f%%)\n", ndone, global.graph.size, percent(ndone, global.graph.size));
                             fflush(stdout);
                             now = gettime();
                             lastdone = ndone;
@@ -3633,6 +3702,8 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
     struct dfa_env de;
     double start = gettime();
 
+    phase_start("NFA to DFA conversion");
+
     de.dfa = dict_new("nfa2dfa", sizeof(struct dfa_node), global.graph.size, 0, false, false);
     de.next_id = 0;
     de.allocated = global.graph.size;   // decent initial estimate
@@ -3648,7 +3719,7 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
     while (todo_index < de.next_id) {
         // Pacifier
         if (gettime() - start > 3) {
-            printf("  NFA to DFA progress %u/%u=%.1f%%\n", todo_index, de.next_id, 100.0 * todo_index / de.next_id);
+            printf("  NFA to DFA progress %u/%u=%.1f%%\n", todo_index, de.next_id, percent(todo_index, de.next_id));
             start = gettime();
         }
 
@@ -3689,8 +3760,12 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
         todo_index += 1;
     }
 
+    phase_finish();
+
     printf("* Phase 4d: output the DFA (%u states)\n", de.next_id);
     fflush(stdout);
+
+    phase_start("Output to .hfa file");
 
     // Now dump the whole thing
     fprintf(hfa, "  \"nodes\": [\n");
@@ -3716,6 +3791,7 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
     }
     fprintf(hfa, "\n");
     fprintf(hfa, "  ]\n");
+    phase_finish();
 
     return de.next_id;
 }
@@ -4008,7 +4084,7 @@ static bool endsWith(char *s, char *suffix){
 //    -w<workers>: specifies what and how many workers to use (see below)
 //
 int exec_model_checker(int argc, char **argv){
-    bool cflag = false, dflag = false, Dflag = false;
+    bool cflag = false, dflag = false, Dflag = false, Tflag = false;
     int i, maxtime = 300000000 /* about 10 years */;
     char *outfile = NULL, *hfaout = NULL, *dfafile = NULL, *worker_flag = NULL;
     for (i = 1; i < argc; i++) {
@@ -4021,6 +4097,9 @@ int exec_model_checker(int argc, char **argv){
             break;
         case 'd':               // run direct (no model check)
             dflag = true;
+            break;
+        case 'T':               // print timing info
+            Tflag = true;
             break;
         case 'D':
             Dflag = true;
@@ -4076,6 +4155,8 @@ int exec_model_checker(int argc, char **argv){
 #ifndef _WIN32
     signal(SIGINT, inthandler);
 #endif
+
+    phase_start("Get info about virtual processors");
 
     // Get info about virtual processors (cores or hyperthreads)
     vproc_info_create();
@@ -4256,6 +4337,8 @@ int exec_model_checker(int argc, char **argv){
         vproc_info_dump();
     }
 
+    phase_finish();
+
     if (dflag) {
         printf("* Phase 2: execute directly\n");
     }
@@ -4263,6 +4346,8 @@ int exec_model_checker(int argc, char **argv){
         printf("* Phase 2: run the model checker (nworkers = %d)\n", global.nworkers);
     }
     fflush(stdout);
+
+    phase_start("Initialize data structures");
 
     // Initialize barriers for the three phases (see struct worker definition)
     barrier_init(&global.start_barrier, global.nworkers);
@@ -4423,6 +4508,8 @@ int exec_model_checker(int argc, char **argv){
     *global.callstacks = cs;
     global.nprocesses = 1;
 
+    phase_finish();
+
     // This is an experimental feature: run code directly (don't model check)
     if (dflag) {
         global.run_direct = true;
@@ -4465,9 +4552,11 @@ int exec_model_checker(int argc, char **argv){
     global.workers[0].shard.tb_size = 1;
 
     // Compute how much table space is allocated
-    // TODO.  Add per worker stuff
     global.allocated = global.graph.size * sizeof(struct node *) +
                              dict_allocated(global.values);
+
+    phase_start("Model checking");
+    global.start_model_checking = gettime();
 
     // Start all but one of the workers. All will wait on the start barrier
     for (unsigned int i = 1; i < global.nworkers; i++) {
@@ -4475,15 +4564,20 @@ int exec_model_checker(int argc, char **argv){
     }
 
     // Run the last worker.  When it terminates the model checking is done.
-    global.times[PHASE_START] = gettime();
     worker(&workers[0]);
-    global.times[PHASE_SCAN_END] = gettime();
+
+    phase_finish();
 
     // Collect the failures of all the workers.  Also keep track if
-    // any of the workers printed something
+    // any of the workers printed something and if there may be
+    // cycles in the Kripke structure
+    bool cycles_possible = false;
     for (unsigned int i = 0; i < global.nworkers; i++) {
         if (workers[i].printed_something) {
             global.printed_something = true;
+        }
+        if (workers[i].cycles_possible) {
+            cycles_possible = true;
         }
         collect_failures(&workers[i]);
     }
@@ -4498,6 +4592,9 @@ int exec_model_checker(int argc, char **argv){
     dict_set_sequential(global.computations);
 
     printf("* Phase 4: Further analysis\n");
+    if (!cycles_possible) {
+        printf("    * cycles impossible\n");
+    }
     fflush(stdout);
 
     bool computed_components = false;
@@ -4506,30 +4603,14 @@ int exec_model_checker(int argc, char **argv){
 
     // If no failures were detected (yet), look for deadlock and busy
     // waiting.
-    // TODO.  Also look for other final states and evaluate more finally
-    //        clauses.  This can happen if an eternal thread sits in
-    //        a loop like:  await x and y
-    if (global.failures == NULL /* && loops_possible */) {
-        printf("    * Determine strongly connected components\n");
-        fflush(stdout);
+    if (global.failures == NULL && cycles_possible) {
+        report_reset("    * Determine strongly connected components");
         double now = gettime();
+        phase_start("Compute strongly connected components");
         tarjan();
+        phase_finish();
         computed_components = true;
         printf("    * %u components (%.2lf seconds)\n", global.ncomponents, gettime() - now);
-
-#ifdef DUMP_GRAPH
-        printf("digraph Harmony {\n");
-        for (unsigned int i = 0; i < global.graph.size; i++) {
-            printf(" s%u [label=\"%u/%u\"]\n", i, i, global.scc[i].component);
-        }
-        for (unsigned int i = 0; i < global.graph.size; i++) {
-            struct node *node = global.graph.nodes[i];
-            for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
-                printf(" s%u -> s%u\n", node->id, edge->dst->id);
-            }
-        }
-        printf("}\n");
-#endif
 
         // The search for non-terminating states starts with marking the
         // non-sink components as "good".  They cannot contain non-terminating
@@ -4540,8 +4621,15 @@ int exec_model_checker(int argc, char **argv){
         // states in the component have the same variable assignment, but also
         // all remaining contexts must be 'eternal' (i.e., all normal threads
         // must have terminated in each state).
+        report_reset("    * Look for non-terminating states");
+        phase_start("Scan for sink components");
         struct component *components = calloc(global.ncomponents, sizeof(*components));
         for (unsigned int i = 0; i < global.graph.size; i++) {
+            if (i % 1000 == 0 && report_time()) {
+                printf("        Scanning for sink components %.1f%%\n",
+                                            percent(i, global.graph.size));
+                fflush(stdout);
+            }
             assert(global.scc[i].component < global.ncomponents);
             struct component *comp = &components[global.scc[i].component];
             struct node *node = global.graph.nodes[i];
@@ -4574,12 +4662,18 @@ int exec_model_checker(int argc, char **argv){
                 }
             }
         }
+        phase_finish();
 
         // Components that have only states in which the variables are the same
         // and have only eternal threads are good because it means all its
         // eternal threads are blocked and all other threads have terminated.
         // It also means that these are final states.
+        phase_start("Scan for final states");
         for (unsigned int i = 0; i < global.ncomponents; i++) {
+            if (i % 1000 == 0 && report_time()) {
+                printf("        Scanning for final states %.1f%%\n", percent(i, global.ncomponents));
+                fflush(stdout);
+            }
             struct component *comp = &components[i];
             assert(comp->size > 0);
             if (!comp->good && comp->all_same) {
@@ -4587,13 +4681,19 @@ int exec_model_checker(int argc, char **argv){
                 comp->final = true;
             }
         }
+        phase_finish();
 
         // If we haven't found any failures yet, look for states in bad components.
         // If there are none, look for busy waiting states.
         if (global.failures == NULL) {
             // Report the states in bad components as non-terminating.
             int nbad = 0;
+            phase_start("Scan for non-terminating states");
             for (unsigned int i = 0; i < global.graph.size; i++) {
+                if (i % 10000 == 0 && report_time()) {
+                    printf("        Scanning for non-terminating states %.1f%%\n", percent(i, global.graph.size));
+                    fflush(stdout);
+                }
                 struct node *node = global.graph.nodes[i];
                 if (!components[global.scc[i].component].good) {
                     nbad++;
@@ -4613,24 +4713,28 @@ int exec_model_checker(int argc, char **argv){
                     // break;
                 }
             }
+            phase_finish();
 
             // If there are no non-terminating states, look for busy-waiting
             // states.
             if (nbad == 0 && !cflag) {
-                // TODO.  Why are we clearing the visited flags??
+                phase_start("Scan for busy-waiting states");
                 for (unsigned int i = 0; i < global.graph.size; i++) {
                     global.graph.nodes[i]->visited = false;
                 }
                 for (unsigned int i = 0; i < global.graph.size; i++) {
                     if (components[global.scc[i].component].size > 1) {
+                        if (i % 100 == 0 && report_time()) {
+                            printf("        Scanning for busy-waiting states %.1f%%\n", percent(i, global.graph.size));
+                            fflush(stdout);
+                        }
                         detect_busywait(global.graph.nodes[i]);
                     }
                 }
+                phase_finish();
             }
         }
     }
-
-    global.times[PHASE_ANALYSIS_END] = gettime();
 
     // The -D flag is used to dump debug files
     if (Dflag) {
@@ -4639,6 +4743,7 @@ int exec_model_checker(int argc, char **argv){
             fprintf(stderr, "can't create charm.gv\n");
         }
         else {
+            phase_start("Create charm.gv");
             fprintf(df, "digraph Harmony {\n");
             for (unsigned int i = 0; i < global.graph.size; i++) {
                 fprintf(df, " s%u [label=\"%u\"]\n", i, i);
@@ -4671,9 +4776,12 @@ int exec_model_checker(int argc, char **argv){
             }
             fprintf(df, "}\n");
             fclose(df);
+            phase_finish();
         }
 
+        phase_start("Create charm.dump");
         charm_dump(computed_components);
+        phase_finish();
     }
 
     unsigned int dfasize = 0;
@@ -4687,6 +4795,8 @@ int exec_model_checker(int argc, char **argv){
             //        (and in parallel if needed)
             printf("* Phase 4a: convert Kripke structure to DFA\n");
             fflush(stdout);
+
+            phase_start("Collect symbols");
             struct dict *symbols = collect_symbols(&global.graph);
 
             FILE *hfa = fopen(hfaout, "w");
@@ -4709,11 +4819,17 @@ int exec_model_checker(int argc, char **argv){
                 free(p);
             }
             fprintf(hfa, "  ],\n");
+            phase_finish();
+
             if (global.printed_something) {
                 printf("* Phase 4b: epsilon closure\n");
                 fflush(stdout);
+                phase_start("Epsilon closure prep");
                 epsilon_closure_prep();     // move epsilon edges to start of each node
+                phase_finish();
+                phase_start("Epsilon closure");
                 tarjan_epsclosure();
+                phase_finish();
                 printf("* Phase 4c: convert NFA to DFA\n");
                 fflush(stdout);
                 dfasize = nfa2dfa(hfa, symbols);
@@ -4731,6 +4847,8 @@ int exec_model_checker(int argc, char **argv){
 
     printf("* Phase 5: write results to %s\n", outfile);
     fflush(stdout);
+
+    phase_start("Write to .hco file");
 
     // Start creating the output (.hco) file.
     FILE *out = fopen(outfile, "w");
@@ -4882,8 +5000,19 @@ int exec_model_checker(int argc, char **argv){
     fprintf(out, "}\n");
     fclose(out);
 
+    phase_finish();
+
     // iface_write_spec_graph_to_file("iface.gv");
     // iface_write_spec_graph_to_json_file("iface.json");
+
+    if (Tflag) {
+        printf("* Timing info\n");
+        for (unsigned int i = 0; i < global.nphases; i++) {
+            printf("    * %5.2fs: %s\n",
+                global.phases[i].finish - global.phases[i].start,
+                global.phases[i].descr);
+        }
+    }
 
     return 0;
 }

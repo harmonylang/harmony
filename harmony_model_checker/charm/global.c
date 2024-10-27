@@ -7,30 +7,10 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <assert.h>
-#include <time.h>
-
-#if !defined(TIME_UTC) || defined(__APPLE__)
-#include <sys/time.h>
-#endif
 
 #ifndef HARMONY_COMBINE
 #include "global.h"
 #endif
-
-#define CHUNK_SIZE	4096
-
-// Get the current time as a double value for easy computation
-double gettime(){
-#if defined(TIME_UTC) && !defined(__APPLE__)
-    struct timespec ts;
-    timespec_get(&ts, TIME_UTC);
-    return ts.tv_sec + (double) ts.tv_nsec / 1000000000;
-#else
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return tv.tv_sec + (double) tv.tv_usec / 1000000;
-#endif
-}
 
 // Convert a string representation of an integer to an unsigned long value.
 unsigned long to_ulong(const char *p, int len){
