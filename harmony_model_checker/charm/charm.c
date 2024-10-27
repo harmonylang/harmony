@@ -4848,8 +4848,6 @@ int exec_model_checker(int argc, char **argv){
     printf("* Phase 5: write results to %s\n", outfile);
     fflush(stdout);
 
-    phase_start("Write to .hco file");
-
     // Start creating the output (.hco) file.
     FILE *out = fopen(outfile, "w");
     if (out == NULL) {
@@ -4863,6 +4861,12 @@ int exec_model_checker(int argc, char **argv){
     fprintf(out, "{\n");
     fprintf(out, "  \"nstates\": %d,\n", global.graph.size);
 
+    phase_start("Output hvm");
+    fprintf(out, "  \"hvm\": ");
+    json_dump(jv, out, 2);
+    fprintf(out, ",\n");
+    phase_finish();
+
     // In case no issues were found, we output a summary of the Kripke structure
     // with the 'print' outputs.
     if (global.failures == NULL) {
@@ -4870,10 +4874,8 @@ int exec_model_checker(int argc, char **argv){
         if (hfaout != 0) {
             fprintf(out, "  \"dfasize\": %u,\n", dfasize);
         }
-        fprintf(out, "  \"hvm\": ");
-        json_dump(jv, out, 2);
-        fprintf(out, ",\n");
 
+        phase_start("Output profile");
         fprintf(out, "  \"profile\": [\n");
         for (unsigned int pc = 0; pc < global.code.len; pc++) {
             unsigned int count = 0;
@@ -4888,6 +4890,7 @@ int exec_model_checker(int argc, char **argv){
         }
         fprintf(out, "\n");
         fprintf(out, "  ]\n");
+        phase_finish();
     }
 
     // Some error was detected.  Report the (approximately) shortest counter example.
@@ -4896,32 +4899,20 @@ int exec_model_checker(int argc, char **argv){
         // a state with the minimal distance to the initial state.  That does not
         // necessarily give us the best path, as the distance is not measured by
         // the number of steps but by the number of context switches.
+        phase_start("Find a path");
         struct failure *bad = NULL;
         for (struct failure *f = global.failures; f != NULL; f = f->next) {
             if (bad == NULL || edge_dst(bad->edge)->len < edge_dst(f->edge)->len) {
                 bad = f;
             }
         }
+        phase_finish();
 
         switch (bad->type) {
         case FAIL_SAFETY:
             printf("    * **Safety Violation**\n");
             fprintf(out, "  \"issue\": \"Safety violation\",\n");
             break;
-#ifdef notdef
-        case FAIL_INVARIANT:
-            printf("    * **Invariant Violation**\n");
-            assert(VALUE_TYPE(bad->address) == VALUE_PC);
-            fprintf(out, "  \"issue\": \"Invariant violation\",\n");
-            fprintf(out, "  \"invpc\": %d,\n", (int) VALUE_FROM_PC(bad->address));
-            break;
-        case FAIL_FINALLY:
-            printf("    * **Finally Predicate Violation**\n");
-            assert(VALUE_TYPE(bad->address) == VALUE_PC);
-            fprintf(out, "  \"issue\": \"Finally predicate violation\",\n");
-            fprintf(out, "  \"finpc\": %d,\n", (int) VALUE_FROM_PC(bad->address));
-            break;
-#endif
         case FAIL_BEHAVIOR_BAD:
             printf("    * **Behavior Violation**: unexpected output\n");
             fprintf(out, "  \"issue\": \"Behavior violation: unexpected output\",\n");
@@ -4960,10 +4951,6 @@ int exec_model_checker(int argc, char **argv){
             panic("main: bad fail type");
         }
 
-        fprintf(out, "  \"hvm\": ");
-        json_dump(jv, out, 2);
-        fprintf(out, ",\n");
-
         // This is where we actually output a path (shortest counter example).
         // Finding the shortest counter example is non-trivial and could be very
         // expensive.  Here we use a trick that seems to work well and is very
@@ -4974,24 +4961,34 @@ int exec_model_checker(int argc, char **argv){
         // First copy the path to the bad state into an array for easier sorting
         assert(bad->node != NULL);
         // assert(bad->edge->dst != NULL);
+        phase_start("Serialize path");
         path_serialize(bad->node, bad->edge);
+        phase_finish();
 
         // The optimal path minimizes the number of context switches.  Here we
         // reorder steps in the path to do so.
+        phase_start("Optimize path");
         path_optimize();
+        phase_finish();
 
         // During model checking much information is removed for memory efficiency.
         // Here we recompute the path to reconstruct that information.
+        phase_start("Recompute path");
         path_recompute();
+        phase_finish();
 
         // If this was a safety failure, we remove any unneeded steps to further
         // reduce the length of the counter-example.
-        if (/* bad->type == FAIL_INVARIANT || */ bad->type == FAIL_SAFETY) {
+        if (bad->type == FAIL_SAFETY) {
+            phase_start("Trim path");
             path_trim(NULL);
+            phase_finish();
         }
 
         // Finally, we output the path.
+        phase_start("Output path");
         path_output(out);
+        phase_finish();
 
         fprintf(out, "\n");
         fprintf(out, "  ]\n");
@@ -4999,8 +4996,6 @@ int exec_model_checker(int argc, char **argv){
 
     fprintf(out, "}\n");
     fclose(out);
-
-    phase_finish();
 
     // iface_write_spec_graph_to_file("iface.gv");
     // iface_write_spec_graph_to_json_file("iface.json");
