@@ -3855,9 +3855,12 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
         }
     }
 
+    report_reset("    * Partitioning the DFA");
+
     // Now keep partitioning until no new partitions are formed
-    bool new_partition;
-    do {
+    bool new_partition = true;
+    unsigned int work_ctr = 0;
+    for (unsigned int round = 0; new_partition; round++) {
 #ifdef notdef
         printf("DFA_MINIFY PARTITION %u\n", n_new);
         printf("Partitions:\n");
@@ -3907,6 +3910,13 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
                 // See if the node fits into one of the existing partitions
                 unsigned int j = k;
                 for (; j < n_new; j++) {
+
+                    // Pacifier
+                    work_ctr++;
+                    if (work_ctr % 10000 == 0 && report_time()) {
+                        printf("        Round %u, partition %u\n", round, n_new);
+                    }
+
                     if (indistinguishable(&de, dn, new[j])) {
                         // printf("ind %u %u %u\n", j, dn->id, new[j]->id);
                         dn->rep = new[j]->rep;
