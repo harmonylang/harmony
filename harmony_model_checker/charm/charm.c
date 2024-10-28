@@ -3975,7 +3975,7 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
             de.current = dn->rep;
             dict_iter(dn->transitions, dfa_dumper, &de);
         }
-        // dict_delete(de.uni);
+        dict_delete(de.uni);
     }
     fprintf(hfa, "\n");
     fprintf(hfa, "  ]\n");
@@ -4951,6 +4951,7 @@ int exec_model_checker(int argc, char **argv){
                 dfasize = nfa2dfa(hfa, symbols);
             }
             else {
+                fprintf(hfa, "  \"initial\": \"0\",\n");
                 fprintf(hfa, "  \"nodes\": [\n");
                 fprintf(hfa, "    { \"idx\": \"0\", \"type\": \"final\" }\n");
                 fprintf(hfa, "  ],\n");
