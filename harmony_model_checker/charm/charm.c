@@ -3925,7 +3925,7 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
         }
     }
 #endif
-    dfa_minify(&de);
+    // dfa_minify(&de);
 
     phase_finish();
 
@@ -3941,10 +3941,12 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
         struct dict_assoc *da = de.todo[i];
         struct dfa_node *dn = (struct dfa_node *) &da[1];
 
+#ifdef notdef
         // Skip over removed nodes
         if (dn->empty && dn != de.final) {
             continue;
         }
+#endif
 
         if (count == 0) {
             fprintf(hfa, "\n");
