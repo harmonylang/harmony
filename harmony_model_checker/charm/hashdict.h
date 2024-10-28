@@ -9,8 +9,10 @@
 
 #include "thread.h"
 
-typedef void (*dict_enumfunc)(void *env, const void *key, unsigned int key_size,
-                                void *value);
+typedef void (*dict_enumfunc)(void *env, const void *key,
+                        unsigned int key_size, void *value);
+typedef bool (*dict_enumfunc_bool)(void *env, const void *key,
+                        unsigned int key_size, void *value);
 
 // This header is followed directly by first the data and then the key.
 struct dict_assoc {
@@ -58,6 +60,7 @@ static inline void *dict_retrieve(const void *p, unsigned int *psize){
 struct dict *dict_new(char *whoami, unsigned int value_len, unsigned int initial_size,
     unsigned int nworkers, bool align16, bool concurrent);
 void dict_delete(struct dict *dict);
+void *dict_search(struct dict *dict, const void *key, unsigned int keylen);
 void *dict_lookup(struct dict *dict, const void *key, unsigned int keylen);
 bool dict_remove(struct dict *dict, const void *key, unsigned int keylen);
 void *dict_insert(struct dict *dict, struct allocator *al, const void *key, unsigned int keylen, bool *is_new);
@@ -65,7 +68,8 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al, const
 struct dict_assoc *dict_find_new(struct dict *dict, struct allocator *al, const void *key, unsigned int keyn, unsigned int extra, bool *is_new, uint32_t hash);
 struct dict_assoc *dict_find(struct dict *dict, struct allocator *al, const void *key, unsigned int keylen, bool *is_new);
 // void *dict_retrieve(const void *p, unsigned int *psize);
-void dict_iter(struct dict *dict, dict_enumfunc f, void *user);
+void dict_iter(struct dict *dict, dict_enumfunc f, void *env);
+bool dict_iter_bool(struct dict *dict, dict_enumfunc_bool f, void *env);
 void dict_set_concurrent(struct dict *dict);
 void dict_make_stable(struct dict *dict, unsigned int worker);
 void dict_set_sequential(struct dict *dict);

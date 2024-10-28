@@ -303,6 +303,38 @@ void *dict_insert(struct dict *dict, struct allocator *al,
     return (char *) &k[1];
 }
 
+// Search for but do not create an entry in the hash table.
+void *dict_search(struct dict *dict, const void *key, unsigned int keylen) {
+    uint32_t hash = hash_func(key, keylen);
+    unsigned int index = hash % dict->length;
+	// __builtin_prefetch(db);
+
+    // First look in the stable list, which does not require a lock
+	struct dict_assoc *k = dict->stable[index];
+	while (k != NULL) {
+		if (k->len == keylen && !memcmp((char *) &k[1] + k->val_len, key, keylen)) {
+            return &k[1];
+		}
+		k = k->next;
+	}
+
+    // Look in the unstable list
+    if (dict->concurrent) {
+        mutex_acquire(&dict->locks[index % dict->nlocks]);
+        k = dict->unstable[index];
+        while (k != NULL) {
+            if (k->len == keylen && !memcmp((char *) &k[1] + k->val_len, key, keylen)) {
+                mutex_release(&dict->locks[index % dict->nlocks]);
+                return &k[1];
+            }
+            k = k->next;
+        }
+        mutex_release(&dict->locks[index % dict->nlocks]);
+    }
+
+	return NULL;
+}
+
 // This assumes that the value is a pointer.  Returns NULL if there is
 // no entry but does not create an entry.
 void *dict_lookup(struct dict *dict, const void *key, unsigned int keylen) {
@@ -368,6 +400,20 @@ void dict_iter(struct dict *dict, dict_enumfunc f, void *env) {
             mutex_release(&dict->locks[i % dict->nlocks]);
         }
 	}
+}
+
+bool dict_iter_bool(struct dict *dict, dict_enumfunc_bool f, void *env) {
+    assert(!dict->concurrent);
+	for (unsigned int i = 0; i < dict->length; i++) {
+        struct dict_assoc *k = dict->stable[i];
+        while (k != NULL) {
+            if (!(*f)(env, (char *) &k[1] + k->val_len, k->len, &k[1])) {
+                return false;
+            }
+            k = k->next;
+        }
+	}
+    return true;
 }
 
 // Switch to concurrent mode

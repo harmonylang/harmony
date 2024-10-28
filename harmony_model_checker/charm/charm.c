@@ -3600,7 +3600,10 @@ static void tarjan_epsclosure(){
 struct dfa_node {
     unsigned int id;            // DFA state id
     struct dict *transitions;   // map of symbol to dfa_node
+    bool empty;                 // has no out transitions
     bool final;                 // final state
+    struct dfa_node *next;      // for partitioning during minification
+    struct dfa_node *rep;       // representative node for partition
 };
 
 struct dfa_env {
@@ -3612,6 +3615,7 @@ struct dfa_env {
     FILE *hfa;                  // .hfa output file
     struct dict *symbols;       // maps symbols to symbol ids
     bool first;                 // for "last comma problem"
+    struct dfa_node *final;     // for minimization
 };
 
 static struct dfa_node *nfa2dfa_add_node(struct dfa_env *de, struct node_set *ns){
@@ -3621,6 +3625,8 @@ static struct dfa_node *nfa2dfa_add_node(struct dfa_env *de, struct node_set *ns
     struct dfa_node *dn = (struct dfa_node *) &da[1];
     if (new) {
         dn->id = de->next_id;
+        dn->final = false;
+        dn->empty = true;
         dn->transitions = dict_new("nfa2dfa trans", sizeof(uint32_t), 10, 0, false, false);
         for (unsigned int i = 0; i < ns->nnodes; i++) {
             struct node *n = global.graph.nodes[ns->list[i]];
@@ -3670,12 +3676,138 @@ static void nfa2dfa_helper(void *env, const void *key, unsigned int key_size, vo
     free(uni.list);
 
     // Add to the transitions.
+    de->current->empty = false;
     bool new;
     struct dict_assoc *da = dict_find(de->current->transitions,
                     &global.workers[0].allocator, key, key_size, &new);
     assert(new);
     uint32_t *pid = (uint32_t *) &da[1];
     *pid = dn->id;
+}
+
+#ifdef notdef
+// Update edges to empty nodes to the designated one.
+static void nfa2dfa_minify(void *env, const void *key, unsigned int key_size, void *value){
+    assert(key_size == sizeof(hvalue_t));       // should be a symbol
+    struct dfa_env *de = env;
+    uint32_t *dst = value;
+
+    // Find the destination node
+    struct dict_assoc *da = de->todo[*dst];
+    struct dfa_node *dn = (struct dfa_node *) &da[1];
+    if (dn->empty) {
+        *dst = de->final->id;
+    }
+}
+#endif
+
+struct distin_env {
+    struct dfa_env *de;
+    struct dfa_node *other;
+};
+
+static bool distin_helper(void *env, const void *key, unsigned int key_size, void *value){
+    struct distin_env *distin_env = env;
+    assert(key_size == sizeof(hvalue_t));       // should be a symbol
+
+    // Look up the symbol in the other node's transition table.
+    void *value2 = dict_search(distin_env->other->transitions, key, key_size);
+    if (value2 == NULL) {
+        return false;
+    }
+    uint32_t dst2 = * (uint32_t *) value2;
+    struct dict_assoc *da2 = distin_env->de->todo[dst2];
+    struct dfa_node *dn2 = (struct dfa_node *) &da2[1];
+
+    uint32_t dst1 = * (uint32_t *) value;
+    struct dict_assoc *da1 = distin_env->de->todo[dst1];
+    struct dfa_node *dn1 = (struct dfa_node *) &da1[1];
+
+    return dn1->rep == dn2->rep;
+}
+
+// dn1 and dn2 are indistinguishable if, for each symbol, their transitions
+// fall into the same partition.
+static bool distinguishable(struct dfa_env *de,
+                    struct dfa_node *dn1, struct dfa_node *dn2){
+    struct distin_env distin_env;
+    distin_env.de = de;
+    distin_env.other = dn2;
+    if (!dict_iter_bool(dn1->transitions, distin_helper, &distin_env)) {
+        return false;
+    }
+    distin_env.other = dn1;
+    return dict_iter_bool(dn2->transitions, distin_helper, &distin_env);
+}
+
+static void dfa_minify(struct dfa_env *de){
+    printf("DFA_MINIFY\n");
+
+    // Partition nodes into non-final and final
+    struct dfa_node **old = malloc(de->next_id * sizeof(struct dfa_node *));
+    struct dfa_node **new = malloc(de->next_id * sizeof(struct dfa_node *));
+    unsigned int n_old = 1, n_new = 2;
+    new[0] = new[1] = NULL;
+    for (unsigned int i = 0; i < de->next_id; i++) {
+        struct dict_assoc *da = de->todo[i];
+        struct dfa_node *dn = (struct dfa_node *) &da[1];
+        if (dn->final) {
+            dn->rep = new[0] == NULL ? dn : new[0]->rep;
+            dn->next = new[0];
+            new[0] = dn;
+        }
+        else {
+            dn->rep = new[1] == NULL ? dn : new[1]->rep;
+            dn->next = new[1];
+            new[1] = dn;
+        }
+    }
+
+    // Now keep partitioning until no new partitions are formed
+    bool new_partition;
+    do {
+        printf("DFA_MINIFY PARTITION %u\n", n_new);
+        // Swap old and new
+        struct dfa_node **tmp = old;
+        old = new;
+        new = tmp;
+        n_old = n_new;
+        n_new = 0;
+
+        // Go through each of the old partitions;
+        new_partition = false;
+        for (unsigned i = 0; i < n_old; i++) {
+            // Repartition the group based on distinguishability
+
+            // If there's only one in the group, just copy it over.
+            if (old[i]->next == NULL) {
+                new[n_new++] = old[i];
+                continue;
+            }
+
+            unsigned int k = n_new;
+            for (struct dfa_node *dn = old[i]; dn != NULL; dn++) {
+                // See if the node fits into one of the existing partitions
+                unsigned int j = k;
+                for (; j < n_new; j++) {
+                    if (!distinguishable(de, dn, new[j])) {
+                        dn->rep = new[j]->rep;
+                        dn->next = new[j];
+                        new[j] = dn;
+                        break;
+                    }
+                }
+
+                // Otherwise, create a new partition
+                if (j == n_new) {
+                    dn->rep = dn;
+                    dn->next = NULL;
+                    new[n_new++] = dn;
+                    new_partition = true;
+                }
+            }
+        }
+    } while (new_partition);
 }
 
 static void nfa2dfa_dumper(void *env, const void *key, unsigned int key_size, void *value){
@@ -3762,25 +3894,70 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
 
     phase_finish();
 
-    printf("* Phase 4d: output the DFA (%u states)\n", de.next_id);
+    printf("* Phase 4d: minify the DFA (%u states)\n", de.next_id);
+
+    phase_start("Minify DFA");
+
+#ifdef notdef
+    // Find a node with no out transitions.
+    // TODO.  Can probably avoid this scan by keeping track of it during
+    //        conversion.
+    for (unsigned int i = 0; i < de.next_id; i++) {
+        struct dict_assoc *da = de.todo[i];
+        struct dfa_node *dn = (struct dfa_node *) &da[1];
+        if (dn->empty) {
+            if (!dn->final) {
+                printf("WARNING: empty node that is not final\n");
+            }
+            assert(dn->final);
+            de.final = dn;
+            break;
+        }
+    }
+
+    // May not have any empty nodes
+    if (de.final != NULL) {
+        // Now update the edges to the remaining empty nodes.
+        for (unsigned int i = 0; i < de.next_id; i++) {
+            struct dict_assoc *da = de.todo[i];
+            struct dfa_node *dn = (struct dfa_node *) &da[1];
+            dict_iter(dn->transitions, nfa2dfa_minify, &de);
+        }
+    }
+#endif
+    dfa_minify(&de);
+
+    phase_finish();
+
+    printf("* Phase 4e: output the DFA\n");
     fflush(stdout);
 
     phase_start("Output to .hfa file");
 
     // Now dump the whole thing
-    fprintf(hfa, "  \"nodes\": [\n");
+    fprintf(hfa, "  \"nodes\": [");
+    unsigned int count = 0;
     for (unsigned int i = 0; i < de.next_id; i++) {
         struct dict_assoc *da = de.todo[i];
         struct dfa_node *dn = (struct dfa_node *) &da[1];
-        fprintf(hfa, "    { \"idx\": \"%u\", \"type\": \"%s\" }", i,
-                    dn->final ? "final" : "normal");
-        if (i + 1 < de.next_id) {
-            fprintf(hfa, ",\n");
+
+        // Skip over removed nodes
+        if (dn->empty && dn != de.final) {
+            continue;
         }
-        else {
+
+        if (count == 0) {
             fprintf(hfa, "\n");
         }
+        else {
+            fprintf(hfa, ",\n");
+        }
+        count += 1;
+
+        fprintf(hfa, "    { \"idx\": \"%u\", \"type\": \"%s\" }", i,
+                    dn->final ? "final" : "normal");
     }
+    fprintf(hfa, "\n");
     fprintf(hfa, "  ],\n");
     fprintf(hfa, "  \"edges\": [");
     de.first = true;
@@ -3793,79 +3970,8 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
     fprintf(hfa, "  ]\n");
     phase_finish();
 
-    return de.next_id;
+    return count;
 }
-
-#ifdef OBSOLETE
-
-// This routine removes all nodes that have a single incoming edge and it's
-// an "epsilon" edge (empty print log).  These are essentially useless nodes.
-static void destutter1(FILE *out, bool suppress){
-    struct graph *graph = &global.graph;
-
-    // If nothing got printed, we can just return a single node
-    if (!global.printed_something) {
-        graph->size = 1;
-        struct node *n = global.graph.nodes[0] = calloc(1, sizeof(*n));
-        n->final = true;
-        return;
-    }
-
-    // Also suppress very large outputs when checking behaviors.
-    if (suppress && graph->size > 100000) {
-        graph->size = 1;
-        struct node *n = global.graph.nodes[0] = calloc(1, sizeof(*n));
-        n->final = true;
-        fprintf(out, "  \"suppressed\": \"True\",\n");
-        return;
-    }
-
-    graph->nodes[0]->reachable = true;
-    int ndropped = 0;
-    for (unsigned int i = 0; i < graph->size; i++) {
-        struct node *parent = graph->nodes[i];
-        struct edge **pe, *e;
-        for (pe = &parent->fwd; (e = *pe) != NULL;) {
-            struct node *n = e->dst;
-            if (edge_output(e)->nlog == 0) {     // epsilon edge (no prints)
-                assert(n->bwd != NULL);
-                if (n->bwd->bwdnext == NULL) {
-                    assert(n->bwd == e);
-
-                    if (n->final) {
-                        parent->final = true;
-                    }
-
-                    // Remove the edge
-                    *pe = e->fwdnext;
-                    n->bwd = NULL;
-                    // free(e);
-
-                    ndropped++;
-
-                    // Move the outgoing edges to the parent.
-                    while ((e = n->fwd) != NULL) {
-                        n->fwd = e->fwdnext;
-                        e->fwdnext = *pe;
-                        *pe = e;
-                        e->src = parent;
-                    }
-                    n->reachable = false;
-                }
-                else {
-                    n->reachable = true;
-                    pe = &e->fwdnext;
-                }
-            }
-            else {
-                n->reachable = true;
-                pe = &e->fwdnext;
-            }
-        }
-    }
-    // printf("DROPPED %d / %d\n", ndropped, graph->size);
-}
-#endif // OBSOLETE
 
 // This function finds all the printed symbols in the Kripke structure and
 // assigns a small unique identifier to each.
