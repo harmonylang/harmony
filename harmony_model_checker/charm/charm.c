@@ -3710,6 +3710,7 @@ struct distin_env {
     struct dfa_node *other;
 };
 
+// Returns whether indistinguishable for a particular symbol (key).
 static bool distin_helper(void *env, const void *key, unsigned int key_size, void *value){
     struct distin_env *distin_env = env;
     assert(key_size == sizeof(hvalue_t));       // should be a symbol
@@ -3717,6 +3718,7 @@ static bool distin_helper(void *env, const void *key, unsigned int key_size, voi
     // Look up the symbol in the other node's transition table.
     void *value2 = dict_search(distin_env->other->transitions, key, key_size);
     if (value2 == NULL) {
+        // printf("%s not found\n", value_string(* (hvalue_t *) key));
         return false;
     }
     uint32_t dst2 = * (uint32_t *) value2;
@@ -3727,12 +3729,14 @@ static bool distin_helper(void *env, const void *key, unsigned int key_size, voi
     struct dict_assoc *da1 = distin_env->de->todo[dst1];
     struct dfa_node *dn1 = (struct dfa_node *) &da1[1];
 
+    // printf("CMP %p(%p) %p(%p)\n", dn1, dn1->rep, dn2, dn2->rep);
+
     return dn1->rep == dn2->rep;
 }
 
 // dn1 and dn2 are indistinguishable if, for each symbol, their transitions
 // fall into the same partition.
-static bool distinguishable(struct dfa_env *de,
+static inline bool indistinguishable(struct dfa_env *de,
                     struct dfa_node *dn1, struct dfa_node *dn2){
     struct distin_env distin_env;
     distin_env.de = de;
@@ -3745,7 +3749,7 @@ static bool distinguishable(struct dfa_env *de,
 }
 
 static void dfa_minify(struct dfa_env *de){
-    printf("DFA_MINIFY\n");
+    // printf("DFA_MINIFY\n");
 
     // Partition nodes into non-final and final
     struct dfa_node **old = malloc(de->next_id * sizeof(struct dfa_node *));
@@ -3771,6 +3775,18 @@ static void dfa_minify(struct dfa_env *de){
     bool new_partition;
     do {
         printf("DFA_MINIFY PARTITION %u\n", n_new);
+#ifdef notdef
+        printf("Partitions:\n");
+        for (unsigned int i = 0; i < n_new; i++) {
+            printf("  %u:", i);
+            for (struct dfa_node *dn = new[i]; dn != NULL; dn = dn->next) {
+                printf(" %u(%u)", dn->id, dn->rep->id);
+            }
+            printf("\n");
+        }
+        printf("\n");
+#endif
+
         // Swap old and new
         struct dfa_node **tmp = old;
         old = new;
@@ -3781,11 +3797,15 @@ static void dfa_minify(struct dfa_env *de){
         // Go through each of the old partitions;
         new_partition = false;
         for (unsigned i = 0; i < n_old; i++) {
+            // printf("Partition %u\n", i);
+
             // Repartition the group based on distinguishability
 
             // If there's only one in the group, just copy it over.
+            // TODO.  May not need this.
             struct dfa_node *dn = old[i];
             if (dn->next == NULL) {
+                assert(dn->rep == dn);
                 new[n_new++] = dn;
                 continue;
             }
@@ -3794,6 +3814,7 @@ static void dfa_minify(struct dfa_env *de){
             unsigned int k = n_new;
             old[i] = dn->next;
             new[n_new++] = dn;
+            dn->rep = dn;
             dn->next = NULL;
 
             while ((dn = old[i]) != NULL) {
@@ -3802,7 +3823,8 @@ static void dfa_minify(struct dfa_env *de){
                 // See if the node fits into one of the existing partitions
                 unsigned int j = k;
                 for (; j < n_new; j++) {
-                    if (!distinguishable(de, dn, new[j])) {
+                    if (indistinguishable(de, dn, new[j])) {
+                        // printf("ind %u %u %u\n", j, dn->id, new[j]->id);
                         dn->rep = new[j]->rep;
                         dn->next = new[j];
                         new[j] = dn;

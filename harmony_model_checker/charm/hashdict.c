@@ -402,6 +402,7 @@ void dict_iter(struct dict *dict, dict_enumfunc f, void *env) {
 	}
 }
 
+// Returns true iff all f() invocations return true.
 bool dict_iter_bool(struct dict *dict, dict_enumfunc_bool f, void *env) {
     assert(!dict->concurrent);
 	for (unsigned int i = 0; i < dict->length; i++) {
