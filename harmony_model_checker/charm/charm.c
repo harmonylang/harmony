@@ -3885,6 +3885,9 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
                 bool new;
                 struct node_set *ns = dict_insert(d, &global.workers[0].allocator,
                                             &symbol, sizeof(symbol), &new);
+                if (new) {
+                    memset(ns, 0, sizeof(*ns));
+                }
                 node_set_add(ns, edge_dst(e)->id);
             }
         }
