@@ -3619,7 +3619,8 @@ struct dfa_env {
     FILE *hfa;                  // .hfa output file
     struct dict *symbols;       // maps symbols to symbol ids
     bool first;                 // for "last comma problem"
-    struct dfa_node *final;     // for minimization
+    struct dfa_node *final;     // for minification
+    struct dict *uni;           // for suppressing duplicates in output
 };
 
 static struct dfa_node *nfa2dfa_add_node(struct dfa_env *de, struct node_set *ns){
@@ -3689,22 +3690,6 @@ static void nfa2dfa_helper(void *env, const void *key, unsigned int key_size, vo
     *pid = dn->id;
 }
 
-#ifdef notdef
-// Update edges to empty nodes to the designated one.
-static void nfa2dfa_minify(void *env, const void *key, unsigned int key_size, void *value){
-    assert(key_size == sizeof(hvalue_t));       // should be a symbol
-    struct dfa_env *de = env;
-    uint32_t *dst = value;
-
-    // Find the destination node
-    struct dict_assoc *da = de->todo[*dst];
-    struct dfa_node *dn = (struct dfa_node *) &da[1];
-    if (dn->empty) {
-        *dst = de->final->id;
-    }
-}
-#endif
-
 struct distin_env {
     struct dfa_env *de;
     struct dfa_node *other;
@@ -3716,12 +3701,12 @@ static bool distin_helper(void *env, const void *key, unsigned int key_size, voi
     assert(key_size == sizeof(hvalue_t));       // should be a symbol
 
     // Look up the symbol in the other node's transition table.
-    void *value2 = dict_search(distin_env->other->transitions, key, key_size);
+    uint32_t *value2 = dict_search(distin_env->other->transitions, key, key_size);
     if (value2 == NULL) {
         // printf("%s not found\n", value_string(* (hvalue_t *) key));
         return false;
     }
-    uint32_t dst2 = * (uint32_t *) value2;
+    uint32_t dst2 = *value2;
     struct dict_assoc *da2 = distin_env->de->todo[dst2];
     struct dfa_node *dn2 = (struct dfa_node *) &da2[1];
 
@@ -3748,111 +3733,26 @@ static inline bool indistinguishable(struct dfa_env *de,
     return dict_iter_bool(dn2->transitions, distin_helper, &distin_env);
 }
 
-static void dfa_minify(struct dfa_env *de){
-    // printf("DFA_MINIFY\n");
-
-    // Partition nodes into non-final and final
-    struct dfa_node **old = malloc(de->next_id * sizeof(struct dfa_node *));
-    struct dfa_node **new = malloc(de->next_id * sizeof(struct dfa_node *));
-    unsigned int n_old = 1, n_new = 2;
-    new[0] = new[1] = NULL;
-    for (unsigned int i = 0; i < de->next_id; i++) {
-        struct dict_assoc *da = de->todo[i];
-        struct dfa_node *dn = (struct dfa_node *) &da[1];
-        if (dn->final) {
-            dn->rep = new[0] == NULL ? dn : new[0]->rep;
-            dn->next = new[0];
-            new[0] = dn;
-        }
-        else {
-            dn->rep = new[1] == NULL ? dn : new[1]->rep;
-            dn->next = new[1];
-            new[1] = dn;
-        }
-    }
-
-    // Now keep partitioning until no new partitions are formed
-    bool new_partition;
-    do {
-        printf("DFA_MINIFY PARTITION %u\n", n_new);
-#ifdef notdef
-        printf("Partitions:\n");
-        for (unsigned int i = 0; i < n_new; i++) {
-            printf("  %u:", i);
-            for (struct dfa_node *dn = new[i]; dn != NULL; dn = dn->next) {
-                printf(" %u(%u)", dn->id, dn->rep->id);
-            }
-            printf("\n");
-        }
-        printf("\n");
-#endif
-
-        // Swap old and new
-        struct dfa_node **tmp = old;
-        old = new;
-        new = tmp;
-        n_old = n_new;
-        n_new = 0;
-
-        // Go through each of the old partitions;
-        new_partition = false;
-        for (unsigned i = 0; i < n_old; i++) {
-            // printf("Partition %u\n", i);
-
-            // Repartition the group based on distinguishability
-
-            // If there's only one in the group, just copy it over.
-            // TODO.  May not need this.
-            struct dfa_node *dn = old[i];
-            if (dn->next == NULL) {
-                assert(dn->rep == dn);
-                new[n_new++] = dn;
-                continue;
-            }
-
-            // Initialize the first partition.
-            unsigned int k = n_new;
-            old[i] = dn->next;
-            new[n_new++] = dn;
-            dn->rep = dn;
-            dn->next = NULL;
-
-            while ((dn = old[i]) != NULL) {
-                old[i] = dn->next;
-
-                // See if the node fits into one of the existing partitions
-                unsigned int j = k;
-                for (; j < n_new; j++) {
-                    if (indistinguishable(de, dn, new[j])) {
-                        // printf("ind %u %u %u\n", j, dn->id, new[j]->id);
-                        dn->rep = new[j]->rep;
-                        dn->next = new[j];
-                        new[j] = dn;
-                        break;
-                    }
-                }
-
-                // Otherwise, create a new partition
-                if (j == n_new) {
-                    dn->rep = dn;
-                    dn->next = NULL;
-                    new[n_new++] = dn;
-                    new_partition = true;
-                }
-            }
-        }
-    } while (new_partition);
-}
-
-static void nfa2dfa_dumper(void *env, const void *key, unsigned int key_size, void *value){
+static void dfa_dumper(void *env, const void *key, unsigned int key_size, void *value){
     assert(key_size == sizeof(hvalue_t));       // should be a symbol
     struct dfa_env *de = env;
     uint32_t *pid = value;
-
     bool new;
+
+    // See if we already did this edge
+    dict_insert(de->uni, &global.workers[0].allocator, key, key_size, &new);
+    if (!new) {
+        return;
+    }
+
+    // Find the symbol in the symbol table
     unsigned int *symbol = dict_insert(de->symbols, &global.workers[0].allocator,
                                 key, key_size, &new);
     assert(!new);
+
+    struct dict_assoc *da = de->todo[*pid];
+    struct dfa_node *dn = (struct dfa_node *) &da[1];
+
     if (de->first) {
         de->first = false;
     }
@@ -3861,7 +3761,7 @@ static void nfa2dfa_dumper(void *env, const void *key, unsigned int key_size, vo
     }
     fprintf(de->hfa, "\n");
     fprintf(de->hfa, "     { \"src\": \"%u\", \"dst\": \"%u\", \"sym\": %u }",
-                        de->current->id, *pid, *symbol - 1);
+                        de->current->id, dn->rep->id, *symbol - 1);
 }
 
 static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
@@ -3931,42 +3831,106 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
 
     phase_finish();
 
-    printf("* Phase 4d: minify the DFA (%u states)\n", de.next_id);
-
     phase_start("Minify DFA");
 
-#ifdef notdef
-    // Find a node with no out transitions.
-    // TODO.  Can probably avoid this scan by keeping track of it during
-    //        conversion.
+    printf("* Phase 4d: minify the DFA (%u states)\n", de.next_id);
+
+    // Partition nodes into non-final and final
+    struct dfa_node **old = malloc(de.next_id * sizeof(struct dfa_node *));
+    struct dfa_node **new = malloc(de.next_id * sizeof(struct dfa_node *));
+    unsigned int n_old = 1, n_new = 2;
+    new[0] = new[1] = NULL;
     for (unsigned int i = 0; i < de.next_id; i++) {
         struct dict_assoc *da = de.todo[i];
         struct dfa_node *dn = (struct dfa_node *) &da[1];
-        if (dn->empty) {
-            if (!dn->final) {
-                printf("WARNING: empty node that is not final\n");
-            }
-            assert(dn->final);
-            de.final = dn;
-            break;
+        if (dn->final) {
+            dn->rep = new[0] == NULL ? dn : new[0]->rep;
+            dn->next = new[0];
+            new[0] = dn;
+        }
+        else {
+            dn->rep = new[1] == NULL ? dn : new[1]->rep;
+            dn->next = new[1];
+            new[1] = dn;
         }
     }
 
-    // May not have any empty nodes
-    if (de.final != NULL) {
-        // Now update the edges to the remaining empty nodes.
-        for (unsigned int i = 0; i < de.next_id; i++) {
-            struct dict_assoc *da = de.todo[i];
-            struct dfa_node *dn = (struct dfa_node *) &da[1];
-            dict_iter(dn->transitions, nfa2dfa_minify, &de);
+    // Now keep partitioning until no new partitions are formed
+    bool new_partition;
+    do {
+#ifdef notdef
+        printf("DFA_MINIFY PARTITION %u\n", n_new);
+        printf("Partitions:\n");
+        for (unsigned int i = 0; i < n_new; i++) {
+            printf("  %u:", i);
+            for (struct dfa_node *dn = new[i]; dn != NULL; dn = dn->next) {
+                printf(" %u(%u)", dn->id, dn->rep->id);
+            }
+            printf("\n");
         }
-    }
+        printf("\n");
 #endif
-    dfa_minify(&de);
+
+        // Swap old and new
+        struct dfa_node **tmp = old;
+        old = new;
+        new = tmp;
+        n_old = n_new;
+        n_new = 0;
+
+        // Go through each of the old partitions;
+        new_partition = false;
+        for (unsigned i = 0; i < n_old; i++) {
+            // printf("Partition %u\n", i);
+
+            // Repartition the group based on distinguishability
+
+            // If there's only one in the group, just copy it over.
+            // TODO.  May not need this.
+            struct dfa_node *dn = old[i];
+            if (dn->next == NULL) {
+                assert(dn->rep == dn);
+                new[n_new++] = dn;
+                continue;
+            }
+
+            // Initialize the first partition.
+            unsigned int k = n_new;
+            old[i] = dn->next;
+            new[n_new++] = dn;
+            dn->rep = dn;
+            dn->next = NULL;
+
+            while ((dn = old[i]) != NULL) {
+                old[i] = dn->next;
+
+                // See if the node fits into one of the existing partitions
+                unsigned int j = k;
+                for (; j < n_new; j++) {
+                    if (indistinguishable(&de, dn, new[j])) {
+                        // printf("ind %u %u %u\n", j, dn->id, new[j]->id);
+                        dn->rep = new[j]->rep;
+                        dn->next = new[j];
+                        new[j] = dn;
+                        break;
+                    }
+                }
+
+                // Otherwise, create a new partition
+                if (j == n_new) {
+                    dn->rep = dn;
+                    dn->next = NULL;
+                    new[n_new++] = dn;
+                    new_partition = true;
+                }
+            }
+        }
+    } while (new_partition);
+    free(old);
 
     phase_finish();
 
-    printf("* Phase 4e: output the DFA\n");
+    printf("* Phase 4e: output the DFA (%u states)\n", n_new);
     fflush(stdout);
 
     phase_start("Output to .hfa file");
@@ -3974,16 +3938,8 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
     // Now dump the whole thing
     fprintf(hfa, "  \"nodes\": [");
     unsigned int count = 0;
-    for (unsigned int i = 0; i < de.next_id; i++) {
-        struct dict_assoc *da = de.todo[i];
-        struct dfa_node *dn = (struct dfa_node *) &da[1];
-
-#ifdef notdef
-        // Skip over removed nodes
-        if (dn->empty && dn != de.final) {
-            continue;
-        }
-#endif
+    for (unsigned int i = 0; i < n_new; i++) {
+        struct dfa_node *dn = new[i];
 
         if (count == 0) {
             fprintf(hfa, "\n");
@@ -3993,17 +3949,20 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
         }
         count += 1;
 
-        fprintf(hfa, "    { \"idx\": \"%u\", \"type\": \"%s\" }", i,
+        fprintf(hfa, "    { \"idx\": \"%u\", \"type\": \"%s\" }", dn->rep->id,
                     dn->final ? "final" : "normal");
     }
     fprintf(hfa, "\n");
     fprintf(hfa, "  ],\n");
     fprintf(hfa, "  \"edges\": [");
     de.first = true;
-    for (unsigned int i = 0; i < de.next_id; i++) {
-        struct dict_assoc *da = de.todo[i];
-        de.current = (struct dfa_node *) &da[1];
-        dict_iter(de.current->transitions, nfa2dfa_dumper, &de);
+    for (unsigned int i = 0; i < n_new; i++) {
+        de.uni = dict_new("minify", 0, 0, 0, false, false);
+        for (struct dfa_node *dn = new[i]; dn != NULL; dn = dn->next) {
+            de.current = dn->rep;
+            dict_iter(dn->transitions, dfa_dumper, &de);
+        }
+        // dict_delete(de.uni);
     }
     fprintf(hfa, "\n");
     fprintf(hfa, "  ]\n");
