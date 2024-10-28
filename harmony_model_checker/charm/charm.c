@@ -3946,6 +3946,9 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
     phase_start("Output to .hfa file");
 
     // Now dump the whole thing
+    struct dfa_node *dni = (struct dfa_node *) &de.todo[0][1];
+    fprintf(hfa, "  \"initial\": \"%u\",\n", dni->rep->id);
+
     fprintf(hfa, "  \"nodes\": [");
     unsigned int count = 0;
     for (unsigned int i = 0; i < n_new; i++) {
@@ -4919,7 +4922,6 @@ int exec_model_checker(int argc, char **argv){
                 exit(1);
             }
             fprintf(hfa, "{\n");
-            fprintf(hfa, "  \"initial\": \"0\",\n");
             fprintf(hfa, "  \"symbols\": [\n");
             for (unsigned int i = 0; i < global.nsymbols; i++) {
                 char *p = value_json(global.symbols[i]);

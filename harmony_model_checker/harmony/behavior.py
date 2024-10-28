@@ -258,11 +258,11 @@ def eps_closure(states: Set[str], transitions: Transitions_t, current: str):
     eps_closure_rec(states, transitions, current, x)
     return frozenset(x)
 
-minified_dfa = None
-
-def do_minify(intermediate_dfa):
-    global minified_dfa
-    minified_dfa = intermediate_dfa.minify(retain_names = True)
+# minified_dfa = None
+#
+# def do_minify(intermediate_dfa):
+#     global minified_dfa
+#     minified_dfa = intermediate_dfa.minify(retain_names = True)
 
 def behavior_parse(js, minify, outputfiles, behavior):
     if outputfiles["hfa"] is None and outputfiles["png"] is None and outputfiles["gv"] is None and behavior is None:
@@ -276,7 +276,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
             print("    * gv output file suppressed") 
         return
 
-    minify = outputfiles["png"] is not None or outputfiles["gv"] is not None
+    # minify = outputfiles["png"] is not None or outputfiles["gv"] is not None
 
     # Read the hfa file
     # TODO: only do this if there are not too many nodes
@@ -286,6 +286,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
     if not dfa:
         return
 
+    """
     if got_automata and minify:
         intermediate_dfa = dfa
         if True or len(intermediate_dfa.states) > 100: 
@@ -300,6 +301,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
             dfa = minified_dfa
             if True or len(intermediate_dfa.states) > 100: 
                 print("    * minify done #states=%d"%len(dfa.states))
+    """
     dfa_states = dfa.states
     (dfa_transitions,) = dfa.transitions,
     dfa_initial_state = dfa.initial_state
