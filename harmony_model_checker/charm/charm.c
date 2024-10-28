@@ -1148,6 +1148,7 @@ static void trystep(
         edge->multiple = ctx_index >= 0 &&
                             state_multiplicity(state, ctx_index) > 1;
         edge->failed = false;
+        edge->dst = NULL;   // filled in later
     }
 
     if (!si_new) {
@@ -2421,6 +2422,9 @@ static void do_work1(struct worker *w, struct node *node){
 
     // See if this is a final state.  It's a final state if all threads
     // are eternal and all outgoing edges are self-edges.
+    // TODO.  This doesn't capture final states of the form
+    //              await x or y
+    //        that is, oscillating between two states but read-only
     bool dead_end = true;
     struct edge *e = node_edges(node);
     for (unsigned int j = 0; j < node->nedges; j++, e++) {
@@ -3925,7 +3929,7 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
         }
     }
 #endif
-    // dfa_minify(&de);
+    dfa_minify(&de);
 
     phase_finish();
 
