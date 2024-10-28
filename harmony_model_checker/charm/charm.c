@@ -3740,14 +3740,13 @@ static void dfa_dumper(void *env, const void *key, unsigned int key_size, void *
     bool new;
 
     // See if we already did this edge
-    dict_insert(de->uni, &global.workers[0].allocator, key, key_size, &new);
+    dict_insert(de->uni, NULL, key, key_size, &new);
     if (!new) {
         return;
     }
 
     // Find the symbol in the symbol table
-    unsigned int *symbol = dict_insert(de->symbols, &global.workers[0].allocator,
-                                key, key_size, &new);
+    unsigned int *symbol = dict_insert(de->symbols, NULL, key, key_size, &new);
     assert(!new);
 
     struct dict_assoc *da = de->todo[*pid];
