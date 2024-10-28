@@ -3790,7 +3790,7 @@ static void dfa_minify(struct dfa_env *de){
             }
 
             unsigned int k = n_new;
-            for (struct dfa_node *dn = old[i]; dn != NULL; dn++) {
+            for (struct dfa_node *dn = old[i]; dn != NULL; dn = dn->next) {
                 // See if the node fits into one of the existing partitions
                 unsigned int j = k;
                 for (; j < n_new; j++) {
