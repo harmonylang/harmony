@@ -3784,13 +3784,21 @@ static void dfa_minify(struct dfa_env *de){
             // Repartition the group based on distinguishability
 
             // If there's only one in the group, just copy it over.
-            if (old[i]->next == NULL) {
-                new[n_new++] = old[i];
+            struct dfa_node *dn = old[i];
+            if (dn->next == NULL) {
+                new[n_new++] = dn;
                 continue;
             }
 
+            // Initialize the first partition.
             unsigned int k = n_new;
-            for (struct dfa_node *dn = old[i]; dn != NULL; dn = dn->next) {
+            old[i] = dn->next;
+            new[n_new++] = dn;
+            dn->next = NULL;
+
+            while ((dn = old[i]) != NULL) {
+                old[i] = dn->next;
+
                 // See if the node fits into one of the existing partitions
                 unsigned int j = k;
                 for (; j < n_new; j++) {
