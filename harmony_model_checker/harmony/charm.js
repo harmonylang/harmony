@@ -215,7 +215,7 @@ function drawTimeLine(mes, mis) {
     nsteps -= xboxes;
   }
   c.stroke();
-  mes.nextstep.innerHTML = "";
+  // mes.nextstep.innerHTML = "";
   return t;
 }
 
@@ -792,7 +792,7 @@ function run_microstep(t) {
   else if (t+1 < microsteps.length) {
     var nmis = microsteps[t+1];
     if (nmis.tid == mis.tid) {
-        mes.nextstep.innerHTML = "next: " + explain_expand(nmis.explain2);
+        mes.nextstep.innerHTML = "next2: " + explain_expand(nmis.explain2);
     }
     else {
         updateStatus(mes);
@@ -836,8 +836,8 @@ function run_microsteps() {
   for (var i = 0; i < nmegasteps; i++) {
     drawTimeLine(megasteps[i], microsteps);
   }
-  if (currentTime < microsteps.length && (currentTime == 0 ||
-            microsteps[currentTime - 1].tid != microsteps[currentTime].tid)) {
+  if (currentTime < microsteps.length /* && (currentTime == 0 ||
+           microsteps[currentTime - 1].tid != microsteps[currentTime].tid) */) {
     var mis = microsteps[currentTime];
     var mes = megasteps[mis.mesidx];
     mes.nextstep.innerHTML = "next: " + explain_expand(mis.explain2);
@@ -851,7 +851,7 @@ function run_microsteps() {
       }
     }
   }
-  container.scrollTop = currOffset.offsetTop;
+  container.scrollTop = currOffset.offsetTop - 50;
 
   if (currCloc != null) {
     currCloc.style.color = "red";
