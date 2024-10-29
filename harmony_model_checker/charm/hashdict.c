@@ -402,10 +402,7 @@ void dict_iter(struct dict *dict, dict_enumfunc f, void *env) {
     if (dict->list.entries != NULL) {
         for (unsigned int i = 0; i < dict->list.next; i++) {
             struct dict_assoc *k = dict->list.entries[i];
-            while (k != NULL) {
-                (*f)(env, (char *) &k[1] + k->val_len, k->len, &k[1]);
-                k = k->next;
-            }
+            (*f)(env, (char *) &k[1] + k->val_len, k->len, &k[1]);
         }
         return;
     }
@@ -435,11 +432,8 @@ bool dict_iter_bool(struct dict *dict, dict_enumfunc_bool f, void *env) {
     if (dict->list.entries != NULL) {
         for (unsigned int i = 0; i < dict->list.next; i++) {
             struct dict_assoc *k = dict->list.entries[i];
-            while (k != NULL) {
-                if (!(*f)(env, (char *) &k[1] + k->val_len, k->len, &k[1])) {
-                    return false;
-                }
-                k = k->next;
+            if (!(*f)(env, (char *) &k[1] + k->val_len, k->len, &k[1])) {
+                return false;
             }
         }
         return true;
