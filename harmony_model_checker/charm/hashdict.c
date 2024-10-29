@@ -25,6 +25,11 @@ static inline uint32_t meiyan(const char *key, int count) {
 	return h ^ (h >> 16);
 }
 
+void dict_set_iter(struct dict *dict, unsigned int size){
+    dict->list.entries = malloc(size * sizeof(*dict->list.entries));
+    dict->list.len = size;
+}
+
 static inline struct dict_assoc *dict_assoc_new(struct dict *dict,
         struct allocator *al, char *key, unsigned int len, unsigned int extra){
     unsigned int total = sizeof(struct dict_assoc) + dict->value_len + extra + len;
@@ -66,7 +71,7 @@ struct dict *dict_new(char *whoami, unsigned int value_len, unsigned int initial
         dict->workers = calloc(sizeof(struct dict_worker), nworkers);
         dict->nworkers = nworkers;
         for (unsigned int i = 0; i < nworkers; i++) {
-            dict->workers[i].unstable = calloc(sizeof(struct dict_unstable), nworkers);
+            dict->workers[i].unstable = calloc(sizeof(struct dict_list), nworkers);
         }
     }
 	return dict;
@@ -89,6 +94,7 @@ void dict_delete(struct dict *dict) {
     }
 	free(dict->stable);
 	free(dict->unstable);
+    free(dict->list.entries);
 	free(dict);
 }
 
@@ -124,26 +130,29 @@ void dict_resize(struct dict *dict, unsigned int newsize) {
 	free(old);
 }
 
+static inline void dict_add_list(struct dict_list *dl, struct dict_assoc *k){
+    if (dl->next == dl->len) {
+        if (dl->len == 0) {
+            dl->len = 4096;
+            assert(dl->entries == NULL);
+        }
+        else {
+            dl->len *= 2;
+            assert(dl->entries != NULL);
+        }
+        dl->entries = realloc(dl->entries, dl->len * sizeof(*dl->entries));
+    }
+    assert(dl->next < dl->len);
+    dl->entries[dl->next++] = k;
+}
+
 // Keep track of this unstable node in the list for the
 // worker who's going to look at this bucket
 static inline void dict_unstable(struct dict *dict, struct allocator *al,
                     unsigned int index, struct dict_assoc *k){
     unsigned int worker = index * dict->nworkers / dict->length;
     struct dict_worker *dw = &dict->workers[al->worker];
-    struct dict_unstable *du = &dw->unstable[worker];
-    if (du->next == du->len) {
-        if (du->len == 0) {
-            du->len = 4096;
-            assert(du->entries == NULL);
-        }
-        else {
-            du->len *= 2;
-            assert(du->entries != NULL);
-        }
-        du->entries = realloc(du->entries, du->len * sizeof(*du->entries));
-    }
-    assert(du->next < du->len);
-    du->entries[du->next++] = k;
+    dict_add_list(&dw->unstable[worker], k);
     dw->count++;
 }
 
@@ -206,6 +215,12 @@ struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
         k->next = *sdb;
         *sdb = k;
 		dict->count++;
+
+        // Optimize dict_iter()
+        if (dict->list.entries != NULL) {
+            assert(dict->list.next < dict->list.len);
+            dict_add_list(&dict->list, k);
+        }
     }
 
     if (new != NULL) {
@@ -384,6 +399,17 @@ bool dict_exists(struct dict *dict, const void *key, unsigned int keylen, uint32
 }
 
 void dict_iter(struct dict *dict, dict_enumfunc f, void *env) {
+    if (dict->list.entries != NULL) {
+        for (unsigned int i = 0; i < dict->list.next; i++) {
+            struct dict_assoc *k = dict->list.entries[i];
+            while (k != NULL) {
+                (*f)(env, (char *) &k[1] + k->val_len, k->len, &k[1]);
+                k = k->next;
+            }
+        }
+        return;
+    }
+
 	for (unsigned int i = 0; i < dict->length; i++) {
         struct dict_assoc *k = dict->stable[i];
         while (k != NULL) {
@@ -405,6 +431,20 @@ void dict_iter(struct dict *dict, dict_enumfunc f, void *env) {
 // Returns true iff all f() invocations return true.
 bool dict_iter_bool(struct dict *dict, dict_enumfunc_bool f, void *env) {
     assert(!dict->concurrent);
+
+    if (dict->list.entries != NULL) {
+        for (unsigned int i = 0; i < dict->list.next; i++) {
+            struct dict_assoc *k = dict->list.entries[i];
+            while (k != NULL) {
+                if (!(*f)(env, (char *) &k[1] + k->val_len, k->len, &k[1])) {
+                    return false;
+                }
+                k = k->next;
+            }
+        }
+        return true;
+    }
+
 	for (unsigned int i = 0; i < dict->length; i++) {
         struct dict_assoc *k = dict->stable[i];
         while (k != NULL) {
@@ -447,7 +487,7 @@ void dict_make_stable(struct dict *dict, unsigned int worker){
     if (dict->stable == dict->old_stable) {
         for (unsigned int i = 0; i < dict->nworkers; i++) {
             struct dict_worker *dw = &dict->workers[i];
-            struct dict_unstable *du = &dw->unstable[worker];
+            struct dict_list *du = &dw->unstable[worker];
             for (unsigned int j = 0; j < du->next; j++) {
                 struct dict_assoc *k = du->entries[j];
                 uint32_t hash = hash_func((char *) &k[1] + k->val_len, k->len);
@@ -463,7 +503,7 @@ void dict_make_stable(struct dict *dict, unsigned int worker){
     else {
         for (unsigned int i = 0; i < dict->nworkers; i++) {
             struct dict_worker *dw = &dict->workers[i];
-            struct dict_unstable *du = &dw->unstable[worker];
+            struct dict_list *du = &dw->unstable[worker];
             for (unsigned int j = 0; j < du->next; j++) {
                 struct dict_assoc *k = du->entries[j];
                 uint32_t hash = hash_func((char *) &k[1] + k->val_len, k->len);
@@ -508,9 +548,6 @@ void dict_grow_prepare(struct dict *dict){
         dict->stable = calloc(sizeof(*dict->stable), dict->length);
         dict->unstable = calloc(sizeof(*dict->unstable), dict->length);
     }
-}
-
-void dict_dump(struct dict *dict){
 }
 
 void dict_set_sequential(struct dict *dict) {

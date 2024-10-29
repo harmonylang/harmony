@@ -3632,7 +3632,8 @@ static struct dfa_node *nfa2dfa_add_node(struct dfa_env *de, struct node_set *ns
         dn->id = de->next_id;
         dn->final = false;
         dn->empty = true;
-        dn->transitions = dict_new("nfa2dfa trans", sizeof(uint32_t), 10, 0, false, false);
+        dn->transitions = dict_new("nfa2dfa trans", sizeof(uint32_t), 2 * global.nsymbols, 0, false, false);
+        dict_set_iter(dn->transitions, global.nsymbols);
         for (unsigned int i = 0; i < ns->nnodes; i++) {
             struct node *n = global.graph.nodes[ns->list[i]];
             if (n->final) {
@@ -3684,7 +3685,7 @@ static void nfa2dfa_helper(void *env, const void *key, unsigned int key_size, vo
     de->current->empty = false;
     bool new;
     struct dict_assoc *da = dict_find(de->current->transitions,
-                    &global.workers[0].allocator, key, key_size, &new);
+                                        NULL, key, key_size, &new);
     assert(new);
     uint32_t *pid = (uint32_t *) &da[1];
     *pid = dn->id;
@@ -3793,7 +3794,8 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
         de.current = (struct dfa_node *) &da[1];
 
         // Create a "symbol" table for this dfa state
-        struct dict *d = dict_new("nfa2dfa symbols", sizeof(struct node_set), 10, 0, false, false);
+        struct dict *d = dict_new("nfa2dfa symbols", sizeof(struct node_set), 2 * global.nsymbols, 0, false, false);
+        dict_set_iter(d, global.nsymbols);
 
         // Iterate of the nodes in the dfa state
         uint32_t *nodes = (uint32_t *) &de.current[1];
@@ -3969,7 +3971,7 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
     fprintf(hfa, "  \"edges\": [");
     de.first = true;
     for (unsigned int i = 0; i < n_new; i++) {
-        de.uni = dict_new("minify", 0, 0, 0, false, false);
+        de.uni = dict_new("minify", 0, 2 * global.nsymbols, 0, false, false);
         for (struct dfa_node *dn = new[i]; dn != NULL; dn = dn->next) {
             de.current = dn->rep;
             dict_iter(dn->transitions, dfa_dumper, &de);

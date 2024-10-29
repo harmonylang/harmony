@@ -21,14 +21,14 @@ struct dict_assoc {
     uint16_t val_len;           // value length
 };
 
-struct dict_unstable {
+struct dict_list {
     unsigned int next;               // points into array of entries
     unsigned int len;
     struct dict_assoc **entries;     // array of len entries
 };
 
 struct dict_worker {
-    struct dict_unstable *unstable;  // one for each of the workers
+    struct dict_list *unstable;      // one for each of the other workers
     unsigned int count;              // #unstable entries added
 };
 		
@@ -47,6 +47,7 @@ struct dict {
 	unsigned int growth_factor;
     bool concurrent;
     bool align16;            // entries must be aligned to 16 bytes
+    struct dict_list list;   // to make dict_iter more efficient
 };
 
 static inline void *dict_retrieve(const void *p, unsigned int *psize){
@@ -77,6 +78,6 @@ void dict_grow_prepare(struct dict *dict);
 unsigned long dict_allocated(struct dict *dict);
 bool dict_exists(struct dict *dict, const void *key, unsigned int keylen, uint32_t hash);
 void dict_resize(struct dict *dict, unsigned int newsize);
-void dict_dump(struct dict *dict);
+void dict_set_iter(struct dict *dict, unsigned int size);
 
 #endif
