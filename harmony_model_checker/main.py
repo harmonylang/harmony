@@ -197,7 +197,7 @@ def handle_hco(ns, output_files):
         print()
         p = pathlib.Path(output_files["htm"]).resolve()
         url = "file://" + str(p)
-        print("open " + url + " for detailed information, or use the HarmonyGUI", file=sys.stderr)
+        print("open " + url + " for detailed information", file=sys.stderr)
         if not disable_browser:
             webbrowser.open(url)
     # exit as minify may still be running
