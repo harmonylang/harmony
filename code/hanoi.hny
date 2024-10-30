@@ -8,5 +8,3 @@ while current[2] != [1, 2, 3]:
         print str(src) + " -> " + str(dst)
         current[dst] = [current[src][0],] + current[dst]
         del current[src][0]
-
-assert False
