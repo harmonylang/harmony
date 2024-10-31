@@ -1,4 +1,4 @@
-from lock import Lock, acquire, release
+from synch import Lock, acquire, release
 
 const NTHREADS = 5
 

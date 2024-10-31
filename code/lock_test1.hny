@@ -1,6 +1,6 @@
 import lock
 
-const NTHREADS = 5
+const N = 5
 
 in_cs = 0
 invariant in_cs in { 0, 1 }
@@ -17,5 +17,5 @@ def thread():
 
         lock.release(?thelock)
 
-for i in {1..NTHREADS}:
+for i in {1..N}:
     spawn thread()
