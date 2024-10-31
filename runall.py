@@ -19,7 +19,7 @@ tests = [
     { "args": "code/PetersonBroken.hny", "issue": "Safety violation", "nstates": 126 },
     { "args": "code/csonebit.hny", "issue": "Active busy waiting", "nstates": 87 },
     { "args": "code/PetersonMethod.hny", "issue": "No issues", "nstates": 118 },
-    { "args": "code/hanoi.hny", "issue": "Safety violation", "nstates": 28 },
+    { "args": "code/hanoi.hny", "issue": "No issues", "nstates": 28 },
     { "args": "code/clock.hny", "issue": "Safety violation", "nstates": 5462 },
     { "args": "code/lock_test1.hny", "issue": "No issues", "nstates": 112 },
     { "args": "-mlock=lock_tas code/lock_test1.hny", "issue": "No issues", "nstates": 112 },

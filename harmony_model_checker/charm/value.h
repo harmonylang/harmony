@@ -94,6 +94,7 @@ struct val_external {
 
 hvalue_t value_from_json(struct allocator *allocator, struct dict *map);
 int value_cmp(hvalue_t v1, hvalue_t v2);
+int value_order(struct context *ctx, struct allocator *allocator, hvalue_t v1, hvalue_t v2);
 // void *value_get(hvalue_t v, unsigned int *size);
 struct val_external *value_get_external(hvalue_t v);
 void *value_copy(hvalue_t v, unsigned int *size);

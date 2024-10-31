@@ -281,6 +281,25 @@ static int value_cmp_list(hvalue_t v1, hvalue_t v2){
     return size1 < size2 ? -1 : 1;
 }
 
+// Helper function for value_order.  List are lexicographically compared.
+static int value_order_list(struct context *ctx, struct allocator *allocator,
+                                            hvalue_t v1, hvalue_t v2){
+    void *p1 = (void *) v1, *p2 = (void *) v2;
+    unsigned int size1, size2;
+    hvalue_t *vals1 = dict_retrieve(p1, &size1);
+    hvalue_t *vals2 = dict_retrieve(p2, &size2);
+    size1 /= sizeof(hvalue_t);
+    size2 /= sizeof(hvalue_t);
+    unsigned int size = size1 < size2 ? size1 : size2;
+    for (unsigned int i = 0; i < size; i++) {
+        int cmp = value_order(ctx, allocator, vals1[i], vals2[i]);
+        if (cmp != 0) {
+            return cmp;
+        }
+    }
+    return size1 < size2 ? -1 : 1;
+}
+
 // Helper function for value_cmp.  Addresses are "thunks" that are represented
 // as a list of values, the first of which is a function and the remaining values
 // are arguments.  We simply compare the list lexicographically.  By the way,
@@ -330,6 +349,24 @@ static int value_cmp_external(hvalue_t v1, hvalue_t v2){
         return (*p1->descr->compare)(p1->ref, p2->ref);
     }
     return p1 < p2 ? -1 : 1;
+}
+
+int value_order(struct context *ctx, struct allocator *allocator, hvalue_t v1, hvalue_t v2){
+    if (VALUE_TYPE(v1) != VALUE_TYPE(v2)) {
+        value_ctx_failure(ctx, allocator, "can only compare values of same type");
+        return 0;
+    }
+    switch (VALUE_TYPE(v1)) {
+    case VALUE_INT:
+        return value_cmp_int(v1 & ~VALUE_LOBITS, v2 & ~VALUE_LOBITS);
+    case VALUE_ATOM:
+        return value_cmp_atom(v1 & ~VALUE_MASK, v2 & ~VALUE_MASK);
+    case VALUE_LIST:
+        return value_order_list(ctx, allocator, v1 & ~VALUE_MASK, v2 & ~VALUE_MASK);
+    default:
+        value_ctx_failure(ctx, allocator, "can only compare integers, strings, or lists");
+        return 0;
+    }
 }
 
 // This function compares two values v1 and v2, and returns a negative value if
