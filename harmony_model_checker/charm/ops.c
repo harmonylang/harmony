@@ -3566,11 +3566,6 @@ void *init_StoreVar(struct dict *map, struct allocator *allocator){
     }
 }
 
-static inline int do_cmp(struct step *step, hvalue_t *args, unsigned int n){
-    assert(n == 2);
-    return value_order(step->ctx, step->allocator, args[1], args[0]);
-}
-
 hvalue_t f_abs(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 1);
     if (step->keep_callstack) {
@@ -3769,11 +3764,24 @@ hvalue_t f_eq(struct state *state, struct step *step, hvalue_t *args, unsigned i
 }
 
 hvalue_t f_ge(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
+    assert(n == 2);
     if (step->keep_callstack) {
-        strbuf_printf(&step->explain, "check if second value is greater than or equal to the first; ");
+        strbuf_printf(&step->explain, "check if second value is less than the first; ");
     }
-    int cmp = do_cmp(step, args, n);
-    return VALUE_TO_BOOL(cmp >= 0);
+    if (VALUE_TYPE(args[0]) != VALUE_TYPE(args[1])) {
+        value_ctx_failure(step->ctx, step->allocator, "can only compare values of same type");
+        return 0;
+    }
+    if (VALUE_TYPE(args[0]) == VALUE_SET) {
+        if (args[0] == args[1]) {
+            return VALUE_TRUE;
+        }
+        return VALUE_TO_BOOL(value_subset(args[0], args[1]));
+    }
+    else {
+        int cmp = value_order(step->ctx, step->allocator, args[1], args[0]);
+        return VALUE_TO_BOOL(cmp >= 0);
+    }
 }
 
 hvalue_t f_get_ident(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
@@ -3795,11 +3803,24 @@ hvalue_t f_get_ident(struct state *state, struct step *step, hvalue_t *args, uns
 }
 
 hvalue_t f_gt(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
+    assert(n == 2);
     if (step->keep_callstack) {
-        strbuf_printf(&step->explain, "check if second value is greater than the first; ");
+        strbuf_printf(&step->explain, "check if second value is less than the first; ");
     }
-    int cmp = do_cmp(step, args, n);
-    return VALUE_TO_BOOL(cmp > 0);
+    if (VALUE_TYPE(args[0]) != VALUE_TYPE(args[1])) {
+        value_ctx_failure(step->ctx, step->allocator, "can only compare values of same type");
+        return 0;
+    }
+    if (VALUE_TYPE(args[0]) == VALUE_SET) {
+        if (args[0] == args[1]) {
+            return VALUE_FALSE;
+        }
+        return VALUE_TO_BOOL(value_subset(args[0], args[1]));
+    }
+    else {
+        int cmp = value_order(step->ctx, step->allocator, args[1], args[0]);
+        return VALUE_TO_BOOL(cmp > 0);
+    }
 }
 
 hvalue_t f_ne(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
@@ -4245,19 +4266,45 @@ hvalue_t f_type(struct state *state, struct step *step, hvalue_t *args, unsigned
 }
 
 hvalue_t f_le(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
-    if (step->keep_callstack) {
-        strbuf_printf(&step->explain, "check if second value is less than or equal to the first; ");
-    }
-    int cmp = do_cmp(step, args, n);
-    return VALUE_TO_BOOL(cmp <= 0);
-}
-
-hvalue_t f_lt(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
+    assert(n == 2);
     if (step->keep_callstack) {
         strbuf_printf(&step->explain, "check if second value is less than the first; ");
     }
-    int cmp = do_cmp(step, args, n);
-    return VALUE_TO_BOOL(cmp < 0);
+    if (VALUE_TYPE(args[0]) != VALUE_TYPE(args[1])) {
+        value_ctx_failure(step->ctx, step->allocator, "can only compare values of same type");
+        return 0;
+    }
+    if (VALUE_TYPE(args[0]) == VALUE_SET) {
+        if (args[0] == args[1]) {
+            return VALUE_TRUE;
+        }
+        return VALUE_TO_BOOL(value_subset(args[1], args[0]));
+    }
+    else {
+        int cmp = value_order(step->ctx, step->allocator, args[1], args[0]);
+        return VALUE_TO_BOOL(cmp <= 0);
+    }
+}
+
+hvalue_t f_lt(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
+    assert(n == 2);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "check if second value is less than the first; ");
+    }
+    if (VALUE_TYPE(args[0]) != VALUE_TYPE(args[1])) {
+        value_ctx_failure(step->ctx, step->allocator, "can only compare values of same type");
+        return 0;
+    }
+    if (VALUE_TYPE(args[0]) == VALUE_SET) {
+        if (args[0] == args[1]) {
+            return VALUE_FALSE;
+        }
+        return VALUE_TO_BOOL(value_subset(args[1], args[0]));
+    }
+    else {
+        int cmp = value_order(step->ctx, step->allocator, args[1], args[0]);
+        return VALUE_TO_BOOL(cmp < 0);
+    }
 }
 
 hvalue_t f_max(struct state *state, struct step *step, hvalue_t *args, unsigned int n){

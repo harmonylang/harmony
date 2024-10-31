@@ -300,6 +300,28 @@ static int value_order_list(struct context *ctx, struct allocator *allocator,
     return size1 < size2 ? -1 : 1;
 }
 
+// See if v1 is a subset of v2 (every value in v1 is also in v2).
+bool value_subset(hvalue_t v1, hvalue_t v2){
+    assert(VALUE_TYPE(v1) == VALUE_SET);
+    assert(VALUE_TYPE(v2) == VALUE_SET);
+    unsigned int size1, size2;
+    hvalue_t *vals1 = value_get(v1, &size1);
+    hvalue_t *vals2 = value_get(v2, &size2);
+    size1 /= sizeof(hvalue_t);
+    size2 /= sizeof(hvalue_t);
+    unsigned int i = 0, j = 0;
+    while (i < size1 && j < size2) {
+        if (vals1[i] == vals2[j]) {
+            i++;
+        }
+        else if (value_cmp(vals1[i], vals2[j]) < 0) {
+            return false;
+        }
+        j++;
+    }
+    return i == size1;
+}
+
 // Helper function for value_cmp.  Addresses are "thunks" that are represented
 // as a list of values, the first of which is a function and the remaining values
 // are arguments.  We simply compare the list lexicographically.  By the way,
@@ -352,10 +374,6 @@ static int value_cmp_external(hvalue_t v1, hvalue_t v2){
 }
 
 int value_order(struct context *ctx, struct allocator *allocator, hvalue_t v1, hvalue_t v2){
-    if (VALUE_TYPE(v1) != VALUE_TYPE(v2)) {
-        value_ctx_failure(ctx, allocator, "can only compare values of same type");
-        return 0;
-    }
     switch (VALUE_TYPE(v1)) {
     case VALUE_INT:
         return value_cmp_int(v1 & ~VALUE_LOBITS, v2 & ~VALUE_LOBITS);
