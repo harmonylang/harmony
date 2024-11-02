@@ -822,6 +822,7 @@ static struct step_output *onestep(
     bool rollback = false;
     bool printing = false;
     bool assert_batch = false;
+    bool in_assertion = false;
 
     // See if we should first try an interrupt or make a choice.
     if (choice == (hvalue_t) -1) {
@@ -842,7 +843,7 @@ static struct step_output *onestep(
     // Consecutive assertions can be combined.  Also, can be combined
     // with the following atomic section
     else if (instrs[step->ctx->pc].is_assert) {
-        assert_batch = true;
+        assert_batch = in_assertion = true;
     }
 
     int pc = step->ctx->pc;
@@ -860,7 +861,7 @@ static struct step_output *onestep(
             assert(step->ctx->sp > 0);
 
             // Can't choose in an assertion.
-            if (as_instrcnt > 0) {
+            if (in_assertion) {
                 value_ctx_failure(step->ctx, step->allocator, "can't choose in an assertion");
                 instrcnt++;
                 break;
@@ -985,6 +986,7 @@ static struct step_output *onestep(
         // If no longer in atomic mode, rollback is no longer necessary.
         if (instrs[pc].atomicdec && step->ctx->atomic == 0) {
             as_instrcnt = 0;
+            in_assertion = false;
         }
 
         // We're going to peek at the next instruction now
@@ -1024,16 +1026,12 @@ static struct step_output *onestep(
         // See if we're going to lazily evaluate an assert statement.  If so,
         // save the current state of the context so we can roll back in
         // case the assertion reads a global variable.
-        //
-        // TODO.  Can probably do this for any atomic section
-        if (instrs[pc].is_assert && step->ctx->atomic == 0) {
+        if (instrs[pc].atomicinc && step->ctx->atomic == 0) {
             memcpy(&w->as_ctx, step->ctx, ctx_size(step->ctx));
             as_instrcnt = instrcnt;
-        }
-
-        // See we're going into atomic mode.  If so, break.
-        else if (instrs[pc].atomicinc && step->ctx->atomic == 0) {
-            break;
+            if (instrs[pc].is_assert) {
+                in_assertion = true;
+            }
         }
 
         // If we're not in atomic mode, we limit the number of steps to MAX_STEPS.
