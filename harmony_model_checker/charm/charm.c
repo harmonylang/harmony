@@ -807,7 +807,6 @@ static struct step_output *onestep(
     struct instr *instrs = global.code.instrs;
     bool infinite_loop = false;
     unsigned int instrcnt = 0;          // keeps track of #instruction executed
-    bool must_break = true;
     unsigned int choose_count = 0;      // number of choices
     struct dict *infloop = NULL;        // infinite loop detector
     unsigned int as_instrcnt = 0;       // for rollback
@@ -815,6 +814,7 @@ static struct step_output *onestep(
     bool terminated = false;
     bool rollback = false;
     bool printing = false;
+    bool assert_batch = false;
 
     // See if we should first try an interrupt or make a choice.
     if (choice == (hvalue_t) -1) {
@@ -822,7 +822,7 @@ static struct step_output *onestep(
         assert(ctx_trap_pc(step->ctx) != 0);
         interrupt_invoke(step);
     }
-    else if (choice != 0) {
+    else if (choice != 0) {     // If it's a choice, execute it now
         assert(instrs[step->ctx->pc].choose);
         assert(sc->type == STATE_CHOOSE);
         assert(step->ctx->sp > 0);
@@ -831,22 +831,33 @@ static struct step_output *onestep(
         instrcnt++;
         step->ctx->pc++;
     }
-    else {
-        must_break = false;
+    else if (instrs[step->ctx->pc].is_assert) {
+        assert_batch = true;
+    }
+    else if (instrs[step->ctx->pc].print) {
+        printing = true;
     }
 
+    int pc = step->ctx->pc;
+    struct op_info *oi = instrs[pc].oi;
     for (;;) {
         assert(!step->ctx->terminated);
         assert(!step->ctx->failed);
 
         // See what kind of instruction is next
-        int pc = step->ctx->pc;
-        struct op_info *oi = instrs[pc].oi;
         // printf("--> %u %s %u %u\n", pc, oi->name, step->ctx->sp, instrcnt);
 
-        // If it's a Choose instruction, we should break no matter what.
+        // If it's a Choose instruction, we should break no matter what, even if
+        // in atomic mode.
         if (instrs[pc].choose) {
             assert(step->ctx->sp > 0);
+
+            // Can't choose in an assertion.
+            if (step->ctx->readonly > 0 || as_instrcnt > 0) {
+                value_ctx_failure(step->ctx, step->allocator, "can't choose in an assertion");
+                instrcnt++;
+                break;
+            }
 
             // Check that the top of the stack contains a set.
             hvalue_t s = ctx_stack(step->ctx)[step->ctx->sp - 1];
@@ -861,87 +872,11 @@ static struct step_output *onestep(
                 break;
             }
 
-            if (as_instrcnt == 0) {
-                unsigned int size;
-                (void) value_get(s, &size);
-                choose_count = size / sizeof(hvalue_t);
-                assert(choose_count > 0);
-            }
-            else {
-                rollback = true;
-            }
-            break;
-        }
-
-        if (instrs[pc].atomicinc && step->ctx->atomic == 0) {
-            if (must_break) {
-                memcpy(w->as_state, sc, state_size(sc));
-                memcpy(&w->as_ctx, step->ctx, ctx_size(step->ctx));
-                as_instrcnt = instrcnt;
-            }
-            else if (!instrs[pc].is_assert) {
-                must_break = true;
-            }
-        }
-
-        // Possibly break unless it's in atomic mode.
-        else if (step->ctx->atomic == 0 || as_instrcnt != 0) {
-            // If it's a Load instruction, it's breakable if it accesses a global variable.
-            // TODO.  Can this check be made more efficient?
-            if (instrs[pc].load && instrs[pc].env == NULL) {
-                hvalue_t addr = ctx_stack(step->ctx)[step->ctx->sp - 1];
-                if (VALUE_TYPE(addr) != VALUE_ADDRESS_SHARED && VALUE_TYPE(addr) != VALUE_ADDRESS_PRIVATE) {
-                    value_ctx_failure(step->ctx, step->allocator, "Load: not an address");
-                    instrcnt++;
-                    break;
-                }
-                if ((VALUE_TYPE(addr)) != VALUE_ADDRESS_PRIVATE) {
-                    if (must_break) {
-                        if (as_instrcnt != 0) {
-                            rollback = true;
-                        }
-                        break;
-                    }
-                    else {
-                        must_break = true;
-                    }
-                }
-            }
-            else if (instrs[pc].load || instrs[pc].store || instrs[pc].del || instrs[pc].print) {
-                if (must_break) {
-                    if (as_instrcnt != 0) {
-                        rollback = true;
-                    }
-                    break;
-                }
-                else {
-                    must_break = true;
-                }
-            }
-
-            // Deal with interrupts if enabled
-            else if (step->ctx->extended && ctx_trap_pc(step->ctx) != 0 &&
-                                !step->ctx->interruptlevel) {
-                // If this is a thread exit, break so we can invoke the
-                // interrupt handler one more time (just before its exit)
-                if (instrs[pc].retop && step->ctx->sp == 1) {
-                    if (instrcnt > 0) {
-                        break;
-                    }
-                }
-
-                // If this is a setintlevel(True), should try interrupt
-                // For simplicity, always try when SetIntLevel is about to
-                // be executed.
-                else if (instrs[pc].setintlevel && instrcnt > 0) {
-                    break;
-                }
-            }
-        }
-        // If it's a Print instruction in atomic mode, we should break if it's not the
-        // first instruction.
-        else if (instrcnt > 0 && instrs[pc].print) {
-            printing = true;
+            // Figure out how many choices there are.
+            unsigned int size;
+            (void) value_get(s, &size);
+            choose_count = size / sizeof(hvalue_t);
+            assert(choose_count > 0);
             break;
         }
 
@@ -1040,10 +975,91 @@ static struct step_output *onestep(
         assert(step->ctx->pc >= 0);
         assert(step->ctx->pc < global.code.len);
 
+        // We're going to peek at the next instruction now
+        pc = step->ctx->pc;
+        oi = instrs[pc].oi;
+
+        // See if it's a print instruction.  We probably have to break.
+        if (instrs[pc].print) {
+            // If we're not in atomic mode, we should break.
+            if (step->ctx->atomic == 0) {
+                break;
+            }
+            // Not allowed to print in an assertion.
+            if (step->ctx->readonly > 0) {
+                value_ctx_failure(step->ctx, step->allocator, "can't print in an assertion");
+                instrcnt++;
+                break;
+            }
+            // If we already printed something, we should break.
+            if (printing) {
+                break;
+            }
+        }
+
+        // See if we're going to lazily evaluate an assert statement.  If so,
+        // save the current state
+        if (0 && instrs[pc].is_assert && step->ctx->atomic == 0) {
+            memcpy(w->as_state, sc, state_size(sc));
+            memcpy(&w->as_ctx, step->ctx, ctx_size(step->ctx));
+            as_instrcnt = instrcnt;
+        }
+
+        // If we're going into atomic mode.  If so, break.
+        if (instrs[pc].atomicinc && step->ctx->atomic == 0) {
+            break;
+        }
+
         // If we're not in atomic mode, we limit the number of steps to MAX_STEPS.
         // TODO.  Not sure why.
         if (step->ctx->atomic == 0 && instrcnt > MAX_STEPS) {
             break;
+        }
+
+        // If we're in atomic mode but it's not because we're lazily evaluating
+        // an assert statement, we'll move on to the next instruction.
+        if (step->ctx->atomic > 0 && as_instrcnt == 0) {
+            continue;
+        }
+
+        // If it's a Load instruction, it's breakable if it accesses a global variable.
+        // TODO.  Can this check be made more efficient?
+        if (instrs[pc].load && instrs[pc].env == NULL) {
+            hvalue_t addr = ctx_stack(step->ctx)[step->ctx->sp - 1];
+            if (VALUE_TYPE(addr) != VALUE_ADDRESS_SHARED && VALUE_TYPE(addr) != VALUE_ADDRESS_PRIVATE) {
+                value_ctx_failure(step->ctx, step->allocator, "Load: not an address");
+                instrcnt++;
+                break;
+            }
+            if ((VALUE_TYPE(addr)) != VALUE_ADDRESS_PRIVATE) {
+                if (as_instrcnt != 0) {
+                    rollback = true;
+                }
+                break;
+            }
+        }
+        else if (instrs[pc].load || instrs[pc].store || instrs[pc].del || instrs[pc].print) {
+            if (as_instrcnt != 0) {
+                rollback = true;
+            }
+            break;
+        }
+
+        // Deal with interrupts if enabled
+        else if (step->ctx->extended && ctx_trap_pc(step->ctx) != 0 &&
+                            !step->ctx->interruptlevel) {
+            // If this is a thread exit, break so we can invoke the
+            // interrupt handler one more time (just before its exit)
+            if (instrs[pc].retop && step->ctx->sp == 1) {
+                break;
+            }
+
+            // If this is a setintlevel(True), should try interrupt
+            // For simplicity, always try when SetIntLevel is about to
+            // be executed.
+            else if (instrs[pc].setintlevel) {
+                break;
+            }
         }
     }
 
@@ -1059,7 +1075,10 @@ static struct step_output *onestep(
 
     // See if we need to roll back to the start of an atomic section.
     // TODO.  What if the atomic section had some effects like spawning threads  etc?
+    //        Should we not also restore step->vars?
+    //        Why restore the state which is read-only?
     if (rollback) {
+assert(false);
         struct state *state = (struct state *) w->as_state;
         memcpy(sc, state, state_size(state));
         memcpy(step->ctx, &w->as_ctx, ctx_size(&w->as_ctx));
@@ -1069,7 +1088,7 @@ static struct step_output *onestep(
     // Capture the result of executing this step
     struct step_output *so = walloc_fast(w, sizeof(struct step_output) +
             (step->nlog + step->nspawned + step->nunstopped) * sizeof(hvalue_t));
-    so->vars = step->vars;  // NEW
+    so->vars = step->vars;
     so->after = value_put_context(step->allocator, step->ctx);
     so->ai = step->ai;     step->ai = NULL;
     so->nsteps = instrcnt;
@@ -1187,7 +1206,7 @@ static void trystep(
         assert(!cc->failed);
         memcpy(&w->ctx, cc, ctx_size(cc));
         step->ctx = &w->ctx;
-        step->vars = state->vars; // NEW
+        step->vars = state->vars;
 
         // This will first attempt to run onestep() with delayed detection
         // of infinite loops (for efficiency).  If an infinite loop is
@@ -1199,7 +1218,7 @@ static void trystep(
             // TODO.  Need probably more cleanup of step, like ai
             step->nlog = step->nspawned = step->nunstopped = 0;
             memcpy(&w->ctx, cc, ctx_size(cc));
-            step->vars = state->vars; // NEW
+            step->vars = state->vars;
             so = onestep(w, node, state, ctx, step, choice, true);
         }
 
@@ -1673,6 +1692,8 @@ static void path_serialize(struct node *parent, struct edge *e){
         assert(parent->parent != NULL);
         path_serialize(parent->parent, to_grandparent);
     }
+
+    assert(edge_output(e)->vars == node_state(edge_dst(e))->vars);
 
     struct macrostep *macro = calloc(sizeof(*macro), 1);
     macro->edge = e;

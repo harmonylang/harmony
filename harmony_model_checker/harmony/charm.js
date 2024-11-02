@@ -606,6 +606,10 @@ function init_microstep(masidx, misidx) {
     microsteps[t].trace[trl - 1].vars = mis.local;
   }
 
+  // if (mis.pc == "963") {
+  //   alert(JSON.stringify(convert_vars(mis.shared)))
+  // }
+
   if (mis.hasOwnProperty("shared")) {
     microsteps[t].shared = convert_vars(mis.shared);
   }
@@ -730,6 +734,9 @@ function run_microstep(t) {
   var mesrow = mestable.rows[mis.mesidx];
   mesrow.cells[3].innerHTML = mis.npc;
 
+  // if (mis.pc == 963) {
+  //   alert(JSON.stringify(mis.shared));
+  // }
   for (var i = 0; i < vardir.length; i++) {
     mesrow.cells[i + 4].innerHTML = get_shared(mis.shared, vardir[i]);
   }
@@ -844,7 +851,7 @@ function run_microsteps() {
     var mesrow = mestable.rows[mis.mesidx];
     mesrow.cells[3].innerHTML = mis.pc;
 
-    if (mis.mesidx > 0) {
+    if (false && mis.mesidx > 0) {
       var oldrow = mestable.rows[mis.mesidx - 1];
       for (var i = 0; i < vardir.length; i++) {
         mesrow.cells[i + 4].innerHTML = oldrow.cells[i + 4].innerHTML;

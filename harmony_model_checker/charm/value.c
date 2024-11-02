@@ -376,10 +376,19 @@ static int value_cmp_external(hvalue_t v1, hvalue_t v2){
 int value_order(struct context *ctx, struct allocator *allocator, hvalue_t v1, hvalue_t v2){
     switch (VALUE_TYPE(v1)) {
     case VALUE_INT:
+        if (v1 == v2) {
+            return 0;
+        }
         return value_cmp_int(v1 & ~VALUE_LOBITS, v2 & ~VALUE_LOBITS);
     case VALUE_ATOM:
+        if (v1 == v2) {
+            return 0;
+        }
         return value_cmp_atom(v1 & ~VALUE_MASK, v2 & ~VALUE_MASK);
     case VALUE_LIST:
+        if (v1 == v2) {
+            return 0;
+        }
         return value_order_list(ctx, allocator, v1 & ~VALUE_MASK, v2 & ~VALUE_MASK);
     default:
         value_ctx_failure(ctx, allocator, "can only compare integers, strings, or lists");
