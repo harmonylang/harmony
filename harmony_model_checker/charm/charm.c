@@ -857,7 +857,7 @@ static struct step_output *onestep(
             assert(step->ctx->sp > 0);
 
             // Can't choose in an assertion.
-            if (step->ctx->readonly > 0 || as_instrcnt > 0) {
+            if (as_instrcnt > 0) {
                 value_ctx_failure(step->ctx, step->allocator, "can't choose in an assertion");
                 instrcnt++;
                 break;
