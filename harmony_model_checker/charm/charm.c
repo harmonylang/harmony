@@ -209,8 +209,8 @@ struct worker {
     struct context ctx;
     hvalue_t stack[MAX_CONTEXT_STACK];
 
-    // We also keep space for an optimization for atomic sections
-    char as_state[MAX_STATE_SIZE];
+    // Remember the state of the thread for rollback in the case of
+    // lazily evaluating assertions
     struct context as_ctx;
     hvalue_t as_stack[MAX_CONTEXT_STACK];
 
@@ -838,6 +838,9 @@ static struct step_output *onestep(
         instrcnt++;
         step->ctx->pc++;
     }
+
+    // Consecutive assertions can be combined.  Also, can be combined
+    // with the following atomic section
     else if (instrs[step->ctx->pc].is_assert) {
         assert_batch = true;
     }
@@ -979,6 +982,11 @@ static struct step_output *onestep(
         assert(step->ctx->pc >= 0);
         assert(step->ctx->pc < global.code.len);
 
+        // If no longer in atomic mode, rollback is no longer necessary.
+        if (instrs[pc].atomicdec && step->ctx->atomic == 0) {
+            as_instrcnt = 0;
+        }
+
         // We're going to peek at the next instruction now
         pc = step->ctx->pc;
         oi = instrs[pc].oi;
@@ -1005,16 +1013,26 @@ static struct step_output *onestep(
             }
         }
 
+        // If we're doing assertions, we can combine.
+        if (assert_batch && instrs[pc].atomicinc) {
+            if (!instrs[pc].is_assert) {
+                assert_batch = false;
+            }
+            continue;
+        }
+
         // See if we're going to lazily evaluate an assert statement.  If so,
-        // save the current state
-        if (0 && instrs[pc].is_assert && step->ctx->atomic == 0) {
-            memcpy(w->as_state, sc, state_size(sc));
+        // save the current state of the context so we can roll back in
+        // case the assertion reads a global variable.
+        //
+        // TODO.  Can probably do this for any atomic section
+        if (instrs[pc].is_assert && step->ctx->atomic == 0) {
             memcpy(&w->as_ctx, step->ctx, ctx_size(step->ctx));
             as_instrcnt = instrcnt;
         }
 
-        // If we're going into atomic mode.  If so, break.
-        if (instrs[pc].atomicinc && step->ctx->atomic == 0) {
+        // See we're going into atomic mode.  If so, break.
+        else if (instrs[pc].atomicinc && step->ctx->atomic == 0) {
             break;
         }
 
@@ -1081,14 +1099,8 @@ static struct step_output *onestep(
         dict_delete(infloop);
     }
 
-    // See if we need to roll back to the start of an atomic section.
-    // TODO.  What if the atomic section had some effects like spawning threads  etc?
-    //        Should we not also restore step->vars?
-    //        Why restore the state which is read-only?
+    // See if we need to roll back to the start of an assertion.
     if (rollback) {
-assert(false);
-        struct state *state = (struct state *) w->as_state;
-        memcpy(sc, state, state_size(state));
         memcpy(step->ctx, &w->as_ctx, ctx_size(&w->as_ctx));
         instrcnt = as_instrcnt;
     }

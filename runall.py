@@ -29,7 +29,7 @@ tests = [
     { "args": "-mlock=synchS code/lock_test1.hny", "issue": "No issues", "nstates": 256 },
     { "args": "code/UpLock.hny", "issue": "No issues", "nstates": 48 },
     { "args": "-msynch=synchS code/UpLock.hny", "issue": "No issues", "nstates": 58 },
-    { "args": "code/spinlock.hny", "issue": "No issues", "nstates": 617 },
+    { "args": "code/spinlock.hny", "issue": "No issues", "nstates": 12545 },
     { "args": "code/xy.hny", "issue": "Safety violation", "nstates": 19 },
     { "args": "code/atm.hny", "issue": "Safety violation", "nstates": 1832 },
     { "args": "code/queue_test1.hny", "issue": "No issues", "nstates": 80 },
