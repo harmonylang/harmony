@@ -1321,13 +1321,9 @@ static char *ctx_status(struct node *node, hvalue_t ctx) {
     }
 
     // If not, find the first parent state that is not choosing
-    while (state->type == STATE_CHOOSE) {
+    while (state->type == STATE_CHOOSE || node->failed) {
         node = node->parent;
         state = node_state(node);
-    }
-
-    if (node->failed) {
-        return "failed";
     }
 
     // Now find the context in the list of edges
