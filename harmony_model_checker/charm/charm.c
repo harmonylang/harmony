@@ -752,8 +752,7 @@ static inline void process_step(
         f->type = so->infinite_loop ? FAIL_INFLOOP : FAIL_SAFETY;
         f->node = sh->node;
         f->edge = edge;
-        f->next = w->failures;
-        w->failures = f;
+        add_failure(&w->failures, f);
     }
 
     if (w->dfa != NULL) {
