@@ -708,11 +708,15 @@ static inline void process_step(
 
     if (so->printing) {
         assert(so->choose_count == 0);
+        assert(new_index >= 0);
+        assert(state_ctxlist(sc)[new_index] != 0);
         sc->type = STATE_PRINT;
         sc->chooser = new_index;
         noutgoing = 1;
     }
     else if (so->choose_count > 0) {
+        assert(new_index >= 0);
+        assert(state_ctxlist(sc)[new_index] != 0);
         sc->type = STATE_CHOOSE;
         sc->chooser = new_index;
         // sc->pre = global.inv_pre ? node_state(sh->node)->pre : sc->vars;
@@ -833,9 +837,6 @@ static struct step_output *onestep(
     }
     else if (instrs[step->ctx->pc].is_assert) {
         assert_batch = true;
-    }
-    else if (instrs[step->ctx->pc].print) {
-        printing = true;
     }
 
     int pc = step->ctx->pc;
@@ -983,6 +984,7 @@ static struct step_output *onestep(
         if (instrs[pc].print) {
             // If we're not in atomic mode, we should break.
             if (step->ctx->atomic == 0) {
+                printing = true;
                 break;
             }
             // Not allowed to print in an assertion.
@@ -992,7 +994,8 @@ static struct step_output *onestep(
                 break;
             }
             // If we already printed something, we should break.
-            if (printing) {
+            if (step->nlog != 0) {
+                printing = true;
                 break;
             }
         }
