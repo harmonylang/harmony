@@ -1176,6 +1176,7 @@ static void trystep(
         edge->multiple = ctx_index >= 0 &&
                             state_multiplicity(state, ctx_index) > 1;
         edge->failed = false;
+        edge->invariant_chk = false;
         edge->dst = NULL;   // filled in later
     }
 
