@@ -1313,13 +1313,24 @@ static char *ctx_status(struct node *node, hvalue_t ctx) {
     struct state *state = node_state(node);
 
     // if (state->chooser >= 0 && state_ctx(state, state->chooser) == ctx) {
+
+    // If this is a choosing state and this is the current context,
+    // that context is choosing.
     if (state->type == STATE_CHOOSE && state_ctx(state, state->chooser) == ctx) {
         return "choosing";
     }
+
+    // If not, find the first parent state that is not choosing
     while (state->type == STATE_CHOOSE) {
         node = node->parent;
         state = node_state(node);
     }
+
+    if (node->failed) {
+        return "failed";
+    }
+
+    // Now find the context in the list of edges
     struct edge *edge = node_edges(node);
     for (unsigned int i = 0; i < node->nedges; i++, edge++) {
         if (edge_input(edge)->ctx == ctx) {
