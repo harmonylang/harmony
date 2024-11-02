@@ -753,6 +753,7 @@ static inline void process_step(
     }
 
     if (w->dfa != NULL) {
+        assert(so->nlog == 0 || so->nlog == 1);
         for (unsigned int i = 0; i < so->nlog; i++) {
             int nstate = dfa_step(w->dfa, sc->dfa_state, step_log(so)[i]);
             if (nstate < 0) {
@@ -980,7 +981,8 @@ static struct step_output *onestep(
         pc = step->ctx->pc;
         oi = instrs[pc].oi;
 
-        // See if it's a print instruction.  We probably have to break.
+        // See if it's a print instruction.  We have to break unless we're
+        // in atomic mode and haven't printed anything yet.
         if (instrs[pc].print) {
             // If we're not in atomic mode, we should break.
             if (step->ctx->atomic == 0) {
@@ -1041,7 +1043,7 @@ static struct step_output *onestep(
                 break;
             }
         }
-        else if (instrs[pc].load || instrs[pc].store || instrs[pc].del || instrs[pc].print) {
+        else if (instrs[pc].load || instrs[pc].store || instrs[pc].del) {
             if (as_instrcnt != 0) {
                 rollback = true;
             }
