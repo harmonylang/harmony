@@ -707,6 +707,8 @@ static inline void process_step(
     unsigned int noutgoing;
 
     if (so->printing) {
+        assert(!so->terminated);
+        assert(!so->stopped);
         assert(so->choose_count == 0);
         assert(new_index >= 0);
         assert(state_ctxlist(sc)[new_index] != 0);
@@ -715,6 +717,8 @@ static inline void process_step(
         noutgoing = 1;
     }
     else if (so->choose_count > 0) {
+        assert(!so->terminated);
+        assert(!so->stopped);
         assert(new_index >= 0);
         assert(state_ctxlist(sc)[new_index] != 0);
         sc->type = STATE_CHOOSE;
@@ -793,9 +797,8 @@ static inline void process_step(
 // programmers from using assertions.  Thus, to execute an atomic section, we
 // save the state at the beginning and rollback in case it turns out that we do
 // need to break.
-//
-// NEW: sc is read-only in onestep.  All the effects are returned, and process_step
-//      must be invoked to apply them.
+// TODO.  State is readonly and does not need to be saved.  However, step->vars
+//        must be saved and restored
 static struct step_output *onestep(
     struct worker *w,       // thread info
     struct node *node,      // starting node
@@ -986,7 +989,6 @@ static struct step_output *onestep(
         if (instrs[pc].print) {
             // If we're not in atomic mode, we should break.
             if (step->ctx->atomic == 0) {
-                printing = true;
                 break;
             }
             // Not allowed to print in an assertion.
@@ -995,7 +997,9 @@ static struct step_output *onestep(
                 instrcnt++;
                 break;
             }
-            // If we already printed something, we should break.
+            // If we already printed something, we should break, but we
+            // should make sure only the current thread can print.
+            assert(step->ctx->atomic > 0);
             if (step->nlog != 0) {
                 printing = true;
                 break;
