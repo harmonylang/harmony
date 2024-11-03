@@ -837,6 +837,9 @@ function run_microsteps() {
     threadtable.rows[tid].cells[3].innerHTML = threads[tid].stack;
   }
 
+  for (var i = 0; i < nmegasteps; i++) {
+    megasteps[i].nextstep.innerHTML = "";
+  }
   for (var t = 0; t < currentTime; t++) {
     run_microstep(t);
   }
