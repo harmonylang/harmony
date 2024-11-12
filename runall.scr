@@ -75,7 +75,7 @@ $HARMONY --noweb -o queue4.hfa code/queue_btest1.hny
 
 $HARMONY --noweb -B queue4.hfa -m queue=queue_MS code/queue_btest1.hny
 
-$HARMONY --noweb -mqueue=queue_broken code/queue_btest1.hny
+$HARMONY --noweb -mqueue=queue_broken2 code/queue_btest1.hny
 
 $HARMONY --noweb code/rwlock_test1.hny
 

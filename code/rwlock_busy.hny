@@ -18,7 +18,7 @@ def read_release(rw):
 
 def write_acquire(rw):
     acquire(?rw->lock)
-    while (rw->nreaders + rw->nwriters) > 0:
+    while (rw->nreaders > 0) or (rw->nwriters) > 0):
         release(?rw->lock)
         acquire(?rw->lock)
     rw->nwriters = 1

@@ -38,7 +38,7 @@ def read_release(rw):
 
 def write_acquire(rw):
     acquire(?rw->mutex)
-    if (rw->nreaders + rw->nwriters) == 0:
+    if (rw->nreaders == 0) and (rw->nwriters == 0):
         assert rw->r_waiting == rw->w_waiting == 0
         rw->nwriters = 1
     else:

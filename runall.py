@@ -40,7 +40,7 @@ tests = [
     { "args": "-o queue4.hfa code/queue_btest1.hny", "issue": "No issues", "nstates": 3385 },
     { "args": "-B queue4.hfa -m queue=queue_lock code/queue_btest1.hny", "issue": "No issues", "nstates": 66530 },
     { "args": "-B queue4.hfa -m queue=queue_MS code/queue_btest1.hny", "issue": "No issues", "nstates": 99816 },
-    { "args": "-mqueue=queue_broken code/queue_btest1.hny", "issue": "Safety violation", "nstates": 5 },
+    { "args": "-mqueue=queue_broken2 code/queue_btest1.hny", "issue": "Safety violation", "nstates": 5 },
     { "args": "code/rwlock_test1.hny", "issue": "No issues", "nstates": 195 },
     { "args": "-mrwlock=rwlock_sbs code/rwlock_test1.hny", "issue": "No issues", "nstates": 2211 },
     { "args": "-mrwlock=rwlock_cv code/rwlock_test1.hny", "issue": "No issues", "nstates": 2068 },

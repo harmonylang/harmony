@@ -2,7 +2,7 @@ import rwlock
 
 nreaders = nwriters = 0
 invariant ((nreaders >= 0) and (nwriters == 0)) or
-            ((nreaders == 0) and (0 <= nwriters <= 1))
+            ((nreaders == 0) and (nwriters == 1))
 
 const NOPS = 4
 
