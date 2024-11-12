@@ -11,16 +11,12 @@ def server():
             synch.put(q, counter)           # send response
             counter += 1
 
-spawn eternal server()
-
-sequential done
-done = [False,] * NCLIENTS
-
 def client(client_queue):
     synch.put(?server_queue, client_queue)      # send request
     let response = synch.get(client_queue):     # await response
-        done[response] = True
-    await all(done)
+        print(response)
+
+spawn eternal server()
 
 alice_queue = synch.Queue()
 spawn client(?alice_queue)
