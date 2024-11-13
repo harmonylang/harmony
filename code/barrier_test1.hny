@@ -3,15 +3,20 @@ import barrier
 const NTHREADS = 3
 const NROUNDS = 4
 
-round = [0,] * NTHREADS
-invariant (max(round) - min(round)) <= 1
-
 barr = barrier.Barrier(NTHREADS)
+round = [0,] * NTHREADS
+in_b = [False,] * NTHREADS
+
+invariant all((in_b[i] and in_b[j]) => (round[i] == round[j])
+        for i in { 0 .. NTHREADS - 1 } for j in { 0 .. NTHREADS - 1 })
 
 def thread(self):
     for r in {0..NROUNDS-1}:
-        barrier.bwait(?barr)
         round[self] += 1
+        barrier.bwait(?barr)
+        in_b[self] = True
+        pass
+        in_b[self] = False
 
 for i in {0..NTHREADS-1}:
     spawn thread(i)
