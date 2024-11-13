@@ -71,7 +71,7 @@
 // Important performance parameter that represents the number of states that
 // each worker produces for each other worker before going to the barrier.
 // TODO.  How to tune this thing?
-#define STATE_BUFFER_HWM    50
+#define STATE_BUFFER_HWM    5000
 
 // All global variables should be here
 struct global global;
@@ -2605,7 +2605,7 @@ static void do_work(struct worker *w){
         }
 
         // Stop if about to run out of state buffer space
-        if (w->sb_index > STATE_BUFFER_HWM * w->nworkers) {
+        if (w->sb_index > STATE_BUFFER_HWM /* * w->nworkers */) {
             break;
         }
     }
