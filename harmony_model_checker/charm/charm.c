@@ -182,7 +182,8 @@ struct worker {
     // Statistics about the three phases for optimization purposes
     double start_wait, middle_wait, end_wait;
     unsigned int start_count, middle_count, end_count;
-    double phase1, phase2a, phase2b, phase3;
+    double phase1, phase2a, phase2b, phase3a, phase3b;
+    unsigned int nrounds;
 
     // State maintained while evaluating invariants
     struct step inv_step;        // for evaluating invariants
@@ -615,7 +616,7 @@ static void direct_run(struct state *state, unsigned int id){
 }
 
 // Specialized hash function for states
-static inline uint32_t meiyan2(const struct state *s){
+static inline uint32_t meiyan3(const struct state *s){
 	typedef uint32_t *P;
     unsigned int count = sizeof(*s) / 8 + s->total;
     P key = (P) s;
@@ -623,6 +624,19 @@ static inline uint32_t meiyan2(const struct state *s){
 	uint32_t h = 0x811c9dc5;
 	while (count > 0) {
 		h = (h ^ ((((*key) << 5) | ((*key) >> 27)) ^ *(key + 1))) * 0xad3e7;
+		count--;
+		key += 2;
+	}
+	return h ^ (h >> 16);
+}
+static inline uint32_t meiyan2(const struct state *s){
+	typedef uint32_t *P;
+    unsigned int count = sizeof(*s) / 8 + s->total;
+    P key = (P) s;
+
+	uint32_t h = 0x9dc5811c;
+	while (count > 0) {
+		h = (h ^ ((((*key) << 7) | ((*key) >> 25)) ^ *(key + 1))) * 0xad3e7;
 		count--;
 		key += 2;
 	}
@@ -778,7 +792,7 @@ static inline void process_step(
 
     // Add to the linked list of the responsible peer shard
     struct shard *shard = &w->shard;
-    unsigned int responsible = (sh->hash / 193939) % w->nworkers;
+    unsigned int responsible = sh->hash % w->nworkers;
     struct state_queue *sq = &shard->peers[responsible];
     *sq->last = sh;
     sq->last = &sh->next;
@@ -2636,7 +2650,8 @@ static void do_work2(struct worker *w){
             // or allocate if not.
             bool new;
             struct dict_assoc *hn = dict_find_new(shard->states, &w->allocator,
-                        sc, size, sh->noutgoing * sizeof(struct edge), &new, sh->hash);
+// TODO                        sc, size, sh->noutgoing * sizeof(struct edge), &new, sh->hash);
+                        sc, size, sh->noutgoing * sizeof(struct edge), &new, meiyan3(sc));
             struct node *next = (struct node *) &hn[1];
             struct edge *edge = &node_edges(sh->node)[sh->edge_index];
             edge->dst = next;
@@ -3064,69 +3079,6 @@ static void worker(void *arg){
             if (done) {
                 phase_finish();
 
-                // Compute how much memory was used, approximately
-                unsigned long allocated = global.allocated;
-#define REPORT_WORKERS
-#ifdef REPORT_WORKERS
-                double phase1 = 0, phase2a = 0, phase2b = 0, phase3 = 0, start_wait = 0, middle_wait = 0, end_wait = 0;
-                for (unsigned int i = 0; i < global.nworkers; i++) {
-                    struct worker *w = &global.workers[i];
-                    allocated += w->allocated;
-                    phase1 += w->phase1;
-                    phase2a += w->phase2a;
-                    phase2b += w->phase2b;
-                    phase3 += w->phase3;
-                    start_wait += w->start_wait;
-                    middle_wait += w->middle_wait;
-                    end_wait += w->end_wait;
-#ifndef notdef
-                    printf("W%2u: %.3lf %.3lf %.3lf %.3lf %.3lf %.3lf %.3lf %u\n", i,
-                            w->phase1,
-                            w->phase2a,
-                            w->phase2b,
-                            w->phase3,
-                            w->start_wait,
-                            w->middle_wait,
-                            w->end_wait,
-                            w->shard.tb_size);
-#endif
-                }
-#else // REPORT_WORKERS
-                for (unsigned int i = 0; i < global.nworkers; i++) {
-                    struct worker *w = &global.workers[i];
-                    allocated += w->allocated;
-                }
-#endif // REPORT_WORKERS
-
-#ifndef notdef
-                // printf("computing: %lf %lf %lf %lf (%lf %lf %lf %lf); waiting: %lf %lf %lf\n",
-                printf("computing: %lf %lf %lf %lf; waiting: %lf %lf %lf\n",
-                    phase1 / global.nworkers,
-                    phase2a / global.nworkers,
-                    phase2b / global.nworkers,
-                    phase3 / global.nworkers,
-                    // phase1,
-                    // phase2a,
-                    // phase2b,
-                    // phase3,
-                    start_wait / global.nworkers,
-                    middle_wait / global.nworkers,
-                    end_wait / global.nworkers);
-#endif
-
-                printf("    * %u states (time %.2lfs, mem=%.3lfGB)\n", nstates,
-                    gettime() - global.start_model_checking,
-                    (double) allocated / (1L << 30));
-                unsigned int si_hits = 0, si_total = 0;
-                for (unsigned int i = 0; i < global.nworkers; i++) {
-                    struct worker *w = &global.workers[i];
-                    si_hits += w->si_hits;
-                    si_total += w->si_total;
-                }
-
-                printf("    * %u/%u computations/edges\n", (si_total - si_hits), si_total);
-                printf("    * %u rounds, %u values\n",
-                                    nrounds, global.values->count);
                 printf("* Phase 3: Scan states\n");
                 fflush(stdout);
 
@@ -3193,7 +3145,7 @@ static void worker(void *arg){
         dict_make_stable(global.computations, w->index);
 
         after = gettime();
-        w->phase3 += after - before;
+        w->phase3a += after - before;
         before = after;
 
         // If done, fill in the graph table
@@ -3211,7 +3163,7 @@ static void worker(void *arg){
                     global.graph.nodes[local_node_id++] = node;
 
                     // Pacifier for scanning states
-                    if (w->index == 0 && gettime() - before > 3) {
+                    if (total % 10000 == 0 && w->index == 0 && gettime() - before > 3) {
                         printf("  Progress %.1f%%\n", percent(total, w->shard.tb_size));
                         before = gettime();
                     }
@@ -3222,8 +3174,12 @@ static void worker(void *arg){
                     }
                 }
             }
+            after = gettime();
+            w->phase3b += after - before;
+            before = after;
         }
     }
+    w->nrounds = nrounds;
 }
 
 // To simplify running Tarjan's algorithm, reorganize all the edges so that
@@ -4742,6 +4698,67 @@ int exec_model_checker(int argc, char **argv){
     worker(&workers[0]);
 
     phase_finish();
+
+    // Compute how much memory was used, approximately
+    unsigned long allocated = global.allocated;
+#define REPORT_WORKERS
+#ifdef REPORT_WORKERS
+    double phase1 = 0, phase2a = 0, phase2b = 0, phase3a = 0, phase3b = 0, start_wait = 0, middle_wait = 0, end_wait = 0;
+    for (unsigned int i = 0; i < global.nworkers; i++) {
+        struct worker *w = &global.workers[i];
+        allocated += w->allocated;
+        phase1 += w->phase1;
+        phase2a += w->phase2a;
+        phase2b += w->phase2b;
+        phase3a += w->phase3a;
+        phase3b += w->phase3b;
+        start_wait += w->start_wait;
+        middle_wait += w->middle_wait;
+        end_wait += w->end_wait;
+#ifndef notdef
+        printf("W%2u: p1=%.3lf p2a=%.3lf p2b=%.3lf p3a=%.3lf p3b=%.3lf w1=%.3lf w2=%.3lf w3=%.3lf n=%u\n", i,
+                w->phase1,
+                w->phase2a,
+                w->phase2b,
+                w->phase3a,
+                w->phase3b,
+                w->start_wait,
+                w->middle_wait,
+                w->end_wait,
+                w->shard.tb_size);
+#endif
+    }
+#else // REPORT_WORKERS
+    for (unsigned int i = 0; i < global.nworkers; i++) {
+        struct worker *w = &global.workers[i];
+        allocated += w->allocated;
+    }
+#endif // REPORT_WORKERS
+
+#ifndef notdef
+    // printf("computing: %lf %lf %lf %lf (%lf %lf %lf %lf); waiting: %lf %lf %lf\n",
+    printf("computing: p1=%.3lf p2a=%.3lf p2b=%.3lf p3a=%.3lf p3b=%.3lf; waiting: %lf %lf %lf\n",
+        phase1 / global.nworkers,
+        phase2a / global.nworkers,
+        phase2b / global.nworkers,
+        phase3a / global.nworkers,
+        phase3b / global.nworkers,
+        start_wait / global.nworkers,
+        middle_wait / global.nworkers,
+        end_wait / global.nworkers);
+#endif
+
+    printf("    * %u states (time %.2lfs, mem=%.3lfGB)\n", global.graph.size,
+        gettime() - global.start_model_checking,
+        (double) allocated / (1L << 30));
+    unsigned int si_hits = 0, si_total = 0;
+    for (unsigned int i = 0; i < global.nworkers; i++) {
+        struct worker *w = &global.workers[i];
+        si_hits += w->si_hits;
+        si_total += w->si_total;
+    }
+    printf("    * %u/%u computations/edges\n", (si_total - si_hits), si_total);
+    printf("    * %u rounds, %u values\n", global.workers[0].nrounds, global.values->count);
 
     // Collect the failures of all the workers.  Also keep track if
     // any of the workers printed something and if there may be
