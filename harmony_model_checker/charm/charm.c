@@ -71,7 +71,7 @@
 // Important performance parameter that represents the number of states that
 // each worker produces for each other worker before going to the barrier.
 // TODO.  How to tune this thing?
-#define STATE_BUFFER_HWM    5000
+#define STATE_BUFFER_HWM    20000
 
 // All global variables should be here
 struct global global;
@@ -778,7 +778,7 @@ static inline void process_step(
 
     // Add to the linked list of the responsible peer shard
     struct shard *shard = &w->shard;
-    unsigned int responsible = (sh->hash >> 16) % w->nworkers;
+    unsigned int responsible = (sh->hash / 193939) % w->nworkers;
     struct state_queue *sq = &shard->peers[responsible];
     *sq->last = sh;
     sq->last = &sh->next;
@@ -2577,7 +2577,7 @@ static inline bool report_time(){
 // into this array.  All the nodes before todo have been explored, while the
 // ones after todo should be explored.  In other words, the "todo list" starts
 // at global.graph.nodes[global.todo] and ends at graph.nodes[graph.size];
-static void do_work(struct worker *w){
+static void do_work(struct worker *w, unsigned int round){
     // double start = gettime(), now;
     struct shard *shard = &w->shard;
 
@@ -2605,9 +2605,18 @@ static void do_work(struct worker *w){
         }
 
         // Stop if about to run out of state buffer space
+#ifdef notdef
         if (w->sb_index > STATE_BUFFER_HWM /* * w->nworkers */) {
             break;
         }
+#else
+        if (round < 20 && w->sb_index > 20000) {
+            break;
+        }
+        if (round >= 20 && w->sb_index > 20000) {
+            break;
+        }
+#endif
     }
 }
 
@@ -2996,7 +3005,7 @@ static void worker(void *arg){
         // First phase starts now.  Call do_work() to do that actual work.
         // Also keep stats.
         before = after;
-        do_work(w);
+        do_work(w, nrounds);
         after = gettime();
         w->phase1 += after - before;
 
@@ -3057,6 +3066,7 @@ static void worker(void *arg){
 
                 // Compute how much memory was used, approximately
                 unsigned long allocated = global.allocated;
+#define REPORT_WORKERS
 #ifdef REPORT_WORKERS
                 double phase1 = 0, phase2a = 0, phase2b = 0, phase3 = 0, start_wait = 0, middle_wait = 0, end_wait = 0;
                 for (unsigned int i = 0; i < global.nworkers; i++) {
@@ -3069,25 +3079,26 @@ static void worker(void *arg){
                     start_wait += w->start_wait;
                     middle_wait += w->middle_wait;
                     end_wait += w->end_wait;
-#ifdef notdef
+#ifndef notdef
                     printf("W%2u: %.3lf %.3lf %.3lf %.3lf %.3lf %.3lf %.3lf %u\n", i,
                             w->phase1,
                             w->phase2a,
                             w->phase2b,
                             w->phase3,
-                            w->start_wait/w->start_count,
-                            w->middle_wait/w->middle_count,
-                            w->end_wait/w->end_count,
+                            w->start_wait,
+                            w->middle_wait,
+                            w->end_wait,
                             w->shard.tb_size);
 #endif
                 }
-#else
+#else // REPORT_WORKERS
                 for (unsigned int i = 0; i < global.nworkers; i++) {
                     struct worker *w = &global.workers[i];
                     allocated += w->allocated;
                 }
 #endif // REPORT_WORKERS
-#ifdef notdef
+
+#ifndef notdef
                 // printf("computing: %lf %lf %lf %lf (%lf %lf %lf %lf); waiting: %lf %lf %lf\n",
                 printf("computing: %lf %lf %lf %lf; waiting: %lf %lf %lf\n",
                     phase1 / global.nworkers,
@@ -3205,8 +3216,7 @@ static void worker(void *arg){
                         before = gettime();
                     }
 
-                    // Check for deadlock and data races.
-                    // TODO.  Should check -R flag
+                    // Check for data races.
                     if (!w->found_failures && w->failures == NULL && !global.no_race_detect) {
                         graph_check_for_data_race(&w->failures, node, NULL);
                     }
