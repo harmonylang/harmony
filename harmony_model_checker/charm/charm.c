@@ -71,7 +71,7 @@
 // Important performance parameter that represents the number of states that
 // each worker produces for each other worker before going to the barrier.
 // TODO.  How to tune this thing?
-#define STATE_BUFFER_HWM    20000
+#define STATE_BUFFER_HWM    10000
 
 // All global variables should be here
 struct global global;
@@ -643,6 +643,50 @@ static inline uint32_t meiyan2(const struct state *s){
 	return h ^ (h >> 16);
 }
 
+#define BIG_CONSTANT(x) (x##LLU)
+uint64_t MurmurHash64A( const void * key, int len, uint64_t seed )
+{
+  const uint64_t m = BIG_CONSTANT(0xc6a4a7935bd1e995);
+  const int r = 47;
+
+  uint64_t h = seed ^ (len * m);
+
+  const uint64_t * data = (const uint64_t *)key;
+  const uint64_t * end = data + (len/8);
+
+  while(data != end)
+  {
+    uint64_t k = *data++;
+
+    k *= m; 
+    k ^= k >> r; 
+    k *= m; 
+    
+    h ^= k;
+    h *= m; 
+  }
+
+  const unsigned char * data2 = (const unsigned char*)data;
+
+  switch(len & 7)
+  {
+  case 7: h ^= ((uint64_t) data2[6]) << 48;
+  case 6: h ^= ((uint64_t) data2[5]) << 40;
+  case 5: h ^= ((uint64_t) data2[4]) << 32;
+  case 4: h ^= ((uint64_t) data2[3]) << 24;
+  case 3: h ^= ((uint64_t) data2[2]) << 16;
+  case 2: h ^= ((uint64_t) data2[1]) << 8;
+  case 1: h ^= ((uint64_t) data2[0]);
+          h *= m;
+  };
+ 
+  h ^= h >> r;
+  h *= m;
+  h ^= h >> r;
+
+  return h;
+}
+
 // Apply the effect of evaluating a context (for a particular assignment
 // of shared variables and possibly some choice) to a state.  This leads
 // to a new edge in the Kripke structure, possibly to a new state.
@@ -792,7 +836,7 @@ static inline void process_step(
 
     // Add to the linked list of the responsible peer shard
     struct shard *shard = &w->shard;
-    unsigned int responsible = sh->hash % w->nworkers;
+    unsigned int responsible = (sh->hash >> 17) % w->nworkers;
     struct state_queue *sq = &shard->peers[responsible];
     *sq->last = sh;
     sq->last = &sh->next;
@@ -2620,14 +2664,11 @@ static void do_work(struct worker *w, unsigned int round){
 
         // Stop if about to run out of state buffer space
 #ifdef notdef
-        if (w->sb_index > STATE_BUFFER_HWM /* * w->nworkers */) {
+        if (w->sb_index > STATE_BUFFER_HWM) {
             break;
         }
 #else
-        if (round < 20 && w->sb_index > 20000) {
-            break;
-        }
-        if (round >= 20 && w->sb_index > 20000) {
+        if (w->sb_index > global.computations->old_count * 2) {
             break;
         }
 #endif
@@ -2650,7 +2691,7 @@ static void do_work2(struct worker *w){
             // or allocate if not.
             bool new;
             struct dict_assoc *hn = dict_find_new(shard->states, &w->allocator,
-// TODO                        sc, size, sh->noutgoing * sizeof(struct edge), &new, sh->hash);
+//                         sc, size, sh->noutgoing * sizeof(struct edge), &new, sh->hash);
                         sc, size, sh->noutgoing * sizeof(struct edge), &new, meiyan3(sc));
             struct node *next = (struct node *) &hn[1];
             struct edge *edge = &node_edges(sh->node)[sh->edge_index];
@@ -4716,7 +4757,7 @@ int exec_model_checker(int argc, char **argv){
         middle_wait += w->middle_wait;
         end_wait += w->end_wait;
 #ifndef notdef
-        printf("W%2u: p1=%.3lf p2a=%.3lf p2b=%.3lf p3a=%.3lf p3b=%.3lf w1=%.3lf w2=%.3lf w3=%.3lf n=%u\n", i,
+        printf("W%2u: p1=%.3lf p2a=%.3lf p2b=%.3lf p3a=%.3lf p3b=%.3lf w1=%.3lf w2=%.3lf w3=%.3lf n=%u (%u, %.3lf)\n", i,
                 w->phase1,
                 w->phase2a,
                 w->phase2b,
@@ -4725,7 +4766,9 @@ int exec_model_checker(int argc, char **argv){
                 w->start_wait,
                 w->middle_wait,
                 w->end_wait,
-                w->shard.tb_size);
+                w->shard.tb_size,
+                w->shard.states->invoke_count,
+                (double) w->shard.states->depth_count / w->shard.states->invoke_count);
 #endif
     }
 #else // REPORT_WORKERS

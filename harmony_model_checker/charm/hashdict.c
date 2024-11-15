@@ -285,6 +285,8 @@ struct dict_assoc *dict_find_new(struct dict *dict, struct allocator *al,
     // uint32_t hash = hash_func(key, keylen);
     unsigned int index = hash % dict->length;
 
+    dict->invoke_count++;
+
     struct dict_assoc **sdb = &dict->stable[index];
 	struct dict_assoc *k = *sdb;
 	while (k != NULL) {
@@ -292,6 +294,7 @@ struct dict_assoc *dict_find_new(struct dict *dict, struct allocator *al,
             *new = false;
 			return k;
 		}
+        dict->depth_count++;
 		k = k->next;
 	}
 
