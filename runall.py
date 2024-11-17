@@ -115,6 +115,8 @@ for t in tests:
             if t["issue"] != hco["issue"]:
                 print("Different issue (was %s)???  Aborting further tests" % t["issue"])
                 break
+            if "warning" in hco:
+                print("Got warning: %s" % hco["warning"])
             # if t["issue"] != "Safety violation" and min(t["nstates"], hco["nstates"]) / max(t["nstates"], hco["nstates"]) < .1:
             #     print("#states very different (was %d)???" % t["nstates"])
             #     break

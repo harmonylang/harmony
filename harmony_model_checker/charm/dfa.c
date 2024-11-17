@@ -11,35 +11,7 @@
 #include "value.h"
 #include "hashdict.h"
 #include "json.h"
-
-struct dfa_transition {
-    struct dfa_transition *next; // linked list maintenance
-    hvalue_t symbol;             // transition symbol
-    unsigned int dst;            // destination state
-    unsigned int cnt;            // for statistics
-};
-
-struct dfa_state {
-    struct dfa_state *next;      // linked list maintenance
-    unsigned int idx;            // name of state
-    bool final;                  // terminal state
-    struct dfa_transition *transitions;     // transition map
-
-    // TODO.  Maybe should make transitions a dict
-};
-
-struct dfa {
-    unsigned int nstates;        // number of states
-    unsigned int nedges;         // number of edges
-    unsigned int initial;        // initial state
-    struct dfa_state *states;    // array of states
-    unsigned int nsymbols;       // number of symbols
-    hvalue_t *symbols;  // list of symbols
-
-    // stats
-    unsigned int cnt;            // # edges visited
-    unsigned int total;          // total transitions done
-};
+#include "dfa.h"
 
 static int int_parse(char *p, int len){
     char *copy = malloc(len + 1);
@@ -140,11 +112,14 @@ struct dfa *dfa_read(struct allocator *allocator, char *fname){
     struct json_value *edges = dict_lookup(jv->u.map, "edges", 5);
     assert(edges->type == JV_LIST);
     dfa->nedges = edges->u.list.nvals;
+    dfa->edges = malloc(dfa->nedges * sizeof(*dfa->edges));
     for (unsigned int i = 0; i < edges->u.list.nvals; i++) {
         struct json_value *edge = edges->u.list.vals[i];
         assert(edge->type == JV_MAP);
 
         struct dfa_transition *dt = new_alloc(struct dfa_transition);
+        dt->index = i;
+        dfa->edges[i] = dt;
 
         struct json_value *src = dict_lookup(edge->u.map, "src", 3);
         assert(src->type == JV_ATOM);
@@ -182,20 +157,14 @@ bool dfa_is_final(struct dfa *dfa, int state){
     return dfa->states[state].final;
 }
 
-// make a step.  Return -1 upon error.  Record transition in
-// transitions if requested
+// make a step.  Returns transition id.  Return -1 upon error.
 int dfa_step(struct dfa *dfa, int current, hvalue_t symbol){
     struct dfa_state *ds = &dfa->states[current];
 
     // TODO.  Maybe make symbol lookup a hashmap
     for (struct dfa_transition *dt = ds->transitions; dt != NULL; dt = dt->next) {
         if (dt->symbol == symbol) {
-            if (dt->cnt == 0) {
-                dfa->cnt++;
-            }
-            dfa->total++;
-            dt->cnt++;
-            return dt->dst;
+            return dt->index;
         }
     }
     return -1;

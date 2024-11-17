@@ -645,11 +645,11 @@ void op_Print(const void *env, struct state *state, struct step *step){
     hvalue_t symbol = ctx_pop(step->ctx);
     if (global.run_direct) {
         if (global.dfa != NULL) {
-            int nstate = dfa_step(global.dfa, state->dfa_state, symbol);
-            if (nstate < 0) {
+            int t = dfa_step(global.dfa, state->dfa_state, symbol);
+            if (t < 0) {
                 panic("bad behavior");
             }
-            state->dfa_state = nstate;
+            state->dfa_state = dfa_dest(global.dfa, t);
         }
         else {
             if (VALUE_TYPE(symbol) == VALUE_LIST) {
@@ -684,14 +684,14 @@ void op_Print(const void *env, struct state *state, struct step *step){
 
         // TODO.  This is currently duplicated in onestep/twostep
         if (global.dfa != NULL) {
-            int nstate = dfa_step(global.dfa, state->dfa_state, symbol);
-            if (nstate < 0) {
+            int t = dfa_step(global.dfa, state->dfa_state, symbol);
+            if (t < 0) {
                 char *p = value_string(symbol);
                 value_ctx_failure(step->ctx, step->allocator, "Behavior failure on %s", p);
                 free(p);
                 return;
             }
-            state->dfa_state = nstate;
+            state->dfa_state = dfa_dest(global.dfa, t);
         }
     }
     step->ctx->pc++;

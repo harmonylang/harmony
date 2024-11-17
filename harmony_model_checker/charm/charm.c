@@ -217,7 +217,10 @@ struct worker {
 
     unsigned int sb_index;
 
+    bool *transitions;      // which transitions taken in dfa
+
     // Some cached info from global to reduce contention
+    // TODO.  Probably useless
     unsigned int nworkers;
     struct dfa *dfa;
 };
@@ -816,8 +819,8 @@ static inline void process_step(
     if (w->dfa != NULL) {
         assert(so->nlog == 0 || so->nlog == 1);
         for (unsigned int i = 0; i < so->nlog; i++) {
-            int nstate = dfa_step(w->dfa, sc->dfa_state, step_log(so)[i]);
-            if (nstate < 0) {
+            int t = dfa_step(w->dfa, sc->dfa_state, step_log(so)[i]);
+            if (t < 0) {
                 struct edge *edge = &node_edges(sh->node)[sh->edge_index];
                 struct failure *f = new_alloc(struct failure);
                 f->type = FAIL_BEHAVIOR_BAD;
@@ -827,7 +830,8 @@ static inline void process_step(
                 add_failure(&w->failures, f);
                 break;
             }
-            sc->dfa_state = nstate;
+            w->transitions[t] = true;
+            sc->dfa_state = dfa_dest(w->dfa, t);
         }
     }
 
@@ -4650,6 +4654,9 @@ int exec_model_checker(int argc, char **argv){
         w->profile = calloc(global.code.len, sizeof(*w->profile));
         w->nworkers = global.nworkers;
         w->dfa = global.dfa;
+        if (global.dfa != NULL) {
+            w->transitions = calloc(sizeof(bool), dfa_ntransitions(global.dfa));
+        }
     }
 
     // Create an initial state.  Start with the initial context.
@@ -4807,14 +4814,32 @@ int exec_model_checker(int argc, char **argv){
     // any of the workers printed something and if there may be
     // cycles in the Kripke structure
     bool cycles_possible = false;
+    unsigned int ntransitions;
+    bool *transitions;
+    bool transition_missing = false;
+    if (global.dfa == NULL) {
+        ntransitions = 0;
+        transitions = NULL;
+    }
+    else {
+        ntransitions = dfa_ntransitions(global.dfa);
+        transitions = calloc(sizeof(bool), ntransitions);
+    }
     for (unsigned int i = 0; i < global.nworkers; i++) {
-        if (workers[i].printed_something) {
+        struct worker *w = &workers[i];
+
+        if (w->printed_something) {
             global.printed_something = true;
         }
-        if (workers[i].cycles_possible) {
+        if (w->cycles_possible) {
             cycles_possible = true;
         }
-        collect_failures(&workers[i]);
+        collect_failures(w);
+        if (global.failures == NULL) {
+            for (unsigned int j = 0; j < ntransitions; j++) {
+                transitions[j] |= w->transitions[j];
+            }
+        }
     }
 
     // If no output file is desired, we're done.
@@ -5023,6 +5048,15 @@ int exec_model_checker(int argc, char **argv){
     if (global.failures == NULL) {
         printf("    * **No issues found**\n");
 
+        // See if any DFA transitions are missing.
+        for (unsigned int i = 0; i < ntransitions; i++) {
+            if (!transitions[i]) {
+                transition_missing = true;
+                printf("    * Warning: generated a strict subset of possible behaviors\n");
+                break;
+            }
+        }
+
         // Output an HFA file
         if (dfafile == NULL && hfaout != NULL) {
             // Collect the symbols
@@ -5106,6 +5140,9 @@ int exec_model_checker(int argc, char **argv){
     // with the 'print' outputs.
     if (global.failures == NULL) {
         fprintf(out, "  \"issue\": \"No issues\",\n");
+        if (transition_missing) {
+            fprintf(out, "  \"warning\": \"generated a strict subset of behaviors\",\n");
+        }
         if (hfaout != 0) {
             fprintf(out, "  \"dfasize\": %u,\n", dfasize);
         }
