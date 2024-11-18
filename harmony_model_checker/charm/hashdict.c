@@ -286,15 +286,20 @@ struct dict_assoc *dict_find_new(struct dict *dict, struct allocator *al,
     unsigned int index = hash % dict->length;
 
     dict->invoke_count++;
+    unsigned int depth = 0;
 
     struct dict_assoc **sdb = &dict->stable[index];
 	struct dict_assoc *k = *sdb;
 	while (k != NULL) {
 		if (k->len == keylen && memcmp((char *) &k[1] + k->val_len, key, keylen) == 0) {
             *new = false;
+            if (depth > dict->depth_max) {
+                dict->depth_max = depth;
+            }
 			return k;
 		}
         dict->depth_count++;
+        depth++;
 		k = k->next;
 	}
 
@@ -311,6 +316,9 @@ struct dict_assoc *dict_find_new(struct dict *dict, struct allocator *al,
     *sdb = k;
     dict->count++;
     *new = true;
+    if (depth > dict->depth_max) {
+        dict->depth_max = depth;
+    }
 	return k;
 }
 

@@ -4594,7 +4594,9 @@ int exec_model_checker(int argc, char **argv){
         w->allocator.worker = i;
 
         struct shard *shard = &w->shard;
-        shard->states = dict_new("shard states", sizeof(struct node), 0, 0, false, false);
+        // shard->states = dict_new("shard states", sizeof(struct node), 0, 0, false, false);
+        // shard->states = dict_new("shard states", sizeof(struct node), 8000000 / global.nworkers, 0, false, false);
+        shard->states = dict_new("shard states", sizeof(struct node), 1 << 16, 0, false, false);
         shard->peers = calloc(global.nworkers, sizeof(*shard->peers));
         for (unsigned int si2 = 0; si2 < global.nworkers; si2++) {
             shard->peers[si2].last = &shard->peers[si2].first;

@@ -47,6 +47,7 @@ struct dict {
 	unsigned int growth_factor;
     unsigned int invoke_count;      // how many time invoked?
     unsigned int depth_count;       // how deep are we searching in the linked list?
+    unsigned int depth_max; 
     bool concurrent;
     bool align16;            // entries must be aligned to 16 bytes
     struct dict_list list;   // to make dict_iter more efficient
