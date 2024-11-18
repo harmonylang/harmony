@@ -1,0 +1,29 @@
+import rwlock
+
+const N_READERS = 2
+const N_WRITERS = 0
+
+rw = rwlock.RWlock()
+
+def reader(self):
+    print(self, "enter ra")
+    rwlock.read_acquire(?rw)
+    print(self, "exit ra")
+
+    print(self, "enter rr")
+    rwlock.read_release(?rw)
+    print(self, "exit rr")
+
+def writer(self):
+    print(self, "enter wa")
+    rwlock.write_acquire(?rw)
+    print(self, "exit wa")
+
+    print(self, "enter wr")
+    rwlock.write_release(?rw)
+    print(self, "enter wr")
+
+for i in {1..N_READERS}:
+    spawn reader(i)
+for i in {1..N_WRITERS}:
+    spawn writer(i)

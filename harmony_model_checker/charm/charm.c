@@ -4852,9 +4852,9 @@ int exec_model_checker(int argc, char **argv){
     dict_set_sequential(global.computations);
 
     printf("* Phase 4: Further analysis\n");
-    if (!cycles_possible) {
-        printf("    * cycles impossible\n");
-    }
+    // if (!cycles_possible) {
+    //     printf("    * cycles impossible\n");
+    // }
     fflush(stdout);
 
     bool computed_components = false;
@@ -5048,12 +5048,15 @@ int exec_model_checker(int argc, char **argv){
     if (global.failures == NULL) {
         printf("    * **No issues found**\n");
 
-        // See if any DFA transitions are missing.
-        for (unsigned int i = 0; i < ntransitions; i++) {
-            if (!transitions[i]) {
-                transition_missing = true;
-                printf("    * Warning: generated a strict subset of possible behaviors\n");
-                break;
+        // See if any input DFA transitions are missing.
+        if (global.dfa != NULL) {
+            for (unsigned int i = 0; i < ntransitions; i++) {
+                if (!transitions[i]) {
+                    transition_missing = true;
+                    printf("    * Warning: generated a strict subset of possible behaviors\n");
+                    dfa_counter_example(global.dfa, transitions);
+                    break;
+                }
             }
         }
 

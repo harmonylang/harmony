@@ -19,6 +19,9 @@ struct dfa_state {
     unsigned int idx;            // name of state
     bool final;                  // terminal state
     struct dfa_transition *transitions;     // transition map
+    struct dfa_state *parent;    // for BFS
+    unsigned int child_id;       // for BFS
+    bool explored;               // for BFS
 
     // TODO.  Maybe should make transitions a dict
 };
@@ -44,6 +47,7 @@ int dfa_step(struct dfa *dfa, int current, hvalue_t symbol);
 void dfa_check_trie(struct global *global);
 int dfa_visited(struct dfa *dfa, int current, hvalue_t symbol);
 int dfa_potential(struct dfa *dfa, int current, hvalue_t symbol);
+void dfa_counter_example(struct dfa *dfa, bool *transitions);
 void dfa_dump(struct dfa *dfa);
 
 #endif // SRC_DFA_H

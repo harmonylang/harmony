@@ -223,6 +223,61 @@ int dfa_potential(struct dfa *dfa, int current, hvalue_t symbol){
     return -1;
 }
 
+// Do a BFS to find a missing transition
+void dfa_counter_example(struct dfa *dfa, bool *transitions){
+    // Initialize
+    struct dfa_state *ds = &dfa->states[dfa->initial];
+    ds->explored = true;
+    ds->next = NULL;
+    struct dfa_state *first = ds, **last = &ds->next;
+    struct dfa_transition *dt = NULL;
+
+    // BFS for missing transition
+    while ((ds = first) != NULL) {
+        if ((first = ds->next) == NULL) {
+            last = &first;
+        }
+        for (dt = ds->transitions; dt != NULL; dt = dt->next) {
+            if (!transitions[dt->index]) {
+                break;
+            }
+            struct dfa_state *child = &dfa->states[dt->dst];
+            if (!child->explored) {
+                child->explored = true;
+                child->parent = ds;
+                child->child_id = dt->index;
+
+                // Push
+                child->next = NULL;
+                *last = child;
+                last = &child->next;
+            }
+        }
+        if (dt != NULL) {
+            break;
+        }
+    }
+
+    assert(ds != NULL);
+    assert(dt != NULL);
+
+    // Reverse the parent linked list
+    ds->next = NULL;
+    while (ds->parent != NULL) {
+        ds->parent->next = ds;
+        ds = ds->parent;
+    }
+
+    // Print the path
+    printf("        * Example of missing behavior:\n");
+    while (ds->next != NULL) {
+        ds = ds->next;
+        struct dfa_transition *dt2 = dfa->edges[ds->child_id];
+        printf("            * %s\n", value_string(dt2->symbol));
+    }
+    printf("            * %s\n", value_string(dt->symbol));
+}
+
 void dfa_dump(struct dfa *dfa){
     printf("%u/%u edges visited\n", dfa->cnt, dfa->nedges);
     printf("%u transitions made\n", dfa->total);
