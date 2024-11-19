@@ -60,6 +60,7 @@ struct dict *dict_new(char *whoami, unsigned int value_len, unsigned int initial
 	dict->growth_factor = 10;
 	dict->concurrent = concurrent;
     dict->align16 = align16;
+    dict->autogrow = true;
 	dict->stable = dict->old_stable = calloc(sizeof(*dict->stable), initial_size);
     if (concurrent) {
         dict->unstable = dict->old_unstable = calloc(sizeof(*dict->unstable), initial_size);
@@ -196,7 +197,7 @@ struct dict_assoc *dict_find(struct dict *dict, struct allocator *al,
 
     // If not concurrent may have to grow the table now
 	// if (!dict->concurrent && db->stable == NULL) {
-	if (!dict->concurrent) {
+	if (!dict->concurrent && dict->autogrow) {
 		double f = (double) dict->count / (double) dict->length;
 		if (f > dict->growth_threshold) {
 			dict_resize(dict, dict->length * dict->growth_factor - 1);
@@ -275,6 +276,13 @@ struct dict_assoc *dict_find_lock(struct dict *dict, struct allocator *al,
 	return k;
 }
 
+// See if the dictionary needs growing
+bool dict_overload(struct dict *dict){
+    assert(!dict->concurrent);
+    double f = (double) dict->count / (double) dict->length;
+    return f > dict->growth_threshold;
+}
+
 // Returns in *new if this is a new entry or not.
 // 'extra' is an additional number of bytes added to the value.
 struct dict_assoc *dict_find_new(struct dict *dict, struct allocator *al,
@@ -304,10 +312,12 @@ struct dict_assoc *dict_find_new(struct dict *dict, struct allocator *al,
 	}
 
     // See if we need to grow the table
-    double f = (double) dict->count / (double) dict->length;
-    if (f > dict->growth_threshold) {
-        dict_resize(dict, dict->length * dict->growth_factor - 1);
-        return dict_find_new(dict, al, key, keylen, extra, new, hash);
+    if (dict->autogrow) {
+        double f = (double) dict->count / (double) dict->length;
+        if (f > dict->growth_threshold) {
+            dict_resize(dict, dict->length * dict->growth_factor - 1);
+            return dict_find_new(dict, al, key, keylen, extra, new, hash);
+        }
     }
 
     // Add new entry
