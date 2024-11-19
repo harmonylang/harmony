@@ -71,7 +71,7 @@
 // Important performance parameter that represents the number of states that
 // each worker produces for each other worker before going to the barrier.
 // TODO.  How to tune this thing?
-#define STATE_BUFFER_HWM    10000
+#define STATE_BUFFER_HWM    5000
 
 // All global variables should be here
 struct global global;
@@ -2668,11 +2668,11 @@ static void do_work(struct worker *w, unsigned int round){
 
         // Stop if about to run out of state buffer space
 #ifdef notdef
-        if (w->sb_index > STATE_BUFFER_HWM) {
+        if (w->sb_index > global.computations->old_count / 100) {
             break;
         }
 #else
-        if (w->sb_index > global.computations->old_count * 2) {
+        if (w->sb_index > STATE_BUFFER_HWM) {
             break;
         }
 #endif
@@ -4596,7 +4596,8 @@ int exec_model_checker(int argc, char **argv){
         struct shard *shard = &w->shard;
         // shard->states = dict_new("shard states", sizeof(struct node), 0, 0, false, false);
         // shard->states = dict_new("shard states", sizeof(struct node), 8000000 / global.nworkers, 0, false, false);
-        shard->states = dict_new("shard states", sizeof(struct node), 1 << 16, 0, false, false);
+        // shard->states = dict_new("shard states", sizeof(struct node), 1 << 16, 0, false, false);
+        shard->states = dict_new("shard states", sizeof(struct node), 60000000 / global.nworkers, 0, false, false);
         shard->peers = calloc(global.nworkers, sizeof(*shard->peers));
         for (unsigned int si2 = 0; si2 < global.nworkers; si2++) {
             shard->peers[si2].last = &shard->peers[si2].first;
