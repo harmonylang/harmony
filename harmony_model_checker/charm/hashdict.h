@@ -51,6 +51,7 @@ struct dict {
     bool concurrent;
     bool align16;            // entries must be aligned to 16 bytes
     struct dict_list list;   // to make dict_iter more efficient
+    bool autogrow;
 };
 
 static inline void *dict_retrieve(const void *p, unsigned int *psize){
@@ -82,5 +83,6 @@ unsigned long dict_allocated(struct dict *dict);
 bool dict_exists(struct dict *dict, const void *key, unsigned int keylen, uint32_t hash);
 void dict_resize(struct dict *dict, unsigned int newsize);
 void dict_set_iter(struct dict *dict, unsigned int size);
+bool dict_overload(struct dict *dict);
 
 #endif

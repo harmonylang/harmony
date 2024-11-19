@@ -153,6 +153,7 @@ struct worker {
     // holds the states that hash onto the index into the array.
     struct shard {
         struct dict *states;          // maps states to nodes
+        bool needs_growth;            // hash table needs growing
         struct state_queue *peers;    // peers[nshards]
 
         struct results_block *todo_buffer, *tb_head, *tb_tail;
@@ -3169,6 +3170,7 @@ static void worker(void *arg){
         if (w->index == 2 % w->nworkers) {
             dict_grow_prepare(global.computations);
         }
+        w->shard.needs_growth = dict_overload(w->shard.states);
 
         // Start the final phase (and keep stats).
         // Here we're waiting for all workers to process the generated
@@ -3188,6 +3190,15 @@ static void worker(void *arg){
         // new buckets.
         dict_make_stable(global.values, w->index);
         dict_make_stable(global.computations, w->index);
+
+        // See if any of the peers' hash tables need growing.  If so, grow mine.
+        for (unsigned int i = 0; i < w->nworkers; i++) {
+            if (global.workers[i].shard.needs_growth) {
+                struct dict *dict = w->shard.states;
+                dict_resize(dict, dict->length * dict->growth_factor - 1);
+                break;
+            }
+        }
 
         after = gettime();
         w->phase3a += after - before;
@@ -4596,8 +4607,8 @@ int exec_model_checker(int argc, char **argv){
         struct shard *shard = &w->shard;
         // shard->states = dict_new("shard states", sizeof(struct node), 0, 0, false, false);
         // shard->states = dict_new("shard states", sizeof(struct node), 8000000 / global.nworkers, 0, false, false);
-        // shard->states = dict_new("shard states", sizeof(struct node), 1 << 16, 0, false, false);
-        shard->states = dict_new("shard states", sizeof(struct node), 60000000 / global.nworkers, 0, false, false);
+        shard->states = dict_new("shard states", sizeof(struct node), 1 << 14, 0, false, false);
+        shard->states->autogrow = false;
         shard->peers = calloc(global.nworkers, sizeof(*shard->peers));
         for (unsigned int si2 = 0; si2 < global.nworkers; si2++) {
             shard->peers[si2].last = &shard->peers[si2].first;
