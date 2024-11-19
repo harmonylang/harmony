@@ -4607,7 +4607,7 @@ int exec_model_checker(int argc, char **argv){
         struct shard *shard = &w->shard;
         // shard->states = dict_new("shard states", sizeof(struct node), 0, 0, false, false);
         // shard->states = dict_new("shard states", sizeof(struct node), 8000000 / global.nworkers, 0, false, false);
-        shard->states = dict_new("shard states", sizeof(struct node), 1 << 14, 0, false, false);
+        shard->states = dict_new("shard states", sizeof(struct node), 1 << 16, 0, false, false);
         shard->states->autogrow = false;
         shard->peers = calloc(global.nworkers, sizeof(*shard->peers));
         for (unsigned int si2 = 0; si2 < global.nworkers; si2++) {
