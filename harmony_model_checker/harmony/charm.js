@@ -437,10 +437,14 @@ function handleKeyPress(e) {
       break;
     case 'Enter':
       if (currentTime < totalTime) {
+        var mesidx = currentMegaStep();
         var cloc = getCode(microsteps[currentTime].pc);
         while (++currentTime < totalTime) {
           var nloc = getCode(microsteps[currentTime].pc);
           if (nloc.file != cloc.file || nloc.line != cloc.line || nloc.code != cloc.code) {
+            break;
+          }
+          if (currentMegaStep() != mesidx) {
             break;
           }
         }
