@@ -1,0 +1,11 @@
+shared = 0
+
+def f():
+    var register = shared;
+    register += 1
+    shared = register
+
+spawn f()
+spawn f()
+
+finally shared == 2

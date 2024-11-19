@@ -1,0 +1,8 @@
+shared = 0
+
+def f(): shared += 1
+
+f()
+f()
+
+finally shared == 2
