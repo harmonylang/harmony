@@ -1,0 +1,14 @@
+from synch import Lock, acquire, release
+
+shared = 0
+thelock = Lock()
+
+def f():
+    acquire(?thelock)
+    shared += 1
+    release(?thelock)
+
+spawn f()
+spawn f()
+
+finally shared == 2
