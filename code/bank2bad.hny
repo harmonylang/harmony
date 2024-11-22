@@ -1,0 +1,23 @@
+from synch import Lock, acquire, release
+
+def Account(balance) returns account:
+    account = { .lock: Lock(), .balance: balance }
+
+accounts = [ Account(3), Account(7) ]
+
+invariant all(a.balance >= 0 for a in accounts)
+
+def transfer(a1, a2, amount):
+    acquire(?accounts[a1].lock)
+    var funds_available = amount <= accounts[a1].balance
+    release(?accounts[a1].lock)
+    if funds_available:
+        acquire(?accounts[a1].lock)
+        accounts[a1].balance -= amount 
+        release(?accounts[a1].lock)
+        acquire(?accounts[a2].lock)
+        accounts[a2].balance += amount 
+        release(?accounts[a2].lock)
+
+spawn transfer(0, 1, 2)
+spawn transfer(0, 1, 2)

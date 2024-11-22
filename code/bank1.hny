@@ -1,0 +1,18 @@
+from synch import Lock, acquire, release
+
+def Account(balance) returns account:
+    account = { .lock: Lock(), .balance: balance }
+
+accounts = [ Account(3), Account(7) ]
+
+def transfer(a1, a2, amount):
+    acquire(?accounts[a1].lock)
+    if amount <= accounts[a1].balance:
+        accounts[a1].balance -= amount 
+        acquire(?accounts[a2].lock)
+        accounts[a2].balance += amount 
+        release(?accounts[a2].lock)
+    release(?accounts[a1].lock)
+
+spawn transfer(0, 1, 1)
+spawn transfer(1, 0, 2)

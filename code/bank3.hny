@@ -1,0 +1,25 @@
+def Lock() returns lock:
+    lock = False
+
+def acquire2(lk1, lk2):
+    atomically when not (!lk1 or !lk2):
+        !lk1 = !lk2 = True
+
+def release(lk):
+    atomically !lk = False
+
+def Account(balance) returns account:
+    account = { .lock: Lock(), .balance: balance }
+
+accounts = [ Account(3), Account(7) ]
+
+def transfer(a1, a2, amount):
+    acquire2(?accounts[a1].lock, ?accounts[a2].lock)
+    if amount <= accounts[a1].balance:
+        accounts[a1].balance -= amount 
+        accounts[a2].balance += amount 
+    release(?accounts[a1].lock)
+    release(?accounts[a2].lock)
+
+spawn transfer(0, 1, 1)
+spawn transfer(1, 0, 2)
