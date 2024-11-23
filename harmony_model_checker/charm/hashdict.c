@@ -33,7 +33,7 @@ void dict_set_iter(struct dict *dict, unsigned int size){
 static inline struct dict_assoc *dict_assoc_new(struct dict *dict,
         struct allocator *al, char *key, unsigned int len, unsigned int extra){
     unsigned int total = sizeof(struct dict_assoc) + dict->value_len + extra + len;
-	struct dict_assoc *k = al == NULL ?  malloc(total) :
+	struct dict_assoc *k = al == NULL ? malloc(total) :
                         (*al->alloc)(al->ctx, total, false, dict->align16);
     k->len = len;
     k->val_len = dict->value_len + extra;

@@ -2641,6 +2641,7 @@ void op_Sequential(const void *env, struct state *state, struct step *step){
     /* Insert in set of sequential variables.
      *
      * TODO.  Could lead to race between workers.  Use a lock.
+     *        Fortunately unlikely as sequential is mostly used in initialization.
      */
     unsigned int size;
     hvalue_t *seqs = value_copy_extend(global.seqs, sizeof(hvalue_t), &size);
