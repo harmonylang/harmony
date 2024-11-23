@@ -1,11 +1,11 @@
-import bag
+import bags
 
 const F = 1
 const N = (2 * F) + 1
 
-network = bag.empty()
+network = bags.empty()
 
-def send(m): atomically network = bag.add(network, m)
+def send(m): atomically network = bags.add(network, m)
 
 def server():
     var t, v, received = (0, None), None, {}
@@ -23,7 +23,7 @@ def init():
 def receive(uid, phase) returns quorums:
     let msgs = { m:c for m:c in network
                 where (m.type == .response) and (m.dst == (uid, phase)) }:
-        quorums = bag.combinations(msgs, N - F)
+        quorums = bags.combinations(msgs, N - F)
 
 def read(uid) returns contents:
     send({ .type: "read", .src: (uid, 1) })

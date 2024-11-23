@@ -1,0 +1,23 @@
+import barrier
+
+const NWORKERS = 2
+
+vec1 = [ 1, 2, 3, 4 ]
+vec2 = [ 5, 6, 7, 8 ]
+barr = barrier.Barrier(NWORKERS)
+output = [ 0, ] * NWORKERS
+
+def split(self, v) returns x:
+    x = (self * len(v)) / NWORKERS
+
+def dotproduct(self, v1, v2):
+    assert len(v1) == len(v2)
+    var total = 0
+    for i in { split(self, vec1) .. split(self + 1, vec1)  - 1}:
+        total += v1[i] * v2[i]
+    output[self] = total
+    barrier.bwait(?barr)
+    print sum(output)
+
+for i in { 0 .. NWORKERS - 1 }:
+    spawn dotproduct(i, vec1, vec2)

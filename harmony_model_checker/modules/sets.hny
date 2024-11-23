@@ -1,4 +1,4 @@
-import list
+import lists
 
 def issubset(s, t) returns result:
     result = (s & t) == s
@@ -36,7 +36,7 @@ def union(s) returns result:
 
 # d is a list of sets.  Return the Cartesian product.
 def cartesian(d) returns result:
-    result = { [] } if d == [] else { [e,] + t for t in cartesian(list.tail(d)) for e in d[0] }
+    result = { [] } if d == [] else { [e,] + t for t in cartesian(lists.tail(d)) for e in d[0] }
 
 # return set of all subsets of s of size k
 def combinations(s, k) returns result:

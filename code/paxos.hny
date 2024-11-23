@@ -1,23 +1,23 @@
 #/ PART1
 
-import bag
+import bags
 
 const F = 1
 const NACCEPTORS = (2 * F) + 1
 const NLEADERS = F + 1
 const NBALLOTS = 2
 
-network = bag.empty()
+network = bags.empty()
 
 proposals = [ choose({0, 1}) for i in {0..NLEADERS-1} ]
 
 def send(msg):
-    atomically network = bag.add(network, msg)
+    atomically network = bags.add(network, msg)
 
 def receive(ballot, phase) returns quorum:
     let msgs = { e:c for (b,p,t,e):c in network
                         where (b,p,t) == (ballot, phase, "B") }:
-        quorum = bag.combinations(msgs, NACCEPTORS - F)
+        quorum = bags.combinations(msgs, NACCEPTORS - F)
 
 print proposals
 for i in {0..NLEADERS - 1}:
@@ -37,7 +37,7 @@ def leader(self, proposal):
                     _, estimate = max(accepted)
             send(ballot, 2, "A", estimate)
         atomically when exists quorum in receive(ballot, 2):
-            if bag.multiplicity(quorum, (ballot, estimate)) == (NACCEPTORS - F):
+            if bags.multiplicity(quorum, (ballot, estimate)) == (NACCEPTORS - F):
                 assert estimate in proposals    # validity
                 if not decided:
                     print estimate

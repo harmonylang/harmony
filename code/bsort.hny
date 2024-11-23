@@ -2,9 +2,9 @@ from barrier import *
 
 const N = 5     # size of list to be sorted
 
-list = [ choose({ 1 .. N }) for i in { 1 .. N } ]
+thelist = [ choose({ 1 .. N }) for i in { 1 .. N } ]
 
-finally all(list[i-1] <= list[i] for i in { 1 .. N - 1 })
+finally all(thelist[i-1] <= thelist[i] for i in { 1 .. N - 1 })
 
 const NTHREADS = N / 2
 bar = Barrier(NTHREADS)
@@ -18,15 +18,15 @@ def sorter(i):
     var oldcount = 0
     while not sorted:
         # Even phase
-        if list[i - 1] > list[i]:
-            list[i - 1], list[i] = list[i], list[i - 1]
+        if thelist[i - 1] > thelist[i]:
+            thelist[i - 1], thelist[i] = thelist[i], thelist[i - 1]
             fetch_and_increment(?count)
 
         bwait(?bar)
 
         # Odd phase
-        if (i < (N - 1)) and (list[i] > list[i + 1]):
-            list[i], list[i + 1] = list[i + 1], list[i]
+        if (i < (N - 1)) and (thelist[i] > thelist[i + 1]):
+            thelist[i], thelist[i + 1] = thelist[i + 1], thelist[i]
             fetch_and_increment(?count)
 
         bwait(?bar)

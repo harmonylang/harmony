@@ -1,6 +1,6 @@
 #/ PART1
 
-import list, action
+import lists, action
 
 const NREPLICAS = 3
 const NOPS = 2
@@ -55,7 +55,7 @@ def do_gotHist(self, hist):
 const gotHist = lambda(): { ?do_gotHist(p, hist)
     for p in {1..NREPLICAS} where not replicas[p].crashed
     for hist in replicas[p].received where (len(replicas[p].hist) < len(hist))
-                        and list.startswith(hist, replicas[p].hist) } end
+                        and lists.startswith(hist, replicas[p].hist) } end
 
 def do_deliver(self):
     print(self, replicas[self].hist[replicas[self].delivered])

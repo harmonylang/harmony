@@ -1,4 +1,4 @@
-import list
+import lists
 
 def Stack() returns stack:
     stack = []
@@ -9,4 +9,4 @@ def push(st, v):
 def pop(st) returns next:
     let n = len(!st) - 1:
         next = (!st)[n]
-        !st = list.subseq(!st, 0, n)
+        !st = lists.subseq(!st, 0, n)

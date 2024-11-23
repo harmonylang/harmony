@@ -1,5 +1,5 @@
-import list
-import bag
+import lists
+import bags
 
 def atomic_load(p) returns current:
     atomically current = !p
@@ -41,24 +41,24 @@ def release(binsema):
         !binsema = False
 
 def Condition() returns result:
-    result = bag.empty()
+    result = bags.empty()
 
 def wait(c, lk):
     var cnt = 0
     let (), ctx = save():
         atomically:
-            cnt = bag.multiplicity(!c, ctx)
-            !c = bag.add(!c, ctx)
+            cnt = bags.multiplicity(!c, ctx)
+            !c = bags.add(!c, ctx)
             !lk = False
-        atomically when (not !lk) and (bag.multiplicity(!c, ctx) <= cnt):
+        atomically when (not !lk) and (bags.multiplicity(!c, ctx) <= cnt):
             !lk = True
 
 def notify(c):
-    atomically if !c != bag.empty():
-        !c = bag.remove(!c, bag.bchoose(!c))
+    atomically if !c != bags.empty():
+        !c = bags.remove(!c, bags.bchoose(!c))
 
 def notifyAll(c):
-    atomically !c = bag.empty()
+    atomically !c = bags.empty()
 
 def Semaphore(cnt) returns result:
     result = cnt
@@ -75,8 +75,8 @@ def Queue() returns result:
 
 def get(q) returns result:
     atomically when !q != []:
-        result = list.head(!q)
-        !q = list.tail(!q)
+        result = lists.head(!q)
+        !q = lists.tail(!q)
 
 def put(q, item):
-    atomically !q = list.append(!q, item)
+    atomically !q = lists.append(!q, item)

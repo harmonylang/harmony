@@ -1,5 +1,4 @@
-import list
-import action
+import lists, action
 
 const N = 2
 const VALUES = { "a", "b" }
@@ -13,15 +12,15 @@ invariant all(("add_proc", p) in procs[q].log
                     for q in {0..N-1} where procs[q].mode == "live")
 
 # Logs are consistently ordered
-invariant all((list.startswith(procs[p].log, procs[q].log) or
-                        list.startswith(procs[q].log, procs[p].log))
+invariant all((lists.startswith(procs[p].log, procs[q].log) or
+                        lists.startswith(procs[q].log, procs[p].log))
                     for p in {0..N-1} where procs[p].mode == "live"
                     for q in {0..N-1} where procs[q].mode == "live")
 
 # If p appears before q in q's log, then q's log is a prefix of p's
-invariant all((list.index(procs[q].log, ("add_proc", p)) <
-                list.index(procs[q].log, ("add_proc", q))) =>
-                        list.startswith(procs[p].log, procs[q].log)
+invariant all((lists.index(procs[q].log, ("add_proc", p)) <
+                lists.index(procs[q].log, ("add_proc", q))) =>
+                        lists.startswith(procs[p].log, procs[q].log)
                     for p in {0..N-1} where procs[p].mode == "live"
                     for q in {0..N-1} where procs[q].mode == "live")
 
@@ -45,7 +44,7 @@ const is_head = lambda(p): get_conf(p)[0] == p end
 # is_successor(self, p) returns whether self thinks p is its successor
 def is_successor(self, p):
     let conf = get_conf(self)
-    let me = list.index(conf, self):
+    let me = lists.index(conf, self):
         result = (me < (len(conf) - 1)) and (p == conf[me + 1])
 
 def do_start(self):
@@ -91,7 +90,7 @@ const gotLog = lambda(): { (do_gotLog, (p, log))
     for p in {0..N-1}
       where (procs[p].mode in { "fetal", "live" })
     for log in procs[p].received
-      where (len(procs[p].log) < len(log)) and list.startswith(log, procs[p].log) } end
+      where (len(procs[p].log) < len(log)) and lists.startswith(log, procs[p].log) } end
 
 def do_crash(self):
     procs[self].mode = "crashed"

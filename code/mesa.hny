@@ -1,19 +1,19 @@
 def Condition() returns condition:
-    condition = bag.empty()
+    condition = bags.empty()
 
 def wait(c, lk):
     var cnt = 0
     let _, ctx = save():
         atomically:
-            cnt = bag.multiplicity(!c, ctx)
-            !c = bag.add(!c, ctx)
+            cnt = bags.multiplicity(!c, ctx)
+            !c = bags.add(!c, ctx)
             !lk = False
-        atomically when (not !lk) and (bag.multiplicity(!c, ctx) <= cnt):
+        atomically when (not !lk) and (bags.multiplicity(!c, ctx) <= cnt):
             !lk = True
 
 def notify(c):
-    atomically if !c != bag.empty():
-        !c = bag.remove(!c, bag.bchoose(!c))
+    atomically if !c != bags.empty():
+        !c = bags.remove(!c, bags.bchoose(!c))
         
 def notifyAll(c):
-    !c = bag.empty()
+    !c = bags.empty()

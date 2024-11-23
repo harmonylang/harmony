@@ -1,4 +1,4 @@
-import list, action
+import lists, action
 
 const NREPLICAS = 3
 const NOPS = 2
