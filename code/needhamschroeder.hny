@@ -10,16 +10,16 @@ def alice():
         send({ .dst: dest,
             .contents: { .type: 1, .nonce: "nonceA", .initiator: "Alice" } })
         atomically when exists m in network when (m.dst == "Alice")
-                    and (m.contents.type == 2) and (m.contents.nonce == "nonceA"):
+                and (m.contents.type == 2) and (m.contents.nonce == "nonceA"):
             send({ .dst: dest, .contents: { .type: 3, .nonce: m.contents.nonce2 } })
 
 def bob():
     atomically when exists m in network when (m.dst == "Bob")
-                    and (m.contents.type == 1) and (m.contents.initiator == "Alice"):
+                and (m.contents.type == 1) and (m.contents.initiator == "Alice"):
         send({ .dst: "Alice",
             .contents: { .type: 2, .nonce: m.contents.nonce, .nonce2: "nonceB" } })
     atomically when exists m in network when (m.dst == "Bob")
-                    and (m.contents.type == 3) and (m.contents.nonce == "nonceB"):
+                and (m.contents.type == 3) and (m.contents.nonce == "nonceB"):
         assert dest == "Bob"
 
 def corey():
