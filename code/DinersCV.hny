@@ -1,29 +1,25 @@
-import synch
+from synch import *
 
 const N = 5
 
-mutex = synch.Lock()
+mutex = Lock()
 forks = [False,] * N
-conds = [synch.Condition(),] * N
+conds = [Condition(),] * N
 
 def diner(which):
     let left, right = (which, (which + 1) % N):
         while choose({ False, True }):
-            synch.acquire(?mutex)
+            acquire(?mutex)
             while forks[left] or forks[right]:
-                if forks[left]:
-                    synch.wait(?conds[left], ?mutex)
-                if forks[right]:
-                    synch.wait(?conds[right], ?mutex)
-            assert not (forks[left] or forks[right])
+                wait(?conds[which], ?mutex)
             forks[left] = forks[right] = True
-            synch.release(?mutex)
+            release(?mutex)
             # dine
-            synch.acquire(?mutex)
+            acquire(?mutex)
             forks[left] = forks[right] = False
-            synch.notify(?conds[left])
-            synch.notify(?conds[right])
-            synch.release(?mutex)
+            notify(?conds[(which - 1) % N])
+            notify(?conds[(which + 1) % N])
+            release(?mutex)
             # think
 
 for i in {0..N-1}:

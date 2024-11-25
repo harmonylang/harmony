@@ -11,14 +11,18 @@ def diner(which):
         while choose({ False, True }):
             synch.acquire(?mutex)
             while forks[left] or forks[right]:
-                synch.wait(?conds[which], ?mutex)
+                if forks[left]:
+                    synch.wait(?conds[left], ?mutex)
+                if forks[right]:
+                    synch.wait(?conds[right], ?mutex)
+            assert not (forks[left] or forks[right])
             forks[left] = forks[right] = True
             synch.release(?mutex)
             # dine
             synch.acquire(?mutex)
             forks[left] = forks[right] = False
-            synch.notify(?conds[(which - 1) % N])
-            synch.notify(?conds[(which + 1) % N])
+            synch.notify(?conds[left])
+            synch.notify(?conds[right])
             synch.release(?mutex)
             # think
 
