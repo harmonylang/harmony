@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 from threading import Thread
 
 from harmony_model_checker.harmony.jsonstring import json_string
-# from harmony_model_checker.iface import Transitions_t
+from harmony_model_checker.iface import Transitions_t
 
 try:
     import pydot  # type: ignore
@@ -29,7 +29,6 @@ def find_error_states(transitions, final_states):
             error_states.add(s)
     return error_states
 
-"""
 def is_dfa_equivalent(dfa: DFA, hfa: DFA) -> bool:
     stack: List[Tuple[int, int]] = []
 
@@ -115,7 +114,6 @@ def is_dfa_equivalent(dfa: DFA, hfa: DFA) -> bool:
         all(q in final_states for q in s) or all(q not in final_states for q in s)
         for s in sets.values()
     )
-"""
 
 def read_hfa_file(file):
     try:
@@ -197,7 +195,6 @@ def compare_behaviors(file, dfa):
         behavior_show_diagram(diff, "diff.png")
     """
 
-"""
 # Modified from automata-lib
 def behavior_show_diagram(dfa: DFA, path=None):
     graph = pydot.Dot(graph_type='digraph', rankdir='LR')
@@ -262,7 +259,6 @@ def eps_closure(states: Set[str], transitions: Transitions_t, current: str):
     x: Set[str] = set()
     eps_closure_rec(states, transitions, current, x)
     return frozenset(x)
-"""
 
 # minified_dfa = None
 #
@@ -308,6 +304,8 @@ def behavior_parse(js, minify, outputfiles, behavior):
             if True or len(intermediate_dfa.states) > 100: 
                 print("    * minify done #states=%d"%len(dfa.states))
     """
+    # print("XXXXXXXXX")
+    # json.dumps(dfa)
     dfa_states = dfa.states
     (dfa_transitions,) = dfa.transitions,
     dfa_initial_state = dfa.initial_state
@@ -345,7 +343,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
         if len(dfa.states) > 250:
             print("    * output of png file suppressed (too many states)") 
         else:
-            if False and got_pydot and got_automata:
+            if got_pydot and got_automata:
                 behavior_show_diagram(dfa, path=outputfiles["png"])
             else:
                 print("    * running dot", len(dfa.states))
