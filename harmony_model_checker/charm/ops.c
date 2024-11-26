@@ -4232,6 +4232,26 @@ hvalue_t f_set(struct state *state, struct step *step, hvalue_t *args, unsigned 
     return result;
 }
 
+hvalue_t f_hex(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
+    assert(n == 1);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "convert into a string; ");
+    }
+    hvalue_t e = args[0];
+    if (VALUE_TYPE(e) != VALUE_INT) {
+        return value_ctx_failure(step->ctx, step->allocator, "hex() can only be applied to integers");
+    }
+    long int r = VALUE_FROM_INT(e);
+    char buf[100], *p = buf;
+    if (r < 0) {
+        *p++ = '-';
+        r = -r;
+    }
+    sprintf(buf, "0x%lx", r);
+    hvalue_t v = value_put_atom(step->allocator, buf, strlen(buf));
+    return v;
+}
+
 hvalue_t f_str(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 1);
     if (step->keep_callstack) {
@@ -5347,6 +5367,7 @@ struct f_info f_table[] = {
     { "countLabel", f_countLabel },
     { "DictAdd", f_dict_add },
     { "get_ident", f_get_ident },
+    { "hex", f_hex },
     { "in", f_in },
     { "ListAdd", f_list_add },
     { "keys", f_keys },

@@ -1,0 +1,29 @@
+const MEM_SIZE  = 0x10
+const WORD_SIZE = 16
+
+const WORD_MASK = (1 << WORD_SIZE) - 1
+memory = [0,] * MEM_SIZE
+
+def hw_load(address) returns value:
+    atomically value = memory[address]
+
+def hw_store(address, value):
+    atomically memory[address] = value
+
+def load_double(address) returns value:
+    assert (address % 2) == 0
+    value = hw_load(address) | (hw_load(address + 1) << WORD_SIZE)
+
+def store_double(address, value):
+    assert (address % 2) == 0
+    hw_store(address, value & WORD_MASK)
+    hw_store(address + 1, (value >> WORD_SIZE) & WORD_MASK)
+
+def f():
+    store_double(0x6, 0xffffffff)
+
+def g():
+    print hex(load_double(0x6))
+
+spawn f()
+spawn g()
