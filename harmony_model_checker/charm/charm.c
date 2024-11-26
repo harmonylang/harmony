@@ -2697,8 +2697,8 @@ static void do_work2(struct worker *w){
             // or allocate if not.
             bool new;
             struct dict_assoc *hn = sdict_find_new(shard->states, &w->allocator,
-// TODO                 sc, size, sh->noutgoing * sizeof(struct edge), &new, sh->hash);
-                        sc, size, sh->noutgoing * sizeof(struct edge), &new, meiyan3(sc));
+                sc, size, sh->noutgoing * sizeof(struct edge), &new, sh->hash);
+                // sc, size, sh->noutgoing * sizeof(struct edge), &new, meiyan3(sc));
             struct node *next = (struct node *) &hn[1];
             struct edge *edge = &node_edges(sh->node)[sh->edge_index];
             edge->dst = next;
@@ -4777,8 +4777,8 @@ int exec_model_checker(int argc, char **argv){
         start_wait += w->start_wait;
         middle_wait += w->middle_wait;
         end_wait += w->end_wait;
-#ifndef notdef
-        printf("W%2u: p1=%.3lf p2a=%.3lf p2b=%.3lf p3a=%.3lf p3b=%.3lf w1=%.3lf w2=%.3lf w3=%.3lf n=%u (%u, %.3lf)\n", i,
+        if (Tflag) {
+            printf("W%2u: p1=%.3lf p2a=%.3lf p2b=%.3lf p3a=%.3lf p3b=%.3lf w1=%.3lf w2=%.3lf w3=%.3lf n=%u (%u, %.3lf)\n", i,
                 w->phase1,
                 w->phase2a,
                 w->phase2b,
@@ -4790,7 +4790,7 @@ int exec_model_checker(int argc, char **argv){
                 w->shard.tb_size,
                 w->shard.states->invoke_count,
                 (double) w->shard.states->depth_count / w->shard.states->invoke_count);
-#endif
+        }
     }
 #else // REPORT_WORKERS
     for (unsigned int i = 0; i < global.nworkers; i++) {
@@ -4799,18 +4799,17 @@ int exec_model_checker(int argc, char **argv){
     }
 #endif // REPORT_WORKERS
 
-#ifndef notdef
-    // printf("computing: %lf %lf %lf %lf (%lf %lf %lf %lf); waiting: %lf %lf %lf\n",
-    printf("computing: p1=%.3lf p2a=%.3lf p2b=%.3lf p3a=%.3lf p3b=%.3lf; waiting: %lf %lf %lf\n",
-        phase1 / global.nworkers,
-        phase2a / global.nworkers,
-        phase2b / global.nworkers,
-        phase3a / global.nworkers,
-        phase3b / global.nworkers,
-        start_wait / global.nworkers,
-        middle_wait / global.nworkers,
-        end_wait / global.nworkers);
-#endif
+    if (Tflag) {
+        printf("computing: p1=%.3lf p2a=%.3lf p2b=%.3lf p3a=%.3lf p3b=%.3lf; waiting: %lf %lf %lf\n",
+            phase1 / global.nworkers,
+            phase2a / global.nworkers,
+            phase2b / global.nworkers,
+            phase3a / global.nworkers,
+            phase3b / global.nworkers,
+            start_wait / global.nworkers,
+            middle_wait / global.nworkers,
+            end_wait / global.nworkers);
+    }
 
     printf("    * %u states (time %.2lfs, mem=%.3lfGB)\n", global.graph.size,
         gettime() - global.start_model_checking,
