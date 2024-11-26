@@ -4235,7 +4235,7 @@ hvalue_t f_set(struct state *state, struct step *step, hvalue_t *args, unsigned 
 hvalue_t f_hex(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 1);
     if (step->keep_callstack) {
-        strbuf_printf(&step->explain, "convert into a string; ");
+        strbuf_printf(&step->explain, "convert into a hexadecimal string; ");
     }
     hvalue_t e = args[0];
     if (VALUE_TYPE(e) != VALUE_INT) {
@@ -4249,6 +4249,38 @@ hvalue_t f_hex(struct state *state, struct step *step, hvalue_t *args, unsigned 
     }
     sprintf(buf, "0x%lx", r);
     hvalue_t v = value_put_atom(step->allocator, buf, strlen(buf));
+    return v;
+}
+
+hvalue_t f_bin(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
+    assert(n == 1);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "convert into a binary string; ");
+    }
+    hvalue_t e = args[0];
+    if (VALUE_TYPE(e) != VALUE_INT) {
+        return value_ctx_failure(step->ctx, step->allocator, "bin() can only be applied to integers");
+    }
+    char buf[100], *p = &buf[sizeof(buf) - 1];
+    *p = 0;
+    long int r = VALUE_FROM_INT(e);
+    unsigned int u = r < 0 ? -r : r;
+    if (u == 0) {
+        *--p = '0';
+    }
+    else {
+        do {
+            *--p = "01"[u & 1];
+            u >>= 1;
+        } while (u != 0);
+    }
+    *--p = 'b';
+    *--p = '0';
+    if (r < 0) {
+        *--p = '-';
+    }
+
+    hvalue_t v = value_put_atom(step->allocator, p, strlen(p));
     return v;
 }
 
@@ -5363,6 +5395,7 @@ struct f_info f_table[] = {
     { "AddArg", f_add_arg },
     { "all", f_all },
     { "any", f_any },
+    { "bin", f_bin },
     { "Closure", f_closure },
     { "countLabel", f_countLabel },
     { "DictAdd", f_dict_add },
