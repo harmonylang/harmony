@@ -1,0 +1,38 @@
+from synch import *
+
+const MAX = 10
+
+def isPrime(v) returns prime:
+    prime = True
+    var d = 2
+    while prime and (d < v):
+        if (v % d) == 0:
+            prime = False
+        d += 1
+
+q1 = q2 = q3 = Queue()
+
+def actor0():
+    for v in {2..MAX}:
+        put(?q1, v)
+
+def actor1():
+    while True:
+        let v = get(?q1):
+            put(?q2, (2 ** v) - 1)
+
+def actor2():
+    while True:
+        let v = get(?q2):
+            if isPrime(v):
+                put(?q3, v)
+
+def actor3():
+    while True:
+        let v = get(?q3):
+            print(v)
+
+spawn actor0()
+spawn eternal actor1()
+spawn eternal actor2()
+spawn eternal actor3()

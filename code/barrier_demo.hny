@@ -13,7 +13,7 @@ def split(self, v) returns x:
 def dotproduct(self, v1, v2):
     assert len(v1) == len(v2)
     var total = 0
-    for i in { split(self, vec1) .. split(self + 1, vec1)  - 1}:
+    for i in { split(self, v1) .. split(self + 1, v1)  - 1}:
         total += v1[i] * v2[i]
     output[self] = total
     barrier.bwait(?barr)
