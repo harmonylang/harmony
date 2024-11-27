@@ -1,0 +1,30 @@
+from synch import *
+
+ranges = { (2,10), (11,20), (21,30) }
+queues = { r:Queue() for r in ranges }
+mainq = Queue()
+
+def isPrime(v) returns prime:
+    prime = True
+    var d = 2
+    while prime and (d < v):
+        if (v % d) == 0:
+            prime = False
+        d += 1
+
+def worker(q):
+    let rq, (start, finish) = get(q):
+        for p in { start .. finish }:
+            if isPrime(p):
+                put(rq, p)
+
+def main(rq, workers):
+    for r:q in workers:
+        put(q, (rq, r))
+    for r:q in workers:
+        let primes = get(rq):
+            print primes
+        
+for r in ranges:
+    spawn worker(?queues[r])
+spawn eternal main(?mainq, { r:?queues[r] for r in ranges })
