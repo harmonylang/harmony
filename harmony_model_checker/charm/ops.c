@@ -2683,7 +2683,7 @@ static int q_value_cmp(const void *v1, const void *v2){
 }
 
 // Sort the set of values (in place) and remove duplicates.  Return the #values.
-static int sort(hvalue_t *vals, unsigned int n){
+static unsigned int sort(hvalue_t *vals, unsigned int n){
     qsort(vals, n, sizeof(hvalue_t), q_value_cmp);
 
     hvalue_t *p = vals, *q = vals + 1;
@@ -4205,27 +4205,79 @@ hvalue_t f_set(struct state *state, struct step *step, hvalue_t *args, unsigned 
     hvalue_t w[cnt];
 #endif
     memcpy(w, v, size);
-    qsort(w, cnt, sizeof(hvalue_t), q_value_cmp);
-
-    // Scan for the first duplicate
-    unsigned int i;
-    for (i = 1; i < cnt; i++) {
-        if (w[i] == w[i - 1]) {
-            break;
-        }
-    }
-
-    if (i < cnt) {
-        unsigned int j = i - 1;
-        for (++i; i < cnt; i++) {
-            if (w[i] != w[j]) {
-                w[++j] = w[i];
-            }
-        }
-        cnt = j + 1;
-    }
-
+    cnt = sort(w, cnt);
     hvalue_t result = value_put_set(step->allocator, w, cnt * sizeof(hvalue_t));
+#ifdef HEAP_ALLOC
+    free(w);
+#endif
+    return result;
+}
+
+hvalue_t f_reversed(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
+    assert(n == 1);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "reverse elements in list; ");
+    }
+    hvalue_t e = args[0];
+	if (e == VALUE_LIST) {
+        return VALUE_LIST;
+    }
+    if (VALUE_TYPE(e) != VALUE_LIST) {
+        return value_ctx_failure(step->ctx, step->allocator, "reversed() can only be applied to lists");
+    }
+    unsigned int size;
+    hvalue_t *v = value_get(e, &size);
+    if (size == sizeof(hvalue_t)) {
+        return e;
+    }
+    unsigned int cnt = size / sizeof(hvalue_t);
+#ifdef HEAP_ALLOC
+    hvalue_t *w = malloc(size);
+#else
+    hvalue_t w[cnt];
+#endif
+    for (unsigned int i = 0; i < cnt; i++) {
+        w[i] = v[cnt - i - 1];
+    }
+    hvalue_t result = value_put_list(step->allocator, w, size);
+#ifdef HEAP_ALLOC
+    free(w);
+#endif
+    return result;
+}
+
+hvalue_t f_sorted(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
+    assert(n == 1);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "sort; ");
+    }
+    hvalue_t e = args[0];
+	if (e == VALUE_SET || e == VALUE_LIST) {
+        return VALUE_LIST;
+    }
+    if (VALUE_TYPE(e) == VALUE_SET) {
+        unsigned int size;
+        hvalue_t *v = value_get(e, &size);
+        // TODO.  Can make this more efficient
+        return value_put_list(step->allocator, v, size);
+    }
+    if (VALUE_TYPE(e) != VALUE_LIST) {
+        return value_ctx_failure(step->ctx, step->allocator, "sorted() can only be applied to sets or lists");
+    }
+    unsigned int size;
+    hvalue_t *v = value_get(e, &size);
+    if (size == sizeof(hvalue_t)) {
+        return e;
+    }
+    unsigned int cnt = size / sizeof(hvalue_t);
+#ifdef HEAP_ALLOC
+    hvalue_t *w = malloc(size);
+#else
+    hvalue_t w[cnt];
+#endif
+    memcpy(w, v, size);
+    qsort(w, cnt, sizeof(hvalue_t), q_value_cmp);
+    hvalue_t result = value_put_list(step->allocator, w, cnt * sizeof(hvalue_t));
 #ifdef HEAP_ALLOC
     free(w);
 #endif
@@ -5409,7 +5461,9 @@ struct f_info f_table[] = {
     { "min", f_min },
 	{ "mod", f_mod },
     { "not", f_not },
+    { "reversed", f_reversed },
     { "set", f_set },
+    { "sorted", f_sorted },
     { "str", f_str },
     { "sum", f_sum },
     { "SetAdd", f_set_add },

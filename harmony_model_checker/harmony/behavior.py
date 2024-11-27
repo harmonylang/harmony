@@ -145,7 +145,6 @@ def behavior_parse(js, minify, outputfiles, behavior):
         if len(dfa_states) > 250:
             print("    * output of png file suppressed (too many states)") 
         else:
-            print(dfa)
             if got_pydot:
                 behavior_show_diagram(dfa, path=outputfiles["png"])
             else:

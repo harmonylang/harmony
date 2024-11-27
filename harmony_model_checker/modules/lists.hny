@@ -13,7 +13,6 @@ def tail(s) returns result:
     del result[0]
 
 # convert set into a (sorted) list
-# TODO.  Can we have a method named list in a module named list???
 def list(a) returns result:
     result = [ v for v in a ]
 
@@ -26,23 +25,14 @@ def items(d) returns result:
     result = [ (k, v) for k:v in d ]
 
 # quicksort of a list
-def qsort(a) returns sorted:
+def qsort(a) returns sorted_list:
     if a == []:
-        sorted = []
+        sorted_list = []
     else:
         let (pivot, rest) = head(a), tail(a)
         let lower = [ v for v in rest where v < pivot ]
         let higher = [ v for v in rest where v >= pivot ]:
-            sorted = qsort(lower) + [pivot,] + qsort(higher)
-
-# like Python sorted()
-def sorted(d) returns result:
-    result = qsort(list(d))
-
-# like Python reversed()
-def reversed(d) returns result:
-    let n = len(d):
-        result = [ d[n-i] for i in { 1..n } ]
+            sorted_list = qsort(lower) + [pivot,] + qsort(higher)
 
 # like Python index()
 def index(d, e) returns i:
