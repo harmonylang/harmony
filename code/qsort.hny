@@ -19,9 +19,9 @@ def sortrange(qs, range):
         if (pivot + 1) < hi:
             qs->todo |= { (pivot + 1, hi) }
 
-def sort(qs) returns sorted:
+def sort(qs) returns sorted_list:
     while qs->todo != {}:
         let range = choose(qs->todo):
             qs->todo -= { range }
             sortrange(qs, range)
-    sorted = qs->arr
+    sorted_list = qs->arr
