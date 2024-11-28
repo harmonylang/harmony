@@ -14,9 +14,9 @@ def fetch_and_increment(p): # atomic increment
     atomically !p += 1
 
 def sorter(i):
-    var sorted = False
+    var is_sorted = False
     var oldcount = 0
-    while not sorted:
+    while not is_sorted:
         # Even phase
         if thelist[i - 1] > thelist[i]:
             thelist[i - 1], thelist[i] = thelist[i], thelist[i - 1]
@@ -32,7 +32,7 @@ def sorter(i):
         bwait(?bar)
 
         # Sorted if nobody swapped anything
-        sorted = count == oldcount
+        is_sorted = count == oldcount
         oldcount = count
 
         bwait(?bar)
