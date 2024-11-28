@@ -21,9 +21,8 @@ def worker(q):
 def main(rq, workers):
     for r:q in workers:
         put(q, (rq, r))
-    for r:q in workers:
-        let primes = get(rq):
-            print primes
+    while True:
+        print get(rq)
         
 for r in ranges:
     spawn worker(?queues[r])
