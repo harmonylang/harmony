@@ -442,13 +442,14 @@ static bool ind_trystore(hvalue_t root, hvalue_t *indices, int n, hvalue_t value
 // Remove a variable from 'root' identified by the given indices of length n.
 // The updated 'root' is returned in *result.  The function returns whether
 // the operation was successful.
-static bool ind_remove(struct context *ctx, hvalue_t root, hvalue_t *indices, int n, struct allocator *allocator,
-                                        hvalue_t *result) {
+static bool ind_remove(struct context *ctx, hvalue_t root, hvalue_t *indices, int n,
+                        struct allocator *allocator, bool *is_list, hvalue_t *result) {
     // TODO.  Is this assertion warranted?
     assert(VALUE_TYPE(root) == VALUE_DICT || VALUE_TYPE(root) == VALUE_LIST || VALUE_TYPE(root) == VALUE_ATOM);
     assert(n > 0);
 
     if (n == 1) {
+        *is_list = false;
         *result = value_remove(ctx, allocator, root, indices[0]);
         return true;
     }
@@ -467,7 +468,7 @@ static bool ind_remove(struct context *ctx, hvalue_t root, hvalue_t *indices, in
                     return false;
                 }
                 hvalue_t nd;
-                if (!ind_remove(ctx, d, indices + 1, n - 1, allocator, &nd)) {
+                if (!ind_remove(ctx, d, indices + 1, n - 1, allocator, is_list, &nd)) {
                     return false;
                 }
                 if (d == nd) {
@@ -486,6 +487,7 @@ static bool ind_remove(struct context *ctx, hvalue_t root, hvalue_t *indices, in
 #ifdef HEAP_ALLOC
                 free(copy);
 #endif
+                *is_list = false;
                 *result = v;
                 return true;
             }
@@ -511,7 +513,7 @@ static bool ind_remove(struct context *ctx, hvalue_t root, hvalue_t *indices, in
             return false;
         }
         hvalue_t nd;
-        if (!ind_remove(ctx, d, indices + 1, n - 1, allocator, &nd)) {
+        if (!ind_remove(ctx, d, indices + 1, n - 1, allocator, is_list, &nd)) {
             return false;
         }
         if (d == nd) {
@@ -530,6 +532,7 @@ static bool ind_remove(struct context *ctx, hvalue_t root, hvalue_t *indices, in
 #ifdef HEAP_ALLOC
         free(copy);
 #endif
+        *is_list = true;
         *result = v;
         return true;
     }
@@ -1774,23 +1777,34 @@ void op_Del(const void *env, struct state *state, struct step *step){
             return;
         }
         size /= sizeof(hvalue_t);
-        ai_add(step, indices, size, false);
+
         hvalue_t nd;
-        if (!ind_remove(step->ctx, step->vars, indices + 1, size - 1, step->allocator, &nd)) {
+        bool is_list;
+        if (!ind_remove(step->ctx, step->vars, indices + 1, size - 1, step->allocator, &is_list, &nd)) {
             value_ctx_failure(step->ctx, step->allocator, "Del: no such variable");
         }
         else {
+            // If del is applied to a list, it updates the list.  But if
+            // applied to a dictionary, it only updates that entry.
+            assert(size > 0);
+            ai_add(step, indices, is_list ? size - 1 : size, false);
+
             step->vars = nd;
             step->ctx->pc++;
         }
     }
     else {
-        ai_add(step, ed->indices, ed->n, false);
+        // Currently this can only mean deleting a variable
+        assert(ed->n == 1);
+
         hvalue_t nd;
-        if (!ind_remove(step->ctx, step->vars, ed->indices + 1, ed->n - 1, step->allocator, &nd)) {
+        bool is_list;
+        if (!ind_remove(step->ctx, step->vars, ed->indices + 1, ed->n - 1, step->allocator, &is_list, &nd)) {
             value_ctx_failure(step->ctx, step->allocator, "Del: bad variable");
         }
         else {
+            assert(!is_list);
+            ai_add(step, ed->indices, ed->n, false);
             step->vars = nd;
             step->ctx->pc++;
         }
@@ -1826,10 +1840,12 @@ void op_DelVar(const void *env, struct state *state, struct step *step){
                 value_ctx_failure(step->ctx, step->allocator, "DelVar: 'this' is not a dictionary");
                 return;
             }
-		    result = ind_remove(step->ctx, ctx_this(step->ctx), &indices[2], size - 2, step->allocator, &ctx_this(step->ctx));
+            bool is_list;
+		    result = ind_remove(step->ctx, ctx_this(step->ctx), &indices[2], size - 2, step->allocator, &is_list, &ctx_this(step->ctx));
         }
         else {
-		    result = ind_remove(step->ctx, step->ctx->vars, indices + 1, size - 1, step->allocator, &step->ctx->vars);
+            bool is_list;
+		    result = ind_remove(step->ctx, step->ctx->vars, indices + 1, size - 1, step->allocator, &is_list, &step->ctx->vars);
         }
         if (!result) {
             char *x = indices_string(indices, size);
