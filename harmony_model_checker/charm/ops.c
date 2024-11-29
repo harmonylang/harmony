@@ -349,12 +349,12 @@ static unsigned int ind_tryload(struct allocator *allocator, hvalue_t dict, hval
 // Try to store a value in the given variable identified by root (a dictionary
 // or a list) and a list of indices of length n.  The updated 'root' is
 // returned in *result.  The function returns whether this succeeded.
-static bool ind_trystore(hvalue_t root, hvalue_t *indices, int n, hvalue_t value, struct allocator *allocator, hvalue_t *result){
+static bool ind_trystore(hvalue_t root, hvalue_t *indices, int n, hvalue_t value, struct allocator *allocator, bool *is_append, hvalue_t *result){
     assert(VALUE_TYPE(root) == VALUE_DICT || VALUE_TYPE(root) == VALUE_LIST);
     assert(n > 0);
 
     if (n == 1) {
-        return value_trystore(allocator, root, indices[0], value, true, result);
+        return value_trystore(allocator, root, indices[0], value, true, is_append, result);
     }
     unsigned int size;
     hvalue_t *vals = value_get(root, &size);
@@ -370,7 +370,7 @@ static bool ind_trystore(hvalue_t root, hvalue_t *indices, int n, hvalue_t value
                     return false;
                 }
                 hvalue_t nd;
-                if (!ind_trystore(d, indices + 1, n - 1, value, allocator, &nd)) {
+                if (!ind_trystore(d, indices + 1, n - 1, value, allocator, is_append, &nd)) {
                     return false;
                 }
                 if (d == nd) {
@@ -415,7 +415,7 @@ static bool ind_trystore(hvalue_t root, hvalue_t *indices, int n, hvalue_t value
             return false;
         }
         hvalue_t nd;
-        if (!ind_trystore(d, indices + 1, n - 1, value, allocator, &nd)) {
+        if (!ind_trystore(d, indices + 1, n - 1, value, allocator, is_append, &nd)) {
             return false;
         }
         if (d == nd) {
@@ -921,7 +921,7 @@ void op_Alloc_Malloc(const void *env, struct state *state, struct step *step){
     addr[2] = next;
     // TODO.  THIS CANNOT WORK AS addr IS NOT COPIED
     ai_add(step, addr, 3, false);
-    if (!ind_trystore(step->vars, addr + 1, 2, arg, step->allocator, &step->vars)) {
+    if (!ind_trystore(step->vars, addr + 1, 2, arg, step->allocator, NULL, &step->vars)) {
         panic("op_Alloc_Malloc: store value failed");
     }
 
@@ -2918,12 +2918,15 @@ void op_Stop(const void *env, struct state *state, struct step *step){
         unsigned int size;
         hvalue_t *indices = value_get(av, &size);
         size /= sizeof(hvalue_t);
-        ai_add(step, indices, size, false);
         // TODO: check if indices[0] == VALUE_PC_SHARED?
-        if (!ind_trystore(step->vars, indices + 1, size - 1, v, step->allocator, &step->vars)) {
+        bool is_append;
+        if (!ind_trystore(step->vars, indices + 1, size - 1, v, step->allocator, &is_append, &step->vars)) {
             char *x = indices_string(indices, size);
             value_ctx_failure(step->ctx, step->allocator, "Stop: bad address: %s", x);
             free(x);
+        }
+        else {
+            ai_add(step, indices, is_append ? size - 1 : size, false);
         }
     }
     else {
@@ -2931,10 +2934,13 @@ void op_Stop(const void *env, struct state *state, struct step *step){
         step->ctx->stopped = true;
         step->ctx->pc++;
         hvalue_t v = value_put_context(step->allocator, step->ctx);
-        ai_add(step, es->indices, es->n, false);
         // TODO: check if indices[0] == VALUE_PC_SHARED?
-        if (!ind_trystore(step->vars, es->indices + 1, es->n - 1, v, step->allocator, &step->vars)) {
+        bool is_append;
+        if (!ind_trystore(step->vars, es->indices + 1, es->n - 1, v, step->allocator, &is_append, &step->vars)) {
             value_ctx_failure(step->ctx, step->allocator, "Stop: bad variable");
+        }
+        else {
+            ai_add(step, es->indices, is_append ? es->n - 1 : es->n, false);
         }
     }
 }
@@ -3031,7 +3037,6 @@ static bool store_match(struct state *state, struct step *step,
         value_ctx_failure(step->ctx, step->allocator, "Can't update state in assert or invariant (including acquiring locks)");
         return false;
     }
-    ai_add(step, indices, size, false);
     if (step->keep_callstack) {
         char *x = indices_string(indices, size);
         strbuf_printf(&step->explain, "pop value (#+) and address (#+) and store", x);
@@ -3050,13 +3055,20 @@ static bool store_match(struct state *state, struct step *step,
             free(x);
             return false;
         }
+        else {
+            ai_add(step, indices, size, false);
+        }
         step->vars = newvars;
     }
-    else if (!ind_trystore(step->vars, indices + 1, size - 1, v, step->allocator, &step->vars)) {
-        char *x = indices_string(indices, size);
-        value_ctx_failure(step->ctx, step->allocator, "Store: bad address: %s", x);
-        free(x);
-        return false;
+    else {
+        bool is_append;
+        if (!ind_trystore(step->vars, indices + 1, size - 1, v, step->allocator, &is_append, &step->vars)) {
+            char *x = indices_string(indices, size);
+            value_ctx_failure(step->ctx, step->allocator, "Store: bad address: %s", x);
+            free(x);
+            return false;
+        }
+        ai_add(step, indices, is_append ? size - 1 : size, false);
     }
     return true;
 }
@@ -3084,7 +3096,6 @@ void op_Store(const void *env, struct state *state, struct step *step){
             step->explain_args[step->explain_nargs++] = v;
             step->explain_args[step->explain_nargs++] = es->address;
         }
-        ai_add(step, es->indices, es->n, false);
         if (es->n == 2 && !step->ctx->initial) {
             hvalue_t newvars;
             if (!value_dict_trystore(step->allocator, step->vars, es->indices[1], v, false, &newvars)){
@@ -3093,13 +3104,18 @@ void op_Store(const void *env, struct state *state, struct step *step){
                 free(x);
                 return;
             }
+            ai_add(step, es->indices, es->n, false);
             step->vars = newvars;
         }
-        else if (!ind_trystore(step->vars, es->indices + 1, es->n - 1, v, step->allocator, &step->vars)) {
-            char *x = indices_string(es->indices, es->n);
-            value_ctx_failure(step->ctx, step->allocator, "Store: bad variable %s", x);
-            free(x);
-            return;
+        else {
+            bool is_append;
+            if (!ind_trystore(step->vars, es->indices + 1, es->n - 1, v, step->allocator, &is_append, &step->vars)) {
+                char *x = indices_string(es->indices, es->n);
+                value_ctx_failure(step->ctx, step->allocator, "Store: bad variable %s", x);
+                free(x);
+                return;
+            }
+            ai_add(step, es->indices, is_append ? es->n - 1 : es->n, false);
         }
     }
     step->ctx->pc++;
@@ -3145,7 +3161,8 @@ void op_StoreVar(const void *env, struct state *state, struct step *step){
                 value_ctx_failure(step->ctx, step->allocator, "StoreVar: 'this' is not a dictionary");
                 return;
             }
-            result = ind_trystore(ctx_this(step->ctx), &indices[2], size - 2, v, step->allocator, &ctx_this(step->ctx));
+            bool is_append;
+            result = ind_trystore(ctx_this(step->ctx), &indices[2], size - 2, v, step->allocator, &is_append, &ctx_this(step->ctx));
         }
 
         else {
@@ -3153,7 +3170,8 @@ void op_StoreVar(const void *env, struct state *state, struct step *step){
                 result = step->ctx->vars;
             }
             else {
-                result = ind_trystore(step->ctx->vars, indices + 1, size - 1, v, step->allocator, &step->ctx->vars);
+                bool is_append;
+                result = ind_trystore(step->ctx->vars, indices + 1, size - 1, v, step->allocator, &is_append, &step->ctx->vars);
             }
         }
         if (!result) {

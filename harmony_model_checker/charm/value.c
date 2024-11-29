@@ -1367,8 +1367,8 @@ hvalue_t value_dict_store(struct allocator *allocator, hvalue_t dict, hvalue_t k
 // For a list of size n, note that you can store in root[n] and extend the length
 // of the list by 1.
 //
-// TODO.  Maybe should also support strings.
-bool value_trystore(struct allocator *allocator, hvalue_t root, hvalue_t key, hvalue_t value, bool allow_inserts, hvalue_t *result){
+// *is_append is set to true iff root was a list and the list was grown.
+bool value_trystore(struct allocator *allocator, hvalue_t root, hvalue_t key, hvalue_t value, bool allow_inserts, bool *is_append, hvalue_t *result){
     assert(VALUE_TYPE(root) == VALUE_DICT || VALUE_TYPE(root) == VALUE_LIST);
 
     if (VALUE_TYPE(root) == VALUE_DICT) {
@@ -1380,6 +1380,7 @@ bool value_trystore(struct allocator *allocator, hvalue_t root, hvalue_t key, hv
         for (i = 0; i < n; i += 2) {
             if (vals[i] == key) {
                 if (vals[i + 1] == value) {
+                    *is_append = false;
                     *result = root;
                     return true;
                 }
@@ -1394,6 +1395,7 @@ bool value_trystore(struct allocator *allocator, hvalue_t root, hvalue_t key, hv
 #ifdef HEAP_ALLOC
                 free(nvals);
 #endif
+                *is_append = false;
                 *result = v;
                 return true;
             }
@@ -1420,6 +1422,7 @@ bool value_trystore(struct allocator *allocator, hvalue_t root, hvalue_t key, hv
 #ifdef HEAP_ALLOC
         free(nvals);
 #endif
+        *is_append = false;
         *result = v;
         return true;
     }
@@ -1439,9 +1442,11 @@ bool value_trystore(struct allocator *allocator, hvalue_t root, hvalue_t key, hv
             if (!allow_inserts) {
                 return false;
             }
+            *is_append = true;
             nsize = size + sizeof(hvalue_t);
         }
         else {
+            *is_append = false;
             if (vals[index] == value) {
                 *result = root;
                 return true;
@@ -1476,6 +1481,8 @@ bool value_trystore(struct allocator *allocator, hvalue_t root, hvalue_t key, hv
         if (VALUE_TYPE(value) != VALUE_ATOM) {
             return false;
         }
+
+        *is_append = true;
 
         // Get the value, which must be a string.
         unsigned int vsize;
@@ -1517,8 +1524,9 @@ bool value_trystore(struct allocator *allocator, hvalue_t root, hvalue_t key, hv
 
 // Like value_try_store but panics if something goes wrong
 hvalue_t value_store(struct allocator *allocator, hvalue_t root, hvalue_t key, hvalue_t value){
+    bool is_append;
     hvalue_t result;
-    bool r = value_trystore(allocator, root, key, value, true, &result);
+    bool r = value_trystore(allocator, root, key, value, true, &is_append, &result);
     if (!r) {
         fprintf(stderr, "value_store: failed\n");
         exit(1);
