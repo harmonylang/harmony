@@ -100,11 +100,56 @@ static bool graph_edge_conflict(
     return false;
 }
 
+// Look for nodes where the threads are all doing non-atomic accesses (and so at most one load or
+// store each), and where the load operations are for a parent object for all the store operatios.
+// Those threads are guaranteed to start with a load or a store operation.
+static bool graph_special_race(struct node *node){
+    struct edge *edge = edge = node_edges(node);
+    for (unsigned int i = 0; i < node->nedges; i++, edge++) {
+        unsigned int count = 0;
+        // Look for the load operations
+        for (struct access_info *ai = edge_output(edge)->ai; ai != NULL; ai = ai->next) {
+            if (ai->atomic) {
+                return false;
+            }
+            if (!ai->load) {
+                break;
+            }
+            if (count > 0) {
+                return false;
+            }
+            count += 1;
+            struct edge *edge2 = node_edges(node);
+            for (unsigned int j = 0; j < node->nedges; j++, edge2++) {
+                // Look for the store operations
+                for (struct access_info *ai2 = edge_output(edge2)->ai; ai2 != NULL; ai2 = ai2->next) {
+                    if (ai2->load) {
+                        break;
+                    }
+                    int min = ai->n < ai2->n ? ai->n : ai2->n;
+                    assert(min > 0);
+                    if (memcmp(ai->indices, ai2->indices, min * sizeof(hvalue_t)) != 0) {
+                        break;
+                    }
+                    if (ai->n >= ai2->n) {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    return true;
+}
+
 void graph_check_for_data_race(
     struct failure **failures,
     struct node *node,
     struct allocator *allocator
 ) {
+    if (graph_special_race(node)) {
+        return;
+    }
+
     // First check whether any edges conflict with themselves.  That could
     // happen if more than one thread is in the same state and (all) write
     // the same variable

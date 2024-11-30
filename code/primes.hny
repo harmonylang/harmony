@@ -13,10 +13,11 @@ def isPrime(v) returns prime:
         d += 1
 
 def worker(q):
-    let rq, (start, finish) = get(q):
-        for p in { start .. finish }:
-            if isPrime(p):
-                put(rq, p)
+    while True:
+        let rq, (start, finish) = get(q):
+            for p in { start .. finish }:
+                if isPrime(p):
+                    put(rq, p)
 
 def main(rq, workers):
     for r:q in workers:
@@ -25,5 +26,5 @@ def main(rq, workers):
         print get(rq)
         
 for r in ranges:
-    spawn worker(?queues[r])
+    spawn eternal worker(?queues[r])
 spawn eternal main(?mainq, { r:?queues[r] for r in ranges })

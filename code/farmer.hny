@@ -1,0 +1,14 @@
+sides = [ { "goat", "cabbage", "wolf" }, {} ]
+farmer = 0
+bad = False
+
+while sides[0] != {}:
+    let x = choose(sides[farmer] | { "nothing" }):
+        print(farmer, "->", 1 - farmer, ":", x)
+        sides[farmer] -= { x }
+        bad = bad or ({ "goat", "cabbage" } <= sides[farmer]) or ({ "goat", "wolf" } <= sides[farmer])
+        farmer = 1 - farmer
+        if x != "nothing":
+            sides[farmer] |= { x }
+
+assert bad

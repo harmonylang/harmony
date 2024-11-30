@@ -126,17 +126,18 @@ void strbuf_value_json(strbuf *sb, hvalue_t v);
 #define VALUE_MASK      (VALUE_HIBITS | VALUE_LOBITS)
 
 // Value types
-#define VALUE_BOOL      1
-#define VALUE_INT       2
-#define VALUE_ATOM      3
-#define VALUE_PC        4
-#define VALUE_LIST      5
-#define VALUE_DICT      6
-#define VALUE_SET       7
-#define VALUE_ADDRESS_SHARED    8
-#define VALUE_ADDRESS_PRIVATE   9
-#define VALUE_CONTEXT  10
-#define VALUE_EXTERNAL 11
+#define VALUE_BOOL                1
+#define VALUE_INT                 2
+#define VALUE_ATOM                3
+#define VALUE_PC                  4
+#define VALUE_LIST                5
+#define VALUE_DICT                6
+#define VALUE_SET                 7
+#define VALUE_ADDRESS_SHARED      8
+#define VALUE_ADDRESS_PRIVATE     9
+#define VALUE_CONTEXT            10
+#define VALUE_EXTERNAL           11
+#define VALUE_RACE               12
 
 #define VALUE_CONTEXT_ETERNAL         ((hvalue_t) 1 << 56)
 #define VALUE_CONTEXT_INTERRUPTABLE   ((hvalue_t) 1 << 57)
