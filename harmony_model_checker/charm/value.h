@@ -45,7 +45,7 @@ typedef struct state {
 #define state_ctx(s, i)          (state_ctxlist(s)[i] & ~STATE_MULTIPLICITY)
 #define state_multiplicity(s, i) ((unsigned int) ((state_ctxlist(s)[i] & STATE_MULTIPLICITY) >> STATE_M_SHIFT))
 
-// A context is the state of a Harmony thread.  The state, which is part of the
+// A context is the state of a Harmony thread.  The stack, which is part of the
 // state of a thread, immediately follows this structure.
 //
 // TODO.  Some of this info should be kept in the ctx pointer itself.

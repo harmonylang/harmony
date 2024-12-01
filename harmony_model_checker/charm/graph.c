@@ -141,15 +141,112 @@ static bool graph_special_race(struct node *node){
     return true;
 }
 
+static inline bool is_atomic(struct access_info *ai){
+    while (ai != NULL) {
+        if (!ai->atomic) {
+            return false;
+        }
+        ai = ai->next;
+    }
+    return true;
+}
+
+static struct node *find_step(struct node *node, hvalue_t ctx){
+    struct edge *edge = node_edges(node);
+    for (unsigned int i = 0; i < node->nedges; i++, edge++) {
+        struct step_input *in = edge_input(edge);
+        if (in->ctx == ctx) {
+            return edge_dst(edge);
+        }
+    }
+    return NULL;
+}
+
+static inline bool commute(struct edge *edge1, struct edge *edge2){
+    // If both lead to the same state (probably self-loops), then no race.
+    struct node *dst1 = edge_dst(edge1);
+    struct node *dst2 = edge_dst(edge2);
+    if (dst1 == dst2) {
+        return true;
+    }
+
+    // Skip over funny states
+    if (node_state(dst1)->type != STATE_NORMAL) {
+        return true;
+    }
+    if (node_state(dst2)->type != STATE_NORMAL) {
+        return true;
+    }
+
+    // See if they commute, i.e., taken first step 1 and then step 2 should lead to
+    // the same state as first taking step 2 and then step 1.
+    struct step_input *in1 = edge_input(edge1);
+    struct step_input *in2 = edge_input(edge2);
+
+    // Ignore interrupt steps
+    if (in1->ctx == in2->ctx) {
+        return true;
+    }
+
+    return find_step(dst1, in2->ctx) == find_step(dst2, in1->ctx);
+}
+
+static void print_addr(hvalue_t *indices, unsigned int n){
+    printf("%u", n);
+    for (unsigned int i = 0; i < n; i++) {
+        printf(":%s", value_string(indices[i]));
+    }
+}
+
+static void print_access(char *what, struct access_info *ai){
+    printf("%s %c", what, is_atomic(ai) ? 'A' : '-');
+    if (ai == NULL) {
+        printf(" NIL");
+    }
+    while (ai != NULL) {
+        printf(" %c%c", ai->load ? 'L' : 'S', ai->atomic ? 'A' : '-');
+        print_addr(ai->indices, ai->n);
+        ai = ai->next;
+    }
+    printf("\n");
+}
+
+// This checks if any two edges, at least one of which is "non-atomic", commute.
 void graph_check_for_data_race(
     struct failure **failures,
     struct node *node,
     struct allocator *allocator
 ) {
-    if (graph_special_race(node)) {
+    if (node_state(node)->type != STATE_NORMAL) {
         return;
     }
 
+    struct edge *edge = node_edges(node);
+    for (unsigned int i = 0; i < node->nedges; i++, edge++) {
+        struct edge *edge2 = edge + 1;
+        for (unsigned int j = i + 1; j < node->nedges; j++, edge2++) {
+            if (is_atomic(edge_output(edge)->ai) && is_atomic(edge_output(edge2)->ai)) {
+                continue;
+            }
+            if (!commute(edge, edge2)) {
+                print_access("A1", edge_output(edge)->ai);
+                print_access("A2", edge_output(edge2)->ai);
+                struct failure *f = new_alloc(struct failure);
+                f->type = FAIL_RACE;
+                f->node = node;
+                f->edge = edge2;
+                f->address = VALUE_ADDRESS_SHARED;
+                add_failure(failures, f);
+            }
+        }
+    }
+}
+
+void graph_check_for_data_race2(
+    struct failure **failures,
+    struct node *node,
+    struct allocator *allocator
+) {
     // First check whether any edges conflict with themselves.  That could
     // happen if more than one thread is in the same state and (all) write
     // the same variable

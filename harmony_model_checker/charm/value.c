@@ -832,6 +832,17 @@ static void strbuf_print_vars(struct strbuf *sb, hvalue_t v){
     }
 }
 
+static void strbuf_print_stack(struct strbuf *sb, hvalue_t *stack, unsigned int sp){
+    for (unsigned int i = 0; i < sp; i++) {
+        if (i > 0) {
+            strbuf_printf(sb, ",");
+        }
+        char *v = value_json(stack[i]);
+        strbuf_printf(sb, " %s", v);
+        free(v);
+    }
+}
+
 // v would typically represent a dictionary that maps variable names to values.
 // Instead of printing it as a regular dictionary, the output is stylized to
 // represent a set of variables and their respective values.
@@ -923,6 +934,9 @@ static void value_json_context(struct strbuf *sb, hvalue_t v) {
     strbuf_printf(sb, "\"vars\":");
     strbuf_print_vars(sb, ctx->vars);
     strbuf_printf(sb, ",");
+    strbuf_printf(sb, "\"stack\": [");
+    strbuf_print_stack(sb, ctx_stack(ctx), ctx->sp);
+    strbuf_printf(sb, "],");
 #endif
 
     if (ctx->atomic > 0) {
