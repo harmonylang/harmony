@@ -1,14 +1,14 @@
 sides = [ { "goat", "cabbage", "wolf" }, {} ]
 farmer = 0
-bad = False
+
+def bad(side) returns judgment:
+    judgment = ({ "goat", "cabbage" } <= side) or ({ "goat", "wolf" } <= side)
 
 while sides[0] != {}:
-    let x = choose(sides[farmer] | { "nothing" }):
-        print(farmer, "->", 1 - farmer, ":", x)
-        sides[farmer] -= { x }
-        bad = bad or ({ "goat", "cabbage" } <= sides[farmer]) or ({ "goat", "wolf" } <= sides[farmer])
-        farmer = 1 - farmer
+    let good = { x for x in (sides[farmer] | {"nothing"}) where not bad(sides[farmer] - {x}) }
+    let x = choose good:
+        print(str(farmer) + " -> " + str(1 - farmer) + ": " + x)
         if x != "nothing":
-            sides[farmer] |= { x }
-
-assert bad
+            sides[farmer] -= { x }
+            sides[1 - farmer] |= { x }
+        farmer = 1 - farmer
