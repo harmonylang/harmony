@@ -620,76 +620,17 @@ static void direct_run(struct state *state, unsigned int id){
     }
 }
 
-// Specialized hash function for states
-static inline uint32_t meiyan3(const struct state *s){
-	typedef uint32_t *P;
-    unsigned int count = sizeof(*s) / 8 + s->total;
-    P key = (P) s;
+// Implements meiyan
+static inline uint32_t state_hash(const struct state *s){
+    const uint32_t *key = (const uint32_t *) s;
+    int count = sizeof(*s) / 8 + s->total;
 
 	uint32_t h = 0x811c9dc5;
-	while (count > 0) {
+	while (--count >= 0) {
 		h = (h ^ ((((*key) << 5) | ((*key) >> 27)) ^ *(key + 1))) * 0xad3e7;
-		count--;
 		key += 2;
 	}
 	return h ^ (h >> 16);
-}
-static inline uint32_t meiyan2(const struct state *s){
-	typedef uint32_t *P;
-    unsigned int count = sizeof(*s) / 8 + s->total;
-    P key = (P) s;
-
-	uint32_t h = 0x9dc5811c;
-	while (count > 0) {
-		h = (h ^ ((((*key) << 7) | ((*key) >> 25)) ^ *(key + 1))) * 0xad3e7;
-		count--;
-		key += 2;
-	}
-	return h ^ (h >> 16);
-}
-
-#define BIG_CONSTANT(x) (x##LLU)
-uint64_t MurmurHash64A( const void * key, int len, uint64_t seed )
-{
-  const uint64_t m = BIG_CONSTANT(0xc6a4a7935bd1e995);
-  const int r = 47;
-
-  uint64_t h = seed ^ (len * m);
-
-  const uint64_t * data = (const uint64_t *)key;
-  const uint64_t * end = data + (len/8);
-
-  while(data != end)
-  {
-    uint64_t k = *data++;
-
-    k *= m; 
-    k ^= k >> r; 
-    k *= m; 
-    
-    h ^= k;
-    h *= m; 
-  }
-
-  const unsigned char * data2 = (const unsigned char*)data;
-
-  switch(len & 7)
-  {
-  case 7: h ^= ((uint64_t) data2[6]) << 48;
-  case 6: h ^= ((uint64_t) data2[5]) << 40;
-  case 5: h ^= ((uint64_t) data2[4]) << 32;
-  case 4: h ^= ((uint64_t) data2[3]) << 24;
-  case 3: h ^= ((uint64_t) data2[2]) << 16;
-  case 2: h ^= ((uint64_t) data2[1]) << 8;
-  case 1: h ^= ((uint64_t) data2[0]);
-          h *= m;
-  };
- 
-  h ^= h >> r;
-  h *= m;
-  h ^= h >> r;
-
-  return h;
 }
 
 // Apply the effect of evaluating a context (for a particular assignment
@@ -838,7 +779,7 @@ static inline void process_step(
     }
 
     sh->noutgoing = noutgoing;
-    sh->hash = meiyan2(sc);
+    sh->hash = state_hash(sc);
 
     // Add to the linked list of the responsible peer shard
     struct shard *shard = &w->shard;
@@ -2704,6 +2645,7 @@ static void do_work2(struct worker *w){
             edge->dst = next;
 
             if (new) {
+next->worker = w->index;
                 next->failed = edge->failed;
                 next->initial = false;
                 next->parent = sh->node;
@@ -4608,7 +4550,8 @@ int exec_model_checker(int argc, char **argv){
         struct shard *shard = &w->shard;
         // shard->states = sdict_new("shard states", sizeof(struct node), 0);
         // shard->states = sdict_new("shard states", sizeof(struct node), 8000000 / global.nworkers);
-        shard->states = sdict_new("shard states", sizeof(struct node), 1 << 16);
+        shard->states = sdict_new("shard states", sizeof(struct node), 2000000);
+        // shard->states = sdict_new("shard states", sizeof(struct node), 1 << 16);
         shard->peers = calloc(global.nworkers, sizeof(*shard->peers));
         for (unsigned int si2 = 0; si2 < global.nworkers; si2++) {
             shard->peers[si2].last = &shard->peers[si2].first;
@@ -4731,7 +4674,7 @@ int exec_model_checker(int argc, char **argv){
     global.computations = dict_new("computations", sizeof(struct step_condition), 16 * 1024, global.nworkers, false, true);
 
     bool new;
-    struct dict_assoc *hn = sdict_find_new(global.workers[0].shard.states, &workers[0].allocator, state, state_size(state), sizeof(struct edge), &new, meiyan2(state));
+    struct dict_assoc *hn = sdict_find_new(global.workers[0].shard.states, &workers[0].allocator, state, state_size(state), sizeof(struct edge), &new, state_hash(state));
     struct node *node = (struct node *) &hn[1];
     memset(node, 0, sizeof(*node));
     node->initial = true;

@@ -162,6 +162,15 @@ static struct node *find_step(struct node *node, hvalue_t ctx){
     return NULL;
 }
 
+static void print_state(char *what, struct state *state){
+    printf("%s: %p vars=%llx dfa=%u type=%u ch=%d b=%u t=%u:", what, state, state->vars, state->dfa_state, state->type, (int) state->chooser, state->bagsize, state->total);
+    hvalue_t *v = (hvalue_t *) (state + 1);
+    for (unsigned i = 0; i < state->total; i++) {
+        printf(" %llx", v[i]);
+    }
+    printf("\n");
+}
+
 static inline bool commute(struct edge *edge1, struct edge *edge2){
     // If both lead to the same state (probably self-loops), then no race.
     struct node *dst1 = edge_dst(edge1);
@@ -188,7 +197,21 @@ static inline bool commute(struct edge *edge1, struct edge *edge2){
         return true;
     }
 
-    return find_step(dst1, in2->ctx) == find_step(dst2, in1->ctx);
+    struct node *node1 = find_step(dst1, in2->ctx);
+    struct node *node2 = find_step(dst2, in1->ctx);
+    if (node1 != node2) {
+        struct state *s1 = node_state(node1);
+        struct state *s2 = node_state(node2);
+        unsigned int sz1 = state_size(s1);
+        unsigned int sz2 = state_size(s2);
+        if (sz1 != sz2 || memcmp(s1, s2, sz1) != 0) {
+            printf("DIFFERENT\n");
+        }
+        printf("N1: %u; N2: %u\n", node1->worker, node2->worker);
+        // print_state("S1", s1);
+        // print_state("S2", s2);
+    }
+    return node1 == node2;
 }
 
 static void print_addr(hvalue_t *indices, unsigned int n){
