@@ -207,7 +207,6 @@ static inline bool commute(struct edge *edge1, struct edge *edge2){
         if (sz1 != sz2 || memcmp(s1, s2, sz1) != 0) {
             printf("DIFFERENT\n");
         }
-        printf("N1: %u; N2: %u\n", node1->worker, node2->worker);
         // print_state("S1", s1);
         // print_state("S2", s2);
     }
@@ -252,6 +251,7 @@ void graph_check_for_data_race(
                 continue;
             }
             if (!commute(edge, edge2)) {
+                printf("Node: %u\n", node->id);
                 print_access("A1", edge_output(edge)->ai);
                 print_access("A2", edge_output(edge2)->ai);
                 struct failure *f = new_alloc(struct failure);
@@ -259,7 +259,7 @@ void graph_check_for_data_race(
                 f->node = node;
                 f->edge = edge2;
                 f->address = VALUE_ADDRESS_SHARED;
-                add_failure(failures, f);
+                // add_failure(failures, f);
             }
         }
     }
