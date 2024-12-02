@@ -151,24 +151,15 @@ static inline bool is_atomic(struct access_info *ai){
     return true;
 }
 
-static struct node *find_step(struct node *node, hvalue_t ctx){
+static struct node *find_step(struct node *node, struct step_input *si){
     struct edge *edge = node_edges(node);
     for (unsigned int i = 0; i < node->nedges; i++, edge++) {
         struct step_input *in = edge_input(edge);
-        if (in->ctx == ctx) {
+        if (in->ctx == si->ctx && in->choice == si->choice) {
             return edge_dst(edge);
         }
     }
     return NULL;
-}
-
-static void print_state(char *what, struct state *state){
-    printf("%s: %p vars=%llx dfa=%u type=%u ch=%d b=%u t=%u:", what, state, state->vars, state->dfa_state, state->type, (int) state->chooser, state->bagsize, state->total);
-    hvalue_t *v = (hvalue_t *) (state + 1);
-    for (unsigned i = 0; i < state->total; i++) {
-        printf(" %llx", v[i]);
-    }
-    printf("\n");
 }
 
 static inline bool commute(struct edge *edge1, struct edge *edge2){
@@ -192,45 +183,20 @@ static inline bool commute(struct edge *edge1, struct edge *edge2){
     struct step_input *in1 = edge_input(edge1);
     struct step_input *in2 = edge_input(edge2);
 
-    // Ignore interrupt steps
+    // Don't check if interrupt steps commute
     if (in1->ctx == in2->ctx) {
         return true;
     }
 
-    struct node *node1 = find_step(dst1, in2->ctx);
-    struct node *node2 = find_step(dst2, in1->ctx);
+    struct node *node1 = find_step(dst1, in2);
+    struct node *node2 = find_step(dst2, in1);
     if (node1 != node2) {
         struct state *s1 = node_state(node1);
         struct state *s2 = node_state(node2);
         unsigned int sz1 = state_size(s1);
         unsigned int sz2 = state_size(s2);
-        if (sz1 != sz2 || memcmp(s1, s2, sz1) != 0) {
-            printf("DIFFERENT\n");
-        }
-        // print_state("S1", s1);
-        // print_state("S2", s2);
     }
     return node1 == node2;
-}
-
-static void print_addr(hvalue_t *indices, unsigned int n){
-    printf("%u", n);
-    for (unsigned int i = 0; i < n; i++) {
-        printf(":%s", value_string(indices[i]));
-    }
-}
-
-static void print_access(char *what, struct access_info *ai){
-    printf("%s %c", what, is_atomic(ai) ? 'A' : '-');
-    if (ai == NULL) {
-        printf(" NIL");
-    }
-    while (ai != NULL) {
-        printf(" %c%c", ai->load ? 'L' : 'S', ai->atomic ? 'A' : '-');
-        print_addr(ai->indices, ai->n);
-        ai = ai->next;
-    }
-    printf("\n");
 }
 
 // This checks if any two edges, at least one of which is "non-atomic", commute.
@@ -251,15 +217,12 @@ void graph_check_for_data_race(
                 continue;
             }
             if (!commute(edge, edge2)) {
-                printf("Node: %u\n", node->id);
-                print_access("A1", edge_output(edge)->ai);
-                print_access("A2", edge_output(edge2)->ai);
                 struct failure *f = new_alloc(struct failure);
                 f->type = FAIL_RACE;
                 f->node = node;
                 f->edge = edge2;
                 f->address = VALUE_ADDRESS_SHARED;
-                // add_failure(failures, f);
+                add_failure(failures, f);
             }
         }
     }

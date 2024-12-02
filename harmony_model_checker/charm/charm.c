@@ -4117,11 +4117,10 @@ static void charm_dump(bool computed_components){
             if (node->failed) {
                 fprintf(df, "    failed\n");
             }
-            fprintf(df, "    fwd:\n");
-            int eno = 0;
+            fprintf(df, "    edges:\n");
             struct edge *edge = node_edges(node);
             for (unsigned int i = 0; i < node->nedges; i++, edge++) {
-                fprintf(df, "        %d:\n", eno);
+                fprintf(df, "        %u:\n", i);
                 struct context *ctx = value_get(edge_input(edge)->ctx, NULL);
                 struct node *dst = edge_dst(edge);
                 if (computed_components) {
@@ -4137,8 +4136,13 @@ static void charm_dump(bool computed_components){
                     fprintf(df, "            failed\n");
                 }
                 if (edge_input(edge)->choice != 0) {
-                    fprintf(df, "            choice: %s\n",
-                            value_string(edge_input(edge)->choice));
+                    if (edge_input(edge)->choice == (hvalue_t) -1) {
+                        fprintf(df, "            interrupt\n");
+                    }
+                    else {
+                        fprintf(df, "            choice: %s\n",
+                                value_string(edge_input(edge)->choice));
+                    }
                 }
                 if (edge_output(edge)->nlog > 0) {
                     fprintf(df, "            log:");
