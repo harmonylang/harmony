@@ -597,7 +597,7 @@ class NaryAST(AST):
 
     def isConstant(self, scope):
         (op, file, line, column) = self.op
-        if op in {"atLabel", "choose", "contexts", "countLabel", "get_context", "get_ident"}:
+        if op in {"choose", "contexts", "get_context", "get_ident"}:
             return False
         return all(x.isConstant(scope) for x in self.args)
 
@@ -659,6 +659,47 @@ class NaryAST(AST):
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_nary(self, *args, **kwargs)
 
+class BinAST(AST):
+    def __init__(self, endtoken, token, ops, args):
+        AST.__init__(self, endtoken, token, False)
+        self.ops = ops
+        self.args = args
+        assert len(ops) == len(args) - 1
+        assert all(isinstance(x, AST) for x in args), args
+
+    def gencode(self, scope, code, stmt):
+        n = len(self.args)
+        self.args[0].compile(scope, code, stmt)
+        (lexeme, file, line, column) = self.ops[0]
+        T = ("__cmp__" + str(len(code.labeled_ops)), file, line, column)
+        endlabel = LabelValue(None, "cmp$%d"%len(code.labeled_ops))
+        for i in range(1, n - 1):
+            self.args[i].compile(scope, code, stmt)
+            code.append(DupOp(), self.token, self.endtoken, stmt=stmt)
+            code.append(StoreVarOp(T), self.token, self.endtoken, stmt=stmt)
+            code.append(NaryOp(self.ops[i - 1], 2), self.token, self.endtoken, stmt=stmt)
+            code.append(DupOp(), self.token, self.endtoken, stmt=stmt)
+            code.append(JumpCondOp(False, endlabel), self.token, self.endtoken, stmt=stmt)
+            code.append(PopOp(), self.token, self.endtoken, stmt=stmt)
+            code.append(LoadVarOp(T), self.token, self.endtoken, stmt=stmt)
+        self.args[n - 1].compile(scope, code, stmt)
+        code.append(NaryOp(self.ops[n - 2], 2), self.token, self.endtoken, stmt=stmt)
+        code.nextLabel(endlabel)
+        if n > 2:
+            code.append(DelVarOp(T), self.token, self.endtoken, stmt=stmt)     # TODO: is this necessary???
+
+    def getLabels(self):
+        labels = [x.getLabels() for x in self.args]
+        return functools.reduce(lambda x, y: x | y, labels)
+
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_cmp(self, *args, **kwargs)
+
+    def __repr__(self):
+        return "BinOp(" + str(self.ops) + ", " + str(self.args) + ")"
+
+    def isConstant(self, scope):
+        return all(x.isConstant(scope) for x in self.args)
 
 class CmpAST(AST):
     def __init__(self, endtoken, token, ops, args):
