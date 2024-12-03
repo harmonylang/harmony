@@ -71,16 +71,14 @@ arith_op
     | '**'
     | '<<'
     | '>>'
-;
-
-comp_op
-    : '=='
+    | '=='
     | '!='
     | '<'
     | '<='
     | '>'
     | '>='
-    ;
+    | '=>'
+;
 
 unary_op
     : '-'
@@ -151,8 +149,6 @@ tuple_rule
 nary_expr
     : expr_rule (
           NOT? IN expr_rule
-        | NOT? IMPLIES expr_rule
-        | (comp_op expr_rule)*
         | IF nary_expr ELSE expr_rule
         | (arith_op expr_rule)*
     )
@@ -334,7 +330,6 @@ EXISTS  : 'exists';
 WHERE   : 'where';
 EQ      : '=';
 FOR     : 'for' {self.opened_for += 1};
-IMPLIES : '=>';
 IN      : 'in' {
 if self.opened_for > 0:
     self.opened_for -= 1

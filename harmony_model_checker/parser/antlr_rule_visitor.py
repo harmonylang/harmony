@@ -90,10 +90,6 @@ class HarmonyVisitorImpl(HarmonyVisitor):
             return bv[0]
         return bv
 
-    # Visit a parse tree produced by HarmonyParser#comp_op.
-    def visitComp_op(self, ctx: HarmonyParser.Comp_opContext):
-        return self.get_token(ctx.start, ctx.getText())
-
     # Visit a parse tree produced by HarmonyParser#unary_op.
     def visitUnary_op(self, ctx: HarmonyParser.Unary_opContext):
         return self.get_token(ctx.start, ctx.getText())
@@ -670,9 +666,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         expressions = [self.visit(e) for e in ctx.expr_rule()]
         tkn = self.get_token(ctx.start, ctx.start.text)
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
-        if ctx.comp_op():
-            comps = [self.visit(o) for o in ctx.comp_op()]
-            return CmpAST(endtoken, tkn, comps, expressions)
+        # return CmpAST(endtoken, tkn, comps, expressions)
         if ctx.arith_op():
             ops = [self.visit(o) for o in ctx.arith_op()]
             expected = ops[0]
@@ -704,13 +698,6 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         if ctx.IN():
             in_token = self.get_token(ctx.IN().symbol, str(ctx.IN()))
             ast = NaryAST(endtoken, tkn, in_token, expressions)
-            if ctx.NOT():
-                not_token = self.get_token(ctx.NOT().symbol, str(ctx.NOT()))
-                return NaryAST(endtoken, tkn, not_token, [ast])
-            return ast
-        if ctx.IMPLIES():
-            implies_token = self.get_token(ctx.IMPLIES().symbol, str(ctx.IMPLIES()))
-            ast = NaryAST(endtoken, tkn, implies_token, expressions)
             if ctx.NOT():
                 not_token = self.get_token(ctx.NOT().symbol, str(ctx.NOT()))
                 return NaryAST(endtoken, tkn, not_token, [ast])

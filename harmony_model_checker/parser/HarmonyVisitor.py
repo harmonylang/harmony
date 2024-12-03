@@ -49,11 +49,6 @@ class HarmonyVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by HarmonyParser#comp_op.
-    def visitComp_op(self, ctx:HarmonyParser.Comp_opContext):
-        return self.visitChildren(ctx)
-
-
     # Visit a parse tree produced by HarmonyParser#unary_op.
     def visitUnary_op(self, ctx:HarmonyParser.Unary_opContext):
         return self.visitChildren(ctx)
