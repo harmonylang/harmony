@@ -777,6 +777,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         bool_ops = [ o[0] for o in ops if o[0] in { 'or', 'and', '=>', '==', '=' } ]
         if 'or' in bool_ops:
             if len(set(bool_ops)) > 1:
+                assert False, bool_ops
                 raise HarmonyCompilerError(
                     message="Boolean expression too complicated: use parentheses",
                     filename=self.file,

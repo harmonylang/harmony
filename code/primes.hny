@@ -8,7 +8,7 @@ def isPrime(v) returns prime:
     prime = True
     var d = 2
     while prime and (d < v):
-        if (v % d) == 0:
+        if v % d == 0:
             prime = False
         d += 1
 
