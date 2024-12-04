@@ -4330,13 +4330,13 @@ hvalue_t f_list(struct state *state, struct step *step, hvalue_t *args, unsigned
         strbuf_printf(&step->explain, "create a list; ");
     }
     hvalue_t e = args[0];
-	if (e == VALUE_SET || e == VALUE_LIST || e == VALUE_ATOM) {
+	if (e == VALUE_SET || e == VALUE_LIST || e == VALUE_ATOM || e == VALUE_DICT) {
         return VALUE_LIST;
     }
     if (VALUE_TYPE(e) == VALUE_LIST) {
         return e;
     }
-    if (VALUE_TYPE(e) != VALUE_SET && VALUE_TYPE(e) != VALUE_ATOM) {
+    if (VALUE_TYPE(e) != VALUE_SET && VALUE_TYPE(e) != VALUE_ATOM && VALUE_TYPE(e) != VALUE_DICT) {
         return value_ctx_failure(step->ctx, step->allocator, "list() can only be applied to sets or strings");
     }
 
@@ -4345,24 +4345,41 @@ hvalue_t f_list(struct state *state, struct step *step, hvalue_t *args, unsigned
         hvalue_t *v = value_get(e, &size);
         return value_put_list(step->allocator, v, size);
     }
-    else {
-        assert(VALUE_TYPE(e) == VALUE_ATOM);
+    if (VALUE_TYPE(e) == VALUE_DICT) {
         unsigned int size;
-        char *v = value_get(e, &size);
+        hvalue_t *vals = value_get(e, &size);
 #ifdef HEAP_ALLOC
-        hvalue_t *w = malloc(size * sizeof(hvalue_t));
+        hvalue_t *keys = malloc(size / 2);
 #else
-        hvalue_t w[size];
+        hvalue_t keys[size / 2 / sizeof(hvalue_t)];
 #endif
-        for (unsigned i = 0; i < size; i++) {
-            w[i] = value_put_atom(step->allocator, &v[i], 1);
+        size /= 2 * sizeof(hvalue_t);
+        for (unsigned int i = 0; i < size; i++) {
+            keys[i] = vals[2*i];
         }
-        hvalue_t result = value_put_list(step->allocator, w, size * sizeof(hvalue_t));
+        hvalue_t result = value_put_list(step->allocator, keys, size * sizeof(hvalue_t));
 #ifdef HEAP_ALLOC
-        free(w);
+        free(keys);
 #endif
         return result;
     }
+
+    assert(VALUE_TYPE(e) == VALUE_ATOM);
+    unsigned int size;
+    char *v = value_get(e, &size);
+#ifdef HEAP_ALLOC
+    hvalue_t *w = malloc(size * sizeof(hvalue_t));
+#else
+    hvalue_t w[size];
+#endif
+    for (unsigned i = 0; i < size; i++) {
+        w[i] = value_put_atom(step->allocator, &v[i], 1);
+    }
+    hvalue_t result = value_put_list(step->allocator, w, size * sizeof(hvalue_t));
+#ifdef HEAP_ALLOC
+    free(w);
+#endif
+    return result;
 }
 
 hvalue_t f_reversed(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
