@@ -4354,7 +4354,7 @@ hvalue_t f_zip(struct state *state, struct step *step, hvalue_t *args, unsigned 
 #endif
             return value_ctx_failure(step->ctx, step->allocator, "zip() can only operate on lists and sets");
         }
-        vi[i].vals = value_get(e, &vi[i].size);
+        vi[i].vals = value_get(v[i], &vi[i].size);
         vi[i].size /= sizeof(hvalue_t);
         if (vi[i].size < min) {
             min = vi[i].size;
