@@ -90,7 +90,7 @@ unary_op
     | 'any'
     | 'bin'
     | 'choose'
-    | 'contexts'
+    | 'dict'
     | 'get_context'
     | 'get_ident'
     | 'hash'
@@ -109,6 +109,7 @@ unary_op
     | 'str'
     | 'sum'
     | 'type'
+    | 'zip'
     ;
 
 basic_expr

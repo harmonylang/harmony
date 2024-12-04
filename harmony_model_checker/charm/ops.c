@@ -4324,6 +4324,67 @@ hvalue_t f_set(struct state *state, struct step *step, hvalue_t *args, unsigned 
     }
 }
 
+hvalue_t f_zip(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
+    assert(n == 1);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "zip; ");
+    }
+    hvalue_t e = args[0];
+    if (VALUE_TYPE(e) != VALUE_LIST) {
+        return value_ctx_failure(step->ctx, step->allocator, "zip() requires a list/tuple argument");
+    }
+    if (e == VALUE_LIST) {
+        return VALUE_LIST;
+    }
+    unsigned int size;
+    hvalue_t *v = value_get(e, &size);
+    unsigned int cnt = size / sizeof(hvalue_t);
+
+    // Get all the lists or sets
+#ifdef HEAP_ALLOC
+    struct val_info *vi = malloc(n * sizeof(struct val_info));
+#else
+    struct val_info vi[n];
+#endif
+    unsigned int min = (unsigned int ) -1;
+    for (unsigned int i = 0; i < cnt; i++) {
+        if (VALUE_TYPE(v[i]) != VALUE_LIST && VALUE_TYPE(v[i]) != VALUE_SET) {
+#ifdef HEAP_ALLOC
+            free(vi);
+#endif
+            return value_ctx_failure(step->ctx, step->allocator, "zip() can only operate on lists and sets");
+        }
+        vi[i].vals = value_get(e, &vi[i].size);
+        vi[i].size /= sizeof(hvalue_t);
+        if (vi[i].size < min) {
+            min = vi[i].size;
+        }
+    }
+
+#ifdef HEAP_ALLOC
+    hvalue_t *v = malloc(cnt * sizeof(*v));
+    hvalue_t *w = malloc(min * sizeof(*w));
+#else
+    hvalue_t vec[cnt];
+    hvalue_t w[min];
+#endif
+    for (unsigned i = 0; i < min; i++) {
+        for (unsigned j = 0; j < cnt; j++) {
+            vec[j] = vi[j].vals[i];
+        }
+        w[i] = value_put_list(step->allocator, vec, cnt * sizeof(*vec));
+    }
+    hvalue_t result = value_put_list(step->allocator, w, min * sizeof(*w));
+
+#ifdef HEAP_ALLOC
+    free(vi);
+    free(w);
+    free(vec);
+#endif
+
+    return result;
+}
+
 hvalue_t f_list(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 1);
     if (step->keep_callstack) {
@@ -5657,6 +5718,7 @@ struct f_info f_table[] = {
     { "str", f_str },
     { "sum", f_sum },
     { "type", f_type },
+    { "zip", f_zip },
     { NULL, NULL }
 };
 
