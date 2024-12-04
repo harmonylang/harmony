@@ -4187,6 +4187,23 @@ hvalue_t f_int(struct state *state, struct step *step, hvalue_t *args, unsigned 
         strbuf_printf(&step->explain, "parse a int; ");
     }
     hvalue_t e = args[0];
+    unsigned int base = 10;
+    if (VALUE_TYPE(e) == VALUE_LIST) {
+        unsigned int asize;
+        hvalue_t *av = value_get(e, &asize);
+        if (asize != 2 * sizeof(hvalue_t)) {
+            return value_ctx_failure(step->ctx, step->allocator, "int() must have 1 or 2 arguments");
+        }
+        if (VALUE_TYPE(av[1]) != VALUE_INT) {
+            return value_ctx_failure(step->ctx, step->allocator, "int(): second argument must be an integer");
+        }
+        base = VALUE_FROM_INT(av[1]);
+        if (base < 2 || base > 36) {
+            return value_ctx_failure(step->ctx, step->allocator, "int(): unsupported base");
+        }
+        e = av[0];
+    }
+
     if (VALUE_TYPE(e) != VALUE_ATOM) {
         return value_ctx_failure(step->ctx, step->allocator, "int() can only be applied to strings");
     }
@@ -4200,7 +4217,6 @@ hvalue_t f_int(struct state *state, struct step *step, hvalue_t *args, unsigned 
     }
 
     // Figure out the base
-    unsigned int base = 10;
     if (size - i > 2 && v[i] == '0') {
         switch (v[i+1]) {
         case 'x': case 'X': base = 16; break;
@@ -4222,10 +4238,10 @@ hvalue_t f_int(struct state *state, struct step *step, hvalue_t *args, unsigned 
         if ('0' <= v[i] && v[i] <= '9') {
             next = v[i] - '0';
         }
-        else if ('a' <= v[i] && v[i] <= 'f') {
+        else if ('a' <= v[i] && v[i] <= 'z') {
             next = v[i] - 'a' + 10;
         }
-        else if ('A' <= v[i] && v[i] <= 'F') {
+        else if ('A' <= v[i] && v[i] <= 'Z') {
             next = v[i] - 'A' + 10;
         }
         else {
