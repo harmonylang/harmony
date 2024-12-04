@@ -95,6 +95,7 @@ unary_op
     | 'get_ident'
     | 'hash'
     | 'hex'
+    | 'int'
     | 'keys'
     | 'len'
     | 'list'

@@ -4181,6 +4181,73 @@ hvalue_t f_keys(struct state *state, struct step *step, hvalue_t *args, unsigned
     return value_ctx_failure(step->ctx, step->allocator, "keys() can only be applied to dictionaries");
 }
 
+hvalue_t f_int(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
+    assert(n == 1);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "parse a int; ");
+    }
+    hvalue_t e = args[0];
+    if (VALUE_TYPE(e) != VALUE_ATOM) {
+        return value_ctx_failure(step->ctx, step->allocator, "int() can only be applied to strings");
+    }
+    unsigned int size;
+    char *v = value_get(e, &size);
+    unsigned int i = 0;
+
+    // Skip blank space
+    while (i < size && (v[i] == ' ' || v[i] == '\t' || v[i] == '\n' || v[i] == '\r')) {
+        i++;
+    }
+
+    // Figure out the base
+    unsigned int base = 10;
+    if (size - i > 2 && v[i] == '0') {
+        switch (v[i+1]) {
+        case 'x': case 'X': base = 16; break;
+        case 'b': case 'B': base =  2; break;
+        case 'o': case 'O': base =  8; break;
+        default:
+            return value_ctx_failure(step->ctx, step->allocator, "int(): unknown base");
+        }
+        i += 2;
+    }
+
+    if (i == size) {
+        return value_ctx_failure(step->ctx, step->allocator, "int() cannot be applied to empty strings");
+    }
+
+    unsigned int result = 0;
+    while (i < size) {
+        unsigned int next;
+        if ('0' <= v[i] && v[i] <= '9') {
+            next = v[i] - '0';
+        }
+        else if ('a' <= v[i] && v[i] <= 'f') {
+            next = v[i] - 'a' + 10;
+        }
+        else if ('A' <= v[i] && v[i] <= 'F') {
+            next = v[i] - 'A' + 10;
+        }
+        else {
+            // Trailing blanks are ok.
+            while (i < size && (v[i] == ' ' || v[i] == '\t' || v[i] == '\n' || v[i] == '\r')) {
+                i++;
+            }
+            if (i == size) {
+                return VALUE_TO_INT(result);
+            }
+            return value_ctx_failure(step->ctx, step->allocator, "int(): not an integer");
+        }
+        if (next >= base) {
+            return value_ctx_failure(step->ctx, step->allocator, "int(): digit exceeds base");
+        }
+        result *= base;
+        result += next;
+        i++;
+    }
+    return VALUE_TO_INT(result);
+}
+
 hvalue_t f_set(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 1);
     if (step->keep_callstack) {
@@ -5521,6 +5588,7 @@ struct f_info f_table[] = {
     { "get_ident", f_get_ident },
     { "hex", f_hex },
     { "in", f_in },
+    { "int", f_int },
     { "keys", f_keys },
     { "len", f_len },
     { "list", f_list },
