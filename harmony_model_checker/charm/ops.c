@@ -4342,9 +4342,9 @@ hvalue_t f_zip(struct state *state, struct step *step, hvalue_t *args, unsigned 
 
     // Get all the lists or sets
 #ifdef HEAP_ALLOC
-    struct val_info *vi = malloc(n * sizeof(struct val_info));
+    struct val_info *vi = malloc(cnt * sizeof(struct val_info));
 #else
-    struct val_info vi[n];
+    struct val_info vi[cnt];
 #endif
     unsigned int min = (unsigned int ) -1;
     for (unsigned int i = 0; i < cnt; i++) {
