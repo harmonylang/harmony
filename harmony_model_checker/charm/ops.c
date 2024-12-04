@@ -3719,36 +3719,6 @@ hvalue_t f_closure(struct state *state, struct step *step, hvalue_t *args, unsig
     return value_put_address(step->allocator, list, sizeof(list));
 }
 
-hvalue_t f_countLabel(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
-    assert(n == 1);
-    if (step->keep_callstack) {
-        strbuf_printf(&step->explain, "count how many threads are at this program counter; ");
-    }
-    if (step->ctx->atomic == 0) {
-        return value_ctx_failure(step->ctx, step->allocator, "countLabel: can only be called in atomic mode");
-    }
-    hvalue_t e = args[0];
-    if (VALUE_TYPE(e) != VALUE_PC) {
-        return value_ctx_failure(step->ctx, step->allocator, "countLabel: not a label");
-    }
-    e = VALUE_FROM_PC(e);
-
-    unsigned int result = 0;
-    hvalue_t *ctxlist = state_ctxlist(state);
-    for (unsigned int i = 0; i < state->bagsize; i++) {
-        // TODO.  May be unnecessary to do this because value_get will
-        hvalue_t ctxi = ctxlist[i] & ~STATE_MULTIPLICITY;
-        assert(VALUE_TYPE(ctxi) == VALUE_CONTEXT);
-        struct context *ctx = value_get(ctxi, NULL);
-        if ((hvalue_t) ctx->pc == e) {
-            unsigned int m = (ctxlist[i] & STATE_MULTIPLICITY) >> STATE_M_SHIFT;
-            assert(m > 0);
-            result += m;
-        }
-    }
-    return VALUE_TO_INT(result);
-}
-
 // C is not good at integer divide with negative values.  This code
 // tries to fix that...
 static int64_t int_div(int64_t x, int64_t y) {
@@ -4217,34 +4187,97 @@ hvalue_t f_set(struct state *state, struct step *step, hvalue_t *args, unsigned 
         strbuf_printf(&step->explain, "create a set; ");
     }
     hvalue_t e = args[0];
-	if (e == VALUE_SET || e == VALUE_LIST) {
+	if (e == VALUE_SET || e == VALUE_LIST || e == VALUE_ATOM) {
         return VALUE_SET;
     }
     if (VALUE_TYPE(e) == VALUE_SET) {
         return e;
     }
-    if (VALUE_TYPE(e) != VALUE_LIST) {
-        return value_ctx_failure(step->ctx, step->allocator, "set() can only be applied to lists");
+    if (VALUE_TYPE(e) != VALUE_LIST && VALUE_TYPE(e) != VALUE_ATOM) {
+        return value_ctx_failure(step->ctx, step->allocator, "set() can only be applied to lists or strings");
     }
-    unsigned int size;
-    hvalue_t *v = value_get(e, &size);
-    if (size == sizeof(hvalue_t)) {
-        // TODO.  Can make this more efficient
-        return value_put_set(step->allocator, v, size);
-    }
-    unsigned int cnt = size / sizeof(hvalue_t);
+
+    if (VALUE_TYPE(e) == VALUE_LIST) {
+        unsigned int size;
+        hvalue_t *v = value_get(e, &size);
+        if (size == sizeof(hvalue_t)) {
+            // TODO.  Can make this more efficient
+            return value_put_set(step->allocator, v, size);
+        }
+        unsigned int cnt = size / sizeof(hvalue_t);
 #ifdef HEAP_ALLOC
-    hvalue_t *w = malloc(size);
+        hvalue_t *w = malloc(size);
 #else
-    hvalue_t w[cnt];
+        hvalue_t w[cnt];
 #endif
-    memcpy(w, v, size);
-    cnt = sort(w, cnt);
-    hvalue_t result = value_put_set(step->allocator, w, cnt * sizeof(hvalue_t));
+        memcpy(w, v, size);
+        cnt = sort(w, cnt);
+        hvalue_t result = value_put_set(step->allocator, w, cnt * sizeof(hvalue_t));
 #ifdef HEAP_ALLOC
-    free(w);
+        free(w);
 #endif
-    return result;
+        return result;
+    }
+    else {
+        assert(VALUE_TYPE(e) == VALUE_ATOM);
+        unsigned int size;
+        char *v = value_get(e, &size);
+#ifdef HEAP_ALLOC
+        hvalue_t *w = malloc(size * sizeof(hvalue_t));
+#else
+        hvalue_t w[size];
+#endif
+        for (unsigned i = 0; i < size; i++) {
+            w[i] = value_put_atom(step->allocator, &v[i], 1);
+        }
+        size = sort(w, size);
+        hvalue_t result = value_put_set(step->allocator, w, size * sizeof(hvalue_t));
+#ifdef HEAP_ALLOC
+        free(w);
+#endif
+        return result;
+    }
+}
+
+hvalue_t f_list(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
+    assert(n == 1);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "create a list; ");
+    }
+    hvalue_t e = args[0];
+	if (e == VALUE_SET || e == VALUE_LIST || e == VALUE_ATOM) {
+        return VALUE_LIST;
+    }
+    if (VALUE_TYPE(e) == VALUE_LIST) {
+        return e;
+    }
+    if (VALUE_TYPE(e) != VALUE_SET && VALUE_TYPE(e) != VALUE_ATOM) {
+        return value_ctx_failure(step->ctx, step->allocator, "list() can only be applied to sets or strings");
+    }
+
+    if (VALUE_TYPE(e) == VALUE_SET) {
+        unsigned int size;
+        hvalue_t *v = value_get(e, &size);
+        return value_put_list(step->allocator, v, size);
+    }
+    else {
+        assert(VALUE_TYPE(e) == VALUE_ATOM);
+        unsigned int size;
+        char *v = value_get(e, &size);
+#ifdef HEAP_ALLOC
+        hvalue_t *w = malloc(size * sizeof(hvalue_t));
+#else
+        hvalue_t w[size];
+#endif
+        for (unsigned i = 0; i < size; i++) {
+            w[i] = value_put_atom(step->allocator, &v[i], 1);
+        }
+        hvalue_t result = value_put_list(step->allocator, w, size * sizeof(hvalue_t));
+#ifdef HEAP_ALLOC
+        free(w);
+#endif
+        return result;
+    }
 }
 
 hvalue_t f_reversed(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
@@ -4334,8 +4367,7 @@ hvalue_t f_hex(struct state *state, struct step *step, hvalue_t *args, unsigned 
         r = -r;
     }
     sprintf(buf, "0x%lx", r);
-    hvalue_t v = value_put_atom(step->allocator, buf, strlen(buf));
-    return v;
+    return value_put_atom(step->allocator, buf, strlen(buf));
 }
 
 hvalue_t f_bin(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
@@ -5457,6 +5489,12 @@ struct op_info op_table[] = {
 };
 
 struct f_info f_table[] = {
+    { "==", f_eq },
+    { "!=", f_ne },
+    { "<", f_lt },
+    { "<=", f_le },
+    { ">=", f_ge },
+    { ">", f_gt },
 	{ "+", f_plus },
 	{ "-", f_minus },
 	{ "~", f_invert },
@@ -5467,30 +5505,25 @@ struct f_info f_table[] = {
 	{ "**", f_power },
 	{ "<<", f_shiftleft },
 	{ ">>", f_shiftright },
-    { "<", f_lt },
-    { "<=", f_le },
-    { ">=", f_ge },
-    { ">", f_gt },
     { "|", f_union },
     { "&", f_intersection },
     { "^", f_xor },
     { "..", f_range },
-    { "==", f_eq },
-    { "!=", f_ne },
-    { "abs", f_abs },
     { "AddArg", f_add_arg },
+    { "Closure", f_closure },
+    { "DictAdd", f_dict_add },
+    { "ListAdd", f_list_add },
+    { "SetAdd", f_set_add },
+    { "abs", f_abs },
     { "all", f_all },
     { "any", f_any },
     { "bin", f_bin },
-    { "Closure", f_closure },
-    { "countLabel", f_countLabel },
-    { "DictAdd", f_dict_add },
     { "get_ident", f_get_ident },
     { "hex", f_hex },
     { "in", f_in },
-    { "ListAdd", f_list_add },
     { "keys", f_keys },
     { "len", f_len },
+    { "list", f_list },
     { "max", f_max },
     { "min", f_min },
 	{ "mod", f_mod },
@@ -5500,7 +5533,6 @@ struct f_info f_table[] = {
     { "sorted", f_sorted },
     { "str", f_str },
     { "sum", f_sum },
-    { "SetAdd", f_set_add },
     { "type", f_type },
     { NULL, NULL }
 };

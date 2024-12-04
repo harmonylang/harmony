@@ -97,6 +97,7 @@ unary_op
     | 'hex'
     | 'keys'
     | 'len'
+    | 'list'
     | 'max'
     | 'min'
     | 'not'
