@@ -50,7 +50,7 @@ def wait(c, lk):
             cnt = bags.multiplicity(!c, ctx)
             !c = bags.add(!c, ctx)
             !lk = False
-        atomically when (not !lk) and (bags.multiplicity(!c, ctx) <= cnt):
+        atomically when (not !lk) and bags.multiplicity(!c, ctx) <= cnt:
             !lk = True
 
 def notify(c):

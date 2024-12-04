@@ -1,22 +1,22 @@
 import lists
 
 def issubset(s, t) returns result:
-    result = (s & t) == s
+    result = s <= t
 
 def issubseteq(s, t) returns result:
-    result = (s & t) == s
+    result = s <= t
 
 def issubsetstrict(s, t) returns result:
-    result = (s != t) and ((s & t) == s)
+    result = s < t
 
 def issuperset(s, t) returns result:
-    result = (s & t) == t
+    result = s >= t
 
 def issuperseteq(s, t) returns result:
-    result = (s & t) == t
+    result = s >= t
 
 def issupersetstrict(s, t) returns result:
-    result = (s != t) and ((s & t) == t)
+    result = s > t
 
 def add(s, elt) returns result:
     result =  s | {elt}
