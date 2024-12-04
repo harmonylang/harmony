@@ -4270,16 +4270,18 @@ hvalue_t f_set(struct state *state, struct step *step, hvalue_t *args, unsigned 
         strbuf_printf(&step->explain, "create a set; ");
     }
     hvalue_t e = args[0];
-	if (e == VALUE_SET || e == VALUE_LIST || e == VALUE_ATOM) {
+	if (e == VALUE_SET || e == VALUE_LIST || e == VALUE_ATOM || e == VALUE_DICT) {
         return VALUE_SET;
     }
     if (VALUE_TYPE(e) == VALUE_SET) {
         return e;
     }
-    if (VALUE_TYPE(e) != VALUE_LIST && VALUE_TYPE(e) != VALUE_ATOM) {
+    if (VALUE_TYPE(e) != VALUE_LIST && VALUE_TYPE(e) != VALUE_ATOM && VALUE_TYPE(e) != VALUE_DICT) {
         return value_ctx_failure(step->ctx, step->allocator, "set() can only be applied to lists or strings");
     }
-
+    if (VALUE_TYPE(e) == VALUE_DICT) {
+        return f_keys(state, step, args, n);
+    }
     if (VALUE_TYPE(e) == VALUE_LIST) {
         unsigned int size;
         hvalue_t *v = value_get(e, &size);
