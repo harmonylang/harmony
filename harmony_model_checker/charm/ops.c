@@ -4437,6 +4437,25 @@ hvalue_t f_hex(struct state *state, struct step *step, hvalue_t *args, unsigned 
     return value_put_atom(step->allocator, buf, strlen(buf));
 }
 
+hvalue_t f_oct(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
+    assert(n == 1);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "convert into an octal string; ");
+    }
+    hvalue_t e = args[0];
+    if (VALUE_TYPE(e) != VALUE_INT) {
+        return value_ctx_failure(step->ctx, step->allocator, "oct() can only be applied to integers");
+    }
+    long int r = VALUE_FROM_INT(e);
+    char buf[100], *p = buf;
+    if (r < 0) {
+        *p++ = '-';
+        r = -r;
+    }
+    sprintf(buf, "0o%lo", r);
+    return value_put_atom(step->allocator, buf, strlen(buf));
+}
+
 hvalue_t f_bin(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 1);
     if (step->keep_callstack) {
@@ -5596,6 +5615,7 @@ struct f_info f_table[] = {
     { "min", f_min },
 	{ "mod", f_mod },
     { "not", f_not },
+    { "oct", f_oct },
     { "reversed", f_reversed },
     { "set", f_set },
     { "sorted", f_sorted },

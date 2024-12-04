@@ -102,6 +102,7 @@ unary_op
     | 'max'
     | 'min'
     | 'not'
+    | 'oct'
     | 'reversed'
     | 'set'
     | 'sorted'
