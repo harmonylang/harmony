@@ -98,8 +98,8 @@ static bool graph_edge_conflict(
                         }
                         struct failure *f = new_alloc(struct failure);
                         f->type = FAIL_RACE;
-                        f->node = node->parent;
-                        f->edge = node_to_parent(node);
+                        f->node = node;
+                        f->edge = edge;
                         f->address = value_put_address(allocator, ai->indices, min * sizeof(hvalue_t));
                         add_failure(failures, f);
                         return true;
@@ -198,6 +198,7 @@ void graph_check_for_data_race(
                 if (edge->multiple && !ai->load && !ai->atomic) {
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_RACE;
+                    f->node = node->parent;
                     f->edge = node_to_parent(node);
                     f->address = value_put_address(allocator, ai->indices, ai->n * sizeof(hvalue_t));
                     add_failure(failures, f);
