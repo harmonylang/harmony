@@ -4385,6 +4385,64 @@ hvalue_t f_zip(struct state *state, struct step *step, hvalue_t *args, unsigned 
     return result;
 }
 
+hvalue_t f_dict(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
+    assert(n == 1);
+    if (step->keep_callstack) {
+        strbuf_printf(&step->explain, "create a dictionary; ");
+    }
+    hvalue_t e = args[0];
+	if (e == VALUE_SET || e == VALUE_LIST) {
+        return VALUE_DICT;
+    }
+    if (VALUE_TYPE(e) != VALUE_SET && VALUE_TYPE(e) != VALUE_LIST) {
+        return value_ctx_failure(step->ctx, step->allocator, "dict() can only be applied to sets or lists");
+    }
+    unsigned int size;
+    hvalue_t *v = value_get(e, &size);
+    unsigned int cnt = size / sizeof(hvalue_t);
+
+#ifdef HEAP_ALLOC
+    hvalue_t *dict = malloc(size * 2);
+#else
+    hvalue_t dict[cnt * 2];
+#endif
+    unsigned int total = 0;
+
+    for (unsigned int i = 0; i < cnt; i++) {
+        if (VALUE_TYPE(v[i]) != VALUE_LIST) {
+            return value_ctx_failure(step->ctx, step->allocator, "dict() can only be applied to sets or lists");
+        }
+        unsigned int psize;
+        hvalue_t *pair = value_get(v[i], &psize);
+        if (psize != 2 * sizeof(hvalue_t)) {
+            return value_ctx_failure(step->ctx, step->allocator, "dict() can only be applied to sets or lists of pairs");
+        }
+
+        // Look for the key
+        int cmp = 1;
+        unsigned int j = 0;
+        for (; j < total; j += 2) {
+            cmp = value_cmp(pair[0], dict[j]);
+            if (cmp <= 0) {
+                break;
+            }
+        }
+
+        if (cmp != 0) {
+            memmove(&dict[j+2], &dict[j], total - j);
+            dict[j] = pair[0];
+            total += 2;
+        }
+        dict[j+1] = pair[1];
+    }
+
+    hvalue_t result = value_put_dict(step->allocator, dict, total * sizeof(hvalue_t));
+#ifdef HEAP_ALLOC
+    free(dict);
+#endif
+    return result;
+}
+
 hvalue_t f_list(struct state *state, struct step *step, hvalue_t *args, unsigned int n){
     assert(n == 1);
     if (step->keep_callstack) {
@@ -5700,6 +5758,7 @@ struct f_info f_table[] = {
     { "all", f_all },
     { "any", f_any },
     { "bin", f_bin },
+    { "dict", f_dict },
     { "get_ident", f_get_ident },
     { "hex", f_hex },
     { "in", f_in },
