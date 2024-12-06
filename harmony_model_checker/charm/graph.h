@@ -139,7 +139,6 @@ struct node {
     uint32_t id;            // nodes are numbered starting from 0
     uint16_t len;           // length of path to initial state
     uint8_t nedges;         // number of outgoing edges  // TODO also maintained indirectly by hash table
-uint8_t worker; // TODO DEBUGGING
     bool initial : 1;       // initial state
     bool on_stack : 1;      // for Tarjan
     bool eps_on_stack : 1;  // for Tarjan epsilon closure

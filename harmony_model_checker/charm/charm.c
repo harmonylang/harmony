@@ -160,6 +160,7 @@ struct worker {
         struct results_block *todo_buffer, *tb_head, *tb_tail;
         unsigned int tb_size, tb_index;
     } shard;
+    unsigned int miss;                  // for debugging
 
     // free lists of state_headers for various numbers of threads
     struct state_header *state_header_free[MAX_THREADS];
@@ -2657,7 +2658,6 @@ static void do_work2(struct worker *w){
             edge->dst = next;
 
             if (new) {
-next->worker = w->index;
                 next->failed = edge->failed;
                 next->initial = false;
                 next->parent = sh->node;
@@ -2680,8 +2680,11 @@ next->worker = w->index;
 
             // See if the node points sideways or backwards, in which
             // case cycles in the graph are possible
-            else if (next != sh->node && next->len <= sh->node->len) {
-                w->cycles_possible = true;
+            else {
+                w->miss++;
+                if (next != sh->node && next->len <= sh->node->len) {
+                    w->cycles_possible = true;
+                }
             }
         }
     }
@@ -4737,7 +4740,7 @@ int exec_model_checker(int argc, char **argv){
         middle_wait += w->middle_wait;
         end_wait += w->end_wait;
         if (Tflag) {
-            printf("W%2u: p1=%.3lf p2a=%.3lf p2b=%.3lf p3a=%.3lf p3b=%.3lf w1=%.3lf w2=%.3lf w3=%.3lf n=%u (%u, %.3lf)\n", i,
+            printf("W%2u: p1=%.3lf p2a=%.3lf p2b=%.3lf p3a=%.3lf p3b=%.3lf w1=%.3lf w2=%.3lf w3=%.3lf n=%u(%u) (%u, %.3lf)\n", i,
                 w->phase1,
                 w->phase2a,
                 w->phase2b,
@@ -4747,6 +4750,7 @@ int exec_model_checker(int argc, char **argv){
                 w->middle_wait,
                 w->end_wait,
                 w->shard.tb_size,
+                w->miss,
                 w->shard.states->invoke_count,
                 (double) w->shard.states->depth_count / w->shard.states->invoke_count);
         }
