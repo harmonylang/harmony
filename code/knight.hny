@@ -1,7 +1,7 @@
 # This program tries to find a solution to the Knight's Tour on
 # a board of WIDTH x HEIGHT squares
-WIDTH = 5
-HEIGHT = 5
+const WIDTH = 5
+const HEIGHT = 5
 
 # Check if (x, y) is an open position on board b
 def valid(b, x, y) returns success:
