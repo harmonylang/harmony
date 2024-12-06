@@ -1160,8 +1160,8 @@ static void trystep(
     assert(edge_index >= -1);
     assert(edge_index < 256);
     struct step_condition *stc;
-    bool si_new;
-    mutex_t *si_lock;
+    bool si_new = true;
+    mutex_t *si_lock = NULL;
 
     w->si_total++;          // counts the number of edges
 
@@ -1173,9 +1173,13 @@ static void trystep(
     };
 
     // See if we did this already (or are doing this already)
+#ifdef notdef
+    stc = calloc(1, sizeof(*stc));
+#else
     struct dict_assoc *da = dict_find_lock(global.computations,
         &w->allocator, &si, sizeof(si), &si_new, &si_lock);
     stc = (struct step_condition *) &da[1];
+#endif
 
     if (si_new) {
         stc->invariant_chk = edge_index < 0;
@@ -1209,13 +1213,17 @@ static void trystep(
             el->edge_index = edge_index;
             el->next = stc->u.in_progress;
             stc->u.in_progress = el;
-            mutex_release(si_lock);
+            if (si_lock != NULL) {
+                mutex_release(si_lock);
+            }
             return;
         }
         assert(stc->completed);
     }
 
-    mutex_release(si_lock);
+    if (si_lock != NULL) {
+        mutex_release(si_lock);
+    }
 
     // If this is a new step, perform it
     struct edge_list *el = NULL;
@@ -1247,12 +1255,16 @@ static void trystep(
         }
 
         // Mark as completed
-        mutex_acquire(si_lock);
+        if (si_lock != NULL) {
+            mutex_acquire(si_lock);
+        }
         assert(!stc->completed);
         el = stc->u.in_progress;
         stc->completed = true;
         stc->u.completed = so;
-        mutex_release(si_lock);
+        if (si_lock != NULL) {
+            mutex_release(si_lock);
+        }
     }
 
     assert(stc->completed);
