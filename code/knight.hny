@@ -40,6 +40,7 @@ def explore() returns success:
                 path += [(curx, cury),]
     # If we get here, success => all squares have been visited
     if success:
+        assert all(board[x][y] for x in {0..WIDTH-1} for y in {0..HEIGHT-1})
         print path
         assert False    # Stop trying -- printing one path is enough
 
