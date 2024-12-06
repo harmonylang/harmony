@@ -5159,14 +5159,14 @@ hvalue_t f_list_add(struct state *state, struct step *step, hvalue_t *args, unsi
         return value_ctx_failure(step->ctx, step->allocator, "can only add to list");
     }
     unsigned int size;
-    hvalue_t *vals = value_get(list, &size);
+    char *vals = value_get(list, &size);
 #ifdef HEAP_ALLOC
-    hvalue_t *nvals = malloc(size + sizeof(hvalue_t));
+    char *nvals = malloc(size + sizeof(hvalue_t));
 #else
-    hvalue_t nvals[size / sizeof(hvalue_t) + 1];
+    char nvals[size + sizeof(hvalue_t)];
 #endif
     memcpy(nvals, vals, size);
-    memcpy((char *) nvals + size, &args[0], sizeof(hvalue_t));
+    * (hvalue_t *) (nvals + size) = args[0];
     hvalue_t result = value_put_list(step->allocator, nvals, size + sizeof(hvalue_t));
 #ifdef HEAP_ALLOC
     free(nvals);
