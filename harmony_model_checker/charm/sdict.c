@@ -160,7 +160,11 @@ struct dict_assoc *sdict_find(struct sdict *dict,
 		if (k->len == keylen && memcmp((char *) &k[1] + k->val_len, key, keylen) == 0) {
 			return k;
 		}
+#ifdef notdef
 		k = k->next;
+#else
+        return NULL;
+#endif
 	}
     return NULL;
 }
