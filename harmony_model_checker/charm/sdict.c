@@ -152,3 +152,15 @@ struct dict_assoc *sdict_find_new(struct sdict *dict, struct allocator *al,
     }
 	return k;
 }
+
+struct dict_assoc *sdict_find(struct sdict *dict,
+                            const void *key, unsigned int keylen, uint32_t hash){
+    struct dict_assoc *k = dict->stable[hash % dict->length];
+	while (k != NULL) {
+		if (k->len == keylen && memcmp((char *) &k[1] + k->val_len, key, keylen) == 0) {
+			return k;
+		}
+		k = k->next;
+	}
+    return NULL;
+}

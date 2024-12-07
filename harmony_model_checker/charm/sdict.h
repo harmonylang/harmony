@@ -39,8 +39,9 @@ void *sdict_search(struct sdict *dict, const void *key, unsigned int keylen);
 void *sdict_lookup(struct sdict *dict, const void *key, unsigned int keylen);
 bool sdict_remove(struct sdict *dict, const void *key, unsigned int keylen);
 void *sdict_insert(struct sdict *dict, struct allocator *al, const void *key, unsigned int keylen, bool *is_new);
+struct dict_assoc *sdict_find(struct sdict *dict,
+                            const void *key, unsigned int keylen, uint32_t hash);
 struct dict_assoc *sdict_find_new(struct sdict *dict, struct allocator *al, const void *key, unsigned int keyn, unsigned int extra, bool *is_new, uint32_t hash);
-struct dict_assoc *sdict_find(struct sdict *dict, struct allocator *al, const void *key, unsigned int keylen, bool *is_new);
 unsigned long sdict_allocated(struct sdict *dict);
 bool sdict_exists(struct sdict *dict, const void *key, unsigned int keylen, uint32_t hash);
 void sdict_resize(struct sdict *dict, unsigned int newsize);

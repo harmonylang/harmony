@@ -5,7 +5,7 @@ const HEIGHT = 5
 
 # Check if (x, y) is an open position on board b
 def valid(b, x, y) returns success:
-    success = not (x < 0 or x >= WIDTH or y < 0 or y >= HEIGHT or b[x][y])
+    success = not ((x < 0) or (x >= WIDTH) or (y < 0) or (y >= HEIGHT) or b[x][y])
 
 # Return the set of valid moves from position (x, y) on board b
 def moves(b, x, y) returns valid_moves:

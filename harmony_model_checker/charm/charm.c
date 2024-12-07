@@ -782,15 +782,25 @@ static inline void process_step(
     sh->noutgoing = noutgoing;
     sh->hash = state_hash(sc);
 
-    // Add to the linked list of the responsible peer shard
+    // Figure out which shard is responsible
     struct shard *shard = &w->shard;
     unsigned int responsible = (sh->hash >> 17) % w->nworkers;
-    struct state_queue *sq = &shard->peers[responsible];
-    *sq->last = sh;
-    sq->last = &sh->next;
-    sh->next = NULL;
 
-    w->sb_index++;
+    // See if the state is already known
+    struct dict_assoc *da = sdict_find(global.workers[responsible].shard.states,
+                                    sc, state_size(sc), sh->hash);
+    if (da != NULL) {
+        state_header_free(w, sh);
+        node_edges(sh->node)[sh->edge_index].dst = (struct node *) &da[1];
+    }
+    else {
+        // Add to the linked list of the responsible peer shard
+        struct state_queue *sq = &shard->peers[responsible];
+        *sq->last = sh;
+        sq->last = &sh->next;
+        sh->next = NULL;
+        w->sb_index++;
+    }
 }
 
 // This is the main workhorse function of model checking: explore a state and
