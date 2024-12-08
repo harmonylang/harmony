@@ -226,7 +226,22 @@ struct worker {
     // TODO.  Probably useless
     unsigned int nworkers;
     struct dfa *dfa;
+
+double in_onestep;
 };
+
+// Get the current time as a double value for easy computation
+static inline double gettime(){
+#if defined(TIME_UTC) && !defined(__APPLE__)
+    struct timespec ts;
+    timespec_get(&ts, TIME_UTC);
+    return ts.tv_sec + (double) ts.tv_nsec / 1000000000;
+#else
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return tv.tv_sec + (double) tv.tv_usec / 1000000;
+#endif
+}
 
 #ifdef CACHE_LINE_ALIGNED
 #define ALIGNMASK       0x3F
@@ -862,6 +877,8 @@ static struct step_output *onestep(
         assert_batch = in_assertion = true;
     }
 
+double now = gettime();
+
     int pc = step->ctx->pc;
     struct op_info *oi = instrs[pc].oi;
     for (;;) {
@@ -1103,6 +1120,8 @@ static struct step_output *onestep(
         }
     }
 
+w->in_onestep += gettime() - now;
+
     assert(step->nlog == 0 || step->nlog == 1);
 
     // No longer need 'infloop' state.
@@ -1185,7 +1204,8 @@ static void trystep(
 
     // See if we did this already (or are doing this already)
 #ifdef notdef
-    stc = calloc(1, sizeof(*stc));
+    stc = calloc(1, sizeof(*stc) + sizeof(si));
+    memcpy(&stc[1], &si, sizeof(si));
 #else
     struct dict_assoc *da = dict_find_lock(global.computations,
         &w->allocator, &si, sizeof(si), &si_new, &si_lock);
@@ -2544,19 +2564,6 @@ static void do_work1(struct worker *w, struct node *node){
             add_failure(&w->failures, f);
         }
     }
-}
-
-// Get the current time as a double value for easy computation
-static inline double gettime(){
-#if defined(TIME_UTC) && !defined(__APPLE__)
-    struct timespec ts;
-    timespec_get(&ts, TIME_UTC);
-    return ts.tv_sec + (double) ts.tv_nsec / 1000000000;
-#else
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return tv.tv_sec + (double) tv.tv_usec / 1000000;
-#endif
 }
 
 static double percent(unsigned int x, unsigned int y){
@@ -4758,7 +4765,8 @@ int exec_model_checker(int argc, char **argv){
         middle_wait += w->middle_wait;
         end_wait += w->end_wait;
         if (Tflag) {
-            printf("W%2u: p1a=%.3lf p1b=%.3lf p2a=%.3lf p2b=%.3lf p3a=%.3lf p3b=%.3lf w1=%.3lf w2=%.3lf w3=%.3lf n=%u(%u) (%u, %.3lf)\n", i,
+            printf("W%2u: o=%.3lf p1a=%.3lf p1b=%.3lf p2a=%.3lf p2b=%.3lf p3a=%.3lf p3b=%.3lf w1=%.3lf w2=%.3lf w3=%.3lf n=%u(%u) (%u, %.3lf)\n", i,
+                w->in_onestep,
                 w->phase1a,
                 w->phase1b,
                 w->phase2a,
