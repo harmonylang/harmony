@@ -185,7 +185,7 @@ struct worker {
     // Statistics about the three phases for optimization purposes
     double start_wait, middle_wait, end_wait;
     unsigned int start_count, middle_count, end_count;
-    double phase1, phase2a, phase2b, phase3a, phase3b;
+    double phase1a, phase1b, phase2a, phase2b, phase3a, phase3b;
     unsigned int nrounds;
 
     // State maintained while evaluating invariants
@@ -2605,8 +2605,7 @@ static inline bool report_time(){
 // into this array.  All the nodes before todo have been explored, while the
 // ones after todo should be explored.  In other words, the "todo list" starts
 // at global.graph.nodes[global.todo] and ends at graph.nodes[graph.size];
-static void do_work(struct worker *w, unsigned int round){
-    // double start = gettime(), now;
+static void do_work_a(struct worker *w){
     struct shard *shard = &w->shard;
 
     // Put any messages from the prior round on the appropriate free lists
@@ -2619,8 +2618,12 @@ static void do_work(struct worker *w, unsigned int round){
         }
         sq->last = &sq->first;
     }
+}
 
-    // See if there's anything on my TODO list.
+// See if there's anything on my TODO list.
+static void do_work_b(struct worker *w){
+    struct shard *shard = &w->shard;
+
     w->sb_index = 0;
     while (shard->tb_index < shard->tb_size) {
         struct node *n = shard->tb_head->results[shard->tb_index % NRESULTS];
@@ -3034,9 +3037,13 @@ static void worker(void *arg){
         // First phase starts now.  Call do_work() to do that actual work.
         // Also keep stats.
         before = after;
-        do_work(w, nrounds);
+        do_work_a(w);
         after = gettime();
-        w->phase1 += after - before;
+        w->phase1a += after - before;
+        before = after;
+        do_work_b(w);
+        after = gettime();
+        w->phase1b += after - before;
 
         // Wait for others to finish, and keep stats
         // Here we are waiting for everybody's todo list processing
@@ -4737,11 +4744,12 @@ int exec_model_checker(int argc, char **argv){
     unsigned long allocated = global.allocated;
 #define REPORT_WORKERS
 #ifdef REPORT_WORKERS
-    double phase1 = 0, phase2a = 0, phase2b = 0, phase3a = 0, phase3b = 0, start_wait = 0, middle_wait = 0, end_wait = 0;
+    double phase1a = 0, phase1b = 0, phase2a = 0, phase2b = 0, phase3a = 0, phase3b = 0, start_wait = 0, middle_wait = 0, end_wait = 0;
     for (unsigned int i = 0; i < global.nworkers; i++) {
         struct worker *w = &global.workers[i];
         allocated += w->allocated;
-        phase1 += w->phase1;
+        phase1a += w->phase1a;
+        phase1b += w->phase1b;
         phase2a += w->phase2a;
         phase2b += w->phase2b;
         phase3a += w->phase3a;
@@ -4750,8 +4758,9 @@ int exec_model_checker(int argc, char **argv){
         middle_wait += w->middle_wait;
         end_wait += w->end_wait;
         if (Tflag) {
-            printf("W%2u: p1=%.3lf p2a=%.3lf p2b=%.3lf p3a=%.3lf p3b=%.3lf w1=%.3lf w2=%.3lf w3=%.3lf n=%u(%u) (%u, %.3lf)\n", i,
-                w->phase1,
+            printf("W%2u: p1a=%.3lf p1b=%.3lf p2a=%.3lf p2b=%.3lf p3a=%.3lf p3b=%.3lf w1=%.3lf w2=%.3lf w3=%.3lf n=%u(%u) (%u, %.3lf)\n", i,
+                w->phase1a,
+                w->phase1b,
                 w->phase2a,
                 w->phase2b,
                 w->phase3a,
@@ -4773,8 +4782,9 @@ int exec_model_checker(int argc, char **argv){
 #endif // REPORT_WORKERS
 
     if (Tflag) {
-        printf("computing: p1=%.3lf p2a=%.3lf p2b=%.3lf p3a=%.3lf p3b=%.3lf; waiting: %lf %lf %lf\n",
-            phase1 / global.nworkers,
+        printf("computing: p1a=%.3lf p1b=%.3lf p2a=%.3lf p2b=%.3lf p3a=%.3lf p3b=%.3lf; waiting: %lf %lf %lf\n",
+            phase1a / global.nworkers,
+            phase1b / global.nworkers,
             phase2a / global.nworkers,
             phase2b / global.nworkers,
             phase3a / global.nworkers,
