@@ -417,6 +417,14 @@ static void direct_run(struct state *state, unsigned int id){
     w.allocator.free = wfree;
     w.allocator.ctx = &w.alloc_state;
 
+    w.inf_alloc_state.alloc_buf = malloc(WALLOC_CHUNK);
+    w.inf_alloc_state.alloc_ptr = w.inf_alloc_state.alloc_buf;
+    w.inf_alloc_state.alloc_buf16 = malloc(WALLOC_CHUNK);
+    w.inf_alloc_state.alloc_ptr16 = w.inf_alloc_state.alloc_buf16;
+    w.inf_allocator.alloc = walloc;
+    w.inf_allocator.free = wfree;
+    w.inf_allocator.ctx = &w.inf_alloc_state;
+
     memset(&step, 0, sizeof(step));
     step.allocator = &w.allocator;
     step.ctx = &w.ctx;
@@ -891,7 +899,7 @@ static struct step_output *onestep(
         assert_batch = in_assertion = true;
     }
 
-double now = gettime();
+    double now = gettime();
 
     int pc = step->ctx->pc;
     struct op_info *oi = instrs[pc].oi;
