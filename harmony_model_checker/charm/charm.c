@@ -143,6 +143,16 @@ struct state_queue {
 // TODO.  Is this a problem?
 #define MAX_THREADS 100
 
+struct alloc_state {
+    char *alloc_buf;            // allocated buffer
+    char *alloc_ptr;            // pointer into allocated buffer
+    char *alloc_buf16;          // allocated buffer, 16 byte aligned
+    char *alloc_ptr16;          // pointer into allocated buffer
+    unsigned long allocated;    // keeps track of how much was allocated
+    unsigned long align_waste;
+    unsigned long frag_waste;
+};
+
 // One of these per worker thread
 struct worker {
     // Putting the more-or-less constant fields here at the beginning
@@ -196,13 +206,7 @@ struct worker {
     // necessary for the memory to ever be freed.  So the worker allocates
     // large chunks of memory (WALLOC_CHUNK) and then use a pointer into
     // the chunk for allocation.
-    char *alloc_buf;            // allocated buffer
-    char *alloc_ptr;            // pointer into allocated buffer
-    char *alloc_buf16;          // allocated buffer, 16 byte aligned
-    char *alloc_ptr16;          // pointer into allocated buffer
-    unsigned long allocated;    // keeps track of how much was allocated
-    unsigned long align_waste;
-    unsigned long frag_waste;
+    struct alloc_state alloc_state;
 
     // This is used in the code when a worker must allocate memory.
     struct allocator allocator;
@@ -255,7 +259,7 @@ static inline double gettime(){
 // Per thread one-time memory allocator (no free(), although the last
 // thing allocated can be freed with wfree()).
 static void *walloc(void *ctx, unsigned int size, bool zero, bool align16){
-    struct worker *w = ctx;
+    struct alloc_state *as = ctx;
     void *result;
 
     if (size > WALLOC_CHUNK) {
@@ -265,35 +269,35 @@ static void *walloc(void *ctx, unsigned int size, bool zero, bool align16){
 
     if (align16) {
         unsigned int asize = (size + ALIGNMASK) & ~ALIGNMASK;     // align to 16 bytes
-        w->align_waste += asize - size;
-        if (w->alloc_ptr16 + asize > w->alloc_buf16 + WALLOC_CHUNK) {
-            w->frag_waste += WALLOC_CHUNK - (w->alloc_ptr16 - w->alloc_buf16);
+        as->align_waste += asize - size;
+        if (as->alloc_ptr16 + asize > as->alloc_buf16 + WALLOC_CHUNK) {
+            as->frag_waste += WALLOC_CHUNK - (as->alloc_ptr16 - as->alloc_buf16);
 #ifdef ALIGNED_ALLOC
-            w->alloc_buf16 = my_aligned_alloc(ALIGNMASK + 1, WALLOC_CHUNK);
-            w->alloc_ptr16 = w->alloc_buf16;
+            as->alloc_buf16 = my_aligned_alloc(ALIGNMASK + 1, WALLOC_CHUNK);
+            as->alloc_ptr16 = as->alloc_buf16;
 #else // ALIGNED_ALLOC
-            w->alloc_buf16 = malloc(WALLOC_CHUNK);
-            w->alloc_ptr16 = w->alloc_buf16;
-            if (((hvalue_t) w->alloc_ptr16 & ALIGNMASK) != 0) {
-                w->alloc_ptr16 = (char *) ((hvalue_t) (w->alloc_ptr16 + ALIGNMASK) & ~ALIGNMASK);
+            as->alloc_buf16 = malloc(WALLOC_CHUNK);
+            as->alloc_ptr16 = as->alloc_buf16;
+            if (((hvalue_t) as->alloc_ptr16 & ALIGNMASK) != 0) {
+                as->alloc_ptr16 = (char *) ((hvalue_t) (as->alloc_ptr16 + ALIGNMASK) & ~ALIGNMASK);
             }
 #endif // ALIGNED_ALLOC
-            w->allocated += WALLOC_CHUNK;
+            as->allocated += WALLOC_CHUNK;
         }
-        result = w->alloc_ptr16;
-        w->alloc_ptr16 += asize;
+        result = as->alloc_ptr16;
+        as->alloc_ptr16 += asize;
     }
     else {
         unsigned int asize = (size + 0x7) & ~0x7;     // align to 8 bytes
-        // w->align_waste += asize - size;
-        if (w->alloc_ptr + asize > w->alloc_buf + WALLOC_CHUNK) {
-            // w->frag_waste += WALLOC_CHUNK - (w->alloc_ptr - w->alloc_buf);
-            w->alloc_buf = malloc(WALLOC_CHUNK);
-            w->alloc_ptr = w->alloc_buf;
-            w->allocated += WALLOC_CHUNK;
+        // as->align_waste += asize - size;
+        if (as->alloc_ptr + asize > as->alloc_buf + WALLOC_CHUNK) {
+            // as->frag_waste += WALLOC_CHUNK - (as->alloc_ptr - as->alloc_buf);
+            as->alloc_buf = malloc(WALLOC_CHUNK);
+            as->alloc_ptr = as->alloc_buf;
+            as->allocated += WALLOC_CHUNK;
         }
-        result = w->alloc_ptr;
-        w->alloc_ptr += asize;
+        result = as->alloc_ptr;
+        as->alloc_ptr += asize;
     }
     if (zero) {
         memset(result, 0, size);
@@ -305,13 +309,14 @@ static void *walloc(void *ctx, unsigned int size, bool zero, bool align16){
 // thing allocated can be freed with wfree()).
 static inline void *walloc_fast(struct worker *w, unsigned int size){
     assert(size % 8 == 0);
-    if (w->alloc_ptr + size > w->alloc_buf + WALLOC_CHUNK) {
-        w->alloc_buf = malloc(WALLOC_CHUNK);
-        w->alloc_ptr = w->alloc_buf;
-        w->allocated += WALLOC_CHUNK;
+    struct alloc_state *as = &w->alloc_state;
+    if (as->alloc_ptr + size > as->alloc_buf + WALLOC_CHUNK) {
+        as->alloc_buf = malloc(WALLOC_CHUNK);
+        as->alloc_ptr = as->alloc_buf;
+        as->allocated += WALLOC_CHUNK;
     }
-    void *result = w->alloc_ptr;
-    w->alloc_ptr += size;
+    void *result = as->alloc_ptr;
+    as->alloc_ptr += size;
     return result;
 }
 
@@ -345,13 +350,13 @@ static void state_header_free(struct worker *w, struct state_header *sh){
 
 // This is only allowed to release the last thing that was allocated
 static void wfree(void *ctx, void *last, bool align16){
-    struct worker *w = ctx;
+    struct alloc_state *as = ctx;
 
     if (align16) {
-        w->alloc_ptr16 = last;
+        as->alloc_ptr16 = last;
     }
     else {
-        w->alloc_ptr = last;
+        as->alloc_ptr = last;
     }
 }
 
@@ -404,13 +409,13 @@ static void direct_run(struct state *state, unsigned int id){
     struct step step;
 
     memset(&w, 0, sizeof(w));
-    w.alloc_buf = malloc(WALLOC_CHUNK);
-    w.alloc_ptr = w.alloc_buf;
-    w.alloc_buf16 = malloc(WALLOC_CHUNK);
-    w.alloc_ptr16 = w.alloc_buf16;
+    w.alloc_state.alloc_buf = malloc(WALLOC_CHUNK);
+    w.alloc_state.alloc_ptr = w.alloc_state.alloc_buf;
+    w.alloc_state.alloc_buf16 = malloc(WALLOC_CHUNK);
+    w.alloc_state.alloc_ptr16 = w.alloc_state.alloc_buf16;
     w.allocator.alloc = walloc;
     w.allocator.free = wfree;
-    w.allocator.ctx = &w;
+    w.allocator.ctx = &w.alloc_state;
 
     memset(&step, 0, sizeof(step));
     step.allocator = &w.allocator;
@@ -1134,11 +1139,8 @@ double now = gettime();
     assert(step->nlog == 0 || step->nlog == 1);
 
     // No longer need 'infloop' state.
-    // TODO.  Perhaps this suggests a way to automatically determine the
-    //        number of instructions to run before trying to detect an
-    //        infinite loop, which is currently hardwired at 1000.
     if (infloop != NULL) {
-        if (instrcnt > inf_max) {
+        if (instrcnt > inf_max) {       // be less aggresive next time
             inf_max = 2 * instrcnt;
         }
         dict_delete(infloop);
@@ -3137,7 +3139,7 @@ static void worker(void *arg){
                         struct worker *w2 = &global.workers[i];
                         enqueued += w2->shard.tb_size;
                         dequeued += w2->shard.tb_index;
-                        allocated += w2->allocated;
+                        allocated += w2->alloc_state.allocated;
                     }
                     double gigs = (double) allocated / (1 << 30);
                     fprintf(stderr, "    states=%u diam=%u q=%d mem=%.3lfGB\n",
@@ -4592,14 +4594,14 @@ int exec_model_checker(int argc, char **argv){
         w->inv_step.ctx->interruptlevel = false;
         w->inv_step.allocator = &w->allocator;
 
-        w->alloc_buf = malloc(WALLOC_CHUNK);
-        w->alloc_ptr = w->alloc_buf;
-        w->alloc_buf16 = malloc(WALLOC_CHUNK);
-        w->alloc_ptr16 = w->alloc_buf16;
+        w->alloc_state.alloc_buf = malloc(WALLOC_CHUNK);
+        w->alloc_state.alloc_ptr = w->alloc_state.alloc_buf;
+        w->alloc_state.alloc_buf16 = malloc(WALLOC_CHUNK);
+        w->alloc_state.alloc_ptr16 = w->alloc_state.alloc_buf16;
 
         w->allocator.alloc = walloc;
         w->allocator.free = wfree;
-        w->allocator.ctx = w;
+        w->allocator.ctx = &w->alloc_state;
         w->allocator.worker = i;
 
         struct shard *shard = &w->shard;
@@ -4766,7 +4768,7 @@ int exec_model_checker(int argc, char **argv){
     double phase1a = 0, phase1b = 0, phase2a = 0, phase2b = 0, phase3a = 0, phase3b = 0, start_wait = 0, middle_wait = 0, end_wait = 0;
     for (unsigned int i = 0; i < global.nworkers; i++) {
         struct worker *w = &global.workers[i];
-        allocated += w->allocated;
+        allocated += w->alloc_state.allocated;
         phase1a += w->phase1a;
         phase1b += w->phase1b;
         phase2a += w->phase2a;
