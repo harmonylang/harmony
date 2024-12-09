@@ -228,6 +228,7 @@ struct worker {
     unsigned int inf_size;
     struct alloc_state inf_alloc_state;
     struct allocator inf_allocator;
+    unsigned int inf_max;
 
     bool *transitions;      // which transitions taken in dfa
 
@@ -424,6 +425,7 @@ static void direct_run(struct state *state, unsigned int id){
     w.inf_allocator.alloc = walloc;
     w.inf_allocator.free = wfree;
     w.inf_allocator.ctx = &w.inf_alloc_state;
+    w.inf_max = 1000;
 
     memset(&step, 0, sizeof(step));
     step.allocator = &w.allocator;
@@ -869,7 +871,6 @@ static struct step_output *onestep(
     unsigned int choose_count = 0;      // number of choices
     struct dict *infloop = NULL;        // infinite loop detector
     unsigned int as_instrcnt = 0;       // for rollback
-    unsigned int inf_max = 1000;        // to detect infinite loops
     bool stopped = false;
     bool terminated = false;
     bool rollback = false;
@@ -989,7 +990,7 @@ static struct step_output *onestep(
         // evaluated onestep() we suspected an infinite loop.  If it's off, we
         // start trying to detect it after 1000 instructions.
         // TODO.  10000 seems rather arbitrary.  Is it a good choice?  See below.
-        if (infloop_detect || instrcnt > inf_max) {
+        if (infloop_detect || instrcnt > w->inf_max) {
             if (infloop == NULL) {
                 infloop = dict_new("infloop1", sizeof(unsigned int),
                                                 0, 0, false, false);
@@ -1150,8 +1151,8 @@ static struct step_output *onestep(
 
     // No longer need 'infloop' state.
     if (infloop != NULL) {
-        if (instrcnt > inf_max) {       // be less aggresive next time
-            inf_max = 2 * instrcnt;
+        if (instrcnt > w->inf_max) {       // be less aggresive next time
+            w->inf_max = 2 * instrcnt;
         }
         dict_delete_fast(infloop);
     }
@@ -4623,6 +4624,7 @@ int exec_model_checker(int argc, char **argv){
         w->inf_allocator.free = wfree;
         w->inf_allocator.ctx = &w->inf_alloc_state;
         w->inf_allocator.worker = i;
+        w->inf_max = 1000;
 
         struct shard *shard = &w->shard;
         // shard->states = sdict_new("shard states", sizeof(struct node), 0);
