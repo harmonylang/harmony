@@ -802,12 +802,17 @@ static inline void process_step(
     unsigned int responsible = (sh->hash >> 17) % w->nworkers;
 
     // See if the state is already known
+#ifdef notdef
     struct dict_assoc *da = sdict_find(global.workers[responsible].shard.states,
                                     sc, state_size(sc), sh->hash);
     if (da != NULL) {
         state_header_free(w, sh);
         node_edges(sh->node)[sh->edge_index].dst = (struct node *) &da[1];
     }
+#else
+    if (0) {
+    }
+#endif
     else {
         // Add to the linked list of the responsible peer shard
         struct state_queue *sq = &shard->peers[responsible];
@@ -966,8 +971,8 @@ double now = gettime();
         // If infloop_detect is on, that means that in the previous attempt to
         // evaluated onestep() we suspected an infinite loop.  If it's off, we
         // start trying to detect it after 1000 instructions.
-        // TODO.  1000 seems rather arbitrary.  Is it a good choice?  See below.
-        if (infloop_detect || instrcnt > 1000) {
+        // TODO.  10000 seems rather arbitrary.  Is it a good choice?  See below.
+        if (infloop_detect || instrcnt > 10000) {
             if (infloop == NULL) {
                 infloop = dict_new("infloop1", sizeof(unsigned int),
                                                 0, 0, false, false);
