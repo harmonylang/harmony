@@ -186,6 +186,7 @@ struct worker {
     double start_wait, middle_wait, end_wait;
     unsigned int start_count, middle_count, end_count;
     double phase1a, phase1b, phase2a, phase2b, phase3a, phase3b;
+    double in_onestep;
     unsigned int nrounds;
 
     // State maintained while evaluating invariants
@@ -220,14 +221,16 @@ struct worker {
 
     unsigned int sb_index;
 
+    // To detect infinite loops
+    char *inf_buf;
+    unsigned int inf_size;
+
     bool *transitions;      // which transitions taken in dfa
 
     // Some cached info from global to reduce contention
     // TODO.  Probably useless
     unsigned int nworkers;
     struct dfa *dfa;
-
-double in_onestep;
 };
 
 // Get the current time as a double value for easy computation
@@ -853,6 +856,7 @@ static struct step_output *onestep(
     unsigned int choose_count = 0;      // number of choices
     struct dict *infloop = NULL;        // infinite loop detector
     unsigned int as_instrcnt = 0;       // for rollback
+    unsigned int inf_max = 1000;        // to detect infinite loops
     bool stopped = false;
     bool terminated = false;
     bool rollback = false;
@@ -972,7 +976,7 @@ double now = gettime();
         // evaluated onestep() we suspected an infinite loop.  If it's off, we
         // start trying to detect it after 1000 instructions.
         // TODO.  10000 seems rather arbitrary.  Is it a good choice?  See below.
-        if (infloop_detect || instrcnt > 10000) {
+        if (infloop_detect || instrcnt > inf_max) {
             if (infloop == NULL) {
                 infloop = dict_new("infloop1", sizeof(unsigned int),
                                                 0, 0, false, false);
@@ -981,14 +985,17 @@ double now = gettime();
             // We need to save the global state *and *the state of the current
             // thread (because the context bag in the global state is not
             // updated each time the thread changes its state, aka context).
-            int ctxsize = ctx_size(step->ctx);
-            int combosize = ctxsize + state_size(sc);
-            char *combo = calloc(1, combosize);
-            memcpy(combo, step->ctx, ctxsize);
-            memcpy(combo + ctxsize, sc, state_size(sc));
+            unsigned int ctxsize = ctx_size(step->ctx);
+            unsigned int combosize = ctxsize + state_size(sc);
+            if (combosize > w->inf_size) {
+                w->inf_size = combosize;
+                free(w->inf_buf);
+                w->inf_buf = malloc(combosize);
+            }
+            memcpy(w->inf_buf, step->ctx, ctxsize);
+            memcpy(w->inf_buf + ctxsize, sc, state_size(sc));
             bool new;
-            unsigned int *loc = dict_insert(infloop, NULL, combo, combosize, &new);
-            free(combo);
+            unsigned int *loc = dict_insert(infloop, NULL, w->inf_buf, combosize, &new);
 
             // If we have not seen this state before, keep track of when we
             // saw this state.
@@ -1002,9 +1009,6 @@ double now = gettime();
                 // If we reran onestep() because we suspected an infinite loop,
                 // report it.
                 if (infloop_detect) {
-                    // if (*loc != 0) {
-                    //     instrcnt = *loc;
-                    // }
                     value_ctx_failure(step->ctx, step->allocator, "infinite loop");
                     infinite_loop = true;
                     break;
@@ -1125,7 +1129,7 @@ double now = gettime();
         }
     }
 
-w->in_onestep += gettime() - now;
+    w->in_onestep += gettime() - now;
 
     assert(step->nlog == 0 || step->nlog == 1);
 
@@ -1134,6 +1138,9 @@ w->in_onestep += gettime() - now;
     //        number of instructions to run before trying to detect an
     //        infinite loop, which is currently hardwired at 1000.
     if (infloop != NULL) {
+        if (instrcnt > inf_max) {
+            inf_max = 2 * instrcnt;
+        }
         dict_delete(infloop);
     }
 
