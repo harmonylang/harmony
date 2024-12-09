@@ -65,6 +65,7 @@ static inline void *dict_retrieve(const void *p, unsigned int *psize){
 struct dict *dict_new(char *whoami, unsigned int value_len, unsigned int initial_size,
     unsigned int nworkers, bool align16, bool concurrent);
 void dict_delete(struct dict *dict);
+void dict_delete_fast(struct dict *dict);
 void *dict_search(struct dict *dict, const void *key, unsigned int keylen);
 void *dict_lookup(struct dict *dict, const void *key, unsigned int keylen);
 bool dict_remove(struct dict *dict, const void *key, unsigned int keylen);

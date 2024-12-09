@@ -99,6 +99,16 @@ void dict_delete(struct dict *dict) {
 	free(dict);
 }
 
+void dict_delete_fast(struct dict *dict) {
+	for (unsigned int i = 0; i < dict->nlocks; i++) {
+		mutex_destroy(&dict->locks[i]);
+    }
+	free(dict->stable);
+	free(dict->unstable);
+    free(dict->list.entries);
+	free(dict);
+}
+
 static inline void dict_reinsert(struct dict *dict, struct dict_assoc *k) {
     unsigned int n = hash_func((char *) &k[1] + k->val_len, k->len) % dict->length;
 	struct dict_assoc **sdb = &dict->stable[n];

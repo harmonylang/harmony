@@ -207,8 +207,6 @@ struct worker {
     // large chunks of memory (WALLOC_CHUNK) and then use a pointer into
     // the chunk for allocation.
     struct alloc_state alloc_state;
-
-    // This is used in the code when a worker must allocate memory.
     struct allocator allocator;
 
     // These need to be next to one another.  When a worker performs a
@@ -228,6 +226,8 @@ struct worker {
     // To detect infinite loops
     char *inf_buf;
     unsigned int inf_size;
+    struct alloc_state inf_alloc_state;
+    struct allocator inf_allocator;
 
     bool *transitions;      // which transitions taken in dfa
 
@@ -985,6 +985,8 @@ double now = gettime();
             if (infloop == NULL) {
                 infloop = dict_new("infloop1", sizeof(unsigned int),
                                                 0, 0, false, false);
+                w->inf_alloc_state.alloc_ptr = w->inf_alloc_state.alloc_buf;
+                w->inf_alloc_state.alloc_ptr16 = w->inf_alloc_state.alloc_buf16;
             }
 
             // We need to save the global state *and *the state of the current
@@ -1000,7 +1002,7 @@ double now = gettime();
             memcpy(w->inf_buf, step->ctx, ctxsize);
             memcpy(w->inf_buf + ctxsize, sc, state_size(sc));
             bool new;
-            unsigned int *loc = dict_insert(infloop, NULL, w->inf_buf, combosize, &new);
+            unsigned int *loc = dict_insert(infloop, &w->inf_allocator, w->inf_buf, combosize, &new);
 
             // If we have not seen this state before, keep track of when we
             // saw this state.
@@ -1143,7 +1145,7 @@ double now = gettime();
         if (instrcnt > inf_max) {       // be less aggresive next time
             inf_max = 2 * instrcnt;
         }
-        dict_delete(infloop);
+        dict_delete_fast(infloop);
     }
 
     // See if we need to roll back to the start of an assertion.
@@ -4603,6 +4605,16 @@ int exec_model_checker(int argc, char **argv){
         w->allocator.free = wfree;
         w->allocator.ctx = &w->alloc_state;
         w->allocator.worker = i;
+
+        w->inf_alloc_state.alloc_buf = malloc(WALLOC_CHUNK);
+        w->inf_alloc_state.alloc_ptr = w->inf_alloc_state.alloc_buf;
+        w->inf_alloc_state.alloc_buf16 = malloc(WALLOC_CHUNK);
+        w->inf_alloc_state.alloc_ptr16 = w->inf_alloc_state.alloc_buf16;
+
+        w->inf_allocator.alloc = walloc;
+        w->inf_allocator.free = wfree;
+        w->inf_allocator.ctx = &w->inf_alloc_state;
+        w->inf_allocator.worker = i;
 
         struct shard *shard = &w->shard;
         // shard->states = sdict_new("shard states", sizeof(struct node), 0);
