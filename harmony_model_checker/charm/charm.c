@@ -58,7 +58,7 @@
 
 // To optimize memory allocation, each worker thread allocates large
 // chunks of memory and then uses parts of that.
-#define WALLOC_CHUNK    (16 * 1024 * 1024)
+#define WALLOC_CHUNK    (256 * 1024 * 1024)
 
 // This is use for reading lines from the /proc/cpuinfo file
 #define LINE_CHUNK      128
