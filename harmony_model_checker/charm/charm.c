@@ -222,6 +222,7 @@ struct worker {
     hvalue_t as_stack[MAX_CONTEXT_STACK];
 
     unsigned int sb_index;
+    unsigned int diameter;          // diameter of Kripke structure
 
     // To detect infinite loops
     char *inf_buf;
@@ -2707,6 +2708,9 @@ static void do_work2(struct worker *w){
                 next->initial = false;
                 next->parent = sh->node;
                 next->len = sh->node->len + 1;
+                if (next->len > w->diameter) {
+                    w->diameter = next->len;
+                }
                 next->nedges = sh->noutgoing;
 
                 assert(shard->tb_tail->nresults == shard->tb_size % NRESULTS);
@@ -3146,15 +3150,19 @@ static void worker(void *arg){
                 if (global.lasttime != 0) {
                     unsigned int enqueued = 0, dequeued = 0;
                     unsigned long allocated = global.allocated;
+                    unsigned int diameter = 0;
                     for (unsigned int i = 0; i < w->nworkers; i++) {
                         struct worker *w2 = &global.workers[i];
                         enqueued += w2->shard.tb_size;
                         dequeued += w2->shard.tb_index;
                         allocated += w2->alloc_state.allocated;
+                        if (w2->diameter > diameter) {
+                            diameter = w2->diameter;
+                        }
                     }
                     double gigs = (double) allocated / (1 << 30);
                     fprintf(stderr, "    states=%u diam=%u q=%d mem=%.3lfGB\n",
-                            enqueued, global.diameter,
+                            enqueued, diameter,
                             enqueued - dequeued,
                             gigs);
                     global.last_nstates = enqueued;
@@ -4839,15 +4847,19 @@ int exec_model_checker(int argc, char **argv){
             end_wait / global.nworkers);
     }
 
-    printf("    * %u states (time %.2lfs, mem=%.3lfGB)\n", global.graph.size,
-        gettime() - global.start_model_checking,
-        (double) allocated / (1L << 30));
-    unsigned int si_hits = 0, si_total = 0;
+    unsigned int si_hits = 0, si_total = 0, diameter = 0;
     for (unsigned int i = 0; i < global.nworkers; i++) {
         struct worker *w = &global.workers[i];
         si_hits += w->si_hits;
         si_total += w->si_total;
+        if (w->diameter > diameter) {
+            diameter = w->diameter;
+        }
     }
+
+    printf("    * %u states (time %.2lfs, mem=%.3lfGB, diameter=%u)\n", global.graph.size,
+        gettime() - global.start_model_checking,
+        (double) allocated / (1L << 30), diameter);
     printf("    * %u/%u computations/edges\n", (si_total - si_hits), si_total);
     printf("    * %u rounds, %u values\n", global.workers[0].nrounds, global.values->count);
 

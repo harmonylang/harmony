@@ -126,7 +126,6 @@ struct global {
     double lasttime;                // since last report printed
     unsigned int last_nstates;      // to measure #states / second
     struct dfa *dfa;                // for tracking correct behaviors
-    unsigned int diameter;          // graph diameter
     struct json_value *pretty;      // for output
     bool run_direct;                // non-model-checked mode
     unsigned long allocated;        // allocated table space
