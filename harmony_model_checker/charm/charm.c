@@ -229,6 +229,7 @@ struct worker {
     struct alloc_state inf_alloc_state;
     struct allocator inf_allocator;
     unsigned int inf_max;
+    struct dict *inf_dict;
 
     bool *transitions;      // which transitions taken in dfa
 
@@ -426,6 +427,7 @@ static void direct_run(struct state *state, unsigned int id){
     w.inf_allocator.free = wfree;
     w.inf_allocator.ctx = &w.inf_alloc_state;
     w.inf_max = 1000;
+    w.inf_dict = dict_new("infloop", sizeof(unsigned int), 0, 0, false, false);
 
     memset(&step, 0, sizeof(step));
     step.allocator = &w.allocator;
@@ -869,7 +871,6 @@ static struct step_output *onestep(
     bool infinite_loop = false;
     unsigned int instrcnt = 0;          // keeps track of #instruction executed
     unsigned int choose_count = 0;      // number of choices
-    struct dict *infloop = NULL;        // infinite loop detector
     unsigned int as_instrcnt = 0;       // for rollback
     bool stopped = false;
     bool terminated = false;
@@ -877,6 +878,7 @@ static struct step_output *onestep(
     bool printing = false;
     bool assert_batch = false;
     bool in_assertion = false;
+    bool check_for_infloop = false;
 
     // See if we should first try an interrupt or make a choice.
     if (choice == (hvalue_t) -1) {
@@ -991,11 +993,11 @@ static struct step_output *onestep(
         // start trying to detect it after 1000 instructions.
         // TODO.  10000 seems rather arbitrary.  Is it a good choice?  See below.
         if (infloop_detect || instrcnt > w->inf_max) {
-            if (infloop == NULL) {
-                infloop = dict_new("infloop1", sizeof(unsigned int),
-                                                0, 0, false, false);
+            if (!check_for_infloop) {
+                dict_reset(w->inf_dict);
                 w->inf_alloc_state.alloc_ptr = w->inf_alloc_state.alloc_buf;
                 w->inf_alloc_state.alloc_ptr16 = w->inf_alloc_state.alloc_buf16;
+                check_for_infloop = true;
             }
 
             // We need to save the global state *and *the state of the current
@@ -1011,7 +1013,7 @@ static struct step_output *onestep(
             memcpy(w->inf_buf, step->ctx, ctxsize);
             memcpy(w->inf_buf + ctxsize, sc, state_size(sc));
             bool new;
-            unsigned int *loc = dict_insert(infloop, &w->inf_allocator, w->inf_buf, combosize, &new);
+            unsigned int *loc = dict_insert(w->inf_dict, &w->inf_allocator, w->inf_buf, combosize, &new);
 
             // If we have not seen this state before, keep track of when we
             // saw this state.
@@ -1149,12 +1151,9 @@ static struct step_output *onestep(
 
     assert(step->nlog == 0 || step->nlog == 1);
 
-    // No longer need 'infloop' state.
-    if (infloop != NULL) {
-        if (instrcnt > w->inf_max) {       // be less aggresive next time
-            w->inf_max = 2 * instrcnt;
-        }
-        dict_delete_fast(infloop);
+    // See if we should be less aggressive about checking for infinite loops
+    if (check_for_infloop && instrcnt > w->inf_max) {
+        w->inf_max = 2 * instrcnt;
     }
 
     // See if we need to roll back to the start of an assertion.
@@ -1684,6 +1683,7 @@ static void twostep(
         }
 
         // Infinite loop detection
+        // TODO.  Do we need this???
         if (!step.ctx->terminated && !step.ctx->failed) {
             if (infloop == NULL) {
                 infloop = dict_new("infloop2", 0, 0, 0, false, false);
@@ -4625,6 +4625,7 @@ int exec_model_checker(int argc, char **argv){
         w->inf_allocator.ctx = &w->inf_alloc_state;
         w->inf_allocator.worker = i;
         w->inf_max = 1000;
+        w->inf_dict = dict_new("infloop1", sizeof(unsigned int), 0, 0, false, false);
 
         struct shard *shard = &w->shard;
         // shard->states = sdict_new("shard states", sizeof(struct node), 0);

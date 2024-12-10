@@ -99,14 +99,9 @@ void dict_delete(struct dict *dict) {
 	free(dict);
 }
 
-void dict_delete_fast(struct dict *dict) {
-	for (unsigned int i = 0; i < dict->nlocks; i++) {
-		mutex_destroy(&dict->locks[i]);
-    }
-	free(dict->stable);
-	free(dict->unstable);
-    free(dict->list.entries);
-	free(dict);
+void dict_reset(struct dict *dict) {
+    assert(!dict->concurrent);
+    memset(dict->stable, 0, dict->length * sizeof(*dict->stable));
 }
 
 static inline void dict_reinsert(struct dict *dict, struct dict_assoc *k) {
