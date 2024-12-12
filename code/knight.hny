@@ -3,6 +3,12 @@
 const WIDTH = 5
 const HEIGHT = 5
 
+avail = True                            # indicates move was found
+path = []                               # path on the board
+board = [[ False, ] * HEIGHT,] * WIDTH  # board: False = open, True = visited
+curx = cury = 0                         # current position on board
+board[curx][cury] = True                # current position has been visited
+
 # Check if (x, y) is an open position on board b
 def valid(b, x, y) returns success:
     success = not ((x < 0) or (x >= WIDTH) or (y < 0) or (y >= HEIGHT) or b[x][y])
@@ -18,32 +24,22 @@ def moves(b, x, y) returns valid_moves:
 
 # Try a solution by non-deterministically choosing a series of valid moves.
 # Returns True iff a solution has been found
-def explore() returns success:
-    board = [[ False, ] * HEIGHT,] * WIDTH  # board: False = open, True = visited
-    curx = cury = 0                         # current position on board
-    board[curx][cury] = True                # current position has been visited
-    success = True                          # indicates move was found
-    path = []                               # path on the board
 
-    # Keep going as long as moves were available *and* some squares are not visited
-    while success and any(not board[x][y] for x in {0..WIDTH-1} for y in {0..HEIGHT-1}):
-        # Compute the set of possible moves from the current position
-        let possible_moves = moves(board, curx, cury):
-            # See if there are any possible moves
-            success = possible_moves != {}
-            if success:
-                # If there are possible moves, select one and move there
-                curx, cury = choose possible_moves
-                assert not board[curx][cury]
-                # This square is now visited
-                board[curx][cury] = True
-                path += [(curx, cury),]
-    # If we get here, success => all squares have been visited
-    if success:
-        assert all(board[x][y] for x in {0..WIDTH-1} for y in {0..HEIGHT-1})
-        print path
-        assert False    # Stop trying -- printing one path is enough
-
-# Keep trying until a solution is found
-while not explore():
-    pass
+# Keep going as long as moves were available *and* some squares are not visited
+while avail and any(not board[x][y] for x in {0..WIDTH-1} for y in {0..HEIGHT-1}):
+    # Compute the set of possible moves from the current position
+    let possible_moves = moves(board, curx, cury):
+        # See if there are any possible moves
+        avail = possible_moves != {}
+        if avail:
+            # If there are possible moves, select one and move there
+            curx, cury = choose possible_moves
+            assert not board[curx][cury]
+            # This square is now visited
+            board[curx][cury] = True
+            path += [(curx, cury),]
+# If we get here, avail => all squares have been visited
+if avail:
+    assert all(board[x][y] for x in {0..WIDTH-1} for y in {0..HEIGHT-1})
+    print path
+    # assert False    # Stop trying -- printing one path is enough
