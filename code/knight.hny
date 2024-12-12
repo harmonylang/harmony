@@ -4,10 +4,11 @@ const WIDTH = 5
 const HEIGHT = 5
 
 avail = True                            # indicates move was found
-path = []                               # path on the board
 board = [[ False, ] * HEIGHT,] * WIDTH  # board: False = open, True = visited
-curx = cury = 0                         # current position on board
+curx = 0     # choose { 0 .. WIDTH - 1 }
+cury = 0     # choose { 0 .. HEIGHT - 1 }
 board[curx][cury] = True                # current position has been visited
+path = [(curx, cury),]                  # path on the board
 
 # Check if (x, y) is an open position on board b
 def valid(b, x, y) returns success:
