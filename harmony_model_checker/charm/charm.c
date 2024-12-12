@@ -3257,6 +3257,7 @@ static void worker(void *arg){
 // the epsilon edges go first.  Also count the number of epsilon edges of
 // each node.
 static void epsilon_closure_prep(){
+    report_reset(NULL);
     global.neps = malloc(sizeof(*global.neps) * global.graph.size);
     for (unsigned int i = 0; i < global.graph.size; i++) {
         if (i % 100 == 0 && report_time()) {
@@ -3854,6 +3855,7 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
 
     phase_start("NFA to DFA conversion");
 
+    // TODO: maybe I'm creating too many buckets initially?
     de.dfa = dict_new("nfa2dfa", sizeof(struct dfa_node), global.graph.size, 0, false, false);
     de.next_id = 0;
     de.allocated = global.graph.size;   // decent initial estimate
@@ -3861,7 +3863,7 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
     de.hfa = hfa;
     de.symbols = symbols;
 
-    // Find the initial state.
+    // Create the initial state.
     nfa2dfa_add_node(&de, &global.eps_scc[0].component->ns);
 
     // Go through the todo list
@@ -3918,7 +3920,7 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
 
     phase_start("Minify DFA");
 
-    printf("* Phase 4d: minify the DFA (%u states)\n", de.next_id);
+    printf("* Phase 4d: minify the DFA (from %u states)\n", de.next_id);
 
     // Partition nodes into non-final and final
     struct dfa_node **new = malloc(de.next_id * sizeof(struct dfa_node *));
@@ -3950,94 +3952,100 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
             }
         }
 
-        struct dfa_node **old = malloc(de.next_id * sizeof(struct dfa_node *));
-        unsigned int n_old;
+        // See if there are only final states
+        if (new[1] == NULL) {
+            n_new = 1;
+        }
+        else {
+            struct dfa_node **old = malloc(de.next_id * sizeof(struct dfa_node *));
+            unsigned int n_old;
 
-        report_reset("    * Partitioning the DFA");
+            report_reset("    * Partitioning the DFA");
 
-        // Now keep partitioning until no new partitions are formed
-        bool new_partition = true;
-        unsigned int work_ctr = 0;
-        for (unsigned int round = 0; new_partition; round++) {
-#ifndef notdef
-            printf("DFA_MINIFY PARTITION %u\n", n_new);
-            printf("Partitions:\n");
-            for (unsigned int i = 0; i < n_new; i++) {
-                printf("  %u:", i);
-                for (struct dfa_node *dn = new[i]; dn != NULL; dn = dn->next) {
-                    printf(" %u(%u)", dn->id, dn->rep->id);
+            // Now keep partitioning until no new partitions are formed
+            bool new_partition = true;
+            unsigned int work_ctr = 0;
+            for (unsigned int round = 0; new_partition; round++) {
+#ifdef notdef
+                printf("DFA_MINIFY PARTITION %u\n", n_new);
+                printf("Partitions:\n");
+                for (unsigned int i = 0; i < n_new; i++) {
+                    printf("  %u:", i);
+                    for (struct dfa_node *dn = new[i]; dn != NULL; dn = dn->next) {
+                        printf(" %u(%u)", dn->id, dn->rep->id);
+                    }
+                    printf("\n");
                 }
                 printf("\n");
-            }
-            printf("\n");
 #endif
 
-            // Swap old and new
-            struct dfa_node **tmp = old;
-            old = new;
-            new = tmp;
-            n_old = n_new;
-            n_new = 0;
+                // Swap old and new
+                struct dfa_node **tmp = old;
+                old = new;
+                new = tmp;
+                n_old = n_new;
+                n_new = 0;
 
-            // Go through each of the old partitions
-            new_partition = false;
-            for (unsigned i = 0; i < n_old; i++) {
-                // printf("Partition %u\n", i);
+                // Go through each of the old partitions
+                new_partition = false;
+                for (unsigned i = 0; i < n_old; i++) {
+                    // printf("Partition %u\n", i);
 
-                // Repartition the group based on distinguishability
+                    // Repartition the group based on distinguishability
 
-                // If there's only one in the group, just copy it over.
-                // TODO.  May not need this.
-                struct dfa_node *dn = old[i];
-                if (dn->next == NULL) {
-                    assert(dn->rep == dn);
-                    new[n_new++] = dn;
-                    continue;
-                }
-
-                // Initialize the first partition.
-                unsigned int k = n_new;
-                old[i] = dn->next;
-                new[n_new++] = dn;
-                dn->rep = dn;
-                dn->next = NULL;
-
-                while ((dn = old[i]) != NULL) {
-                    old[i] = dn->next;
-
-                    // See if the node fits into one of the existing partitions
-                    unsigned int j = k;
-                    for (; j < n_new; j++) {
-
-                        // Pacifier
-                        work_ctr++;
-                        if (work_ctr % 10000 == 0 && report_time()) {
-                            printf("        Round %u, partition %u\n", round, n_new);
-                        }
-
-                        if (indistinguishable(&de, dn, new[j])) {
-                            // printf("ind %u %u %u\n", j, dn->id, new[j]->id);
-                            dn->rep = new[j]->rep;
-                            dn->next = new[j];
-                            new[j] = dn;
-                            break;
-                        }
-                    }
-
-                    // Otherwise, create a new partition
-                    if (j == n_new) {
-                        dn->rep = dn;
-                        dn->next = NULL;
+                    // If there's only one in the group, just copy it over.
+                    // TODO.  May not need this.
+                    struct dfa_node *dn = old[i];
+                    if (dn->next == NULL) {
+                        assert(dn->rep == dn);
                         new[n_new++] = dn;
-                        new_partition = true;
+                        continue;
+                    }
+
+                    // Initialize the first partition.
+                    unsigned int k = n_new;
+                    old[i] = dn->next;
+                    new[n_new++] = dn;
+                    dn->rep = dn;
+                    dn->next = NULL;
+
+                    while ((dn = old[i]) != NULL) {
+                        old[i] = dn->next;
+
+                        // See if the node fits into one of the existing partitions
+                        unsigned int j = k;
+                        for (; j < n_new; j++) {
+
+                            // Pacifier
+                            work_ctr++;
+                            if (work_ctr % 10000 == 0 && report_time()) {
+                                printf("        Round %u, partition %u\n", round, n_new);
+                            }
+
+                            if (indistinguishable(&de, dn, new[j])) {
+                                // printf("ind %u %u %u\n", j, dn->id, new[j]->id);
+                                dn->rep = new[j]->rep;
+                                dn->next = new[j];
+                                new[j] = dn;
+                                break;
+                            }
+                        }
+
+                        // Otherwise, create a new partition
+                        if (j == n_new) {
+                            dn->rep = dn;
+                            dn->next = NULL;
+                            new[n_new++] = dn;
+                            new_partition = true;
+                        }
                     }
                 }
-            }
-        } while (new_partition);
-        free(old);
-
-        phase_finish();
+            } while (new_partition);
+            free(old);
+        }
     }
+
+    phase_finish();
 
     printf("* Phase 4e: output the DFA (%u states)\n", n_new);
     fflush(stdout);

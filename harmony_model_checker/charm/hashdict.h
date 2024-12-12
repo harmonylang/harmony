@@ -17,8 +17,8 @@ typedef bool (*dict_enumfunc_bool)(void *env, const void *key,
 // This header is followed directly by first the data and then the key.
 struct dict_assoc {
 	struct dict_assoc *next;
-	uint16_t len;               // key length
-    uint16_t val_len;           // value length
+	uint32_t len;               // key length
+    uint32_t val_len;           // value length
 };
 
 struct dict_list {
