@@ -1,20 +1,13 @@
-from synch import *
-
 def Barrier(required) returns barrier:
-    barrier = {
-        .mutex: Lock(), .cond: Condition(),
-        .required: required, .left: required, .cycle: 0
-    }
+    barrier = { .required: required, .n: [0, 0] }
+
+def turnstile(b, i):
+    atomically:
+        b->n[i] += 1
+        if b->n[i] == b->required:
+            b->n[1 - i] = 0
+    atomically await b->n[i] == b->required
 
 def bwait(b):
-    acquire(?b->mutex)
-    b->left -= 1
-    if b->left == 0:
-        b->cycle = (b->cycle + 1) % 2
-        b->left = b->required
-        notifyAll(?b->cond)
-    else:
-        let cycle = b->cycle:
-            while b->cycle == cycle:
-                wait(?b->cond, ?b->mutex)
-    release(?b->mutex)
+    turnstile(b, 0)
+    turnstile(b, 1)
