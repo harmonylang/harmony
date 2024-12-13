@@ -1,0 +1,6 @@
+def Barrier(required) returns barrier:
+    barrier = { .required: required, .n: 0 }
+
+def bwait(b):
+    atomically b->n += 1
+    atomically await b->n == b->required
