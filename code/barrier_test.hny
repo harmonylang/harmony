@@ -1,0 +1,18 @@
+import barrier
+
+const NTHREADS = 3
+const NROUNDS = 4
+
+barr = barrier.Barrier(NTHREADS)
+before = after = [0,] * NTHREADS
+
+invariant min(before) >= max(after)
+
+def thread(self):
+    for _ in { 1 .. NROUNDS }:
+        before[self] += 1
+        barrier.bwait(?barr)
+        after[self] += 1
+
+for i in { 0 .. NTHREADS - 1 }:
+    spawn thread(i)
