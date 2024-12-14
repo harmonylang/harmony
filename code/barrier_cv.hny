@@ -3,18 +3,18 @@ from synch import *
 def Barrier(required) returns barrier:
     barrier = {
         .mutex: Lock(), .cond: Condition(),
-        .required: required, .left: required, .cycle: 0
+        .required: required, .n: 0, .color: 0
     }
 
 def bwait(b):
     acquire(?b->mutex)
-    b->left -= 1
-    if b->left == 0:
-        b->cycle = (b->cycle + 1) % 2
-        b->left = b->required
+    b->n += 1
+    if b->n == b->required:
+        b->color ^= 1
+        b->n = 0
         notifyAll(?b->cond)
     else:
-        let cycle = b->cycle:
-            while b->cycle == cycle:
+        let color = b->color:
+            while b->color == color:
                 wait(?b->cond, ?b->mutex)
     release(?b->mutex)
