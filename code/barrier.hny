@@ -1,12 +1,12 @@
 def Barrier(required) returns barrier:
-    barrier = { .required: required, .left: required, .color: 0 }
+    barrier = { .required: required, .n: 0, .color: 0 }
 
 def bwait(b):
     var color = None
     atomically:
         color = b->color
-        b->left -= 1
-        if b->left == 0:
+        b->n += 1
+        if b->n == b->required:
             b->color ^= 1
-            b->left = b->required
+            b->n = 0
     atomically await b->color != color
