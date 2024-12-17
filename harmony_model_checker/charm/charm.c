@@ -5140,7 +5140,7 @@ int exec_model_checker(int argc, char **argv){
             // Collect the symbols
             // TODO.  This can probably be done more efficiently
             //        (and in parallel if needed)
-            printf("* Phase 4a: convert Kripke structure to DFA\n");
+            printf("* Phase 4a: convert to DFA\n");
             fflush(stdout);
 
             phase_start("Collect symbols");
