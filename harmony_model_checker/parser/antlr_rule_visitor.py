@@ -661,16 +661,11 @@ class HarmonyVisitorImpl(HarmonyVisitor):
             return values[0]
         return TupleAST(endtoken, values, tkn)
 
-    def atom_expr(self, endtoken, token, ops, exprs):
-        assert len(ops) == 0
-        assert len(exprs) == 1
-        return exprs[0]
-
-    def factor_expr(self, endtoken, token, ops, exprs):
+    def factor_expr(self, ops, exprs):
         if len(ops) == 0:
             return exprs[0]
         if len(ops) == 1:
-            return NaryAST(endtoken, token, ops[0], exprs)
+            return NaryAST(exprs[1].endtoken, exprs[0].token, ops[0], exprs)
         found = False
         for o in ops:
             if o[0] in { '/', '//', '%', 'mod' }:
@@ -685,44 +680,44 @@ class HarmonyVisitorImpl(HarmonyVisitor):
                 found = True
             else:
                 assert o[0] == '*'
-        return NaryAST(endtoken, token, ops[-1],
-            [ NaryAST(endtoken, token, ops[0], exprs[:-1]), exprs[-1] ])
+        return NaryAST(exprs[-1].endtoken, exprs[0].token, ops[-1],
+            [ NaryAST(exprs[-2].endtoken, exprs[0].token, ops[0], exprs[:-1]), exprs[-1] ])
 
-    def simple_expr(self, endtoken, token, ops, exprs):
+    def simple_expr(self, ops, exprs):
         simple_ops = [ o for o in ops if o[0] in { '+', '-' } ]
         if len(simple_ops) == 0:
-            return self.factor_expr(endtoken, token, ops, exprs)
+            return self.factor_expr(ops, exprs)
         sub_ops = []
         sub_exprs = [ exprs[0] ]
         sub_asts = []
         for i in range(len(ops)):
             if ops[i] in simple_ops:
-                sub_asts.append(self.factor_expr(endtoken, token, sub_ops, sub_exprs))
+                sub_asts.append(self.factor_expr(sub_ops, sub_exprs))
                 sub_ops = []
                 sub_exprs = [ exprs[i+1] ]
             else:
                 sub_ops.append(ops[i])
                 sub_exprs.append(exprs[i+1])
-        sub_asts.append(self.factor_expr(endtoken, token, sub_ops, sub_exprs))
+        sub_asts.append(self.factor_expr(sub_ops, sub_exprs))
         ast = sub_asts[0]
         for i in range(len(simple_ops)):
-            ast = NaryAST(endtoken, token, simple_ops[i], [ ast, sub_asts[i+1] ])
+            ast = NaryAST(sub_asts[i+1].endtoken, sub_asts[0].token, simple_ops[i], [ ast, sub_asts[i+1] ])
         return ast
 
-    def arith_expr(self, endtoken, token, ops, exprs):
+    def arith_expr(self, ops, exprs):
         assert len(ops) + 1 == len(exprs)
         if len(ops) == 0:
             return exprs[0]
         if len(ops) == 1:
-            return NaryAST(endtoken, token, ops[0], exprs)
+            return NaryAST(exprs[1].endtoken, exprs[0].token, ops[0], exprs)
 
         # See if all are the same associative operator
         if ops[0][0] in self.associative_operators and all(o[0] == ops[0][0] for o in ops):
-            return NaryAST(endtoken, token, ops[0], exprs)
+            return NaryAST(exprs[-1].endtoken, exprs[0].token, ops[0], exprs)
 
         # See if it's a simple arithmetic expression
         if all(o[0] in { '+', '-', '*', '/', '//', '%', 'mod' } for o in ops):
-            return self.simple_expr(endtoken, token, ops, exprs)
+            return self.simple_expr(ops, exprs)
 
         raise HarmonyCompilerError(
             message="Expression too complicated: use parentheses",
@@ -732,28 +727,28 @@ class HarmonyVisitorImpl(HarmonyVisitor):
             lexeme=token[0]
         )
 
-    def cmp_expr(self, endtoken, token, ops, exprs):
+    def cmp_expr(self, ops, exprs):
         assert len(ops) + 1 == len(exprs)
         if len(ops) == 0:
             return exprs[0]
         cmp_ops = [ o for o in ops if o[0] in { '==', '!=', '<', '<=', '>', '>=' } ]
         if len(cmp_ops) == 0:
-            return self.arith_expr(endtoken, token, ops, exprs)
+            return self.arith_expr(ops, exprs)
         sub_ops = []
         sub_exprs = [ exprs[0] ]
         sub_asts = []
         for i in range(len(ops)):
             if ops[i] in cmp_ops:
-                sub_asts.append(self.arith_expr(endtoken, token, sub_ops, sub_exprs))
+                sub_asts.append(self.arith_expr(sub_ops, sub_exprs))
                 sub_ops = []
                 sub_exprs = [ exprs[i+1] ]
             else:
                 sub_ops.append(ops[i])
                 sub_exprs.append(exprs[i+1])
-        sub_asts.append(self.arith_expr(endtoken, token, sub_ops, sub_exprs))
-        return CmpAST(endtoken, token, cmp_ops, sub_asts)
+        sub_asts.append(self.arith_expr(sub_ops, sub_exprs))
+        return CmpAST(sub_asts[-1].endtoken, sub_asts[0].token, cmp_ops, sub_asts)
 
-    def bool_expr_helper(self, endtoken, token, ops, exprs, operator):
+    def bool_expr_helper(self, ops, exprs, operator):
         op = None
         sub_ops = []
         sub_exprs = [ exprs[0] ]
@@ -762,16 +757,16 @@ class HarmonyVisitorImpl(HarmonyVisitor):
             if ops[i][0] == operator:
                 if op == None:
                     op = ops[i]
-                sub_asts.append(self.cmp_expr(endtoken, token, sub_ops, sub_exprs))
+                sub_asts.append(self.cmp_expr(sub_ops, sub_exprs))
                 sub_ops = []
                 sub_exprs = [ exprs[i+1] ]
             else:
                 sub_ops.append(ops[i])
                 sub_exprs.append(exprs[i+1])
-        sub_asts.append(self.cmp_expr(endtoken, token, sub_ops, sub_exprs))
-        return NaryAST(endtoken, token, op, sub_asts)
+        sub_asts.append(self.cmp_expr(sub_ops, sub_exprs))
+        return NaryAST(sub_asts[-1].endtoken, sub_asts[0].token, op, sub_asts)
 
-    def bool_expr(self, endtoken, token, ops, exprs):
+    def bool_expr(self, ops, exprs):
         assert len(ops) > 0
         assert len(ops) + 1 == len(exprs)
         bool_ops = [ o[0] for o in ops if o[0] in { 'or', 'and', '=>', '==', '=' } ]
@@ -785,7 +780,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
                     column=token[3],
                     lexeme=token[0]
                 )
-            return self.bool_expr_helper(endtoken, token, ops, exprs, 'or')
+            return self.bool_expr_helper(ops, exprs, 'or')
         if 'and' in bool_ops:
             if len(set(bool_ops)) > 1:
                 raise HarmonyCompilerError(
@@ -795,7 +790,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
                     column=token[3],
                     lexeme=token[0]
                 )
-            return self.bool_expr_helper(endtoken, token, ops, exprs, 'and')
+            return self.bool_expr_helper(ops, exprs, 'and')
         if '=>' in bool_ops:
             if len(bool_ops) > 1:
                 raise HarmonyCompilerError(
@@ -805,8 +800,8 @@ class HarmonyVisitorImpl(HarmonyVisitor):
                     column=token[3],
                     lexeme=token[0]
                 )
-            return self.bool_expr_helper(endtoken, token, ops, exprs, '=>')
-        return self.cmp_expr(endtoken, token, ops, exprs)
+            return self.bool_expr_helper(ops, exprs, '=>')
+        return self.cmp_expr(ops, exprs)
 
     # Visit a parse tree produced by HarmonyParser#nary_expr.
     def visitNary_expr(self, ctx: HarmonyParser.Nary_exprContext):
@@ -815,7 +810,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
         if ctx.arith_op():
             ops = [self.visit(o) for o in ctx.arith_op()]
-            return self.bool_expr(endtoken, tkn, ops, expressions)
+            return self.bool_expr(ops, expressions)
         if ctx.IF():
             condition = self.visit(ctx.nary_expr())
             expressions.insert(1, condition)
@@ -828,6 +823,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
                 not_token = self.get_token(ctx.NOT().symbol, str(ctx.NOT()))
                 return NaryAST(endtoken, tkn, not_token, [ast])
             return ast
+        assert len(expressions) == 1
         return expressions[0]
 
     # Visit a parse tree produced by HarmonyParser#expr_rule.
