@@ -12,7 +12,7 @@ def bwait(b):
     if b->n == b->required:
         b->color ^= 1
         b->n = 0
-        notifyAll(?b->cond)
+        notify_all(?b->cond)
     else:
         let color = b->color:
             while b->color == color:

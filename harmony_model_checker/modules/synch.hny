@@ -57,7 +57,7 @@ def notify(c):
     atomically if !c != bags.empty():
         !c = bags.remove(!c, bags.bchoose(!c))
 
-def notifyAll(c):
+def notify_all(c):
     atomically !c = bags.empty()
 
 def Semaphore(cnt) returns result:

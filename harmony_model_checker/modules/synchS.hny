@@ -55,7 +55,7 @@ def notify(c):
         go ((!c)[0]) ()
         del (!c)[0]
         
-def notifyAll(c):
+def notify_all(c):
     atomically:
         for ctx in !c:
             go ctx ()

@@ -23,7 +23,7 @@ def wait(c):
 def notify(c):
     pass
 
-def notifyAll(c):
+def notify_all(c):
     pass
 
 def Semaphore(cnt):

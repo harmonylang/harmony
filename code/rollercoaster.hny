@@ -15,7 +15,7 @@ def enter(b):
             wait(?b->full, ?b->mutex)
     else:                           # car is ready to go
         b->left = 0
-        notifyAll(?b->full)         # wake up others waiting in car
+        notify_all(?b->full)         # wake up others waiting in car
     release(?b->mutex)
 
 def exit(b):
@@ -23,5 +23,5 @@ def exit(b):
     b->left += 1
     if b->left == b->nseats:    # car is empty
         b->entered = 0
-        notifyAll(?b->empty)    # wake up riders wanting to go
+        notify_all(?b->empty)    # wake up riders wanting to go
     release(?b->mutex)

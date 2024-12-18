@@ -25,7 +25,7 @@ def barber(self):
         # Cut is done.  Tell customer to go.
         acquire(?mutex)
         customers_ready |= { c }
-        notifyAll(?customer_cond)
+        notify_all(?customer_cond)
         release(?mutex)
 
 def customer(id):

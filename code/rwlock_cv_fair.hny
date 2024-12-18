@@ -58,7 +58,7 @@ def write_release(rw):
         rw->nwriters = 0
         rw->r_cleared = rw->nreaders = rw->r_waiting
         rw->r_waiting = 0
-        notifyAll(?rw->r_cond)
+        notify_all(?rw->r_cond)
     elif rw->w_waiting > 0:
         rw->w_waiting -= 1
         rw->w_cleared = 1

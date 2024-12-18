@@ -30,7 +30,7 @@ def notify(c):
         if waiters != {}:
             c->waiters = waiters - { choose(waiters) }
             
-def notifyAll(c):
+def notify_all(c):
     c->waiters = {}
 
 def Semaphore(cnt):

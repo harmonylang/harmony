@@ -15,5 +15,5 @@ def notify(c):
     atomically if !c != bags.empty():
         !c = bags.remove(!c, bags.bchoose(!c))
         
-def notifyAll(c):
+def notify_all(c):
     !c = bags.empty()

@@ -30,6 +30,6 @@ def write_acquire(rw):
 def write_release(rw):
     acquire(?rw->mutex)
     rw->nwriters = 0
-    notifyAll(?rw->r_cond)
+    notify_all(?rw->r_cond)
     notify(?rw->w_cond)
     release(?rw->mutex)
