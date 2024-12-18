@@ -44,6 +44,8 @@ tests = [
     { "args": "-mqueue=queue_broken2 code/queue_btest1.hny", "issue": "Safety violation", "nstates": 23875 },
     { "args": "code/rwlock_test1.hny", "issue": "No issues", "nstates": 499 },
     { "args": "-mrwlock=rwlock_sbs code/rwlock_test1.hny", "issue": "No issues", "nstates": 8089 },
+    { "args": "-mrwlock=rwlock_busy code/rwlock_test1.hny", "issue": "Active busy waiting", "nstates": 4288 },
+    { "args": "-mrwlock=rwlock_busy -msynch=synchS code/rwlock_test1.hny", "issue": "Active busy waiting", "nstates": 20002 },
     { "args": "-mrwlock=rwlock_cv code/rwlock_test1.hny", "issue": "No issues", "nstates": 13138 },
     { "args": "-mrwlock=rwlock_cv -msynch=synchS code/rwlock_test1.hny", "issue": "No issues", "nstates": 35537 },
     { "args": "-mrwlock=rwlock_cv_fair code/rwlock_test1.hny", "issue": "No issues", "nstates": 26508 },

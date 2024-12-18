@@ -28,7 +28,7 @@ def read_release(rw):
     
 def write_acquire(rw):
     acquire(?rw->mutex)
-    if (rw->nreaders > 0) or (rw->nwriters > 0):
+    if rw->nreaders > 0 or rw->nwriters > 0:
         rw->w_gate.count += 1; release(?rw->mutex)
         acquire(?rw->w_gate.sema); rw->w_gate.count -= 1
     rw->nwriters += 1

@@ -3,12 +3,13 @@ from alloc import malloc, free
 
 def Queue() returns empty:
     let dummy = malloc({ .value: (), .next: None }):
-        empty = { .head: dummy, .tail: dummy, .hdlock: Lock(), .tllock: Lock() }
+        empty = { .head: dummy, .tail: dummy,
+                        .hdlock: Lock(), .tllock: Lock() }
 
 def put(q, v):
     let node = malloc({ .value: v, .next: None }):
         acquire(?q->tllock)
-        atomic_store(?q->tail->next,  node)
+        atomic_store(?q->tail->next, node)
         q->tail = node
         release(?q->tllock)
 

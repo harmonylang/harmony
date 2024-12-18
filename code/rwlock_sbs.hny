@@ -10,7 +10,7 @@ def RWlock() returns lock:
 def _release_one(rw):
     if (rw->nwriters == 0) and (rw->r_gate.count > 0):
         release(?rw->r_gate.sema)
-    elif ((rw->nreaders + rw->nwriters) == 0) and (rw->w_gate.count > 0):
+    elif (rw->nreaders + rw->nwriters == 0) and (rw->w_gate.count > 0):
         release(?rw->w_gate.sema)
     else:
         release(?rw->mutex)
@@ -28,7 +28,7 @@ def read_release(rw):
 
 def write_acquire(rw):
     acquire(?rw->mutex)
-    if (rw->nreaders > 0) or (rw->nwriters > 0):
+    if rw->nreaders > 0 or rw->nwriters > 0:
         rw->w_gate.count += 1; _release_one(rw)
         acquire(?rw->w_gate.sema); rw->w_gate.count -= 1
     rw->nwriters += 1

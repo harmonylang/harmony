@@ -22,7 +22,7 @@ def read_release(rw):
 
 def write_acquire(rw):
     acquire(?rw->mutex)
-    while (rw->nreaders > 0) or (rw->nwriters > 0):
+    while rw->nreaders > 0 or rw->nwriters > 0:
         wait(?rw->w_cond, ?rw->mutex)
     rw->nwriters = 1
     release(?rw->mutex)
