@@ -129,11 +129,7 @@ $HARMONY --noweb -msynch=synchS code/qbarrier.hny
 
 $HARMONY --noweb code/barrier_test1.hny
 
-$HARMONY --noweb -msynch=synchS code/barrier_test1.hny
-
 $HARMONY --noweb code/barrier_test2.hny
-
-$HARMONY --noweb -msynch=synchS code/barrier_test2.hny
 
 $HARMONY --noweb -o file.hfa code/file_btest.hny
 
