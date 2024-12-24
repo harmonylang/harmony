@@ -11,28 +11,27 @@ bar = Barrier(NTHREADS)
 count = [0,] * NTHREADS
 
 def sorter(self, i):
-    var is_sorted = False
-    var old_count = [0,] * NTHREADS
-    while not is_sorted:
-        # Even phase
-        if thelist[i - 1] > thelist[i]:
-            thelist[i - 1], thelist[i] = thelist[i], thelist[i - 1]
-            count[self] += 1
+    var unsorted = True
+    while unsorted:
+        let old_count = count:
+            bwait(?bar)
 
-        bwait(?bar)
+            # Even phase
+            if thelist[i - 1] > thelist[i]:
+                thelist[i - 1], thelist[i] = thelist[i], thelist[i - 1]
+                count[self] += 1
 
-        # Odd phase
-        if (i < (N - 1)) and (thelist[i] > thelist[i + 1]):
-            thelist[i], thelist[i + 1] = thelist[i + 1], thelist[i]
-            count[self] += 1
+            bwait(?bar)
 
-        bwait(?bar)
+            # Odd phase
+            if (i < (N - 1)) and (thelist[i] > thelist[i + 1]):
+                thelist[i], thelist[i + 1] = thelist[i + 1], thelist[i]
+                count[self] += 1
 
-        # Sorted if nobody swapped anything
-        is_sorted = count == old_count
-        old_count = count
+            bwait(?bar)
 
-        bwait(?bar)
+            # Sorted iff nobody swapped anything
+            unsorted = count != old_count
 
 for k in { 0 .. NTHREADS - 1}:
     spawn sorter(k, 2*k + 1)
