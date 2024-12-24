@@ -8,27 +8,27 @@ finally all(thelist[i-1] <= thelist[i] for i in { 1 .. N - 1 })
 
 const NTHREADS = N / 2
 bar = Barrier(NTHREADS)
-count = [0,] * NTHREADS
+count = [0,] * NTHREADS     # to detect termination
 
 def sorter(self, i):
     var unsorted = True
     while unsorted:
         let old_count = count:
-            bwait(?bar)
+            bwait(?bar)     # wait until all have assigned old_count
 
             # Even phase
             if thelist[i - 1] > thelist[i]:
                 thelist[i - 1], thelist[i] = thelist[i], thelist[i - 1]
                 count[self] += 1
 
-            bwait(?bar)
+            bwait(?bar)     # wait until all have finished even phase
 
             # Odd phase
             if i < N - 1 and thelist[i] > thelist[i + 1]:
                 thelist[i], thelist[i + 1] = thelist[i + 1], thelist[i]
                 count[self] += 1
 
-            bwait(?bar)
+            bwait(?bar)     # wait until all have finished odd phase
 
             # Sorted iff nobody swapped anything
             unsorted = count != old_count
