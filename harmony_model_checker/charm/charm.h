@@ -106,7 +106,7 @@ struct global {
     //  2: look up states and add to the todo list if new
     //  3: resize tables
     // The barriers are to synchronize these three phases.
-    barrier_t start_barrier, middle_barrier, end_barrier;
+    barrier_t barrier;
 
     // invariants
     mutex_t inv_lock;               // lock on list of invariants and finals

@@ -3060,7 +3060,7 @@ static void worker(void *arg){
     for (;; nrounds++) {
         // Wait for the first barrier (and keep stats)
         // This is where the worker is waiting for stabilizing hash tables
-        barrier_wait(&global.start_barrier);
+        barrier_wait(&global.barrier);
         double after = gettime();
         w->start_wait += after - before;
         w->start_count++;
@@ -3085,7 +3085,7 @@ static void worker(void *arg){
         // Here we are waiting for everybody's todo list processing
         before = after;
         // printf("WAIT FOR MIDDLE %u\n", w->index);
-        barrier_wait(&global.middle_barrier);
+        barrier_wait(&global.barrier);
         // printf("DONE WITH MIDDLE %u\n", w->index);
         after = gettime();
         w->middle_wait += after - before;
@@ -3194,7 +3194,7 @@ static void worker(void *arg){
         w->phase2b += after - before;
         before = after;
         // printf("WAIT FOR END %u\n", w->index);
-        barrier_wait(&global.end_barrier);
+        barrier_wait(&global.barrier);
         // printf("DONE WITH END %u\n", w->index);
         after = gettime();
         w->end_wait += after - before;
@@ -4577,10 +4577,8 @@ int exec_model_checker(int argc, char **argv){
 
     phase_start("Initialize data structures");
 
-    // Initialize barriers for the three phases (see struct worker definition)
-    barrier_init(&global.start_barrier, global.nworkers);
-    barrier_init(&global.middle_barrier, global.nworkers);
-    barrier_init(&global.end_barrier, global.nworkers);
+    // Initialize barrier for the three phases (see struct worker definition)
+    barrier_init(&global.barrier, global.nworkers);
 
     // initialize modules
     mutex_init(&global.inv_lock);
