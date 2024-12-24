@@ -1,41 +1,39 @@
 from barrier import *
+from synch import atomic_store
 
 const N = 5     # size of list to be sorted
 
-thelist = [ choose({ 1 .. N }) for i in { 1 .. N } ]
+thelist = [ choose { 1 .. N } for i in { 1 .. N } ]
 
 finally all(thelist[i-1] <= thelist[i] for i in { 1 .. N - 1 })
 
 const NTHREADS = N / 2
 bar = Barrier(NTHREADS)
-count = 0                   # to detect termination
+count = [0,] * NTHREADS
 
-def fetch_and_increment(p): # atomic increment
-    atomically !p += 1
-
-def sorter(i):
+def sorter(self, i):
     var is_sorted = False
-    var oldcount = 0
+    var old_count = [0,] * NTHREADS
     while not is_sorted:
         # Even phase
         if thelist[i - 1] > thelist[i]:
             thelist[i - 1], thelist[i] = thelist[i], thelist[i - 1]
-            fetch_and_increment(?count)
+            count[self] += 1
 
         bwait(?bar)
 
         # Odd phase
         if (i < (N - 1)) and (thelist[i] > thelist[i + 1]):
             thelist[i], thelist[i + 1] = thelist[i + 1], thelist[i]
-            fetch_and_increment(?count)
+            count[self] += 1
 
         bwait(?bar)
 
         # Sorted if nobody swapped anything
-        is_sorted = count == oldcount
-        oldcount = count
+        is_sorted = count == old_count
+        old_count = count
 
         bwait(?bar)
 
-for k in { 1 .. NTHREADS }:
-    spawn sorter(2*k - 1)
+for k in { 0 .. NTHREADS - 1}:
+    spawn sorter(k, 2*k + 1)
