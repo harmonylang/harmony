@@ -1,5 +1,4 @@
 from barrier import *
-from synch import atomic_store
 
 const N = 5     # size of list to be sorted
 
