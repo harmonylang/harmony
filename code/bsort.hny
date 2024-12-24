@@ -37,5 +37,5 @@ def sorter(i):
 
         bwait(?bar)
 
-for k in { 0 .. NTHREADS - 1 }:
-    spawn sorter((2*k) + 1)
+for k in { 1 .. NTHREADS }:
+    spawn sorter(2*k - 1)
