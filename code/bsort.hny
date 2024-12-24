@@ -24,7 +24,7 @@ def sorter(self, i):
             bwait(?bar)
 
             # Odd phase
-            if (i < (N - 1)) and (thelist[i] > thelist[i + 1]):
+            if i < N - 1 and thelist[i] > thelist[i + 1]:
                 thelist[i], thelist[i + 1] = thelist[i + 1], thelist[i]
                 count[self] += 1
 
