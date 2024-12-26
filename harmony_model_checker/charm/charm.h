@@ -117,6 +117,7 @@ struct global {
     hvalue_t *finals;               // contexts of finally preds
 
     struct graph graph;             // the Kripke structure but also the todo list
+    struct node *initial;           // initial node
     uint8_t *neps;                  // #epsilon edges for each node
     bool printed_something;         // set if anything was printed
     struct failure *failures;       // queue of "struct failure"  (TODO: make part of struct node "issues")
@@ -139,7 +140,7 @@ struct global {
     unsigned int nsymbols;
 
     // Reconstructed error trace stored here
-    unsigned int nmacrosteps, alloc_macrosteps;
+    unsigned int nmacrosteps;
     struct macrostep **macrosteps;
 };
 

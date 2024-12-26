@@ -2818,7 +2818,7 @@ void op_Spawn(
         global.processes = realloc(global.processes, (global.nprocesses + 1) * sizeof(hvalue_t));
         global.callstacks = realloc(global.callstacks, (global.nprocesses + 1) * sizeof(struct callstack *));
         global.processes[global.nprocesses] = cc;
-        // printf("Add %d %p\n", global.nprocesses, (void *) cc);
+        printf("Add T%u %p\n", global.nprocesses, (void *) cc);
         struct callstack *cs = new_alloc(struct callstack);
         cs->pc = pc;
         cs->arg = arg;

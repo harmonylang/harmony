@@ -1773,6 +1773,7 @@ static void twostep(
     strbuf_deinit(&step.explain);
     // TODO free(step.log);
 
+    printf("SET T%u to %p\n", pid, (void *) after);
     global.processes[pid] = after;
     global.callstacks[pid] = step.callstack;
 }
@@ -1784,41 +1785,33 @@ static void *copy(void *p, unsigned int size){
 }
 
 // Take the path and put it in an array
-static void path_serialize(struct node *parent, struct edge *e){
-    // First recurse to the previous step
-    assert(parent != NULL);
-    struct edge *to_grandparent = node_to_parent(parent);
-    if (to_grandparent != NULL) {
-        assert(parent->parent != NULL);
-        path_serialize(parent->parent, to_grandparent);
-    }
-
-    assert(edge_output(e)->vars == node_state(edge_dst(e))->vars);
-
+static void path_serialize(struct node *node, struct edge *e){
+    global.nmacrosteps = node->len + 1;
+    global.macrosteps = calloc(global.nmacrosteps, sizeof(*global.macrosteps));
     struct macrostep *macro = calloc(sizeof(*macro), 1);
     macro->edge = e;
-
-    if (global.nmacrosteps == global.alloc_macrosteps) {
-        global.alloc_macrosteps *= 2;
-        if (global.alloc_macrosteps < 8) {
-            global.alloc_macrosteps = 8;
-        }
-        global.macrosteps = realloc(global.macrosteps,
-            global.alloc_macrosteps * sizeof(*global.macrosteps));
+    unsigned int i = node->len;
+    global.macrosteps[i--] = macro;
+    for (struct node *n = node; n->parent != NULL; n = n->parent) {
+        macro = calloc(sizeof(*macro), 1);
+        macro->edge = node_to_parent(n);
+        global.macrosteps[i--] = macro;
     }
-    global.macrosteps[global.nmacrosteps++] = macro;
+    assert(i == (unsigned) -1);
 }
 
 static void path_recompute(){
-    struct node *node = global.graph.nodes[0];
+    struct node *node = global.initial;
     struct state *sc = calloc(1, MAX_STATE_SIZE);
     memcpy(sc, node_state(node), state_size(node_state(node)));
 
     for (unsigned int i = 0; i < global.nmacrosteps; i++) {
         struct macrostep *macro = global.macrosteps[i];
         struct edge *e = macro->edge;
-        // assert(e->dst != NULL);
         hvalue_t ctx = edge_input(e)->ctx;
+
+        printf("MACRO pid=%u ctx=%p choice=%p\n", global.oldpid, (void *) ctx,
+            (void *) edge_input(e)->choice);
 
         if (e->invariant_chk) {
             global.processes = realloc(global.processes, (global.nprocesses + 1) * sizeof(hvalue_t));
@@ -1839,19 +1832,20 @@ static void path_recompute(){
          * sticking with the same pid if possible.
          */
         unsigned int pid;
+        printf("Macrostep %u: Search for %p\n", i, (void *) ctx);
         if (global.processes[global.oldpid] == ctx) {
             pid = global.oldpid;
         }
         else {
-            // printf("Search for %p\n", (void *) ctx);
             for (pid = 0; pid < global.nprocesses; pid++) {
-                // printf("%d: %p\n", pid, (void *) global.processes[pid]);
+                printf("%d: %p\n", pid, (void *) global.processes[pid]);
                 if (global.processes[pid] == ctx) {
                     break;
                 }
             }
             global.oldpid = pid;
         }
+        printf("Macrostep %u: T%u -> %p\n", i, pid, (void *) ctx);
         if (pid >= global.nprocesses) {
             printf("PID %p %u %u\n", (void *) ctx, pid, global.nprocesses);
             panic("bad pid");
@@ -2255,6 +2249,7 @@ again:
         }
     }
 
+#ifdef notdef
     // Now fix the edges.
     struct node *node = global.graph.nodes[0];
     for (unsigned int i = 0; i < global.nmacrosteps; i++) {
@@ -2284,6 +2279,7 @@ again:
         global.macrosteps[i]->edge = e;
         node = edge_dst(e);
     }
+#endif
 }
 
 // Output the macrosteps
@@ -3231,6 +3227,9 @@ static void worker(void *arg){
                     struct node *node = rb->results[k];
                     node->id = local_node_id;
                     assert(local_node_id < global.graph.size);
+                    if (node->initial) {
+                        global.initial = node;
+                    }
                     global.graph.nodes[local_node_id++] = node;
 
                     // Pacifier for scanning states
@@ -4745,12 +4744,13 @@ int exec_model_checker(int argc, char **argv){
     global.processes = new_alloc(hvalue_t);
     global.callstacks = new_alloc(struct callstack *);
     *global.processes = ictx;
+    printf("INIT T0 -> %lx\n", (unsigned long) ictx);
+    global.nprocesses = 1;
     struct callstack *cs = new_alloc(struct callstack);
     cs->arg = VALUE_LIST;
     cs->vars = VALUE_DICT;
     cs->return_address = CALLTYPE_PROCESS;
     *global.callstacks = cs;
-    global.nprocesses = 1;
 
     phase_finish();
 

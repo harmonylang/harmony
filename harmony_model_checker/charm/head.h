@@ -1,4 +1,4 @@
-// #define DEBUGGING
+#define DEBUGGING
 
 // #define SHORT_PTR
 
