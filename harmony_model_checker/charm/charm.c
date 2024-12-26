@@ -1774,6 +1774,8 @@ static void twostep(
     // TODO free(step.log);
 
     printf("SET T%u to %p\n", pid, (void *) after);
+    fflush(stdout);
+    // assert((after & 0xF00000000000) != 0x500000000000);
     global.processes[pid] = after;
     global.callstacks[pid] = step.callstack;
 }
