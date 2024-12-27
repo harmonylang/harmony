@@ -2366,6 +2366,7 @@ void op_Load(const void *env, struct state *state, struct step *step){
         // See if it's reading a shared variable
         if (indices[0] == VALUE_PC_SHARED) {
             assert(VALUE_TYPE(av) == VALUE_ADDRESS_SHARED);
+            assert(step->keep_callstack || step->allocator != NULL);
 
             // Keep track for race detection
             // TODO.  Should it check the entire address?  Maybe part

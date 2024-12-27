@@ -853,8 +853,6 @@ static inline void process_step(
 // programmers from using assertions.  Thus, to execute an atomic section, we
 // save the state at the beginning and rollback in case it turns out that we do
 // need to break.
-// TODO.  State is readonly and does not need to be saved.  However, step->vars
-//        must be saved and restored
 static struct step_output *onestep(
     struct worker *w,       // thread info
     struct node *node,      // starting node
@@ -880,6 +878,11 @@ static struct step_output *onestep(
     bool assert_batch = false;
     bool in_assertion = false;
     bool check_for_infloop = false;
+
+bool is60 = step->ctx->pc == 60; 
+if (is60) {
+    printf("IN 60\n");
+}
 
     // See if we should first try an interrupt or make a choice.
     if (choice == (hvalue_t) -1) {
@@ -990,9 +993,7 @@ static struct step_output *onestep(
         }
 
         // If infloop_detect is on, that means that in the previous attempt to
-        // evaluated onestep() we suspected an infinite loop.  If it's off, we
-        // start trying to detect it after 1000 instructions.
-        // TODO.  10000 seems rather arbitrary.  Is it a good choice?  See below.
+        // evaluated onestep() we suspected an infinite loop.
         if (infloop_detect || instrcnt > w->inf_max) {
             if (!check_for_infloop) {
                 dict_reset(w->inf_dict);
@@ -1168,6 +1169,7 @@ static struct step_output *onestep(
             (step->nlog + step->nspawned + step->nunstopped) * sizeof(hvalue_t));
     so->vars = step->vars;
     so->after = value_put_context(step->allocator, step->ctx);
+    if (is60) { printf("XXX %p\n", step->ai); }
     so->ai = step->ai;     step->ai = NULL;
     so->nsteps = instrcnt;
 
@@ -1632,6 +1634,8 @@ static void twostep(
     sc->type = STATE_NORMAL;
     sc->chooser = 0;
 
+    printf("NSTEPS %u\n", nsteps);
+
     struct step step;
     memset(&step, 0, sizeof(step));
     step.keep_callstack = true;
@@ -1655,7 +1659,6 @@ static void twostep(
         make_microstep(sc, step.ctx, step.callstack, true, false, 0, 0, &step, macro);
     }
 
-    struct dict *infloop = NULL;        // infinite loop detector
     unsigned int instrcnt = 0;
     for (;;) {
         int pc = step.ctx->pc;
@@ -1681,29 +1684,6 @@ static void twostep(
             step.vars = sc->vars;        // NEW
             (*oi->op)(instrs[pc].env, sc, &step);
             sc->vars = step.vars;        // NEW
-        }
-
-        // Infinite loop detection
-        // TODO.  Do we need this???
-        if (!step.ctx->terminated && !step.ctx->failed) {
-            if (infloop == NULL) {
-                infloop = dict_new("infloop2", 0, 0, 0, false, false);
-            }
-
-            int ctxsize = sizeof(struct context) + step.ctx->sp * sizeof(hvalue_t);
-            if (step.ctx->extended) {
-                ctxsize += ctx_extent * sizeof(hvalue_t);
-            }
-            int combosize = ctxsize + state_size(sc);
-            char *combo = calloc(1, combosize);
-            memcpy(combo, step.ctx, ctxsize);
-            memcpy(combo + ctxsize, sc, state_size(sc));
-            bool new;
-            dict_insert(infloop, NULL, combo, combosize, &new);
-            free(combo);
-            if (!new) {
-                value_ctx_failure(step.ctx, step.allocator, "infinite loop");
-            }
         }
 
         assert(!instrs[pc].choose || choice != 0);
@@ -1786,7 +1766,7 @@ static void *copy(void *p, unsigned int size){
     return c;
 }
 
-// Take the path and put it in an array
+// Take the path and put it in an array.  Also assign thread identifiers.
 static void path_serialize(struct node *node, struct edge *e){
     global.nmacrosteps = node->len + 1;
     global.macrosteps = calloc(global.nmacrosteps, sizeof(*global.macrosteps));
@@ -1800,6 +1780,36 @@ static void path_serialize(struct node *node, struct edge *e){
         global.macrosteps[i--] = macro;
     }
     assert(i == (unsigned) -1);
+
+#ifdef notdef
+    hvalue_t *threads = malloc(sizeof(*threads));
+    *threads = edge_input(global.macrosteps[0]->edge)->ctx;
+    unsigned int nthreads = 1, current = 0;
+    for (unsigned int i = 0; i < global.nmacrosteps; i++) {
+        unsigned int ctx = edge_input(global.macrosteps[i]->edge)->ctx;
+        int tid;
+        if (ctx == threads[current]) {
+            tid = current;
+        }
+        else {
+            tid = -1;
+            for (unsigned int j = 0; j < nthreads; j++) {
+                if (threads[j] == ctx) {
+                    tid = j;
+                }
+            }
+            if (tid < 0) {
+                tid = nthreads;
+                threads = realloc(threads, (nthreads + 1) * sizeof(*threads));
+                threads[nthreads++] = ctx;
+            }
+        }
+        global.macrosteps[i]->tid2 = tid;
+        threads[tid] = edge_output(global.macrosteps[i]->edge)->after;
+        current = tid;
+        printf("--> %u %u\n", i, tid);
+    }
+#endif
 }
 
 static void path_recompute(){
@@ -1812,7 +1822,7 @@ static void path_recompute(){
         struct edge *e = macro->edge;
         hvalue_t ctx = edge_input(e)->ctx;
 
-        printf("MACRO pid=%u ctx=%p choice=%p\n", global.oldpid, (void *) ctx,
+        printf("MACRO tid=%u ctx=%p choice=%p\n", macro->tid, (void *) ctx,
             (void *) edge_input(e)->choice);
 
         if (e->invariant_chk) {
@@ -1850,7 +1860,9 @@ static void path_recompute(){
         printf("Macrostep %u: T%u -> %p\n", i, pid, (void *) ctx);
         if (pid >= global.nprocesses) {
             printf("PID %p %u %u\n", (void *) ctx, pid, global.nprocesses);
-            panic("bad pid");
+            // panic("bad pid");
+            global.nmacrosteps = i;
+            break;
         }
         assert(pid < global.nprocesses);
 
@@ -2174,6 +2186,17 @@ static void path_optimize(){
     unsigned int ncbs;
     hvalue_t current;
 
+    for (unsigned int i = 0; i < global.nmacrosteps; i++) {
+        if (edge_output(global.macrosteps[i]->edge)->nsteps == 21) {
+            printf("===> %u %p %p\n", i,
+                (void *) edge_input(global.macrosteps[i]->edge)->ctx,
+                (void *) edge_output(global.macrosteps[i]->edge)->after
+            );
+        }
+    }
+
+    printf("optimize %u\n", global.nmacrosteps);
+
 again:
     cbs = calloc(1, sizeof(*cbs));
     cbs->before = edge_input(global.macrosteps[0]->edge)->ctx;
@@ -2218,10 +2241,8 @@ again:
                 memcpy(copy, &global.macrosteps[cbs[i].start], size);
 
                 // Then move over the blocks in between
-                memcpy(&global.macrosteps[cbs[i].start],
-                        &global.macrosteps[cbs[i+1].start],
-                        (cbs[j].start - cbs[i+1].start) *
-                                            sizeof(struct macrostep *));
+                memmove(&global.macrosteps[cbs[i].start], &global.macrosteps[cbs[i+1].start],
+                        (cbs[j].start - cbs[i+1].start) * sizeof(struct macrostep *));
 
                 // Move the saved block over
                 memcpy(&global.macrosteps[cbs[j].start -
@@ -4227,6 +4248,7 @@ static void charm_dump(bool computed_components){
                 fprintf(df, "            context before: %"PRIx64" pc=%d\n", edge_input(edge)->ctx, ctx->pc);
                 ctx = value_get(edge_output(edge)->after, NULL);
                 fprintf(df, "            context after:  %"PRIx64" pc=%d\n", edge_output(edge)->after, ctx->pc);
+                fprintf(df, "            #steps:  %u\n", edge_output(edge)->nsteps);
                 if (edge->failed) {
                     fprintf(df, "            failed\n");
                 }

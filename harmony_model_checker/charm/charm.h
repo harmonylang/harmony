@@ -38,6 +38,9 @@ struct microstep {
 struct macrostep {
     struct edge *edge;              // the edge this macrostep corresponds to
     unsigned int tid;               // thread identifier
+#ifdef notdef
+    unsigned int tid2;               // thread identifier
+#endif
     hvalue_t name, arg;             // name and argument of the thread (first method)
     struct callstack *cs;           // callstack of the thread at the beginning
 
