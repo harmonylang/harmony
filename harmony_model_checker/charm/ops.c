@@ -884,10 +884,12 @@ static void do_return(struct state *state, struct step *step, hvalue_t result){
 // To find data races, we track for each step which variables are read and
 // written.  This also turns out to be useful for optimizing counterexamples.
 static void ai_add(struct step *step, hvalue_t *indices, unsigned int n, bool load){
+#ifdef notdef // TODO
     // Assertions and invariants do not conflict with normal ops.
     if (step->ctx->readonly) {
         return;
     }
+#endif
 
     struct allocator *al = step->allocator;
     if (al != NULL) {
@@ -2819,7 +2821,7 @@ void op_Spawn(
         global.processes = realloc(global.processes, (global.nprocesses + 1) * sizeof(hvalue_t));
         global.callstacks = realloc(global.callstacks, (global.nprocesses + 1) * sizeof(struct callstack *));
         global.processes[global.nprocesses] = cc;
-        printf("Add T%u %p\n", global.nprocesses, (void *) cc);
+        // printf("Add T%u %p\n", global.nprocesses, (void *) cc);
         struct callstack *cs = new_alloc(struct callstack);
         cs->pc = pc;
         cs->arg = arg;

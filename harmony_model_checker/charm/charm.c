@@ -879,11 +879,6 @@ static struct step_output *onestep(
     bool in_assertion = false;
     bool check_for_infloop = false;
 
-bool is60 = step->ctx->pc == 60; 
-if (is60) {
-    printf("IN 60\n");
-}
-
     // See if we should first try an interrupt or make a choice.
     if (choice == (hvalue_t) -1) {
         assert(step->ctx->extended);
@@ -1169,7 +1164,6 @@ if (is60) {
             (step->nlog + step->nspawned + step->nunstopped) * sizeof(hvalue_t));
     so->vars = step->vars;
     so->after = value_put_context(step->allocator, step->ctx);
-    if (is60) { printf("XXX %p\n", step->ai); }
     so->ai = step->ai;     step->ai = NULL;
     so->nsteps = instrcnt;
 
@@ -1634,7 +1628,7 @@ static void twostep(
     sc->type = STATE_NORMAL;
     sc->chooser = 0;
 
-    printf("NSTEPS %u\n", nsteps);
+    // printf("NSTEPS %u\n", nsteps);
 
     struct step step;
     memset(&step, 0, sizeof(step));
@@ -1753,8 +1747,8 @@ static void twostep(
     strbuf_deinit(&step.explain);
     // TODO free(step.log);
 
-    printf("SET T%u to %p\n", pid, (void *) after);
-    fflush(stdout);
+    // printf("SET T%u to %p\n", pid, (void *) after);
+    // fflush(stdout);
     // assert((after & 0xF00000000000) != 0x500000000000);
     global.processes[pid] = after;
     global.callstacks[pid] = step.callstack;
@@ -1780,36 +1774,6 @@ static void path_serialize(struct node *node, struct edge *e){
         global.macrosteps[i--] = macro;
     }
     assert(i == (unsigned) -1);
-
-#ifdef notdef
-    hvalue_t *threads = malloc(sizeof(*threads));
-    *threads = edge_input(global.macrosteps[0]->edge)->ctx;
-    unsigned int nthreads = 1, current = 0;
-    for (unsigned int i = 0; i < global.nmacrosteps; i++) {
-        unsigned int ctx = edge_input(global.macrosteps[i]->edge)->ctx;
-        int tid;
-        if (ctx == threads[current]) {
-            tid = current;
-        }
-        else {
-            tid = -1;
-            for (unsigned int j = 0; j < nthreads; j++) {
-                if (threads[j] == ctx) {
-                    tid = j;
-                }
-            }
-            if (tid < 0) {
-                tid = nthreads;
-                threads = realloc(threads, (nthreads + 1) * sizeof(*threads));
-                threads[nthreads++] = ctx;
-            }
-        }
-        global.macrosteps[i]->tid2 = tid;
-        threads[tid] = edge_output(global.macrosteps[i]->edge)->after;
-        current = tid;
-        printf("--> %u %u\n", i, tid);
-    }
-#endif
 }
 
 static void path_recompute(){
@@ -1822,8 +1786,8 @@ static void path_recompute(){
         struct edge *e = macro->edge;
         hvalue_t ctx = edge_input(e)->ctx;
 
-        printf("MACRO tid=%u ctx=%p choice=%p\n", macro->tid, (void *) ctx,
-            (void *) edge_input(e)->choice);
+        // printf("MACRO tid=%u ctx=%p choice=%p\n", macro->tid, (void *) ctx,
+        //    (void *) edge_input(e)->choice);
 
         if (e->invariant_chk) {
             global.processes = realloc(global.processes, (global.nprocesses + 1) * sizeof(hvalue_t));
@@ -1844,20 +1808,20 @@ static void path_recompute(){
          * sticking with the same pid if possible.
          */
         unsigned int pid;
-        printf("Macrostep %u: Search for %p\n", i, (void *) ctx);
+        // printf("Macrostep %u: Search for %p\n", i, (void *) ctx);
         if (global.processes[global.oldpid] == ctx) {
             pid = global.oldpid;
         }
         else {
             for (pid = 0; pid < global.nprocesses; pid++) {
-                printf("%d: %p\n", pid, (void *) global.processes[pid]);
+                // printf("%d: %p\n", pid, (void *) global.processes[pid]);
                 if (global.processes[pid] == ctx) {
                     break;
                 }
             }
             global.oldpid = pid;
         }
-        printf("Macrostep %u: T%u -> %p\n", i, pid, (void *) ctx);
+        // printf("Macrostep %u: T%u -> %p\n", i, pid, (void *) ctx);
         if (pid >= global.nprocesses) {
             printf("PID %p %u %u\n", (void *) ctx, pid, global.nprocesses);
             // panic("bad pid");
@@ -2186,16 +2150,7 @@ static void path_optimize(){
     unsigned int ncbs;
     hvalue_t current;
 
-    for (unsigned int i = 0; i < global.nmacrosteps; i++) {
-        if (edge_output(global.macrosteps[i]->edge)->nsteps == 21) {
-            printf("===> %u %p %p\n", i,
-                (void *) edge_input(global.macrosteps[i]->edge)->ctx,
-                (void *) edge_output(global.macrosteps[i]->edge)->after
-            );
-        }
-    }
-
-    printf("optimize %u\n", global.nmacrosteps);
+    // printf("optimize %u\n", global.nmacrosteps);
 
 again:
     cbs = calloc(1, sizeof(*cbs));
@@ -4768,7 +4723,7 @@ int exec_model_checker(int argc, char **argv){
     global.processes = new_alloc(hvalue_t);
     global.callstacks = new_alloc(struct callstack *);
     *global.processes = ictx;
-    printf("INIT T0 -> %lx\n", (unsigned long) ictx);
+    // printf("INIT T0 -> %lx\n", (unsigned long) ictx);
     global.nprocesses = 1;
     struct callstack *cs = new_alloc(struct callstack);
     cs->arg = VALUE_LIST;
