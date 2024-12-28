@@ -1,0 +1,7 @@
+def towers(n, src, dst, other):
+    if n > 0:
+        towers(n - 1, src, other, dst)
+        print str(src) + " -> " + str(dst)
+        towers(n - 1, other, dst, src)
+
+towers(3, 1, 2, 3)
