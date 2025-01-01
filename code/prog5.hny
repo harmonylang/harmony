@@ -1,11 +1,11 @@
-shared = 0
+x = 0
 
 def f():
-    var register = shared;
+    var register = x;
     register += 1
-    shared = register
+    x = register
 
 spawn f()
 spawn f()
 
-finally shared == 2
+finally x == 2
