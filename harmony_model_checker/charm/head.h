@@ -17,13 +17,8 @@
 #define HEAP_ALLOC
 #else // _WIN32
 #define ALIGNED_ALLOC
-
 #include <stdlib.h>
-#ifdef __APPLE__
-void *my_aligned_alloc(size_t alignment, size_t size);
-#else
 #define my_aligned_alloc(a, s)  aligned_alloc(a, s)
-#endif // __APPLE__
 #endif // _WIN32
 
 #ifdef __linux__
