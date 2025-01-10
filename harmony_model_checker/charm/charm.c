@@ -455,10 +455,10 @@ static void direct_run(struct state *state, unsigned int id){
                 CI_POT_TRANSITION,
             } trans;
         } *ci = calloc( state->bagsize, sizeof(*ci));
-        unsigned int no_trans = 0;
-        unsigned int old_trans = 0;
-        unsigned int new_trans = 0;
-        unsigned int pot_trans = 0;
+        // unsigned int no_trans = 0;
+        // unsigned int old_trans = 0;
+        // unsigned int new_trans = 0;
+        // unsigned int pot_trans = 0;
         for (int i = 0; i < state->bagsize; i++) {
             ci[i].ctx = state_ctx(state, i);
             unsigned int size;
@@ -475,7 +475,7 @@ static void direct_run(struct state *state, unsigned int id){
                 int cnt = dfa_visited(global.dfa, state->dfa_state, symbol);
                 if (cnt == 0) {
                     ci[i].trans = CI_NEW_TRANSITION;
-                    new_trans++;
+                    // new_trans++;
                 }
                 else if (cnt < 0) {
                     char *v = value_string(symbol);
@@ -484,19 +484,19 @@ static void direct_run(struct state *state, unsigned int id){
                 }
                 else if (dfa_potential(global.dfa, state->dfa_state, symbol) < 0) {
                     ci[i].trans = CI_OLD_TRANSITION;
-                    old_trans++;
+                    // old_trans++;
                 }
                 else {
                     ci[i].trans = CI_POT_TRANSITION;
-                    pot_trans++;
+                    // pot_trans++;
                 }
             }
             else {
                 ci[i].trans = CI_NO_TRANSITION;
-                no_trans++;
+                // no_trans++;
             }
         }
-        assert(no_trans + old_trans + new_trans + pot_trans== state->bagsize);
+        // assert(no_trans + old_trans + new_trans + pot_trans== state->bagsize);
 
         int ctx_index = -1;
         if (ctx_index < 0) {    // random selection
