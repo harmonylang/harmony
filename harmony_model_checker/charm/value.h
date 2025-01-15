@@ -193,7 +193,7 @@ void context_remove(struct state *state, hvalue_t ctx);
 int context_add(struct state *state, hvalue_t ctx);
 int stopped_context_add(struct state *state, hvalue_t ctx);
 char *json_escape_value(hvalue_t v);
-void value_trace(FILE *file, struct callstack *cs, unsigned int pc, hvalue_t vars, char *prefix);
+void value_trace(FILE *file, struct callstack *cs, unsigned int pc, hvalue_t vars);
 void print_vars(FILE *file, hvalue_t v);
 
 #endif //SRC_VALUE_H

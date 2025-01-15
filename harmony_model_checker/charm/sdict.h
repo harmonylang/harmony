@@ -37,7 +37,6 @@ struct sdict *sdict_new(char *whoami, unsigned int value_len, unsigned int initi
 void sdict_delete(struct sdict *dict);
 void *sdict_search(struct sdict *dict, const void *key, unsigned int keylen);
 void *sdict_lookup(struct sdict *dict, const void *key, unsigned int keylen);
-bool sdict_remove(struct sdict *dict, const void *key, unsigned int keylen);
 void *sdict_insert(struct sdict *dict, struct allocator *al, const void *key, unsigned int keylen, bool *is_new);
 struct dict_assoc *sdict_find(struct sdict *dict,
                             const void *key, unsigned int keylen, uint32_t hash);

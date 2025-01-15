@@ -148,9 +148,9 @@ struct alloc_state {
     char *alloc_ptr;            // pointer into allocated buffer
     char *alloc_buf16;          // allocated buffer, 16 byte aligned
     char *alloc_ptr16;          // pointer into allocated buffer
-    unsigned long allocated;    // keeps track of how much was allocated
-    unsigned long align_waste;
-    unsigned long frag_waste;
+    uintptr_t allocated;        // keeps track of how much was allocated
+    uintptr_t align_waste;
+    uintptr_t frag_waste;
 };
 
 // One of these per worker thread
@@ -435,7 +435,8 @@ static void direct_run(struct state *state, unsigned int id){
     step.ctx = &w.ctx;
     unsigned int interrupt_count = 1;
 
-    setbuf(stdout, NULL);
+    // setbuf(stdout, NULL);
+    setvbuf(stdout, NULL, _IONBF, 0);
 
     while (state->total > 0) {
         direct_check(state, &step);
@@ -855,14 +856,12 @@ static inline void process_step(
 // need to break.
 static struct step_output *onestep(
     struct worker *w,       // thread info
-    struct node *node,      // starting node
     struct state *sc,       // actual state
-    hvalue_t ctx,           // context identifier
     struct step *step,      // step info
     hvalue_t choice,        // if about to make a choice, which choice?
     bool infloop_detect     // try to detect infloop from the start
 ) {
-    assert(state_size(sc) == state_size(node_state(node)));
+    // assert(state_size(sc) == state_size(node_state(node)));
     assert(!step->ctx->terminated);
     assert(!step->ctx->failed);
 
@@ -1297,13 +1296,13 @@ static void trystep(
         // detected, it will run again immediately looking for infinite
         // loops to find the shortest counterexample.
         struct step_output *so =
-            onestep(w, node, state, ctx, step, choice, false);
+            onestep(w, state, step, choice, false);
         if (so == NULL) {        // ran into an infinite loop
             // TODO.  Need probably more cleanup of step, like ai
             step->nlog = step->nspawned = step->nunstopped = 0;
             memcpy(&w->ctx, cc, ctx_size(cc));
             step->vars = state->vars;
-            so = onestep(w, node, state, ctx, step, choice, true);
+            so = onestep(w, state, step, choice, true);
         }
 
         // Mark as completed
@@ -1449,13 +1448,13 @@ static void print_context(
     assert(strcmp(global.code.instrs[ecs->pc].oi->name, "Frame") == 0);
     const struct env_Frame *ef = global.code.instrs[ecs->pc].env;
     char *s = value_string(ef->name);
-    int len = strlen(s);
+    size_t len = strlen(s);
     char *a = json_escape_value(ecs->arg);
     if (*a == '(') {
-        fprintf(file, "%s\"name\": \"%.*s%s\",\n", prefix, len - 2, s + 1, a);
+        fprintf(file, "%s\"name\": \"%.*s%s\",\n", prefix, (int) (len - 2), s + 1, a);
     }
     else {
-        fprintf(file, "%s\"name\": \"%.*s(%s)\",\n", prefix, len - 2, s + 1, a);
+        fprintf(file, "%s\"name\": \"%.*s(%s)\",\n", prefix, (int) (len - 2), s + 1, a);
     }
     free(s);
     free(a);
@@ -1482,7 +1481,7 @@ static void print_context(
     fprintf(file, "],\n");
 
     fprintf(file, "%s\"trace\": [\n", prefix);
-    value_trace(file, cs, c->pc, c->vars, prefix);
+    value_trace(file, cs, c->pc, c->vars);
     fprintf(file, "\n");
     fprintf(file, "%s],\n", prefix);
 
@@ -1963,7 +1962,7 @@ static void path_output_microstep(
 #endif
 
         fprintf(file, "          \"trace\": [\n");
-        value_trace(file, newcs, newctx->pc, newctx->vars, "          ");
+        value_trace(file, newcs, newctx->pc, newctx->vars);
         fprintf(file, "\n");
         fprintf(file, "          ],\n");
     }
@@ -2038,13 +2037,13 @@ static void path_output_macrostep(FILE *file, struct macrostep *macro, struct st
     assert(strcmp(global.code.instrs[cs->pc].oi->name, "Frame") == 0);
     const struct env_Frame *ef = global.code.instrs[cs->pc].env;
     char *name = value_string(ef->name);
-    int len = strlen(name);
+    size_t len = strlen(name);
     char *arg = json_escape_value(cs->arg);
     if (*arg == '(') {
-        fprintf(file, "      \"name\": \"%.*s%s\",\n", len - 2, name + 1, arg);
+        fprintf(file, "      \"name\": \"%.*s%s\",\n", (int) (len - 2), name + 1, arg);
     }
     else {
-        fprintf(file, "      \"name\": \"%.*s(%s)\",\n", len - 2, name + 1, arg);
+        fprintf(file, "      \"name\": \"%.*s(%s)\",\n", (int) (len - 2), name + 1, arg);
     }
     free(name);
     free(arg);
@@ -2762,7 +2761,7 @@ static bool cpuinfo_addrecord(int processor, int phys_id, int core_id){
 }
 
 // Like POSIX getline, but works in Windows too
-static int my_getline(char **buf, size_t *cap, FILE *fp) {
+static size_t my_getline(char **buf, size_t *cap, FILE *fp) {
     int c = fgetc(fp);
     if (c == EOF) {
         return -1;

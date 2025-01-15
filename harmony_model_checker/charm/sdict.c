@@ -56,11 +56,6 @@ struct sdict *sdict_new(char *whoami, unsigned int value_len, unsigned int initi
 	return dict;
 }
 
-bool sdict_remove(struct sdict *dict, const void *key, unsigned int keylen){
-    assert(false);
-    return false;
-}
-
 void sdict_delete(struct sdict *dict) {
 	for (unsigned int i = 0; i < dict->length; i++) {
 		if (dict->stable[i] != NULL)

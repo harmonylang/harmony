@@ -78,11 +78,6 @@ struct dict *dict_new(char *whoami, unsigned int value_len, unsigned int initial
 	return dict;
 }
 
-bool dict_remove(struct dict *dict, const void *key, unsigned int keylen){
-    assert(false);
-    return false;
-}
-
 void dict_delete(struct dict *dict) {
 	for (unsigned int i = 0; i < dict->length; i++) {
 		if (dict->stable[i] != NULL)

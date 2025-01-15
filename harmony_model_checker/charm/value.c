@@ -178,8 +178,7 @@ hvalue_t value_put_external(struct allocator *al, struct external_descriptor *de
 }
 
 // Helper function for value_cmp.  False < True, for arbitrary reasons.
-static int value_cmp_bool(hvalue_t v1, hvalue_t v2){
-    assert(v1 != v2);
+static int value_cmp_bool(hvalue_t v1){
     return v1 == 0 ? -1 : 1;
 }
 
@@ -411,7 +410,7 @@ int value_cmp(hvalue_t v1, hvalue_t v2){
     }
     switch (t1) {
     case VALUE_BOOL:
-        return value_cmp_bool(v1 & ~VALUE_LOBITS, v2 & ~VALUE_LOBITS);
+        return value_cmp_bool(v1 & ~VALUE_LOBITS);
     case VALUE_INT:
         return value_cmp_int(v1 & ~VALUE_LOBITS, v2 & ~VALUE_LOBITS);
     case VALUE_ATOM:
@@ -901,7 +900,7 @@ static void value_json_trace(struct strbuf *sb, struct callstack *cs, unsigned i
 // This function prints information about a context (state of a threads) with
 // additional information about its callstack which is kept during the re-execution
 // of a counter-example.
-void value_trace(FILE *file, struct callstack *cs, unsigned int pc, hvalue_t vars, char *prefix){
+void value_trace(FILE *file, struct callstack *cs, unsigned int pc, hvalue_t vars){
     struct strbuf sb;
     strbuf_init(&sb);
     value_json_trace(&sb, cs, pc, vars);
