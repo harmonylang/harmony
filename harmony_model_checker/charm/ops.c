@@ -180,7 +180,7 @@ static bool is_sequential(hvalue_t seqvars, hvalue_t *indices, unsigned int n){
         assert(VALUE_TYPE(seqs[i]) == VALUE_ADDRESS_SHARED);
         unsigned int sn;
         hvalue_t *inds = value_get(seqs[i], &sn);
-        if (n >= sn && sn >= 0 && memcmp(indices, inds, sn) == 0) {
+        if (n >= sn && memcmp(indices, inds, sn) == 0) {
             return true;
         }
     }
