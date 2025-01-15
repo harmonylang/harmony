@@ -2328,7 +2328,7 @@ static void path_trim(struct allocator *allocator){
 }
 
 // Function to add escapes to a string so it can be used in JSON output.
-static char *json_string_encode(char *s, int len){
+static char *json_string_encode(char *s, size_t len){
     char *result = malloc(4 * len + 1), *p = result;
 
     while (len > 0) {
@@ -4266,8 +4266,8 @@ static void usage(char *prog){
 }
 
 static bool endsWith(char *s, char *suffix){
-    unsigned int n = strlen(s);
-    unsigned int m = strlen(suffix);
+    size_t n = strlen(s);
+    size_t m = strlen(suffix);
     if (n < m) {
         return false;
     }
@@ -4576,7 +4576,7 @@ int exec_model_checker(int argc, char **argv){
     json_buf_t buf;
     buf.base = malloc(CHUNKSIZE);
     buf.len = 0;
-    int n;
+    size_t n;
     while ((n = fread(&buf.base[buf.len], 1, CHUNKSIZE, fp)) > 0) {
         buf.len += n;
         buf.base = realloc(buf.base, buf.len + CHUNKSIZE);

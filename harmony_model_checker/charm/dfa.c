@@ -35,7 +35,7 @@ struct dfa *dfa_read(struct allocator *allocator, char *fname){
     json_buf_t buf;
     buf.base = malloc(CHUNKSIZE);
     buf.len = 0;
-    int n;
+    size_t n;
     while ((n = fread(&buf.base[buf.len], 1, CHUNKSIZE, fp)) > 0) {
         buf.len += n;
         buf.base = realloc(buf.base, buf.len + CHUNKSIZE);

@@ -315,7 +315,7 @@ void interrupt_invoke(struct step *step){
     if (step->keep_callstack) {
         struct callstack *cs = new_alloc(struct callstack);
         cs->parent = step->callstack;
-        cs->pc = VALUE_FROM_PC(ctx_trap_pc(step->ctx));
+        cs->pc = (unsigned int) VALUE_FROM_PC(ctx_trap_pc(step->ctx));
         cs->arg = ctx_trap_arg(step->ctx);
         cs->sp = step->ctx->sp;
         cs->vars = step->ctx->vars;
@@ -324,7 +324,7 @@ void interrupt_invoke(struct step *step){
         strbuf_printf(&step->explain, "operation aborted; interrupt invoked");
     }
     ctx_push(step->ctx, ctx_trap_arg(step->ctx));
-    step->ctx->pc = VALUE_FROM_PC(ctx_trap_pc(step->ctx));
+    step->ctx->pc = (uint16_t) VALUE_FROM_PC(ctx_trap_pc(step->ctx));
     ctx_trap_pc(step->ctx) = 0;
     step->ctx->interruptlevel = true;
 }
@@ -504,7 +504,7 @@ static bool ind_remove(struct context *ctx, hvalue_t root, hvalue_t *indices, in
         if (VALUE_TYPE(indices[0]) != VALUE_INT) {
             return false;
         }
-        int index = VALUE_FROM_INT(indices[0]);
+        int index = (int) VALUE_FROM_INT(indices[0]);
         if (index < 0 || index >= (int) size) {
             return false;
         }
@@ -545,7 +545,7 @@ static bool ind_remove(struct context *ctx, hvalue_t root, hvalue_t *indices, in
 // as the return address and the local variables of the old method onto the
 // callstack.
 static void update_callstack(struct step *step, hvalue_t method, hvalue_t arg) {
-    unsigned int pc = VALUE_FROM_PC(method);
+    unsigned int pc = (unsigned int) VALUE_FROM_PC(method);
 
     // This may not hold because Builtin commands
     // assert(strcmp(global.code.instrs[pc].oi->name, "Frame") == 0);
@@ -581,7 +581,7 @@ void op_Apply(const void *env, struct state *state, struct step *step){
     ctx_push(step->ctx, arg);
 
     // Continue at the given function
-    step->ctx->pc = VALUE_FROM_PC(ea->method);
+    step->ctx->pc = (uint16_t) VALUE_FROM_PC(ea->method);
 }
 
 void op_Assert(const void *env, struct state *state, struct step *step){
@@ -816,7 +816,7 @@ static void do_return(struct state *state, struct step *step, hvalue_t result){
     // See if it's a normal call or an interrupt
     hvalue_t callval = ctx_pop(step->ctx);
     assert(VALUE_TYPE(callval) == VALUE_INT);
-    unsigned int call = VALUE_FROM_INT(callval);
+    unsigned int call = (unsigned int) VALUE_FROM_INT(callval);
     switch (call & CALLTYPE_MASK) {
     case CALLTYPE_NORMAL:
         // In case of a normal call, the list of arguments of a Load
@@ -1197,7 +1197,7 @@ static hvalue_t direct_getarg(struct step *step){
     // See if it's a normal call.
     hvalue_t callval = ctx_pop(step->ctx);
     assert(VALUE_TYPE(callval) == VALUE_INT);
-    unsigned int call = VALUE_FROM_INT(callval);
+    unsigned int call = (unsigned int) VALUE_FROM_INT(callval);
     assert((call & CALLTYPE_MASK) == CALLTYPE_NORMAL);
     unsigned int pc = call >> CALLTYPE_BITS;
     assert(pc != step->ctx->pc);
@@ -1549,7 +1549,7 @@ void op_Bag_Size(const void *env, struct state *state, struct step *step){
             value_ctx_failure(step->ctx, step->allocator, "bag.size: not a bag");
             return;
         }
-        total += VALUE_FROM_INT(list[i]);
+        total += (unsigned int) VALUE_FROM_INT(list[i]);
     }
     do_return(state, step, VALUE_TO_INT(total));
 }
@@ -2127,7 +2127,7 @@ void next_Load(const void *env, struct context *ctx, FILE *fp){
         x = indices_string(el->indices, el->n);
     }
     assert(x[0] == '?');
-    int n = strlen(x);
+    size_t n = strlen(x);
     char *json = json_escape(x+1, n-1);
     fprintf(fp, "{ \"type\": \"Load\", \"var\": \"%s\" }", json);
     free(json);
@@ -2173,7 +2173,7 @@ void do_Call(struct step *step,
     ctx_push(step->ctx, args[0]);
 
     // Continue at the given function
-    step->ctx->pc = VALUE_FROM_PC(method);
+    step->ctx->pc = (uint16_t) VALUE_FROM_PC(method);
 }
 
 // Helper function to load as much as possible using the address (or really,
@@ -2523,7 +2523,7 @@ void op_Push(const void *env, struct state *state, struct step *step){
     const struct env_Push *ep = env;
 
     if (step->keep_callstack && VALUE_TYPE(ep->value) == VALUE_PC) {
-        unsigned int pc = VALUE_FROM_PC(ep->value);
+        unsigned int pc = (unsigned int) VALUE_FROM_PC(ep->value);
         if (strcmp(global.code.instrs[pc].oi->name, "Frame") == 0) {
             const struct env_Frame *ef = global.code.instrs[pc].env;
             strbuf_printf(&step->explain, "push program counter constant %u (%+)", pc);
@@ -2712,7 +2712,7 @@ static unsigned int sort(hvalue_t *vals, unsigned int n){
         }
     }
     p++;
-    return p - vals;
+    return (unsigned int) (p - vals);
 }
 
 void op_SetIntLevel(const void *env, struct state *state, struct step *step){
@@ -2773,7 +2773,7 @@ void op_Spawn(
     hvalue_t pc = indices[0], arg = indices[1];
 
     if (step->keep_callstack && VALUE_TYPE(pc) == VALUE_PC) {
-        unsigned int ip = VALUE_FROM_PC(pc);
+        unsigned int ip = (unsigned int) VALUE_FROM_PC(pc);
         if (strcmp(global.code.instrs[ip].oi->name, "Frame") == 0) {
             const struct env_Frame *ef = global.code.instrs[ip].env;
             strbuf_printf(&step->explain, "pop local state (#+), arg (#+), and pc (%d: #+), and spawn thread", ip);
@@ -2797,7 +2797,7 @@ void op_Spawn(
         value_ctx_extend(ctx);
         ctx_this(ctx) = thisval;
     }
-    ctx->pc = pc;
+    ctx->pc = (uint16_t) pc;
     ctx->vars = VALUE_DICT;
     ctx->interruptlevel = false;
     ctx->eternal = se->eternal;
@@ -2823,7 +2823,7 @@ void op_Spawn(
         global.processes[global.nprocesses] = cc;
         // printf("Add T%u %p\n", global.nprocesses, (void *) cc);
         struct callstack *cs = new_alloc(struct callstack);
-        cs->pc = pc;
+        cs->pc = (unsigned int) pc;
         cs->arg = arg;
         cs->vars = VALUE_DICT;
         // TODO.  What's the purpose of the next line exactly
@@ -2966,7 +2966,7 @@ void next_Store(const void *env, struct context *ctx, FILE *fp){
         size /= sizeof(hvalue_t);
         char *x = indices_string(indices, size);
         assert(x[0] == '?');
-        int n = strlen(x);
+        size_t n = strlen(x);
         char *json = json_escape(x+1, n-1);
         char *val = value_json(v);
         fprintf(fp, "{ \"type\": \"Store\", \"var\": \"%s\", \"value\": %s }", json, val);
@@ -2977,7 +2977,7 @@ void next_Store(const void *env, struct context *ctx, FILE *fp){
     else {
         char *x = indices_string(es->indices, es->n);
         assert(x[0] == '?');
-        int n = strlen(x);
+        size_t n = strlen(x);
         char *json = json_escape(x+1, n-1);
         char *val = value_json(v);
         fprintf(fp, "{ \"type\": \"Store\", \"var\": \"%s\", \"value\": %s }", json, val);
@@ -4020,7 +4020,7 @@ hvalue_t f_intersection(
             }
         }
 
-        hvalue_t result = value_put_set(step->allocator, vals, (char *) v - (char *) vals);
+        hvalue_t result = value_put_set(step->allocator, vals, (unsigned int) ((char *) v - (char *) vals));
 #ifdef HEAP_ALLOC
         free(vals);
         free(vi);
@@ -4200,7 +4200,7 @@ hvalue_t f_int(struct state *state, struct step *step, hvalue_t *args, unsigned 
         if (VALUE_TYPE(av[1]) != VALUE_INT) {
             return value_ctx_failure(step->ctx, step->allocator, "int(): second argument must be an integer");
         }
-        base = VALUE_FROM_INT(av[1]);
+        base = (unsigned int) VALUE_FROM_INT(av[1]);
         if (base < 2 || base > 36) {
             return value_ctx_failure(step->ctx, step->allocator, "int(): unsupported base");
         }
@@ -4365,7 +4365,7 @@ hvalue_t f_zip(struct state *state, struct step *step, hvalue_t *args, unsigned 
     }
 
 #ifdef HEAP_ALLOC
-    hvalue_t *v = malloc(cnt * sizeof(*v));
+    hvalue_t *vec = malloc(cnt * sizeof(*vec));
     hvalue_t *w = malloc(min * sizeof(*w));
 #else
     hvalue_t vec[cnt];

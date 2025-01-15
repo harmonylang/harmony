@@ -338,7 +338,7 @@ void json_dump(struct json_value *jv, FILE *fp, unsigned int ind){
 /* Allocate and get a string out of an atom identified by string key.
  */
 char *json_lookup_string(struct dict *map, char *key){
-	struct json_value *jv = dict_lookup(map, key, strlen(key));
+	struct json_value *jv = dict_lookup(map, key, (unsigned int) strlen(key));
 	if (jv == 0) {
 		return 0;
 	}
@@ -352,7 +352,7 @@ char *json_lookup_string(struct dict *map, char *key){
 /* Find a map inside the map by string key.
  */
 struct json_value *json_lookup_map(struct dict *map, char *key){
-	struct json_value *jv = dict_lookup(map, key, strlen(key));
+	struct json_value *jv = dict_lookup(map, key, (unsigned int) strlen(key));
 	if (jv == 0) {
 		return 0;
 	}
@@ -364,7 +364,7 @@ struct json_value *json_lookup_map(struct dict *map, char *key){
  * inside the map by string key.
  */
 struct json_value *json_lookup_value(struct dict *map, char *key){
-	struct json_value *jv = dict_lookup(map, key, strlen(key));
+	struct json_value *jv = dict_lookup(map, key, (unsigned int) strlen(key));
 	if (jv == 0) {
 		return 0;
 	}
