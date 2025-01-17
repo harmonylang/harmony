@@ -30,8 +30,8 @@ PACKAGE_NAME = 'harmony'
 PROJECT_DIR_NAME = 'harmony_model_checker'
 
 python_version = sys.version_info[:2]
-if python_version < (3, 6):
-    print("{} requires Python version 3.6 or later".format(PACKAGE_NAME))
+if python_version < (3, 8):
+    print("{} requires Python version 3.8 or later".format(PACKAGE_NAME))
     print("(Version {}.{} detected)".format(*python_version))
     sys.exit(1)
 
@@ -161,7 +161,7 @@ setuptools.setup(
             'harmony=harmony_model_checker.main:main'
         ]
     },
-    python_requires=">=3.6",
+    python_requires=">=3.8",
     ext_modules=[module],
     cmdclass={
         "build_ext": BuildExtCommand

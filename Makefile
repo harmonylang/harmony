@@ -21,7 +21,7 @@ type-check:
 		--follow-imports silent \
 		--check-untyped-defs \
 		--allow-untyped-defs \
-		--python-version 3.6 \
+		--python-version 3.8 \
 		--html-report mypy-report \
 		--txt-report mypy-report
 
