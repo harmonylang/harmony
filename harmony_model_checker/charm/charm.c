@@ -5323,9 +5323,6 @@ int exec_model_checker(int argc, char **argv){
     fprintf(out, "}\n");
     fclose(out);
 
-    // iface_write_spec_graph_to_file("iface.gv");
-    // iface_write_spec_graph_to_json_file("iface.json");
-
     if (Tflag) {
         printf("* Timing info\n");
         for (unsigned int i = 0; i < global.nphases; i++) {
