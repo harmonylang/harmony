@@ -54,12 +54,16 @@ def notify(c):
     atomically if !c != []:
         go ((!c)[0]) ()
         del (!c)[0]
-        
+ 
 def notify_all(c):
     atomically:
         for ctx in !c:
             go ctx ()
         !c = []
+
+# Deprecated
+def notifyAll(c):
+    notify_all(c)
         
 def Semaphore(cnt):
     result = { .count: cnt, .waiters: [] }

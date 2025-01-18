@@ -60,6 +60,10 @@ def notify(c):
 def notify_all(c):
     atomically !c = bags.empty()
 
+# Deprecated
+def notifyAll(c):
+    atomically !c = bags.empty()
+
 def Semaphore(cnt) returns result:
     result = cnt
 

@@ -33,6 +33,10 @@ def notify(c):
 def notify_all(c):
     c->waiters = {}
 
+# Deprecated
+def notifyAll(c):
+    c->waiters = {}
+
 def Semaphore(cnt):
     result = cnt
 

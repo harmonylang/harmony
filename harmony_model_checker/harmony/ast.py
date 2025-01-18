@@ -371,7 +371,15 @@ class NameAST(AST):
             else:
                 code.append(StoreVarOp(None, self.name[0]), start, stop, stmt=stmt)
         else:
-            assert t == "global", (t, v)
+            if t != "global":
+                (lexeme, file, line, column) = v
+                raise HarmonyCompilerError(
+                    message="not a mutable variable: " + lexeme,
+                    lexeme=lexeme,
+                    filename=file,
+                    line=line,
+                    column=column
+                )
             code.append(StoreOp(None, self.name, None), start, stop, stmt=stmt)
 
     def isConstant(self, scope):
