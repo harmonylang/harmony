@@ -26,6 +26,10 @@ def notify(c):
 def notify_all(c):
     pass
 
+# Deprecated
+def notifyAll(c):
+    pass
+
 def Semaphore(cnt):
     result = cnt
 
