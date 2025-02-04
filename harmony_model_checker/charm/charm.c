@@ -153,6 +153,8 @@ struct alloc_state {
     uintptr_t frag_waste;
 };
 
+#define N_PC_SAMPLES    64
+
 // One of these per worker thread
 struct worker {
     // Putting the more-or-less constant fields here at the beginning
@@ -223,6 +225,11 @@ struct worker {
 
     unsigned int sb_index;
     unsigned int diameter;          // diameter of Kripke structure
+    unsigned int choose_states;     // # choose states
+    unsigned int choose_edges;      // # choose edges
+
+    unsigned int pc_samples[N_PC_SAMPLES];
+    unsigned int pc_sample_next;
 
     // To detect infinite loops
     char *inf_buf;
@@ -680,6 +687,11 @@ static inline void process_step(
     struct state_header *sh
 ) {
     struct step_output *so = stc->u.completed;
+
+    w->pc_samples[w->pc_sample_next++] = so->pc;
+    if (w->pc_sample_next == N_PC_SAMPLES) {
+        w->pc_sample_next = 0;
+    }
 
     if (sh->edge_index < 0) { // invariant
         assert(stc->completed);
@@ -1165,6 +1177,7 @@ static struct step_output *onestep(
     so->after = value_put_context(step->allocator, step->ctx);
     so->ai = step->ai;     step->ai = NULL;
     so->nsteps = instrcnt;
+    so->pc = step->ctx->pc;
 
     assert(choose_count <= 255);
     so->choose_count = choose_count;
@@ -2698,6 +2711,10 @@ static void do_work2(struct worker *w){
                     shard->tb_tail = rb;
                 }
                 assert(shard->tb_tail->nresults == shard->tb_size % NRESULTS);
+                if (sc->type == STATE_CHOOSE) {
+                    w->choose_states++;
+                    w->choose_edges += sh->noutgoing;
+                }
             }
 
             // See if the node points sideways or backwards, in which
@@ -2995,6 +3012,20 @@ static void vproc_tree_alloc(struct vproc_tree *vt, struct worker *workers, unsi
     }
 }
 
+struct sample {
+    unsigned int pc;
+    unsigned int count;
+};
+
+static int sample_cmp(const void *x, const void *y){
+    const struct sample *xx = x, *yy = y;
+
+    if (xx->count == yy->count) {
+        return xx->pc - yy->pc;
+    }
+    return yy->count - xx->count;
+}
+
 // This is a main worker thread for the model checking phase.  arg points to
 // the struct worker record for this worker.
 //
@@ -3123,22 +3154,48 @@ static void worker(void *arg){
                 if (global.lasttime != 0) {
                     unsigned int enqueued = 0, dequeued = 0;
                     unsigned long allocated = global.allocated;
-                    unsigned int diameter = 0;
+                    unsigned int si_hits = 0, si_total = 0, diameter = 0;
+                    unsigned int choose_states = 0;
+
+                    // Count how many times each pc was invoked
+                    struct sample *npc = calloc(global.code.len, sizeof(*npc));
+                    for (unsigned int pc = 0; pc < global.code.len; pc++) {
+                        npc[pc].pc = pc;
+                    }
+
                     for (unsigned int i = 0; i < w->nworkers; i++) {
                         struct worker *w2 = &global.workers[i];
                         enqueued += w2->shard.tb_size;
                         dequeued += w2->shard.tb_index;
                         allocated += w2->alloc_state.allocated;
+                        si_hits += w->si_hits;
+                        si_total += w->si_total;
+                        choose_states += w->choose_states;
                         if (w2->diameter > diameter) {
                             diameter = w2->diameter;
                         }
+                        for (unsigned int j = 0; j < N_PC_SAMPLES; j++) {
+                            npc[w->pc_samples[j]].count++;
+                        }
                     }
+
+                    qsort(npc, global.code.len, sizeof(*npc), sample_cmp);
+
                     double gigs = (double) allocated / (1 << 30);
-                    fprintf(stderr, "    states=%u diam=%u q=%d mem=%.3lfGB\n",
-                            enqueued, diameter,
-                            enqueued - dequeued,
-                            gigs);
-                    global.last_nstates = enqueued;
+                    fprintf(stderr, "    states=%u edges=%u diam=%u q=%d mem=%.3lfGB\n",
+                            enqueued, si_total, diameter, enqueued - dequeued, gigs);
+                    fprintf(stderr, "       choose=%u, computations=%u, rounds=%u, values=%u\n",
+                            choose_states, (si_total - si_hits), nrounds, global.values->count);
+                    fprintf(stderr, "       ");
+                    for (unsigned int i = 0; i < 10; i++) {
+                        if (npc[i].count == 0) {
+                            break;
+                        }
+                        fprintf(stderr, " %u(%.1lf%%)", npc[i].pc, 100.0 * npc[i].count / N_PC_SAMPLES / w->nworkers);
+                    }
+                    fprintf(stderr, "\n");
+
+                    free(npc);
                 }
                 global.lasttime = after;
                 if (after > w->timeout) {

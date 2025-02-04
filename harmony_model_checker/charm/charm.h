@@ -128,7 +128,6 @@ struct global {
     struct callstack **callstacks;  // array of callstacks of processes
     unsigned int nprocesses;        // the number of processes in the list
     double lasttime;                // since last report printed
-    unsigned int last_nstates;      // to measure #states / second
     struct dfa *dfa;                // for tracking correct behaviors
     struct json_value *pretty;      // for output
     bool run_direct;                // non-model-checked mode
