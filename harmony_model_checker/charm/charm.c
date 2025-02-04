@@ -2654,60 +2654,101 @@ static void do_work_b(struct worker *w){
     }
 }
 
+static inline void do_work2_single_state(struct worker *w, struct shard *shard, struct state_header *sh){
+
+    struct state *sc = (struct state *) &sh[1];
+    unsigned int size = state_size(sc);
+
+    // See if this state has been computed before by looking up the node,
+    // or allocate if not.
+    bool new;
+    struct dict_assoc *hn = sdict_find_new(shard->states, &w->allocator,
+        sc, size, sh->noutgoing * sizeof(struct edge), &new, sh->hash);
+        // sc, size, sh->noutgoing * sizeof(struct edge), &new, meiyan3(sc));
+    struct node *next = (struct node *) &hn[1];
+    struct edge *edge = &node_edges(sh->node)[sh->edge_index];
+    edge->dst = next;
+
+    if (new) {
+        next->failed = edge->failed;
+        next->initial = false;
+        next->parent = sh->node;
+        next->len = sh->node->len + 1;
+        if (next->len > w->diameter) {
+            w->diameter = next->len;
+        }
+        next->nedges = sh->noutgoing;
+
+        assert(shard->tb_tail->nresults == shard->tb_size % NRESULTS);
+        assert(shard->tb_tail->next == NULL);
+        shard->tb_size++;
+        shard->tb_tail->results[shard->tb_tail->nresults++] = next;
+        if (shard->tb_tail->nresults == NRESULTS) {
+            struct results_block *rb = walloc_fast(w, sizeof(*shard->tb_tail));
+            rb->nresults = 0;
+            rb->next = NULL;
+            shard->tb_tail->next = rb;
+            shard->tb_tail = rb;
+        }
+        assert(shard->tb_tail->nresults == shard->tb_size % NRESULTS);
+    }
+
+    // See if the node points sideways or backwards, in which
+    // case cycles in the graph are possible
+    else {
+        w->miss++;
+        if (next != sh->node && next->len <= sh->node->len) {
+            w->cycles_possible = true;
+        }
+    }
+}
+
 static void do_work2(struct worker *w){
     struct shard *shard = &w->shard; 
 
     // printf("WORK 2: %u: %u %lu\n", w->index, shard->sb_index, sizeof(shard->state_buffer));
 
+    int pre_fetch_buf_size = 20;
+    struct state_header **pre_fetch_buf = malloc(sizeof(struct state_header *) * pre_fetch_buf_size);
+    int pre_fetch_buf_cnt = 0;
+
     for (unsigned int i = 0; i < w->nworkers; i++) {
         struct shard *s2 = &global.workers[i].shard;
         for (struct state_header *sh = s2->peers[w->index].first;
                                     sh != NULL; sh = sh->next) {
-            struct state *sc = (struct state *) &sh[1];
-            unsigned int size = state_size(sc);
+            
+            if (pre_fetch_buf_cnt >= pre_fetch_buf_size) {
 
-            // See if this state has been computed before by looking up the node,
-            // or allocate if not.
-            bool new;
-            struct dict_assoc *hn = sdict_find_new(shard->states, &w->allocator,
-                sc, size, sh->noutgoing * sizeof(struct edge), &new, sh->hash);
-                // sc, size, sh->noutgoing * sizeof(struct edge), &new, meiyan3(sc));
-            struct node *next = (struct node *) &hn[1];
-            struct edge *edge = &node_edges(sh->node)[sh->edge_index];
-            edge->dst = next;
+                struct state_header *tmp_sh = sh;
 
-            if (new) {
-                next->failed = edge->failed;
-                next->initial = false;
-                next->parent = sh->node;
-                next->len = sh->node->len + 1;
-                if (next->len > w->diameter) {
-                    w->diameter = next->len;
+                for (int i = 0; i < pre_fetch_buf_cnt; i++) {
+                    sh = pre_fetch_buf[i];
+                    sdict_prefetch_beginning_assoc(shard->states, sh->hash);
                 }
-                next->nedges = sh->noutgoing;
-
-                assert(shard->tb_tail->nresults == shard->tb_size % NRESULTS);
-                assert(shard->tb_tail->next == NULL);
-                shard->tb_size++;
-                shard->tb_tail->results[shard->tb_tail->nresults++] = next;
-                if (shard->tb_tail->nresults == NRESULTS) {
-                    struct results_block *rb = walloc_fast(w, sizeof(*shard->tb_tail));
-                    rb->nresults = 0;
-                    rb->next = NULL;
-                    shard->tb_tail->next = rb;
-                    shard->tb_tail = rb;
+                for (int i = 0; i < pre_fetch_buf_cnt; i++) {
+                    sh = pre_fetch_buf[i];
+                    do_work2_single_state(w, shard, sh);
                 }
-                assert(shard->tb_tail->nresults == shard->tb_size % NRESULTS);
+                sh = tmp_sh;
+
+                pre_fetch_buf_cnt = 0;
+                pre_fetch_buf[pre_fetch_buf_cnt++] = sh;
+                sdict_prefetch_base_ptr(shard->states, sh->hash);
             }
-
-            // See if the node points sideways or backwards, in which
-            // case cycles in the graph are possible
             else {
-                w->miss++;
-                if (next != sh->node && next->len <= sh->node->len) {
-                    w->cycles_possible = true;
-                }
+                pre_fetch_buf[pre_fetch_buf_cnt++] = sh;
+                sdict_prefetch_base_ptr(shard->states, sh->hash);
             }
+        }
+
+        for (int i = 0; i < pre_fetch_buf_cnt; i++) {
+            struct state_header *sh = pre_fetch_buf[i];
+            sdict_prefetch_beginning_assoc(shard->states, sh->hash);
+        }
+
+        for (int i = 0; i < pre_fetch_buf_cnt; i++) {
+            struct state_header *sh = pre_fetch_buf[i];
+            do_work2_single_state(w, shard, sh);
         }
     }
 
