@@ -175,7 +175,12 @@ function getCode(pc) {
   var loc = state.hvm.locs[pc];
   var module = state.hvm.modules[loc.module];
   loc.file = module.file;
-  loc.code = module.lines[loc.line - 1];
+  if (loc.line - 1 < module.lines.length) {
+    loc.code = module.lines[loc.line - 1];
+  }
+  else {
+    loc.code = null;
+  }
   return loc;
 //  var locs = state.locations;
 //  while (pc >= 0) {
@@ -776,23 +781,28 @@ function run_microstep(t) {
 //    mis.cloc = null;
 //  }
 //  else
-    {
+  {
     coderow.style.color = "blue";
     if (t+1 < microsteps.length) {
       var nmis = microsteps[t+1];
-      code = getCode(nmis.pc);
-      var l1 = parseInt(code.line);
-      var l2 = parseInt(code.endline);
-      if (l1 == l2 && l1 == code.stmt[0] && l2 == code.stmt[2]) {
-        var c1 = parseInt(code.column) - 1;
-        var c2 = parseInt(code.endcolumn);
-        var s1 = code.code.slice(0, c1);
-        var s2 = code.code.slice(c1, c2);
-        var s3 = code.code.slice(c2);
-        coderow.innerHTML = '<a href="' + code.file + '">' + code.module + "</a>:" + code.line + "&nbsp;&nbsp;&nbsp;" + escapeHTML(s1) + "<span style='color:green'>" + escapeHTML(s2) + "</span>" + escapeHTML(s3);
+      loc = getCode(nmis.pc);
+      if (loc.code == null) {
+          coderow.innerHTML = '<a href="' + loc.file + '">' + loc.module + "</a>:" + loc.line + "&nbsp;&nbsp;&nbsp;" + escapeHTML("<end>");
       }
       else {
-        coderow.innerHTML = '<a href="' + code.file + '">' + code.module + "</a>:" + code.line + "&nbsp;&nbsp;&nbsp;" + escapeHTML(code.code);
+        var l1 = parseInt(loc.line);
+        var l2 = parseInt(loc.endline);
+        if (l1 == l2 && l1 == loc.stmt[0] && l2 == loc.stmt[2]) {
+          var c1 = parseInt(loc.column) - 1;
+          var c2 = parseInt(loc.endcolumn);
+          var s1 = loc.code.slice(0, c1);
+          var s2 = loc.code.slice(c1, c2);
+          var s3 = loc.code.slice(c2);
+          coderow.innerHTML = '<a href="' + loc.file + '">' + loc.module + "</a>:" + loc.line + "&nbsp;&nbsp;&nbsp;" + escapeHTML(s1) + "<span style='color:green'>" + escapeHTML(s2) + "</span>" + escapeHTML(s3);
+        }
+        else {
+          coderow.innerHTML = '<a href="' + loc.file + '">' + loc.module + "</a>:" + loc.line + "&nbsp;&nbsp;&nbsp;" + escapeHTML(loc.code);
+        }
       }
     }
   }

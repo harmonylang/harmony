@@ -3202,7 +3202,7 @@ static void worker(void *arg){
                             enqueued, si_total, diameter, enqueued - dequeued, gigs);
                     fprintf(stderr, "       choose=%u, computations=%u\n",
                             choose_states, (si_total - si_hits));
-                    if (diameter > 100) {
+                    if (diameter > MAX_DIAMETER) {
                         fprintf(stderr, "        WARNING: likely infinite model --- will not terminate\n");
                     }
                     for (unsigned int i = 0; i < 5; i++) {
