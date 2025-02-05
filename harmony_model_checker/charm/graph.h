@@ -137,7 +137,7 @@ enum fail_type {
 struct node {
     struct node *parent;    // path to initial state
     uint32_t id;            // nodes are numbered starting from 0
-    uint16_t len;           // length of path to initial state
+    uint16_t len;           // length of path to initial state  // TODO 8 bits is probably enough
     uint8_t nedges;         // number of outgoing edges  // TODO also maintained indirectly by hash table
     bool initial : 1;       // initial state
     bool on_stack : 1;      // for Tarjan

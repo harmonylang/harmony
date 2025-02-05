@@ -209,10 +209,15 @@ class Verbose:
             if expr != self.expr:
                 spaces = 0
                 module = self.hvm["modules"][loc["module"]]
-                code = module["lines"][int(loc["line"]) - 1]
-                while spaces < len(code) and code[spaces] == ' ':
-                    spaces += 1
-                print("  source code:       %s"%code[spaces:], file=f)
+                line_index = int(loc["line"]) - 1
+                assert line_index >= 0
+                if line_index >= len(module["lines"]):
+                    print("  souce code:       <end>", file=f)
+                else:
+                    code = module["lines"][int(loc["line"]) - 1]
+                    while spaces < len(code) and code[spaces] == ' ':
+                        spaces += 1
+                    print("  source code:       %s"%code[spaces:], file=f)
                 if stmt[0] == stmt[2] == expr[0] == expr[2]:
                     for _ in range(expr[1] + 20 - spaces):
                         print(" ", end="", file=f)

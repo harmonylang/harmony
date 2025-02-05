@@ -50,6 +50,9 @@
 #include "thread.h"
 #include "spawn.h"
 
+// Heuristic check for possible infinite model: diameter of Kripke structure
+#define MAX_DIAMETER    250
+
 // The model checker leverages partial order reduction to reduce the
 // number of states and interleavings considered.  In particular, it
 // will combine virtual machine instructions that have no effect on
@@ -871,7 +874,8 @@ static struct step_output *onestep(
     struct state *sc,       // actual state
     struct step *step,      // step info
     hvalue_t choice,        // if about to make a choice, which choice?
-    bool infloop_detect     // try to detect infloop from the start
+    bool infloop_detect,    // try to detect infloop from the start
+    unsigned int diameter   // distance from initial state
 ) {
     // assert(state_size(sc) == state_size(node_state(node)));
     assert(!step->ctx->terminated);
@@ -922,6 +926,10 @@ static struct step_output *onestep(
 
         // See what kind of instruction is next
         // printf("--> %u %s %u %u\n", pc, oi->name, step->ctx->sp, instrcnt);
+
+        if (diameter > MAX_DIAMETER) {
+            value_ctx_failure(step->ctx, step->allocator, "too deep --- likely infinite model");
+        }
 
         // If it's a Choose instruction, we should break no matter what, even if
         // in atomic mode.
@@ -1309,13 +1317,13 @@ static void trystep(
         // detected, it will run again immediately looking for infinite
         // loops to find the shortest counterexample.
         struct step_output *so =
-            onestep(w, state, step, choice, false);
+            onestep(w, state, step, choice, false, node->len);
         if (so == NULL) {        // ran into an infinite loop
             // TODO.  Need probably more cleanup of step, like ai
             step->nlog = step->nspawned = step->nunstopped = 0;
             memcpy(&w->ctx, cc, ctx_size(cc));
             step->vars = state->vars;
-            so = onestep(w, state, step, choice, true);
+            so = onestep(w, state, step, choice, true, node->len);
         }
 
         // Mark as completed
@@ -1635,12 +1643,14 @@ static void twostep(
     hvalue_t choice,
     unsigned int nsteps,
     unsigned int pid,
+    unsigned int diameter,
     struct macrostep *macro
 ){
     sc->type = STATE_NORMAL;
     sc->chooser = 0;
 
     // printf("NSTEPS %u\n", nsteps);
+    // printf("DIAM %u\n", diameter);
 
     struct step step;
     memset(&step, 0, sizeof(step));
@@ -1667,8 +1677,11 @@ static void twostep(
 
     unsigned int instrcnt = 0;
     for (;;) {
-        int pc = step.ctx->pc;
+        if (diameter > MAX_DIAMETER) {
+            value_ctx_failure(step.ctx, step.allocator, "too deep --- likely infinite model");
+        }
 
+        int pc = step.ctx->pc;
         hvalue_t print = 0;
         struct instr *instrs = global.code.instrs;
         struct op_info *oi = instrs[pc].oi;
@@ -1694,6 +1707,7 @@ static void twostep(
 
         assert(!instrs[pc].choose || choice != 0);
         make_microstep(sc, step.ctx, step.callstack, false, instrs[pc].choose, choice, print, &step, macro);
+
         if (step.ctx->terminated || step.ctx->failed || step.ctx->stopped) {
             break;
         }
@@ -1853,6 +1867,7 @@ static void path_recompute(){
             edge_input(e)->choice,
             edge_output(e)->nsteps,
             pid,
+            i,
             macro
         );
         // assert(global.processes[pid] == edge_output(e)->after || edge_output(e)->after == 0);
@@ -3185,8 +3200,11 @@ static void worker(void *arg){
                     double gigs = (double) allocated / (1 << 30);
                     fprintf(stderr, "    states=%u edges=%u diam=%u q=%d mem=%.3lfGB\n",
                             enqueued, si_total, diameter, enqueued - dequeued, gigs);
-                    fprintf(stderr, "       choose=%u, computations=%u, rounds=%u, values=%u\n",
-                            choose_states, (si_total - si_hits), nrounds, global.values->count);
+                    fprintf(stderr, "       choose=%u, computations=%u\n",
+                            choose_states, (si_total - si_hits));
+                    if (diameter > 100) {
+                        fprintf(stderr, "        WARNING: likely infinite model --- will not terminate\n");
+                    }
                     for (unsigned int i = 0; i < 5; i++) {
                         if (npc[i].count == 0) {
                             break;

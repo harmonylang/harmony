@@ -803,7 +803,7 @@ function run_microstep(t) {
   else if (t+1 < microsteps.length) {
     var nmis = microsteps[t+1];
     if (nmis.tid == mis.tid) {
-        mes.nextstep.innerHTML = "next2: " + explain_expand(nmis.explain2);
+        mes.nextstep.innerHTML = "after: " + explain_expand(nmis.explain2);
     }
     else {
         updateStatus(mes);
