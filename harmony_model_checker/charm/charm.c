@@ -3193,23 +3193,37 @@ static void worker(void *arg){
                         }
 
                         struct json_value *pretty = global.pretty->u.list.vals[npc[i].pc];
+                        assert(pretty != 0);
                         assert(pretty->type == JV_LIST);
                         struct json_value *instr = pretty->u.list.vals[0];
+                        assert(instr != 0);
                         assert(instr->type == JV_ATOM);
 
                         // Find module name and line number
                         struct json_value *jv = global.locs->u.list.vals[npc[i].pc];
                         char *module = json_lookup_string(jv->u.map, "module");
+                        assert(module != NULL);
                         char *line = json_lookup_string(jv->u.map, "line");
+                        assert(line != NULL);
                         unsigned long lino = strtoul(line, NULL, 10);
 
                         // Find line of code
                         struct json_value *modinfo = dict_lookup(global.modules->u.map, module, strlen(module));
+                        assert(modinfo != NULL);
                         assert(modinfo->type = JV_MAP);
                         struct json_value *lines = dict_lookup(modinfo->u.map, "lines", 5);
+                        assert(lines != NULL);
                         assert(lines->type = JV_LIST);
-                        struct json_value *code = lines->u.list.vals[lino - 1];
-                        assert(code->type == JV_ATOM);
+                        assert(lino > 0);
+                        struct json_value *code;
+                        if (lino - 1 < lines->u.list.nvals) {
+                            code = lines->u.list.vals[lino - 1];
+                            assert(code != NULL);
+                            assert(code->type == JV_ATOM);
+                        }
+                        else {
+                            code = NULL;
+                        }
 
                         // See what method this is in
                         unsigned int frame = npc[i].pc;
@@ -3222,14 +3236,18 @@ static void worker(void *arg){
                         }
                         const struct env_Frame *ef = global.code.instrs[frame].env;
                         char *method = value_string(ef->name);
+                        assert(*method == '"');
                         unsigned int mlen = (unsigned int) strlen(method);
 
-                        fprintf(stderr, "%u      %4.1lf%%: %s.%.*s:%lu %.*s [%.*s]\n",
-                                npc[i].pc,
-                                100.0 * npc[i].count / N_PC_SAMPLES / w->nworkers,
-                                module, mlen - 2, method + 1, lino,
-                                code->u.atom.len, code->u.atom.base,
-                                instr->u.atom.len, instr->u.atom.base);
+                        fprintf(stderr, "      %4.1lf%%:", 100.0 * npc[i].count / N_PC_SAMPLES / w->nworkers);
+                        fprintf(stderr, "%s:%lu (in %.*s):", module, lino, mlen - 2, method + 1);
+                        if (code == 0) {
+                            fprintf(stderr, "<end of method>");
+                        }
+                        else {
+                            fprintf(stderr, "%.*s", code->u.atom.len, code->u.atom.base);
+                        }
+                        fprintf(stderr, " [%.*s]\n", instr->u.atom.len, instr->u.atom.base);
 
                         free(method);
                         free(module);

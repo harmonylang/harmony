@@ -1791,10 +1791,11 @@ class MethodAST(AST):
         self.stat.compile(ns, code, stmt)
         if self.atomically:
             code.append(AtomicDecOp(), self.token, self.endtoken, stmt=stmt)
+        stmt = self.range(self.endtoken, self.endtoken)
         if self.result is None:
-            code.append(ReturnOp(result, AddressValue(None, [])), self.token, self.endtoken, stmt=stmt)
+            code.append(ReturnOp(result, AddressValue(None, [])), self.endtoken, self.endtoken, stmt=stmt)
         else:
-            code.append(ReturnOp(result, None), self.token, self.endtoken, stmt=stmt)
+            code.append(ReturnOp(result, None), self.endtoken, self.endtoken, stmt=stmt)
         code.nextLabel(endlabel)
 
         # promote global variables
