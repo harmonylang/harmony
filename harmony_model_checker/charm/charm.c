@@ -3242,7 +3242,7 @@ static void worker(void *arg){
                         fprintf(stderr, "      %4.1lf%%:", 100.0 * npc[i].count / N_PC_SAMPLES / w->nworkers);
                         fprintf(stderr, "%s:%lu (in %.*s):", module, lino, mlen - 2, method + 1);
                         if (code == 0) {
-                            fprintf(stderr, "<end of method>");
+                            fprintf(stderr, "<end>");
                         }
                         else {
                             fprintf(stderr, "%.*s", code->u.atom.len, code->u.atom.base);
