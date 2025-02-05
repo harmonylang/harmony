@@ -3181,20 +3181,60 @@ static void worker(void *arg){
 
                     qsort(npc, global.code.len, sizeof(*npc), sample_cmp);
 
+                    fprintf(stderr, "\n");
                     double gigs = (double) allocated / (1 << 30);
                     fprintf(stderr, "    states=%u edges=%u diam=%u q=%d mem=%.3lfGB\n",
                             enqueued, si_total, diameter, enqueued - dequeued, gigs);
                     fprintf(stderr, "       choose=%u, computations=%u, rounds=%u, values=%u\n",
                             choose_states, (si_total - si_hits), nrounds, global.values->count);
-                    fprintf(stderr, "       ");
-                    for (unsigned int i = 0; i < 10; i++) {
+                    for (unsigned int i = 0; i < 5; i++) {
                         if (npc[i].count == 0) {
                             break;
                         }
-                        fprintf(stderr, " %u(%.1lf%%)", npc[i].pc, 100.0 * npc[i].count / N_PC_SAMPLES / w->nworkers);
-                    }
-                    fprintf(stderr, "\n");
 
+                        struct json_value *pretty = global.pretty->u.list.vals[npc[i].pc];
+                        assert(pretty->type == JV_LIST);
+                        struct json_value *instr = pretty->u.list.vals[0];
+                        assert(instr->type == JV_ATOM);
+
+                        // Find module name and line number
+                        struct json_value *jv = global.locs->u.list.vals[npc[i].pc];
+                        char *module = json_lookup_string(jv->u.map, "module");
+                        char *line = json_lookup_string(jv->u.map, "line");
+                        unsigned long lino = strtoul(line, NULL, 10);
+
+                        // Find line of code
+                        struct json_value *modinfo = dict_lookup(global.modules->u.map, module, strlen(module));
+                        assert(modinfo->type = JV_MAP);
+                        struct json_value *lines = dict_lookup(modinfo->u.map, "lines", 5);
+                        assert(lines->type = JV_LIST);
+                        struct json_value *code = lines->u.list.vals[lino - 1];
+                        assert(code->type == JV_ATOM);
+
+                        // See what method this is in
+                        unsigned int frame = npc[i].pc;
+                        for (;;) {
+                            if (global.code.instrs[frame].frame) {
+                                break;
+                            }
+                            assert(frame > 0);
+                            frame--;
+                        }
+                        const struct env_Frame *ef = global.code.instrs[frame].env;
+                        char *method = value_string(ef->name);
+                        unsigned int mlen = (unsigned int) strlen(method);
+
+                        fprintf(stderr, "%u      %4.1lf%%: %s.%.*s:%lu %.*s [%.*s]\n",
+                                npc[i].pc,
+                                100.0 * npc[i].count / N_PC_SAMPLES / w->nworkers,
+                                module, mlen - 2, method + 1, lino,
+                                code->u.atom.len, code->u.atom.base,
+                                instr->u.atom.len, instr->u.atom.base);
+
+                        free(method);
+                        free(module);
+                        free(line);
+                    }
                     free(npc);
                 }
                 global.lasttime = after;
@@ -4742,6 +4782,13 @@ int exec_model_checker(int argc, char **argv){
     assert(jc->type == JV_LIST);
     global.code = code_init_parse(&workers[0].allocator, jc);
 
+    global.locs = dict_lookup(jv->u.map, "locs", 4);
+    assert(global.locs->type == JV_LIST);
+    global.modules = dict_lookup(jv->u.map, "modules", 7);
+    assert(global.modules->type == JV_MAP);
+    global.pretty = dict_lookup(jv->u.map, "pretty", 6);
+    assert(global.pretty->type == JV_LIST);
+
     if (has_countLabel) {
         fprintf(stderr, "countLabel no longer supported\n");
         exit(1);
@@ -5234,9 +5281,6 @@ int exec_model_checker(int argc, char **argv){
         fprintf(stderr, "charm: can't create %s\n", outfile);
         exit(1);
     }
-
-    global.pretty = dict_lookup(jv->u.map, "pretty", 6);
-    assert(global.pretty->type == JV_LIST);
 
     fprintf(out, "{\n");
     fprintf(out, "  \"nstates\": %d,\n", global.graph.size);

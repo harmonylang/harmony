@@ -91,6 +91,9 @@ struct phase {
 // are used across multiple modules.
 struct global {
     struct code code;               // code of the Harmony program
+    struct json_value *locs;        // from hvm file
+    struct json_value *modules;     // from hvm file
+    struct json_value *pretty;      // from hvm file
     struct dict *values;            // dictionary of values
     struct dict *computations;      // evaluated Harmony byte code
     hvalue_t seqs;                  // sequential variables
@@ -129,7 +132,6 @@ struct global {
     unsigned int nprocesses;        // the number of processes in the list
     double lasttime;                // since last report printed
     struct dfa *dfa;                // for tracking correct behaviors
-    struct json_value *pretty;      // for output
     bool run_direct;                // non-model-checked mode
     unsigned long allocated;        // allocated table space
     unsigned int oldpid;            // for thread id computation
