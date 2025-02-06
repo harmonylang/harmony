@@ -130,7 +130,6 @@ struct global {
     hvalue_t *processes;            // array of contexts of processes
     struct callstack **callstacks;  // array of callstacks of processes
     unsigned int nprocesses;        // the number of processes in the list
-    double lasttime;                // since last report printed
     struct dfa *dfa;                // for tracking correct behaviors
     bool run_direct;                // non-model-checked mode
     unsigned long allocated;        // allocated table space
