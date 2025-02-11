@@ -19,6 +19,16 @@
   width:35%;
   border:1px solid red;
 }
+.table-transparent {
+    border-collapse: collapse;
+    border-style: hidden;
+    border: none !important;
+}
+.table-transparent td {
+    border-collapse: collapse;
+    border-style: hidden;
+    border: none !important;
+}
 table {
     border-collapse: collapse;
     border-style: hidden;

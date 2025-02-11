@@ -3232,13 +3232,13 @@ static void worker(void *arg){
                     unsigned int compute_percentage = 100 * (si_total - si_hits) / si_total;
                     fprintf(stderr, "%12u%% compute percentage", compute_percentage);
                     if (compute_percentage < 25) {
-                        fprintf(stderr, ": high amount of concurrent interleaving leading to state space explosion\n");
+                        fprintf(stderr, ": high amount of interleaving leading to state space explosion\n");
                     }
-                    else if (compute_percentage > 50) {
-                        fprintf(stderr, ": spending much time evaluating Harmony code in different states\n");
+                    else if (compute_percentage < 50) {
+                        fprintf(stderr, ": concurrent interleaving leading to state space explosion\n");
                     }
                     else {
-                        fprintf(stderr, ": concurrent interleaving leading to state space explosion\n");
+                        fprintf(stderr, ": spending much time evaluating Harmony code in different states\n");
                     }
 
                     // fprintf(stderr, "    states=%u edges=%u q=%d mem=%.3lfGB\n",

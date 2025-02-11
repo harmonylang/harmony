@@ -19,6 +19,30 @@ var colors = [ "green", "coral", "blueviolet" ];
 var contexts = {};
 var ctxGen = 0;
 
+var detailed = false;
+var detailed_list = ['HVMcode', 'PChdr', 'StackTopHdr'];
+var abbrev_list = [];
+
+function set_details() {
+  disp = detailed ? "" : "none";
+  for (var i = 0; i < detailed_list.length; i++) {
+    var x = document.getElementById(detailed_list[i]);
+    x.style.display = disp;
+  }
+  var disp = detailed ? "none" : "";
+  for (var i = 0; i < abbrev_list.length; i++) {
+    var x = document.getElementById(abbrev_list[i]);
+    x.style.display = disp;
+  }
+  var b = document.getElementById("details-button");
+  b.innerHTML = detailed ? "Hide details" : "Show details";
+}
+
+function toggle_details() {
+  detailed = !detailed;
+  set_details();
+}
+
 function json_string_list(obj) {
   var result = "";
   for (var i = 0; i < obj.length; i++) {
@@ -379,10 +403,32 @@ function addToLog(step, entry) {
   mcell.innerHTML = entry;
 }
 
+function addToStep(step, entry) {
+  var table = megasteps[step].thisstep;
+  var row = table.insertRow();
+  var mcell = row.insertCell();
+  mcell.innerHTML = entry;
+}
+
 function handleClick(e, mesIdx) {
   var x = Math.floor(e.offsetX / boxSize);
   var y = Math.floor(e.offsetY / boxSize);
   currentTime = megasteps[mesIdx].startTime + y*timeWidth + x + 1;
+  run_microsteps();
+}
+
+function goto_time(which) {
+  var tid = microsteps[tickers[which]].tid;
+  currentTime = tickers[which] + 1;
+  while (currentTime < totalTime) {
+    if (microsteps[currentTime].tid != tid) {
+      break;
+    }
+    if (which < tickers.length - 1 && currentTime == tickers[which + 1]) {
+        break;
+    }
+    currentTime++;
+  }
   run_microsteps();
 }
 
@@ -580,9 +626,11 @@ function init_microstep(masidx, misidx) {
   }
 
   if (mis.hasOwnProperty("choose")) {
+    microsteps[t].choice = mis["choose"];
     microsteps[t].choose = "chose " + json_string(mis["choose"]);
   }
   else {
+    microsteps[t].choice = null;
     microsteps[t].choose = null;
   }
   if (mis.hasOwnProperty("print")) {
@@ -741,7 +789,22 @@ function run_microstep(t) {
   var mis = microsteps[t];
   var mes = megasteps[mis.mesidx];
   var mesrow = mestable.rows[mis.mesidx];
-  mesrow.cells[3].innerHTML = mis.npc;
+  // mesrow.cells[3].innerHTML = mis.npc;
+  x = document.getElementById('PC' + mis.mesidx);
+  x.innerHTML = mis.npc;
+
+  /*
+  var op = state.hvm.code[mis.pc].op;
+  if (op == "Store") {
+    addToStep(mis.mesidx, "Store " + json_string(mis.explain2.args[0]) + " into " + json_string(mis.explain2.args[1]).slice(1));
+  }
+  else if (op == "Choose") {
+    addToStep(mis.mesidx, "Choose " + json_string(mis.choice));
+  }
+  else if (op == "Print") {
+    addToStep(mis.mesidx, "Print " + json_string(mis.explain2.args[0]));
+  }
+  */
 
   // if (mis.pc == 963) {
   //   alert(JSON.stringify(mis.shared));
@@ -839,10 +902,11 @@ function run_microsteps() {
   currCloc = document.getElementById('C0');
   currOffset = document.getElementById('P0');
   for (var i = 0; i < nmegasteps; i++) {
-    mestable.rows[i].cells[3].innerHTML = "";
+    // mestable.rows[i].cells[3].innerHTML = "";
     for (var j = 0; j < vardir.length; j++) {
       mestable.rows[i].cells[j + 4].innerHTML = "";
     }
+    // megasteps[i].thisstep.innerHTML = "";
     megasteps[i].log.innerHTML = "";
   }
   for (var tid = 0; tid < nthreads; tid++) {
@@ -866,7 +930,9 @@ function run_microsteps() {
     var mes = megasteps[mis.mesidx];
     mes.nextstep.innerHTML = "next: " + explain_expand(mis.explain2);
     var mesrow = mestable.rows[mis.mesidx];
-    mesrow.cells[3].innerHTML = mis.pc;
+    // mesrow.cells[3].innerHTML = mis.pc;
+    x = document.getElementById('PC' + mis.mesidx);
+    x.innerHTML = mis.pc;
 
     if (false && mis.mesidx > 0) {
       var oldrow = mestable.rows[mis.mesidx - 1];
@@ -904,6 +970,10 @@ function run_microsteps() {
       row.style = 'background-color: white;';
     }
   }
+
+  for (var i = 0; i < tickers.length; i++) {
+    document.getElementById('radio' + i).checked = tickers[i] < currentTime;
+  }
 }
 
 // Initialization starts here
@@ -916,13 +986,16 @@ for (var tid = 0; tid < nthreads; tid++) {
     stacktrace: [],
     tracetable: document.getElementById("threadinfo" + tid)
   };
+  detailed_list.push("stacktop" + tid);
 }
 threads[0].stack = [ "()" ]
 for (let i = 0; i < nmegasteps; i++) {
   var canvas = document.getElementById("timeline" + i);
+  var thisstep = document.getElementById("thisstep" + i); 
   var nextstep = document.getElementById("nextstep" + i); 
   megasteps[i] = {
     canvas: canvas,
+    thisstep: thisstep,
     nextstep: nextstep,
     startTime: 0,
     nsteps: 0,
@@ -931,6 +1004,9 @@ for (let i = 0; i < nmegasteps; i++) {
     log: document.getElementById("log" + i)
   };
   canvas.addEventListener('mousedown', function(e){handleClick(e, i)});
+  detailed_list.push("timeline" + i)
+  detailed_list.push("PC" + i)
+  abbrev_list.push("thisstep" + i)
 }
 for (var j = 0; j < state.macrosteps.length; j++) {
   init_macrostep(j);
@@ -938,4 +1014,5 @@ for (var j = 0; j < state.macrosteps.length; j++) {
 
 currentTime = totalTime = microsteps.length;
 run_microsteps();
+set_details()
 document.addEventListener('keydown', handleKeyPress);

@@ -16,38 +16,62 @@ class GenHTML:
         self.style = (self_dir / "charm.css").read_text()
         self.js = (self_dir / "charm.js").read_text()
         self.timeWidth = 40
+        self.tickers = []
 
     def file_include(self, name, f):
         with open(name, encoding='utf-8') as g:
             print(g.read(), file=f)
 
-    def html_megastep(self, step, tid, name, nmicrosteps, width, f):
+    def html_megastep(self, step, tid, name, microsteps, time, width, f):
         print("<tr id='mes%d'>"%(step-1), file=f)
+
+        # Turn
         print("  <td align='right'>", file=f)
         print("    %d&nbsp;"%step, file=f)
         print("  </td>", file=f)
 
+        # Thread
         print("  <td>", file=f)
         print("    T%s: %s"%(tid, name), file=f, end="")
         print("  </td>", file=f)
 
+        # Execution
         print("  <td>", file=f)
         print("    <table border='0' style='max-width:%dpx; word-wrap: break-word;'>"%(self.timeWidth * 10), file=f)
-        time = nmicrosteps
-        nrows = (time + self.timeWidth - 1) // self.timeWidth
+        nmicrosteps = len(microsteps)
+        nrows = (nmicrosteps + self.timeWidth - 1) // self.timeWidth
         print("      <tr><td><canvas id='timeline%d' width='%dpx' height='%dpx'>"%(step-1, self.timeWidth*10, 10*nrows), file=f)
         print("      </canvas></td></tr>", file=f)
+        print("      <tr><td><form><table class='table-transparent' id='thisstep%d'>"%(step-1), file=f)
+        for (t, mis) in enumerate(microsteps):
+            pc = int(mis["pc"])
+            op = self.code[pc]["op"]
+            if op in { "Store", "Print", "Choose" }:
+                print("         <tr><td><input type='radio' id='radio%d' onclick='goto_time(%d)'>"%(len(self.tickers), len(self.tickers)), file=f);
+                self.tickers.append(time+t)
+                exp = mis["explain2"]["args"]
+                if op == "Store":
+                    print("Set %s to %s"%(json_string(exp[1])[1:], json_string(exp[0])), file=f)
+                elif op == "Print":
+                    print("Print %s"%json_string(exp[0]), file=f)
+                elif op == "Choose":
+                    print("Choose %s"%json_string(mis["choose"]), file=f)
+                print("</td></tr>", file=f)
+        print("      </table></form></td></tr>", file=f)
         print("      <tr><td id='nextstep%d'></td></tr>"%(step-1), file=f)
         print("    </table>", file=f)
         print("  </td>", file=f)
 
-        print("  <td align='center'>", file=f)
-        print("  </td>", file=f)
+        # PC
+        print("  <td align='center'><div id='PC%d'>"%(step-1), file=f)
+        print("  </div></td>", file=f)
 
+        # Shared variables
         for i in range(width):
           print("  <td align='center'>", file=f)
           print("  </td>", file=f)
 
+        # Output
         print("  <td>", file=f)
         print("    <table id='log%d' border='1'>"%(step-1), file=f)
         print("    </table>", file=f)
@@ -100,6 +124,7 @@ class GenHTML:
             print("        Issue:", self.top["issue"], file=f)
             print("      </th>", file=f)
             print("    </tr>", file=f)
+            print("  </thead>", file=f)
             print("</table>", file=f)
             return
 
@@ -107,8 +132,12 @@ class GenHTML:
         print("<table border='1'>", file=f)
         print("  <thead>", file=f)
         print("    <tr>", file=f)
-        print("      <th colspan='4' style='color:red;'>", file=f)
-        print("        Issue:", self.top["issue"], file=f)
+        print("      <th colspan='4'>", file=f)
+        print("        <table border='0'><tr><td>", file=f)
+        print("          <button id='details-button' type='button' onclick='toggle_details()'>Hide details</button>", file=f)
+        print("        </td><td style='color:red;'>", file=f)
+        print("          &nbsp;&nbsp;&nbsp;&nbsp;Issue:", self.top["issue"], file=f)
+        print("        </td></tr></table>", file=f)
         # if "invpc" in self.top:
         #     print("        (Line %d)"%self.top["hvm"]["locs"][self.top["invpc"]]["line"], file=f)
         print("      </th>", file=f)
@@ -128,11 +157,11 @@ class GenHTML:
         print("        Thread", file=f)
         print("      </th>", file=f)
         print("      <th align='center' rowspan='%d'>"%height, file=f)
-        print("        Instructions Executed", file=f)
+        print("        Execution", file=f)
         print("      </th>", file=f)
-        print("      <th align='center' rowspan='%d'>"%height, file=f)
+        print("      <th align='center' rowspan='%d'><div id='PChdr'>"%height, file=f)
         print("        &nbsp;PC&nbsp;", file=f)
-        print("      </th>", file=f)
+        print("      </div></th>", file=f)
         self.varhdr(self.vardir, "", height, f)
         print("    </tr>", file=f)
         print("  </thead>", file=f)
@@ -142,23 +171,26 @@ class GenHTML:
         nsteps = 0
         tid = None
         name = None
-        nmicrosteps = 0
+        microsteps = []
+        time = 0
         for mas in self.top["macrosteps"]:
             if tid == mas["tid"]:
-                nmicrosteps += len(mas["microsteps"])
+                microsteps += mas["microsteps"]
             else:
                 if tid is not None:
-                    self.html_megastep(nsteps, tid, name, nmicrosteps, width, f)
+                    self.html_megastep(nsteps, tid, name, microsteps, time, width, f)
+                    time += len(microsteps)
                 nsteps += 1
                 tid = mas["tid"]
                 name = mas["name"]
-                nmicrosteps = len(mas["microsteps"])
-        self.html_megastep(nsteps, tid, name, nmicrosteps, width, f)
+                microsteps = mas["microsteps"]
+        self.html_megastep(nsteps, tid, name, microsteps, time, width, f)
         print("  </tbody>", file=f)
         print("</table>", file=f)
 
     def html_botleft(self, f):
-        print("<div id='table-wrapper'>", file=f)
+        print("<div id='HVMcode'>", file=f)
+        print(" <div id='table-wrapper'>", file=f)
         print("  <div id='table-scroll'>", file=f)
         print("    <table border='1'>", file=f)
         print("      <tbody>", file=f)
@@ -180,6 +212,7 @@ class GenHTML:
         print("      </body>", file=f)
         print("    </table>", file=f)
         print("  </div>", file=f)
+        print(" </div>", file=f)
         print("</div>", file=f)
 
     # output a filename of f1 relative to f2
@@ -211,7 +244,7 @@ class GenHTML:
         print("      <th>", file=f)
         print("        Stack Trace", file=f)
         print("      </th>", file=f)
-        print("      <th>", file=f)
+        print("      <th id='StackTopHdr'>", file=f)
         print("        Stack Top", file=f)
         print("      </th>", file=f)
         print("    </tr>", file=f)
@@ -230,7 +263,7 @@ class GenHTML:
             print("        <table id='threadinfo%d' border='1'>"%i, file=f)
             print("        </table>", file=f)
             print("      </td>", file=f)
-            print("      <td align='left'>", file=f)
+            print("      <td align='left' id='stacktop%d'>"%i, file=f)
             print("      </td>", file=f)
             print("    </tr>", file=f)
         print("  </tbody>", file=f)
@@ -243,7 +276,7 @@ class GenHTML:
         self.html_top(f)
         print("    </td>", file=f)
         print("  </tr>", file=f)
-        print("  <tr><td></td></tr>", file=f)
+        print("  <tr><td colspan='2'></td></tr>", file=f)
         print("  <tr>", file=f)
         print("    <td colspan='2'>", file=f)
         print("      <h3 style='color:blue;'>", file=f)
@@ -252,12 +285,12 @@ class GenHTML:
         print("      </h3>", file=f)
         print("    </td>", file=f)
         print("  </tr>", file=f)
-        print("  <tr><td></td></tr>", file=f)
+        print("  <tr><td></td><td></td></tr>", file=f)
         print("  <tr>", file=f)
         print("    <td valign='top'>", file=f)
         self.html_botleft(f)
         print("    </td>", file=f)
-        print("    <td valign='top'>", file=f)
+        print("    <td valign='top' class='dynamic-hidden-col'>", file=f)
         self.html_botright(f, outputfiles)
         print("    </td>", file=f)
         print("  </tr>", file=f)
@@ -284,6 +317,7 @@ class GenHTML:
         print("var state =", file=f)
         self.file_include(outputfiles["hco"], f)
         print(";", file=f)
+        print("var tickers = %s;"%self.tickers, file=f)
         print(self.js, file=f)
         # file_include("charm.js", f)
         print("</script>", file=f)
@@ -345,6 +379,7 @@ class GenHTML:
         lasttid = -1
         with open(outputfiles["hco"], encoding='utf-8') as f:
             self.top = json.load(f, strict=False)
+            self.code = self.top["hvm"]["code"]
             assert isinstance(self.top, dict)
             if "macrosteps" in self.top:
                 macrosteps = self.top["macrosteps"]
