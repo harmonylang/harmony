@@ -42,22 +42,23 @@ class GenHTML:
         nrows = (nmicrosteps + self.timeWidth - 1) // self.timeWidth
         print("      <tr><td><canvas id='timeline%d' width='%dpx' height='%dpx'>"%(step-1, self.timeWidth*10, 10*nrows), file=f)
         print("      </canvas></td></tr>", file=f)
-        print("      <tr><td><form><table class='table-transparent' id='thisstep%d'>"%(step-1), file=f)
+        print("      <tr><td><table class='table-transparent' id='thisstep%d'>"%(step-1), file=f)
         for (t, mis) in enumerate(microsteps):
             pc = int(mis["pc"])
             op = self.code[pc]["op"]
+            idx = len(self.tickers)
             if op in { "Store", "Print", "Choose" }:
-                print("         <tr><td><input type='radio' id='radio%d' onclick='goto_time(%d)'>"%(len(self.tickers), len(self.tickers)), file=f);
-                self.tickers.append(time+t)
+                print("         <tr><td><input type='radio' id='radio%d' onclick='goto_time(%d)'><a onclick='goto_time(%d)'>"%(idx, idx, idx), file=f);
                 exp = mis["explain2"]["args"]
                 if op == "Store":
-                    print("Set %s to %s"%(json_string(exp[1])[1:], json_string(exp[0])), file=f)
+                    print("Set <span id='var%d'>%s</span> to <span id='val%d'>%s</span>"%(idx, json_string(exp[1])[1:], idx, json_string(exp[0])), file=f)
                 elif op == "Print":
-                    print("Print %s"%json_string(exp[0]), file=f)
+                    print("Print <span id='val%d'>%s</span>"%(idx, json_string(exp[0])), file=f)
                 elif op == "Choose":
-                    print("Choose %s"%json_string(mis["choose"]), file=f)
-                print("</td></tr>", file=f)
-        print("      </table></form></td></tr>", file=f)
+                    print("Choose <span id='val%d'>%s</span>"%(idx, json_string(mis["choose"])), file=f)
+                print("</a></td></tr>", file=f)
+                self.tickers.append(time+t)
+        print("      </table></td></tr>", file=f)
         print("      <tr><td id='nextstep%d'></td></tr>"%(step-1), file=f)
         print("    </table>", file=f)
         print("  </td>", file=f)
@@ -166,7 +167,7 @@ class GenHTML:
         print("    </tr>", file=f)
         print("  </thead>", file=f)
 
-        print("  <tbody id='mestable'>", file=f)
+        print("  <tbody id='mestable'><form>", file=f)
         assert isinstance(self.top["macrosteps"], list)
         nsteps = 0
         tid = None
@@ -185,11 +186,12 @@ class GenHTML:
                 name = mas["name"]
                 microsteps = mas["microsteps"]
         self.html_megastep(nsteps, tid, name, microsteps, time, width, f)
-        print("  </tbody>", file=f)
+        print("  </form></tbody>", file=f)
         print("</table>", file=f)
 
     def html_botleft(self, f):
         print("<div id='HVMcode'>", file=f)
+        print(" <h3 align='center'>Harmony bytecode</h3>", file=f)
         print(" <div id='table-wrapper'>", file=f)
         print("  <div id='table-scroll'>", file=f)
         print("    <table border='1'>", file=f)

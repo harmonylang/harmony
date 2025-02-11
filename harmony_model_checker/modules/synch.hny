@@ -23,22 +23,22 @@ def BinSema(initial) returns sema:
     sema = initial
 
 def Lock() returns result:
-    result = BinSema(False)
+    result = False
 
-def acquired(binsema) returns result:
-    result = !binsema
+def acquired(lock) returns result:
+    result = !lock
     
-def held(binsema) returns result:
-    result = !binsema
+def held(lock) returns result:
+    result = !lock
 
-def acquire(binsema):
-    atomically when not !binsema:
-        !binsema = True
+def acquire(lock):
+    atomically when not !lock:
+        !lock = True
 
-def release(binsema):
+def release(lock):
     atomically:
-        assert !binsema, "release(): lock not owned"
-        !binsema = False
+        assert !lock, "release(): lock not owned"
+        !lock = False
 
 def Condition() returns result:
     result = bags.empty()

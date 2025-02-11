@@ -439,16 +439,42 @@ function handleKeyPress(e) {
       run_microsteps();
       break;
     case 'ArrowLeft':
-      if (currentTime > 0) {
-        currentTime -= 1;
+      if (!detailed) {
+        if (tickers.length < 2 || currentTime <= tickers[1]) {
+          currentTime = 0;
+          run_microsteps();
+          return;
+        }
+        for (var i = 2; i < tickers.length; i++) {
+          if (tickers[i] >= currentTime) {
+            goto_time(i-2)
+            return;
+          }
+        }
+        goto_time(tickers.length - 2);
       }
-      run_microsteps();
+      else {
+        if (currentTime > 0) {
+          currentTime -= 1;
+        }
+        run_microsteps();
+      }
       break;
     case 'ArrowRight':
-      if (currentTime < totalTime) {
-        currentTime += 1;
+      if (!detailed) {
+        for (var i = 0; i < tickers.length; i++) {
+          if (tickers[i] >= currentTime) {
+            goto_time(i)
+            return;
+          }
+        }
       }
-      run_microsteps();
+      else {
+        if (currentTime < totalTime) {
+          currentTime += 1;
+        }
+        run_microsteps();
+      }
       break;
     case 'ArrowUp':
       if (!detailed) {
@@ -995,6 +1021,14 @@ function run_microsteps() {
 
   for (var i = 0; i < tickers.length; i++) {
     document.getElementById('radio' + i).checked = tickers[i] < currentTime;
+    var k = document.getElementById('var' + i);
+    if (k != null) {
+        k.style.color = tickers[i] < currentTime ? "blue" : "grey";
+    }
+    var v = document.getElementById('val' + i);
+    if (v != null) {
+        v.style.color = tickers[i] < currentTime ? "green" : "grey";
+    }
   }
 }
 
