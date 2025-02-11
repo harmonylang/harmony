@@ -23,6 +23,55 @@ var detailed = false;
 var detailed_list = ['HVMcode', 'PChdr', 'StackTopHdr'];
 var abbrev_list = [];
 
+const issue_explanation = new Map([
+    [ "Non-terminating state",
+        `Some execution of the program leads to a state where not all threads can terminate, or where some threads are for ever busy.  This can include both deadlock and livelock situations.`
+    ],
+    [ "Safety violation",
+        `Some execution of the program ran into an issue such as a failing assertion or accessing a non-existent variable.`
+    ],
+    [ "Active busy waiting",
+        `Active busy waiting occurs when a thread is waiting for a condition in a loop while modifying the state.  A common example is waiting while acquiring and releasing a lock.  Using a condition variable or semaphore is preferred.`
+    ],
+    [ "Behavior violation: unexpected output",
+        `Some execution of the program produced an output that is not recognized by the automaton provided as input.`
+    ],
+    [ "Behavior violation: terminal state not final",
+        `Some execution of the program terminated, producing only a prefix of the outputs allowed by teh automaton provided as input.`
+    ]
+]);
+
+function explain_issue(issue) {
+    const x = " This interactive web page allows you to explore that execution."
+    if (issue.startsWith("Data race ")) {
+        var v = issue.substring(12, issue.length - 1);
+        alert("The Harmony program suffers from a data race on variable '" + v + "'." + x);
+    }
+    else {
+        var e = issue_explanation.get(issue);
+        if (e == undefined) {
+            alert("The Harmony program is not correct." + x);
+        }
+        else {
+            alert(e + x);
+        }
+    }
+}
+
+function explain_status() {
+    alert(`At any time, each thread can be in various different modes. 
+        runnable:   thread is executing;
+        terminated: thread has terminated;
+        atomic:     thread is running exclusively;
+        read-only:  thread cannot change shared state;
+        failed:     thread has failed;
+        blocked:    thread is waiting for shared state to change;`)
+}
+
+function explain_stacktrace() {
+    alert(`This column lists the current stack trace for each thread.  On the left are the methods (functions) that the thread has invoked, and on the right the values of the local variables in each of these methods.`)
+}
+
 function set_details() {
   disp = detailed ? "" : "none";
   for (var i = 0; i < detailed_list.length; i++) {
