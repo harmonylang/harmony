@@ -58,6 +58,10 @@ function explain_issue(issue) {
     }
 }
 
+function explain_turn() {
+    alert(`In a Harmony program, threads take turns executing.  This table provides some information on each of these turns.  The turn that is currently active is highlighted in lightgreen, as is the corresponding thread in the thread table below.`);
+}
+
 function explain_status() {
     alert(`At any time, each thread can be in various different modes. 
         runnable:   thread is executing;
@@ -65,11 +69,11 @@ function explain_status() {
         atomic:     thread is running exclusively;
         read-only:  thread cannot change shared state;
         failed:     thread has failed;
-        blocked:    thread is waiting for shared state to change;`)
+        blocked:    thread is waiting for shared state to change.`);
 }
 
 function explain_stacktrace() {
-    alert(`This column lists the current stack trace for each thread.  On the left are the methods (functions) that the thread has invoked, and on the right the values of the local variables in each of these methods.`)
+    alert(`This column lists the current stack trace for each thread.  On the left are the methods (functions) that the thread has invoked, and on the right the values of the local variables in each of these methods.`);
 }
 
 function set_details() {

@@ -152,7 +152,7 @@ class GenHTML:
 
         print("    <tr>", file=f)
         print("      <th align='center' rowspan='%d'>"%height, file=f)
-        print("        Turn", file=f)
+        print("        <a onclick='explain_turn()'>Turn<sup>&#9432;</sup></a></span>", file=f)
         print("      </th>", file=f)
         print("      <th align='center' rowspan='%d'>"%height, file=f)
         print("        Thread", file=f)
