@@ -451,7 +451,21 @@ function handleKeyPress(e) {
       run_microsteps();
       break;
     case 'ArrowUp':
-      if (currentTime > 0) {
+      if (!detailed) {
+        if (tickers.length < 2 || currentTime <= tickers[1]) {
+          currentTime = 0;
+          run_microsteps();
+          return;
+        }
+        for (var i = 2; i < tickers.length; i++) {
+          if (tickers[i] >= currentTime) {
+            goto_time(i-2)
+            return;
+          }
+        }
+        goto_time(tickers.length - 2);
+      }
+      else if (currentTime > 0) {
         currentTime--;
         var mesidx = currentMegaStep();
         var mes = megasteps[mesidx];
@@ -470,7 +484,15 @@ function handleKeyPress(e) {
       }
       break;
     case 'ArrowDown':
-      if (currentTime < totalTime) {
+      if (!detailed) {
+        for (var i = 0; i < tickers.length; i++) {
+          if (tickers[i] >= currentTime) {
+            goto_time(i)
+            return;
+          }
+        }
+      }
+      else if (currentTime < totalTime) {
         var mesidx = currentMegaStep();
         var mes = megasteps[mesidx];
         var mis = microsteps[currentTime];
