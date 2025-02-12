@@ -7,8 +7,17 @@
 #include <string.h> /* memcpy/memcmp */
 #include <stdbool.h>
 
+#include "fastrange.h"
+#include "prefetcher.h"
 #include "hashdict.h"
 #include "thread.h"
+
+
+#define sdict_prefetch_base_ptr(dict, hash) \
+    PREFETCH((dict)->stable + (hash) % (dict)->length, 1, 1)
+
+#define sdict_prefetch_beginning_assoc(dict, hash) \
+    PREFETCH(&(dict)->stable[(hash) % (dict)->length], 1, 1)
 
 struct sdict {
     char *whoami;
