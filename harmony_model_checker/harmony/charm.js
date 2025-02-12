@@ -514,16 +514,17 @@ function handleKeyPress(e) {
       }
       break;
     case 'ArrowRight':
-      if (!detailed) {
-        for (var i = 0; i < tickers.length; i++) {
-          if (tickers[i] >= currentTime) {
-            goto_time(i)
-            return;
+      if (currentTime < totalTime) {
+        if (!detailed) {
+          for (var i = 0; i < tickers.length; i++) {
+            if (tickers[i] >= currentTime) {
+              goto_time(i)
+              return;
+            }
           }
+          currentTime = totalTime;
         }
-      }
-      else {
-        if (currentTime < totalTime) {
+        else {
           currentTime += 1;
         }
         run_microsteps();
@@ -563,25 +564,28 @@ function handleKeyPress(e) {
       }
       break;
     case 'ArrowDown':
-      if (!detailed) {
-        for (var i = 0; i < tickers.length; i++) {
-          if (tickers[i] >= currentTime) {
-            goto_time(i)
-            return;
+      if (currentTime < totalTime) {
+        if (!detailed) {
+          for (var i = 0; i < tickers.length; i++) {
+            if (tickers[i] >= currentTime) {
+              goto_time(i)
+              return;
+            }
           }
+          currentTime = totalTime;
         }
-      }
-      else if (currentTime < totalTime) {
-        var mesidx = currentMegaStep();
-        var mes = megasteps[mesidx];
-        var mis = microsteps[currentTime];
-        var tl = mis.trace.length;
-        var endTime = mes.startTime + mes.nsteps;
-        while (++currentTime < endTime) {
-          mis = microsteps[currentTime];
-          tl2 = mis.trace.length;
-          if (tl2 < tl) {
-            break;
+        else {
+          var mesidx = currentMegaStep();
+          var mes = megasteps[mesidx];
+          var mis = microsteps[currentTime];
+          var tl = mis.trace.length;
+          var endTime = mes.startTime + mes.nsteps;
+          while (++currentTime < endTime) {
+            mis = microsteps[currentTime];
+            tl2 = mis.trace.length;
+            if (tl2 < tl) {
+              break;
+            }
           }
         }
         run_microsteps();
