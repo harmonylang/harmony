@@ -39,12 +39,20 @@ class AST:
     def stmt(self):
         _, _, line1, column1 = self.token
         lexeme2, _, line2, column2 = self.endtoken
-        return (line1, column1, line2, column2 + len(lexeme2) - 1)
+        # Hack: some piece of external software puts the lexeme 'newLine' in there sometimes
+        if lexeme2 == "newLine" and column2 == 1:
+            return (line1, column1, line2, column2)
+        else:
+            return (line1, column1, line2, column2 + len(lexeme2) - 1)
 
     def range(self, token1, token2):
         _, _, line1, column1 = token1
         lexeme2, _, line2, column2 = token2
-        return (line1, column1, line2, column2 + len(lexeme2) - 1)
+        # Hack: some piece of external software puts the lexeme 'newLine' in there sometimes
+        if lexeme2 == "newLine" and column2 == 1:
+            return (line1, column1, line2, column2)
+        else:
+            return (line1, column1, line2, column2 + len(lexeme2) - 1)
 
     # a new local constant or tree of constants
     def define(self, scope: Scope, const):
@@ -1799,10 +1807,11 @@ class MethodAST(AST):
         self.stat.compile(ns, code, stmt)
         if self.atomically:
             code.append(AtomicDecOp(), self.token, self.endtoken, stmt=stmt)
+        stmt = self.range(self.endtoken, self.endtoken)
         if self.result is None:
-            code.append(ReturnOp(result, AddressValue(None, [])), self.token, self.endtoken, stmt=stmt)
+            code.append(ReturnOp(result, AddressValue(None, [])), self.endtoken, self.endtoken, stmt=stmt)
         else:
-            code.append(ReturnOp(result, None), self.token, self.endtoken, stmt=stmt)
+            code.append(ReturnOp(result, None), self.endtoken, self.endtoken, stmt=stmt)
         code.nextLabel(endlabel)
 
         # promote global variables

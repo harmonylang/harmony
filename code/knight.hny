@@ -8,7 +8,8 @@ board = [[ False, ] * HEIGHT,] * WIDTH  # board: False = open, True = visited
 curx = 0     # choose { 0 .. WIDTH - 1 }
 cury = 0     # choose { 0 .. HEIGHT - 1 }
 board[curx][cury] = True                # current position has been visited
-path = [(curx, cury),]                  # path on the board
+
+print(curx, cury)
 
 # Check if (x, y) is an open position on board b
 def valid(b, x, y) returns success:
@@ -24,9 +25,8 @@ def moves(b, x, y) returns valid_moves:
         if valid(b, x - dx, y - dy): valid_moves |= { (x - dx, y - dy) }
 
 # Try a solution by non-deterministically choosing a series of valid moves.
-# Returns True iff a solution has been found
-
-# Keep going as long as moves were available *and* some squares are not visited
+# Returns True iff a solution has been found.
+# Keep going as long as moves were available *and* some squares are not visited.
 while avail and any(not board[x][y] for x in {0..WIDTH-1} for y in {0..HEIGHT-1}):
     # Compute the set of possible moves from the current position
     let possible_moves = moves(board, curx, cury):
@@ -38,9 +38,8 @@ while avail and any(not board[x][y] for x in {0..WIDTH-1} for y in {0..HEIGHT-1}
             assert not board[curx][cury]
             # This square is now visited
             board[curx][cury] = True
-            path += [(curx, cury),]
+            print(curx, cury)
 # If we get here, avail => all squares have been visited
 if avail:
     assert all(board[x][y] for x in {0..WIDTH-1} for y in {0..HEIGHT-1})
-    print path
-    # assert False    # Stop trying -- printing one path is enough
+    assert False    # Stop trying -- printing one path is enough

@@ -52,6 +52,7 @@ struct step_output {
     hvalue_t after;            // context at end
     struct access_info *ai;    // to detect data races
     uint16_t nsteps;           // # microsteps
+    uint16_t pc;               // program counter at start
 
     // TODO It would be good if these bits would be crammed into this structure
     //      more efficiently
@@ -60,10 +61,9 @@ struct step_output {
     bool stopped : 1;          // thread has stopped
     bool failed : 1;           // context failed
     bool infinite_loop : 1;    // ran into an infinite loop
+    uint8_t nlog : 1;          // # values printed
 
     uint8_t choose_count;      // number of possible choices
-    // TODO.  nlog can only be 0 or 1
-    uint8_t nlog;              // # values printed
     uint8_t nspawned;          // # contexts started
     uint8_t nunstopped;        // # contexts removed from stopbag
     // hvalue_t log[];         // print history (immediately follows this structure)
@@ -137,7 +137,7 @@ enum fail_type {
 struct node {
     struct node *parent;    // path to initial state
     uint32_t id;            // nodes are numbered starting from 0
-    uint16_t len;           // length of path to initial state
+    uint16_t len;           // length of path to initial state  // TODO 8 bits is probably enough
     uint8_t nedges;         // number of outgoing edges  // TODO also maintained indirectly by hash table
     bool initial : 1;       // initial state
     bool on_stack : 1;      // for Tarjan

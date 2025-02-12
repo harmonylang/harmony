@@ -92,7 +92,9 @@ def _load_file(filename: str, scope: Scope, code: Code, init: bool):
 
     _, _, line1, column1 = ast.token
     lexeme2, _, line2, column2 = ast.endtoken
-    column2 += len(lexeme2) - 1
+    # Hack: some external software sometimes adds the lexeme 'newLine' in there
+    if lexeme2 != 'newLine' or column2 != 1:
+        column2 += len(lexeme2) - 1
     if init:
         code.append(FrameOp(("__init__", None, None, None), []), ast.token, ast.endtoken, stmt=(line1, column1, line2, column2))
 
@@ -116,8 +118,9 @@ def _load_file(filename: str, scope: Scope, code: Code, init: bool):
 
     ast.compile(scope, code, None)
     if init:
+        # print("TOKEN", ast.token, "END", ast.endtoken)
         _, file, line, column = ast.token
-        code.append(ReturnOp(("result", file, line, column), AddressValue(None, [])), ast.token, ast.endtoken, stmt=(line1, column1, line2, column2))  # to terminate "__init__" process
+        code.append(ReturnOp(("result", file, line, column), AddressValue(None, [])), ast.endtoken, ast.endtoken, stmt=(line2, column2, line2, column2))  # to terminate "__init__" process
     legacy_harmony.namestack.pop()
 
 

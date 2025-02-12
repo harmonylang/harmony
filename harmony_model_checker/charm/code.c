@@ -24,6 +24,7 @@ static struct instr code_instr_parse(struct allocator *allocator, struct json_va
     memset(&i, 0, sizeof(i));
     i.oi = oi;
     i.env = (*oi->init)(jv->u.map, allocator);
+    i.frame = strcmp(oi->name, "Frame") == 0;
     i.choose = strcmp(oi->name, "Choose") == 0;
     i.load = strcmp(oi->name, "Load") == 0;
     i.store = strcmp(oi->name, "Store") == 0;

@@ -20,7 +20,7 @@ struct instr {
     //  atomicdec:   an AtomicDec instruction
     //  setintlevel: a SetIntlevel instruction
     //  breakable:   a Load, Store, Del, or AtomicInc instruction
-    bool choose, load, store, del, retop, print, is_assert;
+    bool choose, load, store, del, retop, print, is_assert, frame;
     bool atomicinc, atomicdec, setintlevel, breakable;
 };
 

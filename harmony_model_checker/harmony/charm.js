@@ -19,6 +19,83 @@ var colors = [ "green", "coral", "blueviolet" ];
 var contexts = {};
 var ctxGen = 0;
 
+var detailed = false;
+var detailed_list = ['HVMcode', 'PChdr', 'StackTopHdr'];
+var abbrev_list = [];
+
+const issue_explanation = new Map([
+    [ "Non-terminating state",
+        `Some execution of the program leads to a state where not all threads can terminate, or where some threads are for ever busy.  This can include both deadlock and livelock situations.`
+    ],
+    [ "Safety violation",
+        `Some execution of the program ran into an issue such as a failing assertion or accessing a non-existent variable.`
+    ],
+    [ "Active busy waiting",
+        `Active busy waiting occurs when a thread is waiting for a condition in a loop while modifying the state.  A common example is waiting while acquiring and releasing a lock.  Using a condition variable or semaphore is preferred.`
+    ],
+    [ "Behavior violation: unexpected output",
+        `Some execution of the program produced an output that is not recognized by the automaton provided as input.`
+    ],
+    [ "Behavior violation: terminal state not final",
+        `Some execution of the program terminated, producing only a prefix of the outputs allowed by teh automaton provided as input.`
+    ]
+]);
+
+function explain_issue(issue) {
+    const x = " This interactive web page allows you to explore that execution."
+    if (issue.startsWith("Data race ")) {
+        var v = issue.substring(12, issue.length - 1);
+        alert("The Harmony program suffers from a data race on variable '" + v + "'." + x);
+    }
+    else {
+        var e = issue_explanation.get(issue);
+        if (e == undefined) {
+            alert("The Harmony program is not correct." + x);
+        }
+        else {
+            alert(e + x);
+        }
+    }
+}
+
+function explain_turn() {
+    alert(`In a Harmony program, threads take turns executing.  This table provides some information on each of these turns.  The turn that is currently active is highlighted in lightgreen, as is the corresponding thread in the thread table below.`);
+}
+
+function explain_status() {
+    alert(`At any time, each thread can be in various different modes. 
+        runnable:   thread is executing;
+        terminated: thread has terminated;
+        atomic:     thread is running exclusively;
+        read-only:  thread cannot change shared state;
+        failed:     thread has failed;
+        blocked:    thread is waiting for shared state to change.`);
+}
+
+function explain_stacktrace() {
+    alert(`This column lists the current stack trace for each thread.  On the left are the methods (functions) that the thread has invoked, and on the right the values of the local variables in each of these methods.`);
+}
+
+function set_details() {
+  disp = detailed ? "" : "none";
+  for (var i = 0; i < detailed_list.length; i++) {
+    var x = document.getElementById(detailed_list[i]);
+    x.style.display = disp;
+  }
+  var disp = detailed ? "none" : "";
+  for (var i = 0; i < abbrev_list.length; i++) {
+    var x = document.getElementById(abbrev_list[i]);
+    x.style.display = disp;
+  }
+  var b = document.getElementById("details-button");
+  b.innerHTML = detailed ? "Hide details" : "Show details";
+}
+
+function toggle_details() {
+  detailed = !detailed;
+  set_details();
+}
+
 function json_string_list(obj) {
   var result = "";
   for (var i = 0; i < obj.length; i++) {
@@ -175,7 +252,12 @@ function getCode(pc) {
   var loc = state.hvm.locs[pc];
   var module = state.hvm.modules[loc.module];
   loc.file = module.file;
-  loc.code = module.lines[loc.line - 1];
+  if (loc.line - 1 < module.lines.length) {
+    loc.code = module.lines[loc.line - 1];
+  }
+  else {
+    loc.code = null;
+  }
   return loc;
 //  var locs = state.locations;
 //  while (pc >= 0) {
@@ -374,10 +456,32 @@ function addToLog(step, entry) {
   mcell.innerHTML = entry;
 }
 
+function addToStep(step, entry) {
+  var table = megasteps[step].thisstep;
+  var row = table.insertRow();
+  var mcell = row.insertCell();
+  mcell.innerHTML = entry;
+}
+
 function handleClick(e, mesIdx) {
   var x = Math.floor(e.offsetX / boxSize);
   var y = Math.floor(e.offsetY / boxSize);
   currentTime = megasteps[mesIdx].startTime + y*timeWidth + x + 1;
+  run_microsteps();
+}
+
+function goto_time(which) {
+  var tid = microsteps[tickers[which]].tid;
+  currentTime = tickers[which] + 1;
+  while (currentTime < totalTime) {
+    if (microsteps[currentTime].tid != tid) {
+      break;
+    }
+    if (which < tickers.length - 1 && currentTime == tickers[which + 1]) {
+        break;
+    }
+    currentTime++;
+  }
   run_microsteps();
 }
 
@@ -388,19 +492,60 @@ function handleKeyPress(e) {
       run_microsteps();
       break;
     case 'ArrowLeft':
-      if (currentTime > 0) {
-        currentTime -= 1;
+      if (!detailed) {
+        if (tickers.length < 2 || currentTime <= tickers[1]) {
+          currentTime = 0;
+          run_microsteps();
+          return;
+        }
+        for (var i = 2; i < tickers.length; i++) {
+          if (tickers[i] >= currentTime) {
+            goto_time(i-2)
+            return;
+          }
+        }
+        goto_time(tickers.length - 2);
       }
-      run_microsteps();
+      else {
+        if (currentTime > 0) {
+          currentTime -= 1;
+        }
+        run_microsteps();
+      }
       break;
     case 'ArrowRight':
       if (currentTime < totalTime) {
-        currentTime += 1;
+        if (!detailed) {
+          for (var i = 0; i < tickers.length; i++) {
+            if (tickers[i] >= currentTime) {
+              goto_time(i)
+              return;
+            }
+          }
+          currentTime = totalTime;
+        }
+        else {
+          currentTime += 1;
+        }
+        run_microsteps();
       }
-      run_microsteps();
       break;
     case 'ArrowUp':
-      if (currentTime > 0) {
+      if (!detailed) {
+        if (tickers.length < 2 || currentTime <= tickers[1]) {
+          currentTime = 0;
+          run_microsteps();
+          return;
+        }
+        for (var i = 2; i < tickers.length; i++) {
+          if (tickers[i] >= currentTime) {
+            goto_time(i-2)
+            return;
+          }
+        }
+        goto_time(tickers.length - 2);
+      }
+      else if (currentTime > 0) {
         currentTime--;
         var mesidx = currentMegaStep();
         var mes = megasteps[mesidx];
@@ -420,16 +565,27 @@ function handleKeyPress(e) {
       break;
     case 'ArrowDown':
       if (currentTime < totalTime) {
-        var mesidx = currentMegaStep();
-        var mes = megasteps[mesidx];
-        var mis = microsteps[currentTime];
-        var tl = mis.trace.length;
-        var endTime = mes.startTime + mes.nsteps;
-        while (++currentTime < endTime) {
-          mis = microsteps[currentTime];
-          tl2 = mis.trace.length;
-          if (tl2 < tl) {
-            break;
+        if (!detailed) {
+          for (var i = 0; i < tickers.length; i++) {
+            if (tickers[i] >= currentTime) {
+              goto_time(i)
+              return;
+            }
+          }
+          currentTime = totalTime;
+        }
+        else {
+          var mesidx = currentMegaStep();
+          var mes = megasteps[mesidx];
+          var mis = microsteps[currentTime];
+          var tl = mis.trace.length;
+          var endTime = mes.startTime + mes.nsteps;
+          while (++currentTime < endTime) {
+            mis = microsteps[currentTime];
+            tl2 = mis.trace.length;
+            if (tl2 < tl) {
+              break;
+            }
           }
         }
         run_microsteps();
@@ -575,9 +731,11 @@ function init_microstep(masidx, misidx) {
   }
 
   if (mis.hasOwnProperty("choose")) {
+    microsteps[t].choice = mis["choose"];
     microsteps[t].choose = "chose " + json_string(mis["choose"]);
   }
   else {
+    microsteps[t].choice = null;
     microsteps[t].choose = null;
   }
   if (mis.hasOwnProperty("print")) {
@@ -736,7 +894,22 @@ function run_microstep(t) {
   var mis = microsteps[t];
   var mes = megasteps[mis.mesidx];
   var mesrow = mestable.rows[mis.mesidx];
-  mesrow.cells[3].innerHTML = mis.npc;
+  // mesrow.cells[3].innerHTML = mis.npc;
+  x = document.getElementById('PC' + mis.mesidx);
+  x.innerHTML = mis.npc;
+
+  /*
+  var op = state.hvm.code[mis.pc].op;
+  if (op == "Store") {
+    addToStep(mis.mesidx, "Store " + json_string(mis.explain2.args[0]) + " into " + json_string(mis.explain2.args[1]).slice(1));
+  }
+  else if (op == "Choose") {
+    addToStep(mis.mesidx, "Choose " + json_string(mis.choice));
+  }
+  else if (op == "Print") {
+    addToStep(mis.mesidx, "Print " + json_string(mis.explain2.args[0]));
+  }
+  */
 
   // if (mis.pc == 963) {
   //   alert(JSON.stringify(mis.shared));
@@ -776,23 +949,28 @@ function run_microstep(t) {
 //    mis.cloc = null;
 //  }
 //  else
-    {
+  {
     coderow.style.color = "blue";
     if (t+1 < microsteps.length) {
       var nmis = microsteps[t+1];
-      code = getCode(nmis.pc);
-      var l1 = parseInt(code.line);
-      var l2 = parseInt(code.endline);
-      if (l1 == l2 && l1 == code.stmt[0] && l2 == code.stmt[2]) {
-        var c1 = parseInt(code.column) - 1;
-        var c2 = parseInt(code.endcolumn);
-        var s1 = code.code.slice(0, c1);
-        var s2 = code.code.slice(c1, c2);
-        var s3 = code.code.slice(c2);
-        coderow.innerHTML = '<a href="' + code.file + '">' + code.module + "</a>:" + code.line + "&nbsp;&nbsp;&nbsp;" + escapeHTML(s1) + "<span style='color:green'>" + escapeHTML(s2) + "</span>" + escapeHTML(s3);
+      loc = getCode(nmis.pc);
+      if (loc.code == null) {
+          coderow.innerHTML = '<a href="' + loc.file + '">' + loc.module + "</a>:" + loc.line + "&nbsp;&nbsp;&nbsp;" + escapeHTML("<end>");
       }
       else {
-        coderow.innerHTML = '<a href="' + code.file + '">' + code.module + "</a>:" + code.line + "&nbsp;&nbsp;&nbsp;" + escapeHTML(code.code);
+        var l1 = parseInt(loc.line);
+        var l2 = parseInt(loc.endline);
+        if (l1 == l2 && l1 == loc.stmt[0] && l2 == loc.stmt[2]) {
+          var c1 = parseInt(loc.column) - 1;
+          var c2 = parseInt(loc.endcolumn);
+          var s1 = loc.code.slice(0, c1);
+          var s2 = loc.code.slice(c1, c2);
+          var s3 = loc.code.slice(c2);
+          coderow.innerHTML = '<a href="' + loc.file + '">' + loc.module + "</a>:" + loc.line + "&nbsp;&nbsp;&nbsp;" + escapeHTML(s1) + "<span style='color:green'>" + escapeHTML(s2) + "</span>" + escapeHTML(s3);
+        }
+        else {
+          coderow.innerHTML = '<a href="' + loc.file + '">' + loc.module + "</a>:" + loc.line + "&nbsp;&nbsp;&nbsp;" + escapeHTML(loc.code);
+        }
       }
     }
   }
@@ -803,7 +981,7 @@ function run_microstep(t) {
   else if (t+1 < microsteps.length) {
     var nmis = microsteps[t+1];
     if (nmis.tid == mis.tid) {
-        mes.nextstep.innerHTML = "next2: " + explain_expand(nmis.explain2);
+        mes.nextstep.innerHTML = "after: " + explain_expand(nmis.explain2);
     }
     else {
         updateStatus(mes);
@@ -829,10 +1007,11 @@ function run_microsteps() {
   currCloc = document.getElementById('C0');
   currOffset = document.getElementById('P0');
   for (var i = 0; i < nmegasteps; i++) {
-    mestable.rows[i].cells[3].innerHTML = "";
+    // mestable.rows[i].cells[3].innerHTML = "";
     for (var j = 0; j < vardir.length; j++) {
       mestable.rows[i].cells[j + 4].innerHTML = "";
     }
+    // megasteps[i].thisstep.innerHTML = "";
     megasteps[i].log.innerHTML = "";
   }
   for (var tid = 0; tid < nthreads; tid++) {
@@ -856,7 +1035,9 @@ function run_microsteps() {
     var mes = megasteps[mis.mesidx];
     mes.nextstep.innerHTML = "next: " + explain_expand(mis.explain2);
     var mesrow = mestable.rows[mis.mesidx];
-    mesrow.cells[3].innerHTML = mis.pc;
+    // mesrow.cells[3].innerHTML = mis.pc;
+    x = document.getElementById('PC' + mis.mesidx);
+    x.innerHTML = mis.pc;
 
     if (false && mis.mesidx > 0) {
       var oldrow = mestable.rows[mis.mesidx - 1];
@@ -894,6 +1075,18 @@ function run_microsteps() {
       row.style = 'background-color: white;';
     }
   }
+
+  for (var i = 0; i < tickers.length; i++) {
+    document.getElementById('radio' + i).checked = tickers[i] < currentTime;
+    var k = document.getElementById('var' + i);
+    if (k != null) {
+        k.style.color = tickers[i] < currentTime ? "blue" : "grey";
+    }
+    var v = document.getElementById('val' + i);
+    if (v != null) {
+        v.style.color = tickers[i] < currentTime ? "green" : "grey";
+    }
+  }
 }
 
 // Initialization starts here
@@ -906,13 +1099,16 @@ for (var tid = 0; tid < nthreads; tid++) {
     stacktrace: [],
     tracetable: document.getElementById("threadinfo" + tid)
   };
+  detailed_list.push("stacktop" + tid);
 }
 threads[0].stack = [ "()" ]
 for (let i = 0; i < nmegasteps; i++) {
   var canvas = document.getElementById("timeline" + i);
+  var thisstep = document.getElementById("thisstep" + i); 
   var nextstep = document.getElementById("nextstep" + i); 
   megasteps[i] = {
     canvas: canvas,
+    thisstep: thisstep,
     nextstep: nextstep,
     startTime: 0,
     nsteps: 0,
@@ -921,6 +1117,9 @@ for (let i = 0; i < nmegasteps; i++) {
     log: document.getElementById("log" + i)
   };
   canvas.addEventListener('mousedown', function(e){handleClick(e, i)});
+  detailed_list.push("timeline" + i)
+  detailed_list.push("PC" + i)
+  abbrev_list.push("thisstep" + i)
 }
 for (var j = 0; j < state.macrosteps.length; j++) {
   init_macrostep(j);
@@ -928,4 +1127,5 @@ for (var j = 0; j < state.macrosteps.length; j++) {
 
 currentTime = totalTime = microsteps.length;
 run_microsteps();
+set_details()
 document.addEventListener('keydown', handleKeyPress);

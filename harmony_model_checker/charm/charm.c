@@ -32,6 +32,7 @@
 #include <errno.h>
 #include <assert.h>
 #include <time.h>
+#include <locale.h>
 
 #if !defined(TIME_UTC) || defined(__APPLE__)
 #include <sys/time.h>
@@ -49,6 +50,9 @@
 #include "dfa.h"
 #include "thread.h"
 #include "spawn.h"
+
+// Heuristic check for possible infinite model: diameter of Kripke structure
+#define MAX_DIAMETER    250
 
 // The model checker leverages partial order reduction to reduce the
 // number of states and interleavings considered.  In particular, it
@@ -153,6 +157,8 @@ struct alloc_state {
     uintptr_t frag_waste;
 };
 
+#define N_PC_SAMPLES    64
+
 // One of these per worker thread
 struct worker {
     // Putting the more-or-less constant fields here at the beginning
@@ -223,6 +229,11 @@ struct worker {
 
     unsigned int sb_index;
     unsigned int diameter;          // diameter of Kripke structure
+    unsigned int choose_states;     // # choose states
+    unsigned int choose_edges;      // # choose edges
+
+    unsigned int pc_samples[N_PC_SAMPLES];
+    unsigned int pc_sample_next;
 
     // To detect infinite loops
     char *inf_buf;
@@ -238,6 +249,8 @@ struct worker {
     // TODO.  Probably useless
     unsigned int nworkers;
     struct dfa *dfa;
+
+    unsigned int edges_self, edges_choose, edges_normal, edges_print;
 };
 
 // Get the current time as a double value for easy computation
@@ -681,6 +694,11 @@ static inline void process_step(
 ) {
     struct step_output *so = stc->u.completed;
 
+    w->pc_samples[w->pc_sample_next++] = so->pc;
+    if (w->pc_sample_next == N_PC_SAMPLES) {
+        w->pc_sample_next = 0;
+    }
+
     if (sh->edge_index < 0) { // invariant
         assert(stc->completed);
         assert(stc->invariant_chk);
@@ -859,7 +877,8 @@ static struct step_output *onestep(
     struct state *sc,       // actual state
     struct step *step,      // step info
     hvalue_t choice,        // if about to make a choice, which choice?
-    bool infloop_detect     // try to detect infloop from the start
+    bool infloop_detect,    // try to detect infloop from the start
+    unsigned int diameter   // distance from initial state
 ) {
     // assert(state_size(sc) == state_size(node_state(node)));
     assert(!step->ctx->terminated);
@@ -910,6 +929,10 @@ static struct step_output *onestep(
 
         // See what kind of instruction is next
         // printf("--> %u %s %u %u\n", pc, oi->name, step->ctx->sp, instrcnt);
+
+        if (diameter > MAX_DIAMETER) {
+            value_ctx_failure(step->ctx, step->allocator, "too deep --- likely infinite model");
+        }
 
         // If it's a Choose instruction, we should break no matter what, even if
         // in atomic mode.
@@ -1165,6 +1188,7 @@ static struct step_output *onestep(
     so->after = value_put_context(step->allocator, step->ctx);
     so->ai = step->ai;     step->ai = NULL;
     so->nsteps = instrcnt;
+    so->pc = step->ctx->pc;
 
     assert(choose_count <= 255);
     so->choose_count = choose_count;
@@ -1296,13 +1320,13 @@ static void trystep(
         // detected, it will run again immediately looking for infinite
         // loops to find the shortest counterexample.
         struct step_output *so =
-            onestep(w, state, step, choice, false);
+            onestep(w, state, step, choice, false, node->len);
         if (so == NULL) {        // ran into an infinite loop
             // TODO.  Need probably more cleanup of step, like ai
             step->nlog = step->nspawned = step->nunstopped = 0;
             memcpy(&w->ctx, cc, ctx_size(cc));
             step->vars = state->vars;
-            so = onestep(w, state, step, choice, true);
+            so = onestep(w, state, step, choice, true, node->len);
         }
 
         // Mark as completed
@@ -1331,11 +1355,13 @@ static void trystep(
             !so2->failed && !so2->infinite_loop) {
         if (edge_index >= 0) {
             node_edges(node)[edge_index].dst = node;
+            w->edges_self++;
         }
         while (el != NULL) {
             node = el->node;
             if (el->edge_index >= 0) {
                 node_edges(node)[el->edge_index].dst = node;
+                w->edges_self++;
             }
             struct edge_list *next = el->next;
             el->next = w->el_free;
@@ -1622,12 +1648,14 @@ static void twostep(
     hvalue_t choice,
     unsigned int nsteps,
     unsigned int pid,
+    unsigned int diameter,
     struct macrostep *macro
 ){
     sc->type = STATE_NORMAL;
     sc->chooser = 0;
 
     // printf("NSTEPS %u\n", nsteps);
+    // printf("DIAM %u\n", diameter);
 
     struct step step;
     memset(&step, 0, sizeof(step));
@@ -1654,8 +1682,11 @@ static void twostep(
 
     unsigned int instrcnt = 0;
     for (;;) {
-        int pc = step.ctx->pc;
+        if (diameter > MAX_DIAMETER) {
+            value_ctx_failure(step.ctx, step.allocator, "too deep --- likely infinite model");
+        }
 
+        int pc = step.ctx->pc;
         hvalue_t print = 0;
         struct instr *instrs = global.code.instrs;
         struct op_info *oi = instrs[pc].oi;
@@ -1681,6 +1712,7 @@ static void twostep(
 
         assert(!instrs[pc].choose || choice != 0);
         make_microstep(sc, step.ctx, step.callstack, false, instrs[pc].choose, choice, print, &step, macro);
+
         if (step.ctx->terminated || step.ctx->failed || step.ctx->stopped) {
             break;
         }
@@ -1840,6 +1872,7 @@ static void path_recompute(){
             edge_input(e)->choice,
             edge_output(e)->nsteps,
             pid,
+            i,
             macro
         );
         // assert(global.processes[pid] == edge_output(e)->after || edge_output(e)->after == 0);
@@ -2675,6 +2708,12 @@ static void do_work2(struct worker *w){
             struct node *next = (struct node *) &hn[1];
             struct edge *edge = &node_edges(sh->node)[sh->edge_index];
             edge->dst = next;
+            switch (sc->type) {
+                case STATE_CHOOSE: w->edges_choose++; break;
+                case STATE_NORMAL: w->edges_normal++; break;
+                case STATE_PRINT:  w->edges_print++;  break;
+                default: assert(false);
+            }
 
             if (new) {
                 next->failed = edge->failed;
@@ -2698,6 +2737,10 @@ static void do_work2(struct worker *w){
                     shard->tb_tail = rb;
                 }
                 assert(shard->tb_tail->nresults == shard->tb_size % NRESULTS);
+                if (sc->type == STATE_CHOOSE) {
+                    w->choose_states++;
+                    w->choose_edges += sh->noutgoing;
+                }
             }
 
             // See if the node points sideways or backwards, in which
@@ -2995,6 +3038,20 @@ static void vproc_tree_alloc(struct vproc_tree *vt, struct worker *workers, unsi
     }
 }
 
+struct sample {
+    unsigned int pc;
+    unsigned int count;
+};
+
+static int sample_cmp(const void *x, const void *y){
+    const struct sample *xx = x, *yy = y;
+
+    if (xx->count == yy->count) {
+        return xx->pc - yy->pc;
+    }
+    return yy->count - xx->count;
+}
+
 // This is a main worker thread for the model checking phase.  arg points to
 // the struct worker record for this worker.
 //
@@ -3007,6 +3064,7 @@ static void vproc_tree_alloc(struct vproc_tree *vt, struct worker *workers, unsi
 // point the buffered nodes are all added to the graph and the next layer is
 // explored.
 static void worker(void *arg){
+    static double last_time;
     struct worker *w = arg;
 
     // printf("WORKER %u\n", w->index);
@@ -3119,28 +3177,167 @@ static void worker(void *arg){
             }
 
             // Worker 0 periodically prints some stats for long runs.
-            else if (after - global.lasttime > 3) {
-                if (global.lasttime != 0) {
-                    unsigned int enqueued = 0, dequeued = 0;
-                    unsigned long allocated = global.allocated;
-                    unsigned int diameter = 0;
-                    for (unsigned int i = 0; i < w->nworkers; i++) {
-                        struct worker *w2 = &global.workers[i];
-                        enqueued += w2->shard.tb_size;
-                        dequeued += w2->shard.tb_index;
-                        allocated += w2->alloc_state.allocated;
-                        if (w2->diameter > diameter) {
-                            diameter = w2->diameter;
-                        }
-                    }
-                    double gigs = (double) allocated / (1 << 30);
-                    fprintf(stderr, "    states=%u diam=%u q=%d mem=%.3lfGB\n",
-                            enqueued, diameter,
-                            enqueued - dequeued,
-                            gigs);
-                    global.last_nstates = enqueued;
+            else if (after - last_time > 3) {
+                static unsigned int last_states, last_queue;
+
+                unsigned int enqueued = 0, dequeued = 0;
+                unsigned long allocated = global.allocated;
+                unsigned int si_hits = 0, si_total = 0, diameter = 0;
+                unsigned int choose_states = 0;
+                unsigned edges_self = 0, edges_choose = 0, edges_normal = 0, edges_print = 0;
+
+                // Count how many times each pc was invoked
+                struct sample *npc = calloc(global.code.len, sizeof(*npc));
+                for (unsigned int pc = 0; pc < global.code.len; pc++) {
+                    npc[pc].pc = pc;
                 }
-                global.lasttime = after;
+
+                for (unsigned int i = 0; i < w->nworkers; i++) {
+                    struct worker *w2 = &global.workers[i];
+                    enqueued += w2->shard.tb_size;
+                    dequeued += w2->shard.tb_index;
+                    allocated += w2->alloc_state.allocated;
+                    si_hits += w->si_hits;
+                    si_total += w->si_total;
+                    choose_states += w->choose_states;
+                    edges_self   += w->edges_self;
+                    edges_choose += w->edges_choose;
+                    edges_normal += w->edges_normal;
+                    edges_print  += w->edges_print;
+                    if (w2->diameter > diameter) {
+                        diameter = w2->diameter;
+                    }
+                    for (unsigned int j = 0; j < N_PC_SAMPLES; j++) {
+                        npc[w->pc_samples[j]].count++;
+                    }
+                }
+
+                if (last_time != 0) {
+                    double gigs = (double) allocated / (1 << 30);
+                    unsigned int discovered = (unsigned int) ((enqueued - last_states) / (after - last_time));
+                    unsigned int processed = (unsigned int) ((dequeued - last_queue) / (after - last_time));
+
+                    fprintf(stderr, "\n");
+                    fprintf(stderr, "%'12u states discovered so far (%'u state transitions)\n", enqueued, si_total);
+
+                    fprintf(stderr, "%'12u new states discovered per second\n", discovered);
+                    if (processed < discovered) {
+                        fprintf(stderr, "%'12u states processed per second (deficit %'u states/second)\n", processed, discovered - processed);
+                    }
+                    else {
+                        fprintf(stderr, "%'12u new states processed per second (%'u states left)\n", processed, enqueued - dequeued);
+                    }
+                    fprintf(stderr, "%12.1lf GB memory used\n", gigs);
+
+                    unsigned int compute_percentage = 100 * (si_total - si_hits) / si_total;
+                    fprintf(stderr, "%12u%% compute percentage", compute_percentage);
+                    if (compute_percentage < 25) {
+                        fprintf(stderr, ": high amount of interleaving leading to state space explosion\n");
+                    }
+                    else if (compute_percentage < 50) {
+                        fprintf(stderr, ": concurrent interleaving leading to state space explosion\n");
+                    }
+                    else {
+                        fprintf(stderr, ": spending much time evaluating Harmony code in different states\n");
+                    }
+
+                    // fprintf(stderr, "    states=%u edges=%u q=%d mem=%.3lfGB\n",
+                    //         enqueued, si_total, enqueued - dequeued, gigs);
+
+                    unsigned int choose_percentage = 100 * choose_states / enqueued;
+                    fprintf(stderr, "%12u%% choose percentage", choose_percentage);
+                    if (choose_percentage > 50) {
+                        fprintf(stderr, ": choose expressions leading to significant state space explosion\n");
+                    }
+                    else if (choose_percentage > 10) {
+                        fprintf(stderr, ": choose expressions can lead to state space explosion\n");
+                    }
+                    else {
+                        fprintf(stderr, "\n");
+                    }
+
+                    // fprintf(stderr, "       choose=%u (%lf), computations=%u\n",
+                    //         choose_states, (double) choose_states / enqueued, (si_total - si_hits));
+                    // fprintf(stderr, "       edges: self=%u choose=%u normal=%u print=%u\n",
+                    //         edges_self, edges_choose, edges_normal, edges_print);
+                    if (diameter > MAX_DIAMETER) {
+                        fprintf(stderr, "        WARNING: likely infinite model --- will not terminate\n");
+                    }
+
+                    fprintf(stderr, "   Time spent:\n");
+                    qsort(npc, global.code.len, sizeof(*npc), sample_cmp);
+                    for (unsigned int i = 0; i < 3; i++) {
+                        if (npc[i].count == 0) {
+                            fprintf(stderr, "\n");
+                            continue;
+                        }
+
+                        struct json_value *pretty = global.pretty->u.list.vals[npc[i].pc];
+                        assert(pretty != 0);
+                        assert(pretty->type == JV_LIST);
+                        struct json_value *instr = pretty->u.list.vals[0];
+                        assert(instr != 0);
+                        assert(instr->type == JV_ATOM);
+
+                        // Find module name and line number
+                        struct json_value *jv = global.locs->u.list.vals[npc[i].pc];
+                        char *module = json_lookup_string(jv->u.map, "module");
+                        assert(module != NULL);
+                        char *line = json_lookup_string(jv->u.map, "line");
+                        assert(line != NULL);
+                        unsigned long lino = strtoul(line, NULL, 10);
+
+                        // Find line of code
+                        struct json_value *modinfo = dict_lookup(global.modules->u.map, module, strlen(module));
+                        assert(modinfo != NULL);
+                        assert(modinfo->type = JV_MAP);
+                        struct json_value *lines = dict_lookup(modinfo->u.map, "lines", 5);
+                        assert(lines != NULL);
+                        assert(lines->type = JV_LIST);
+                        assert(lino > 0);
+                        struct json_value *code;
+                        if (lino - 1 < lines->u.list.nvals) {
+                            code = lines->u.list.vals[lino - 1];
+                            assert(code != NULL);
+                            assert(code->type == JV_ATOM);
+                        }
+                        else {
+                            code = NULL;
+                        }
+
+                        // See what method this is in
+                        unsigned int frame = npc[i].pc;
+                        for (;;) {
+                            if (global.code.instrs[frame].frame) {
+                                break;
+                            }
+                            assert(frame > 0);
+                            frame--;
+                        }
+                        const struct env_Frame *ef = global.code.instrs[frame].env;
+                        char *method = value_string(ef->name);
+                        assert(*method == '"');
+                        unsigned int mlen = (unsigned int) strlen(method);
+
+                        fprintf(stderr, "      %4.1lf%%: ", 100.0 * npc[i].count / N_PC_SAMPLES / w->nworkers);
+                        fprintf(stderr, "%s:%lu (in %.*s):", module, lino, mlen - 2, method + 1);
+                        if (code == 0) {
+                            fprintf(stderr, "<end>");
+                        }
+                        else {
+                            fprintf(stderr, "%.*s", code->u.atom.len, code->u.atom.base);
+                        }
+                        fprintf(stderr, " [%.*s]\n", instr->u.atom.len, instr->u.atom.base);
+
+                        free(method);
+                        free(module);
+                        free(line);
+                    }
+                }
+                free(npc);
+                last_time = after;
+                last_states = enqueued;
+                last_queue = dequeued;
                 if (after > w->timeout) {
                     fprintf(stderr, "charm: timeout exceeded\n");
                     exit(1);
@@ -4289,6 +4486,8 @@ static bool endsWith(char *s, char *suffix){
 //    -w<workers>: specifies what and how many workers to use (see below)
 //
 int exec_model_checker(int argc, char **argv){
+    setlocale(LC_NUMERIC, "");
+
     bool cflag = false, dflag = false, Dflag = false, Tflag = false;
     int i, maxtime = 300000000 /* about 10 years */;
     char *outfile = NULL, *hfaout = NULL, *dfafile = NULL, *worker_flag = NULL;
@@ -4685,6 +4884,13 @@ int exec_model_checker(int argc, char **argv){
     assert(jc->type == JV_LIST);
     global.code = code_init_parse(&workers[0].allocator, jc);
 
+    global.locs = dict_lookup(jv->u.map, "locs", 4);
+    assert(global.locs->type == JV_LIST);
+    global.modules = dict_lookup(jv->u.map, "modules", 7);
+    assert(global.modules->type == JV_MAP);
+    global.pretty = dict_lookup(jv->u.map, "pretty", 6);
+    assert(global.pretty->type == JV_LIST);
+
     if (has_countLabel) {
         fprintf(stderr, "countLabel no longer supported\n");
         exit(1);
@@ -4859,7 +5065,7 @@ int exec_model_checker(int argc, char **argv){
         gettime() - global.start_model_checking,
         (double) allocated / (1L << 30), diameter);
     printf("    * %u/%u computations/edges\n", (si_total - si_hits), si_total);
-    printf("    * %u rounds, %u values\n", global.workers[0].nrounds, global.values->count);
+    // printf("    * %u rounds, %u values\n", global.workers[0].nrounds, global.values->count);
 
     // Collect the failures of all the workers.  Also keep track if
     // any of the workers printed something and if there may be
@@ -5177,9 +5383,6 @@ int exec_model_checker(int argc, char **argv){
         fprintf(stderr, "charm: can't create %s\n", outfile);
         exit(1);
     }
-
-    global.pretty = dict_lookup(jv->u.map, "pretty", 6);
-    assert(global.pretty->type == JV_LIST);
 
     fprintf(out, "{\n");
     fprintf(out, "  \"nstates\": %d,\n", global.graph.size);

@@ -13,6 +13,7 @@ class ModifiedDenterHelper(DenterHelper):
             "space": False
         }
     
+    # TODO: should this include '?' and '!'  ?
     def _is_operator_token(self, t: Token) -> bool:
         return t.text in {
             '==', '!=', '<', '<=', '>', '>=',

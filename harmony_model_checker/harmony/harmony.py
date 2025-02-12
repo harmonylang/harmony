@@ -207,6 +207,7 @@ def dumpCode(printCode, code: Code, scope: Scope, f=sys.stdout):
         firstTime = True
         for pc in range(len(code.labeled_ops)):
             lop = code.labeled_ops[pc]
+            # print(pc, "==>", lop.start, lop.stop, lop.stmt)
             (_, file, line, column) = lop.start
             (endlexeme, _, endline, endcolumn) = lop.stop
             endcolumn += len(endlexeme) - 1
@@ -217,6 +218,7 @@ def dumpCode(printCode, code: Code, scope: Scope, f=sys.stdout):
                 column2 = endcolumn
             else:
                 (line1, column1, line2, column2) = lop.stmt
+            # print(pc, "-->", line, column, endline, endcolumn, line1, column1, line2, column2)
             if (line, column) < (line1, column1):
                 line = line1
                 column = column1
