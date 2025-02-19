@@ -3103,6 +3103,29 @@ static int sample_cmp(const void *x, const void *y){
     return yy->count - xx->count;
 }
 
+// Print a number with commas. Like fprintf(stderr, "%'*u", width, n), but also works on Windows...
+void print_with_commas(unsigned int n, unsigned int width){
+    char buf[100], *p = &buf[sizeof(buf)];
+    int len = 0;
+
+    *--p = 0;
+    for (;;) {
+        *--p = '0' + (n % 10);
+        n /= 10;
+        if (n == 0) {
+            break;
+        }
+        len++;
+        if (len % 3 == 0) {
+            *--p = ',';
+        }
+    }
+    while (p > &buf[sizeof(buf) - 1 - width]) {
+        *--p = ' ';
+    }
+    fprintf(stderr, "%s", p);
+}
+
 // This is a main worker thread for the model checking phase.  arg points to
 // the struct worker record for this worker.
 //
@@ -3269,14 +3292,24 @@ static void worker(void *arg){
                     unsigned int processed = (unsigned int) ((dequeued - last_queue) / (after - last_time));
 
                     fprintf(stderr, "\n");
-                    fprintf(stderr, "%'12u states discovered so far (%'u state transitions)\n", enqueued, si_total);
+                    print_with_commas(enqueued, 12);
+                    fprintf(stderr, " states discovered so far (");
+                    print_with_commas(si_total, 0);
+                    fprintf(stderr, " state transitions)\n");
 
-                    fprintf(stderr, "%'12u new states discovered per second\n", discovered);
+                    print_with_commas(discovered, 12);
+                    fprintf(stderr, " new states discovered per second\n");
+
+                    print_with_commas(processed, 12);
                     if (processed < discovered) {
-                        fprintf(stderr, "%'12u states processed per second (deficit %'u states/second)\n", processed, discovered - processed);
+                        fprintf(stderr, " states processed per second (deficit ");
+                        print_with_commas(discovered - processed, 0);
+                        fprintf(stderr, " states/second)\n");
                     }
                     else {
-                        fprintf(stderr, "%'12u new states processed per second (%'u states left)\n", processed, enqueued - dequeued);
+                        fprintf(stderr, " new states processed per second (");
+                        print_with_commas(enqueued - dequeued, 0);
+                        fprintf(stderr, " states left)\n");
                     }
                     fprintf(stderr, "%12.1lf GB memory used\n", gigs);
 
@@ -4537,7 +4570,7 @@ static bool endsWith(char *s, char *suffix){
 //    -w<workers>: specifies what and how many workers to use (see below)
 //
 int exec_model_checker(int argc, char **argv){
-    setlocale(LC_NUMERIC, "");
+    // setlocale(LC_NUMERIC, "");
 
     bool cflag = false, dflag = false, Dflag = false, Tflag = false;
     int i, maxtime = 300000000 /* about 10 years */;
