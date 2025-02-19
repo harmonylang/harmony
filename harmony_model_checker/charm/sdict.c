@@ -1,3 +1,4 @@
+#include "fastrange.h"
 #include "head.h"
 
 #include <assert.h>

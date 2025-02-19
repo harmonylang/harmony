@@ -68,7 +68,7 @@ void *value_copy(hvalue_t v, unsigned int *psize){
         return NULL;
     }
     unsigned int size;
-    void *p = dict_retrieve((void *) v, &size);
+    void *p = dict_retrieve(HV_TO_P(v), &size);
     void *r = malloc(size);
     memcpy(r, p, size);
     if (psize != NULL) {
@@ -78,8 +78,7 @@ void *value_copy(hvalue_t v, unsigned int *psize){
 }
 
 struct val_external *value_get_external(hvalue_t v){
-    v &= ~VALUE_MASK;
-    return (struct val_external *) v;
+    return HV_TO_P(v & VALUE_MASK);
 }
 
 // Like value_copy, but extend with given size and return old size
@@ -90,7 +89,7 @@ void *value_copy_extend(hvalue_t v, unsigned int inc, unsigned int *psize){
         return inc == 0 ? NULL : malloc(inc);
     }
     unsigned int size;
-    void *p = dict_retrieve((void *) v, &size);
+    void *p = dict_retrieve(HV_TO_P(v), &size);
     void *r = malloc(size + inc);
     memcpy(r, p, size);
     if (psize != NULL) {
@@ -105,7 +104,7 @@ hvalue_t value_put_atom(struct allocator *allocator, const void *p, unsigned int
         return VALUE_ATOM;
     }
     void *q = dict_find(global.values, allocator, p, size, NULL);
-    return (hvalue_t) q | VALUE_ATOM;
+    return P_TO_HV(q) | VALUE_ATOM;
 }
 
 // p points to a sorted list of unique hvalues.  size is the number of
@@ -115,7 +114,7 @@ hvalue_t value_put_set(struct allocator *allocator, void *p, unsigned int size){
         return VALUE_SET;
     }
     void *q = dict_find(global.values, allocator, p, size, NULL);
-    return (hvalue_t) q | VALUE_SET;
+    return P_TO_HV(q) | VALUE_SET;
 }
 
 // p points to an array of key/value pairs, sorted by key (which must be
@@ -125,7 +124,7 @@ hvalue_t value_put_dict(struct allocator *allocator, void *p, unsigned int size)
         return VALUE_DICT;
     }
     void *q = dict_find(global.values, allocator, p, size, NULL);
-    return (hvalue_t) q | VALUE_DICT;
+    return P_TO_HV(q) | VALUE_DICT;
 }
 
 // p points to an array of hvalues.  Return an hvalue.
@@ -134,7 +133,7 @@ hvalue_t value_put_list(struct allocator *allocator, void *p, unsigned int size)
         return VALUE_LIST;
     }
     void *q = dict_find(global.values, allocator, p, size, NULL);
-    return (hvalue_t) q | VALUE_LIST;
+    return P_TO_HV(q) | VALUE_LIST;
 }
 
 // p points to an array of hvalues.  The first is the function, and the
@@ -146,18 +145,18 @@ hvalue_t value_put_address(struct allocator *allocator, void *p, unsigned int si
     assert(size % sizeof(hvalue_t) == 0);
     void *q = dict_find(global.values, allocator, p, size, NULL);
     if (* (hvalue_t *) p == VALUE_PC_SHARED) {
-        return (hvalue_t) q | VALUE_ADDRESS_SHARED;
+        return P_TO_HV(q) | VALUE_ADDRESS_SHARED;
     }
     else {
-        return (hvalue_t) q | VALUE_ADDRESS_PRIVATE;
+        return P_TO_HV(q) | VALUE_ADDRESS_PRIVATE;
     }
 }
 
 // ctx points to a context.  Returns an hvalue.
 hvalue_t value_put_context(struct allocator *allocator, struct context *ctx){
 	assert(ctx->pc >= 0);
-    hvalue_t q = (hvalue_t) dict_find(global.values, allocator,
-                                                ctx, ctx_size(ctx), NULL);
+    hvalue_t q = P_TO_HV(dict_find(global.values, allocator,
+                                                ctx, ctx_size(ctx), NULL));
     if (ctx->extended && ctx_trap_pc(ctx) != 0 && !ctx->interruptlevel) {
         q |= VALUE_CONTEXT_INTERRUPTABLE;
     }
@@ -172,9 +171,9 @@ hvalue_t value_put_context(struct allocator *allocator, struct context *ctx){
 hvalue_t value_put_external(struct allocator *al, struct external_descriptor *descr, void *ref){
     struct val_external *ve = al == NULL ? malloc(sizeof(*ve)) :
             (*al->alloc)(al->ctx, sizeof(*ve), false, false);
-    ve->descr= descr;
+    ve->descr = descr;
     ve->ref = ref;
-    return (hvalue_t) ve | VALUE_EXTERNAL;
+    return P_TO_HV(ve) | VALUE_EXTERNAL;
 }
 
 // Helper function for value_cmp.  False < True, for arbitrary reasons.
@@ -215,7 +214,7 @@ static int value_cmp_dict(hvalue_t v1, hvalue_t v2){
     if (v2 == 0) {
         return 1;
     }
-    void *p1 = (void *) v1, *p2 = (void *) v2;
+    void *p1 = HV_TO_P(v1), *p2 = HV_TO_P(v2);
     unsigned int size1, size2;
     hvalue_t *vals1 = dict_retrieve(p1, &size1);
     hvalue_t *vals2 = dict_retrieve(p2, &size2);
@@ -240,7 +239,7 @@ static int value_cmp_set(hvalue_t v1, hvalue_t v2){
     if (v2 == 0) {
         return 1;
     }
-    void *p1 = (void *) v1, *p2 = (void *) v2;
+    void *p1 = HV_TO_P(v1), *p2 = HV_TO_P(v2);
     unsigned int size1, size2;
     hvalue_t *vals1 = dict_retrieve(p1, &size1);
     hvalue_t *vals2 = dict_retrieve(p2, &size2);
@@ -264,7 +263,7 @@ static int value_cmp_list(hvalue_t v1, hvalue_t v2){
     if (v2 == 0) {
         return 1;
     }
-    void *p1 = (void *) v1, *p2 = (void *) v2;
+    void *p1 = HV_TO_P(v1), *p2 = HV_TO_P(v2);
     unsigned int size1, size2;
     hvalue_t *vals1 = dict_retrieve(p1, &size1);
     hvalue_t *vals2 = dict_retrieve(p2, &size2);
@@ -283,7 +282,7 @@ static int value_cmp_list(hvalue_t v1, hvalue_t v2){
 // Helper function for value_order.  List are lexicographically compared.
 static int value_order_list(struct context *ctx, struct allocator *allocator,
                                             hvalue_t v1, hvalue_t v2){
-    void *p1 = (void *) v1, *p2 = (void *) v2;
+    void *p1 = HV_TO_P(v1), *p2 = HV_TO_P(v2);
     unsigned int size1, size2;
     hvalue_t *vals1 = dict_retrieve(p1, &size1);
     hvalue_t *vals2 = dict_retrieve(p2, &size2);
@@ -332,7 +331,7 @@ static int value_cmp_address(hvalue_t v1, hvalue_t v2){
     if (v2 == 0) {
         return 1;
     }
-    void *p1 = (void *) v1, *p2 = (void *) v2;
+    void *p1 = HV_TO_P(v1), *p2 = HV_TO_P(v2);
     unsigned int size1, size2;
     hvalue_t *vals1 = dict_retrieve(p1, &size1);
     hvalue_t *vals2 = dict_retrieve(p2, &size2);
@@ -351,7 +350,7 @@ static int value_cmp_address(hvalue_t v1, hvalue_t v2){
 // Contexts are kind of compared arbitrarily using memcmp.
 // TODO.  Maybe should compare pc, ... to get some sensible order?
 static int value_cmp_context(hvalue_t v1, hvalue_t v2){
-    void *p1 = (void *) v1, *p2 = (void *) v2;
+    void *p1 = HV_TO_P(v1), *p2 = HV_TO_P(v2);
     unsigned int size1, size2;
     char *s1 = dict_retrieve(p1, &size1);
     char *s2 = dict_retrieve(p2, &size2);
@@ -364,8 +363,8 @@ static int value_cmp_context(hvalue_t v1, hvalue_t v2){
 }
 
 static int value_cmp_external(hvalue_t v1, hvalue_t v2){
-    struct val_external *p1 = (struct val_external *) v1;
-    struct val_external *p2 = (struct val_external *) v2;
+    struct val_external *p1 = (struct val_external *) HV_TO_P(v1);
+    struct val_external *p2 = (struct val_external *) HV_TO_P(v2);
     if (p1->descr == p2->descr) {
         return (*p1->descr->compare)(p1->ref, p2->ref);
     }
@@ -529,7 +528,7 @@ static void value_string_dict(struct strbuf *sb, hvalue_t v) {
         return;
     }
 
-    void *p = (void *) v;
+    void *p = HV_TO_P(v);
     unsigned int size;
     hvalue_t *vals = dict_retrieve(p, &size);
     size /= 2 * sizeof(hvalue_t);
@@ -552,7 +551,7 @@ static void value_json_dict(struct strbuf *sb, hvalue_t v) {
         return;
     }
 
-    void *p = (void *) v;
+    void *p = HV_TO_P(v);
     unsigned int size;
     hvalue_t *vals = dict_retrieve(p, &size);
     size /= 2 * sizeof(hvalue_t);
@@ -578,7 +577,7 @@ static void value_string_list(struct strbuf *sb, hvalue_t v) {
         return;
     }
 
-    void *p = (void *) v;
+    void *p = HV_TO_P(v);
     unsigned int size;
     hvalue_t *vals = dict_retrieve(p, &size);
     size /= sizeof(hvalue_t);
@@ -600,7 +599,7 @@ static void value_string_set(struct strbuf *sb, hvalue_t v) {
         return;
     }
 
-    void *p = (void *) v;
+    void *p = HV_TO_P(v);
     unsigned int size;
     hvalue_t *vals = dict_retrieve(p, &size);
     size /= sizeof(hvalue_t);
@@ -622,7 +621,7 @@ static void value_json_list(struct strbuf *sb, hvalue_t v) {
         return;
     }
 
-    void *p = (void *) v;
+    void *p = HV_TO_P(v);
     unsigned int size;
     hvalue_t *vals = dict_retrieve(p, &size);
     size /= sizeof(hvalue_t);
@@ -644,7 +643,7 @@ static void value_json_set(struct strbuf *sb, hvalue_t v) {
         return;
     }
 
-    void *p = (void *) v;
+    void *p = HV_TO_P(v);
     unsigned int size;
     hvalue_t *vals = dict_retrieve(p, &size);
     size /= sizeof(hvalue_t);
@@ -714,7 +713,7 @@ static void value_string_address(struct strbuf *sb, hvalue_t v) {
         return;
     }
 
-    void *p = (void *) v;
+    void *p = HV_TO_P(v);
     unsigned int size;
     hvalue_t *indices = dict_retrieve(p, &size);
     size /= sizeof(hvalue_t);
@@ -729,7 +728,7 @@ static void value_json_address(struct strbuf *sb, hvalue_t v) {
         return;
     }
 
-    void *p = (void *) v;
+    void *p = HV_TO_P(v);
     unsigned int size;
     hvalue_t *vals = dict_retrieve(p, &size);
     size /= sizeof(hvalue_t);
@@ -801,7 +800,7 @@ static void value_string_context(struct strbuf *sb, hvalue_t v) {
 }
 
 static void value_string_external(struct strbuf *sb, hvalue_t v) {
-    struct val_external *ve = (struct val_external *) v;
+    struct val_external *ve = (struct val_external *) HV_TO_P(v);
 
     (*ve->descr->print)(sb, ve->ref);
 }
@@ -990,7 +989,7 @@ static void value_json_context(struct strbuf *sb, hvalue_t v) {
 }
 
 static void value_json_external(struct strbuf *sb, hvalue_t v) {
-    struct val_external *ve = (struct val_external *) v;
+    struct val_external *ve = (struct val_external *) HV_TO_P(v);
 
     strbuf_printf(sb, "{ \"type\": \"external\", \"value\": \"");
     (*ve->descr->print)(sb, ve->ref);
@@ -1032,7 +1031,7 @@ void strbuf_value_string(struct strbuf *sb, hvalue_t v){
         value_string_external(sb, v & ~VALUE_MASK);
         break;
     default:
-        printf("bad value type: %p\n", (void *) v);
+        printf("bad value type: %p\n", HV_TO_P(v));
         panic("strbuf_value_string: bad value type");
     }
 }
@@ -1081,7 +1080,7 @@ void strbuf_value_json(struct strbuf *sb, hvalue_t v){
         value_json_external(sb, v);
         break;
     default:
-        printf("bad value type: %p\n", (void *) v);
+        printf("bad value type: %p\n", HV_TO_P(v));
         panic("strbuf_value_json: bad value type");
     }
 }
@@ -1165,7 +1164,7 @@ static hvalue_t value_atom(struct allocator *allocator, struct dict *map){
         return VALUE_ATOM;
     }
     void *p = dict_find(global.values, allocator, value->u.atom.base, value->u.atom.len, NULL);
-    return (hvalue_t) p | VALUE_ATOM;
+    return P_TO_HV(p) | VALUE_ATOM;
 }
 
 // Helper function for value_from_json.  A dictionary has a "value" field containing
@@ -1192,7 +1191,7 @@ static hvalue_t value_dict(struct allocator *allocator, struct dict *map){
     void *p = dict_find(global.values, allocator, vals,
                     value->u.list.nvals * sizeof(hvalue_t) * 2, NULL);
     free(vals);
-    return (hvalue_t) p | VALUE_DICT;
+    return P_TO_HV(p) | VALUE_DICT;
 }
 
 // Helper function for value_from_json.  A set has a "value" field containing
@@ -1213,7 +1212,7 @@ static hvalue_t value_set(struct allocator *allocator, struct dict *map){
     // vals is sorted already by harmony compiler
     void *p = dict_find(global.values, allocator, vals, value->u.list.nvals * sizeof(hvalue_t), NULL);
     free(vals);
-    return (hvalue_t) p | VALUE_SET;
+    return P_TO_HV(p) | VALUE_SET;
 }
 
 // Helper function for value_from_json.  A list has a "value" field containing
@@ -1232,7 +1231,7 @@ static hvalue_t value_list(struct allocator *allocator, struct dict *map){
     }
     void *p = dict_find(global.values, allocator, vals, value->u.list.nvals * sizeof(hvalue_t), NULL);
     free(vals);
-    return (hvalue_t) p | VALUE_LIST;
+    return P_TO_HV(p) | VALUE_LIST;
 }
 
 // Helper function for value_from_json.  An address (or perhaps better, a "thunk")
