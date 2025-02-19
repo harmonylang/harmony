@@ -414,16 +414,34 @@ static void direct_run(struct state *state, unsigned int id){
     memset(&w, 0, sizeof(w));
     w.alloc_state.alloc_buf = malloc(WALLOC_CHUNK);
     w.alloc_state.alloc_ptr = w.alloc_state.alloc_buf;
+
+#ifdef ALIGNED_ALLOC
+    w.alloc_state.alloc_buf16 = my_aligned_alloc(ALIGNMASK + 1, WALLOC_CHUNK);
+    w.alloc_state.alloc_ptr16 = w.alloc_state.alloc_buf16;
+#else // ALIGNED_ALLOC
     w.alloc_state.alloc_buf16 = malloc(WALLOC_CHUNK);
     w.alloc_state.alloc_ptr16 = w.alloc_state.alloc_buf16;
+    if (((hvalue_t) w.alloc_state.alloc_ptr16 & ALIGNMASK) != 0) {
+	w.alloc_state.alloc_ptr16 = (char *) ((hvalue_t) (w.alloc_state.alloc_ptr16 + ALIGNMASK) & ~ALIGNMASK);
+    }
+#endif // ALIGNED_ALLOC
+
     w.allocator.alloc = walloc;
     w.allocator.free = wfree;
     w.allocator.ctx = &w.alloc_state;
 
     w.inf_alloc_state.alloc_buf = malloc(WALLOC_CHUNK);
     w.inf_alloc_state.alloc_ptr = w.inf_alloc_state.alloc_buf;
+#ifdef ALIGNED_ALLOC
+    w.inf_alloc_state.alloc_buf16 = my_aligned_alloc(ALIGNMASK + 1, WALLOC_CHUNK);
+    w.inf_alloc_state.alloc_ptr16 = w.inf_alloc_state.alloc_buf16;
+#else // ALIGNED_ALLOC
     w.inf_alloc_state.alloc_buf16 = malloc(WALLOC_CHUNK);
     w.inf_alloc_state.alloc_ptr16 = w.inf_alloc_state.alloc_buf16;
+    if (((hvalue_t) w.inf_alloc_state.alloc_ptr16 & ALIGNMASK) != 0) {
+	w.inf_alloc_state.alloc_ptr16 = (char *) ((hvalue_t) (w.inf_alloc_state.alloc_ptr16 + ALIGNMASK) & ~ALIGNMASK);
+    }
+#endif // ALIGNED_ALLOC
     w.inf_allocator.alloc = walloc;
     w.inf_allocator.free = wfree;
     w.inf_allocator.ctx = &w.inf_alloc_state;
@@ -696,7 +714,7 @@ static inline void process_step(
             f->edge->dst = sh->node;
 #endif
             assert(f->edge->dst != NULL);
-            f->edge->stc_id = (uint64_t) stc;
+            f->edge->stc_id = P_TO_U64(stc);
             f->edge->failed = true;
             f->edge->invariant_chk = true;
             add_failure(&w->failures, f);
@@ -1241,7 +1259,7 @@ static void trystep(
     // edge_index < 0 ==> invariant check
     if (edge_index >= 0) {
         struct edge *edge = &node_edges(node)[edge_index];
-        edge->stc_id = (uint64_t) stc;
+        edge->stc_id = P_TO_U64(stc);
         edge->multiple = ctx_index >= 0 &&
                             state_multiplicity(state, ctx_index) > 1;
         edge->failed = false;
@@ -1822,7 +1840,7 @@ static void path_recompute(){
         }
         // printf("Macrostep %u: T%u -> %p\n", i, pid, (void *) ctx);
         if (pid >= global.nprocesses) {
-            printf("PID %p %u %u\n", (void *) ctx, pid, global.nprocesses);
+            printf("PID %p %u %u\n", HV_TO_P(ctx), pid, global.nprocesses);
             // panic("bad pid");
             global.nmacrosteps = i;
             break;
@@ -2773,6 +2791,10 @@ static bool cpuinfo_addrecord(int processor, int phys_id, int core_id){
     if (processor < 0) {
         fprintf(stderr, "cpuinfo_addrecord: no processor id?\n");
         return false;
+    }
+    if (phys_id < 0 && core_id < 0) {
+    	phys_id = 0;
+	core_id = processor;
     }
     if (phys_id < 0) {
         fprintf(stderr, "cpuinfo_addrecord: processor without physical id\n");
@@ -4653,8 +4675,17 @@ int exec_model_checker(int argc, char **argv){
 
         w->alloc_state.alloc_buf = malloc(WALLOC_CHUNK);
         w->alloc_state.alloc_ptr = w->alloc_state.alloc_buf;
-        w->alloc_state.alloc_buf16 = malloc(WALLOC_CHUNK);
+
+#ifdef ALIGNED_ALLOC
+        w->alloc_state.alloc_buf16 = my_aligned_alloc(ALIGNMASK + 1, WALLOC_CHUNK);
         w->alloc_state.alloc_ptr16 = w->alloc_state.alloc_buf16;
+#else // ALIGNED_ALLOC
+	w->alloc_state.alloc_buf16 = malloc(WALLOC_CHUNK);
+	w->alloc_state.alloc_ptr16 = w->alloc_state.alloc_buf16;
+	if (((hvalue_t) w->alloc_state.alloc_ptr16 & ALIGNMASK) != 0) {
+	    w->alloc_state.alloc_ptr16 = (char *) ((hvalue_t) (w->alloc_state.alloc_ptr16 + ALIGNMASK) & ~ALIGNMASK);
+	}
+#endif // ALIGNED_ALLOC
 
         w->allocator.alloc = walloc;
         w->allocator.free = wfree;
@@ -4663,8 +4694,17 @@ int exec_model_checker(int argc, char **argv){
 
         w->inf_alloc_state.alloc_buf = malloc(WALLOC_CHUNK);
         w->inf_alloc_state.alloc_ptr = w->inf_alloc_state.alloc_buf;
-        w->inf_alloc_state.alloc_buf16 = malloc(WALLOC_CHUNK);
+
+#ifdef ALIGNED_ALLOC
+        w->inf_alloc_state.alloc_buf16 = my_aligned_alloc(ALIGNMASK + 1, WALLOC_CHUNK);
         w->inf_alloc_state.alloc_ptr16 = w->inf_alloc_state.alloc_buf16;
+#else // ALIGNED_ALLOC
+	w->inf_alloc_state.alloc_buf16 = malloc(WALLOC_CHUNK);
+	w->inf_alloc_state.alloc_ptr16 = w->inf_alloc_state.alloc_buf16;
+	if (((hvalue_t) w->inf_alloc_state.alloc_ptr16 & ALIGNMASK) != 0) {
+	    w->inf_alloc_state.alloc_ptr16 = (char *) ((hvalue_t) (w->inf_alloc_state.alloc_ptr16 + ALIGNMASK) & ~ALIGNMASK);
+	}
+#endif // ALIGNED_ALLOC
 
         w->inf_allocator.alloc = walloc;
         w->inf_allocator.free = wfree;

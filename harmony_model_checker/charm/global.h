@@ -28,8 +28,12 @@
 #define PRI_HVAL            PRIx64
 
 // Harmony values are 64 bit values described in more details in value.c.
-// TODO.  This should probably be uintptr_t
 typedef uint64_t            hvalue_t;
+
+#define P_TO_HV(p)	((hvalue_t) (uintptr_t) (p))
+#define HV_TO_P(v)	((void *) (uintptr_t) ((v) & UINTPTR_MAX))
+#define P_TO_U64(p)	((uint64_t) (uintptr_t) (p))
+#define U64_TO_P(v)	((void *) (uintptr_t) ((v) & UINTPTR_MAX))
 
 void panic(char *s);
 unsigned long to_ulong(const char *p, int len);

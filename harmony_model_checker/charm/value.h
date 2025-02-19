@@ -171,7 +171,7 @@ static inline void *value_get(hvalue_t v, unsigned int *psize){
         }
         return NULL;
     }
-    return dict_retrieve((void *) v, psize);
+    return dict_retrieve(HV_TO_P(v), psize);
 }
 
 bool value_trystore(struct allocator *allocator, hvalue_t dict, hvalue_t key, hvalue_t value, bool allow_inserts, bool *is_append, hvalue_t *result);
