@@ -4524,7 +4524,24 @@ static void charm_dump(bool computed_components){
     }
 }
 
-#ifndef _WIN32
+#ifdef _WIN32
+
+BOOL WINAPI console_handler(_In_ DWORD dwCtrlType) {
+    switch (dwCtrlType) {
+    case CTRL_C_EVENT:
+        printf("Caught interrupt\n");
+        fflush(stdout);
+        fflush(stderr);
+        _exit(1);
+        return TRUE;
+    default:
+        // Pass signal on to the next handler
+        return FALSE;
+    }
+}
+
+#else
+
 static void inthandler(int sig){
     printf("Caught interrupt\n");
     fflush(stdout);
@@ -4538,6 +4555,7 @@ static void alrmhandler(int sig){
     fflush(stderr);
     _exit(1);
 }
+
 #endif
 
 // Error in arguments.  Print a "usage" message and exit
@@ -4640,7 +4658,9 @@ int exec_model_checker(int argc, char **argv){
     fprintf(stderr, "Warning: NDEBUG not defined in source code\n");
 #endif
 
-#ifndef _WIN32
+#ifdef _WIN32
+    SetConsoleCtrlHandler(inthandler, TRUE);
+#else
     signal(SIGINT, inthandler);
 #endif
 
