@@ -4659,7 +4659,7 @@ int exec_model_checker(int argc, char **argv){
 #endif
 
 #ifdef _WIN32
-    SetConsoleCtrlHandler(inthandler, TRUE);
+    SetConsoleCtrlHandler(console_handler, TRUE);
 #else
     signal(SIGINT, inthandler);
 #endif
