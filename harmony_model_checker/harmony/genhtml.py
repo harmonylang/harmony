@@ -44,6 +44,11 @@ class GenHTML:
         print("      </canvas></td></tr>", file=f)
         print("      <tr><td><table class='table-transparent' id='thisstep%d'>"%(step-1), file=f)
         for (t, mis) in enumerate(microsteps):
+            if "interrupt" in mis and mis["explain"]:
+                print("         <tr><td><input type='radio' id='radio%d' onclick='goto_time(%d)'><a onclick='goto_time(%d)'>"%(idx, idx, idx), file=f);
+                print("Interrupt", file=f)
+                print("</a></td></tr>", file=f)
+                continue
             pc = int(mis["pc"])
             op = self.code[pc]["op"]
             idx = len(self.tickers)
@@ -51,6 +56,7 @@ class GenHTML:
                 print("         <tr><td><input type='radio' id='radio%d' onclick='goto_time(%d)'><a onclick='goto_time(%d)'>"%(idx, idx, idx), file=f);
                 exp = mis["explain2"]["args"]
                 if op == "Store":
+                    assert len(exp) == 2, mis["explain2"]
                     print("Set <span id='var%d'>%s</span> to <span id='val%d'>%s</span>"%(idx, json_string(exp[1])[1:], idx, json_string(exp[0])), file=f)
                 elif op == "Print":
                     print("Print <span id='val%d'>%s</span>"%(idx, json_string(exp[0])), file=f)

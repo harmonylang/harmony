@@ -31,9 +31,11 @@
 typedef uint64_t            hvalue_t;
 
 #define P_TO_HV(p)	((hvalue_t) (uintptr_t) (p))
-#define HV_TO_P(v)	((void *) (uintptr_t) ((v) & UINTPTR_MAX))
+// #define HV_TO_P(v)	((void *) (uintptr_t) ((v) & UINTPTR_MAX))
+#define HV_TO_P(v)	((void *) (uintptr_t) (v))
 #define P_TO_U64(p)	((uint64_t) (uintptr_t) (p))
-#define U64_TO_P(v)	((void *) (uintptr_t) ((v) & UINTPTR_MAX))
+// #define U64_TO_P(v)	((void *) (uintptr_t) ((v) & UINTPTR_MAX))
+#define U64_TO_P(v)	((void *) (uintptr_t) (v))
 
 void panic(char *s);
 unsigned long to_ulong(const char *p, int len);
