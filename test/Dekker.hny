@@ -1,7 +1,10 @@
+in_cs = 0
+invariant in_cs in { 0, 1 }
+
 sequential flag, turn
 
 flag = [ False, False ]
-turn = choose({0, 1})
+turn = choose {0, 1}
 
 def lock(self):
     flag[self] = True
@@ -18,7 +21,8 @@ def unlock(self):
 def process(self):
     while choose({ False, True }):
         lock(self)
-        @cs: assert atLabel(cs) == { (process, self): 1 }
+        atomically in_cs += 1
+        atomically in_cs -= 1
         unlock(self)
 
 spawn process(0)
