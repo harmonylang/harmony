@@ -4868,7 +4868,8 @@ int exec_model_checker(int argc, char **argv){
 
     graph_init(&global.graph);
     global.failures = NULL;
-    global.seqs = VALUE_SET;
+    global.seqs = NULL;
+    global.nseqs = 0;
 
     // open the HVM file
     FILE *fp = fopen(fname, "r");
@@ -5114,7 +5115,13 @@ int exec_model_checker(int argc, char **argv){
         }
         else if (strcmp(oi->name, "Sequential") == 0) {
             const struct env_Sequential *es = instr->env;
-            printf("Sequential at line %u\n", i);
+            // printf("Sequential at line %u\n", i);
+            // printf("SEQ %s\n", value_string(es->name));
+
+            /* Insert in list of sequential variables.
+             */
+            global.seqs = realloc(global.seqs, (global.nseqs + 1) * sizeof(*global.seqs));
+            global.seqs[global.nseqs++] = es->name;
         }
     }
 

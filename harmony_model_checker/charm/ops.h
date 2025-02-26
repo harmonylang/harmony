@@ -131,6 +131,10 @@ struct env_Return {
     hvalue_t deflt;       // may be 0
 };
 
+struct env_Sequential {
+    hvalue_t name;
+};
+
 struct env_Spawn {
     bool eternal;
 };

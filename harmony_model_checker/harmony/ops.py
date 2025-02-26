@@ -633,20 +633,22 @@ class BuiltinOp(Op):
         context.pop()
 
 class SequentialOp(Op):
-    def __init__(self):
-        pass
+    def __init__(self, var):
+        self.var = var
 
     def __repr__(self):
         return "Sequential"
 
     def jdump(self):
-        return '{ "op": "Sequential" }'
+        lexeme, file, line, column = self.var
+        return '{ "op": "Sequential", "var": "%s" }' % lexeme
 
     def tladump(self):
         return 'OpSequential(self)'
 
     def explain(self):
-        return "sequential consistency for variable on top of stack"
+        lexeme, file, line, column = self.var
+        return "sequential consistency for %s" % lexeme
 
     def eval(self, state, context):
         # TODO

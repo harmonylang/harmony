@@ -163,24 +163,12 @@ static inline hvalue_t ctx_peep(struct context *ctx){
 
 // See if the given shared variable (identified by indices) is sequential, in
 // which case Load and Store operations on it are considered atomic (race-free).
-// indices is a path in the shared variable tree of length n.  seqvars contains
-// the names of the sequential variables.
-static bool is_sequential(hvalue_t seqvars, hvalue_t *indices, unsigned int n){
-    if (seqvars == VALUE_SET) {
-        return false;
-    }
-
-    assert(VALUE_TYPE(seqvars) == VALUE_SET);
-    unsigned int size;
-    hvalue_t *seqs = value_get(seqvars, &size);
-    size /= sizeof(hvalue_t);
-
-    n *= sizeof(hvalue_t);
-    for (unsigned int i = 0; i < size; i++) {
-        assert(VALUE_TYPE(seqs[i]) == VALUE_ADDRESS_SHARED);
-        unsigned int sn;
-        hvalue_t *inds = value_get(seqs[i], &sn);
-        if (n >= sn && memcmp(indices, inds, sn) == 0) {
+// indices is a path in the shared variable tree of length n.
+static inline bool is_sequential(hvalue_t *indices, unsigned int n){
+    assert(n > 1);
+    assert(indices[0] == VALUE_PC_SHARED);
+    for (unsigned int i = 0; i < global.nseqs; i++) {
+        if (indices[1] == global.seqs[i]) {
             return true;
         }
     }
@@ -902,8 +890,7 @@ static void ai_add(struct step *step, hvalue_t *indices, unsigned int n, bool lo
         ai = (*al->alloc)(al->ctx, sizeof(*ai), true, false);
         ai->indices = indices;
         ai->n = n;
-        ai->atomic = (step->ctx->atomic > 0) ||
-                        is_sequential(global.seqs, indices, n);
+        ai->atomic = (step->ctx->atomic > 0) || is_sequential(indices, n);
         ai->load = load;
         ai->next = NULL;
         *pai = ai;
@@ -2653,6 +2640,10 @@ void op_Builtin(const void *env, struct state *state, struct step *step){
 }
 
 void op_Sequential(const void *env, struct state *state, struct step *step){
+#ifdef OBSOLETE
+    const struct env_Sequential *es = env;
+    printf("SEQ %s\n", value_string(es->name));
+
     hvalue_t addr = ctx_pop(step->ctx);
     if (VALUE_TYPE(addr) != VALUE_ADDRESS_SHARED) {
         char *p = value_string(addr);
@@ -2685,6 +2676,7 @@ void op_Sequential(const void *env, struct state *state, struct step *step){
     seqs[i] = addr;
     global.seqs = value_put_set(step->allocator, seqs, (size + 1) * sizeof(hvalue_t));
     free(seqs);
+#endif
     step->ctx->pc++;
 }
 
@@ -3267,7 +3259,6 @@ void *init_Pop(struct dict *map, struct allocator *allocator){ return NULL; }
 void *init_ReadonlyDec(struct dict *map, struct allocator *allocator){ return NULL; }
 void *init_ReadonlyInc(struct dict *map, struct allocator *allocator){ return NULL; }
 void *init_Save(struct dict *map, struct allocator *allocator){ return NULL; }
-void *init_Sequential(struct dict *map, struct allocator *allocator){ return NULL; }
 void *init_SetIntLevel(struct dict *map, struct allocator *allocator){ return NULL; }
 void *init_Trap(struct dict *map, struct allocator *allocator){ return NULL; }
 
@@ -3522,6 +3513,14 @@ void *init_Return(struct dict *map, struct allocator *allocator) {
         assert(deflt->type == JV_MAP);
         env->deflt = value_from_json(allocator, deflt->u.map);
     }
+    return env;
+}
+
+void *init_Sequential(struct dict *map, struct allocator *allocator){
+    struct json_value *name = dict_lookup(map, "var", 3);
+    assert(name->type == JV_ATOM);
+    struct env_Sequential *env = new_alloc(struct env_Sequential);
+    env->name = value_put_atom(allocator, name->u.atom.base, name->u.atom.len);
     return env;
 }
 

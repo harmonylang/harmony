@@ -212,9 +212,11 @@ del_stmt: DEL expr;
 spawn_stmt: SPAWN ETERNAL? expr;
 go_stmt: GO expr expr;
 print_stmt: PRINT expr;
-sequential_stmt: SEQUENTIAL expr (COMMA expr)*;
+sequential_stmt: SEQUENTIAL sequential_names_seq;
 global_stmt: GLOBAL expr (COMMA expr)*;
 builtin_stmt: BUILTIN NAME STRING;
+
+sequential_names_seq: NAME (COMMA NAME)*;
 
 // Block-able statements
 atomic_block: ATOMICALLY COLON block;

@@ -96,7 +96,8 @@ struct global {
     struct json_value *pretty;      // from hvm file
     struct dict *values;            // dictionary of values
     struct dict *computations;      // evaluated Harmony byte code
-    hvalue_t seqs;                  // sequential variables
+    hvalue_t *seqs;                 // sequential variables
+    unsigned int nseqs;             // number of sequential variables
     struct worker *workers;         // points to array of workers
     unsigned int nworkers;          // total number of workers
     struct phase phases[MAX_PHASES];// for reporting

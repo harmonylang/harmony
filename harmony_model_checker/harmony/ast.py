@@ -2154,18 +2154,8 @@ class SequentialAST(AST):
 
     def compile(self, scope, code, stmt):
         for var in self.vars:
-            if not isinstance(var, NameAST):
-                lexeme, file, line, column = self.token
-                raise HarmonyCompilerError(
-                    filename=file,
-                    lexeme=lexeme,
-                    line=line,
-                    column=column,
-                    message="sequential can only be applied to variable names"
-                )
-            (t, v) = scope.lookup(var.name)
+            (t, v) = scope.lookup(var)
             if t != "global":
-                lexeme, file, line, column = var.name
                 raise HarmonyCompilerError(
                     filename=file,
                     lexeme=lexeme,
@@ -2174,9 +2164,9 @@ class SequentialAST(AST):
                     message="%s: Parse error: shadows prior definition" % lexeme
                 )
         stmt = self.stmt()
-        for lv in self.vars:
-            lv.ph1(scope, code, stmt)
-            code.append(SequentialOp(), self.token, self.endtoken, stmt=stmt)
+        for var in self.vars:
+            # OBSOLETE var.ph1(scope, code, stmt)
+            code.append(SequentialOp(var), self.token, self.endtoken, stmt=stmt)
 
     def getLabels(self):
         return set()

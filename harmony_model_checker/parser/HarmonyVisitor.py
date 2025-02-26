@@ -254,6 +254,11 @@ class HarmonyVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by HarmonyParser#sequential_names_seq.
+    def visitSequential_names_seq(self, ctx:HarmonyParser.Sequential_names_seqContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by HarmonyParser#atomic_block.
     def visitAtomic_block(self, ctx:HarmonyParser.Atomic_blockContext):
         return self.visitChildren(ctx)

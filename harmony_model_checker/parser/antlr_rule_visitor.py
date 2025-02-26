@@ -58,6 +58,9 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     
     def visitImport_names_seq(self, ctx: HarmonyParser.Import_names_seqContext):
         return [self.get_token(d.symbol, str(d)) for d in ctx.NAME()]
+    
+    def visitSequential_names_seq(self, ctx: HarmonyParser.Sequential_names_seqContext):
+        return [self.get_token(d.symbol, str(d)) for d in ctx.NAME()]
 
     # Visit a parse tree produced by HarmonyParser#program.
     def visitProgram(self, ctx: HarmonyParser.ProgramContext):
@@ -315,7 +318,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
 
     # Visit a parse tree produced by HarmonyParser#sequential_stmt.
     def visitSequential_stmt(self, ctx: HarmonyParser.Sequential_stmtContext):
-        expr = [self.visit(e) for e in ctx.expr()]
+        expr = self.visit(ctx.sequential_names_seq())
         tkn = self.get_token(ctx.start, ctx.start.text)
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
         return SequentialAST(endtoken, tkn, False, expr)
