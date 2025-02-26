@@ -115,7 +115,9 @@ struct global {
     barrier_t barrier;
 
     // invariants
+#ifdef OBSOLETE
     mutex_t inv_lock;               // lock on list of invariants and finals
+#endif
     unsigned int ninvs;             // number of invariants
     struct invariant *invs;         // list of invariants
     bool inv_pre;                   // some invariant uses "pre"

@@ -4861,7 +4861,9 @@ int exec_model_checker(int argc, char **argv){
     barrier_init(&global.barrier, global.nworkers);
 
     // initialize modules
+#ifdef OBSOLETE
     mutex_init(&global.inv_lock);
+#endif
     global.values = dict_new("values", 0, 4096, global.nworkers, true, true);
 
     graph_init(&global.graph);
@@ -5057,6 +5059,64 @@ int exec_model_checker(int argc, char **argv){
     cs->vars = VALUE_DICT;
     cs->return_address = CALLTYPE_PROCESS;
     *global.callstacks = cs;
+
+    // Scan the code for invariants, finally clauses, and sequential clauses
+    for (unsigned int i = 0; i < global.code.len; i++) {
+        struct instr *instr = &global.code.instrs[i];
+        struct op_info *oi = instr->oi;
+        if (strcmp(oi->name, "Invariant") == 0) {
+            const struct env_Invariant *ei = instr->env;
+            // printf("Invariant (%u) at line %u\n", ei->pc, i);
+
+            // Create a context for the invariant
+            char context[sizeof(struct context) +
+                                (ctx_extent + 2) * sizeof(hvalue_t)];
+            struct context *ctx = (struct context *) context;
+            memset(ctx, 0, sizeof(*ctx));
+            ctx->pc = ei->pc;
+            ctx->vars = VALUE_DICT;
+            ctx->readonly = 1;
+            ctx->atomic = 1;
+            value_ctx_push(ctx, VALUE_LIST);	// HACK
+            hvalue_t invctx = value_put_context(&workers[0].allocator, ctx);
+
+            // mutex_acquire(&global.inv_lock);
+            global.invs = realloc(global.invs, (global.ninvs + 1) * sizeof(*global.invs));
+            struct invariant *inv = &global.invs[global.ninvs++];
+            inv->context = invctx;
+            inv->pc = ei->pc;
+            inv->pre = ei->pre;
+            if (ei->pre) {
+                global.inv_pre = true;
+            }
+            // mutex_release(&global.inv_lock);
+        }
+        else if (strcmp(oi->name, "Finally") == 0) {
+            const struct env_Finally *ef = instr->env;
+            // printf("Finally (%u) at line %u\n", ef->pc, i);
+
+            // Create a context for the predicate
+            char context[sizeof(struct context) +
+                                (ctx_extent + 2) * sizeof(hvalue_t)];
+            struct context *ctx = (struct context *) context;
+            memset(ctx, 0, sizeof(*ctx));
+            ctx->pc = ef->pc;
+            ctx->vars = VALUE_DICT;
+            ctx->readonly = 1;
+            ctx->atomic = 1;
+            value_ctx_push(ctx, VALUE_LIST);
+            hvalue_t finctx = value_put_context(&workers[0].allocator, ctx);
+
+            // mutex_acquire(&global.inv_lock);
+            global.finals = realloc(global.finals, (global.nfinals + 1) * sizeof(*global.finals));
+            global.finals[global.nfinals++] = finctx;
+            // mutex_release(&global.inv_lock);
+        }
+        else if (strcmp(oi->name, "Sequential") == 0) {
+            const struct env_Sequential *es = instr->env;
+            printf("Sequential at line %u\n", i);
+        }
+    }
 
     phase_finish();
 

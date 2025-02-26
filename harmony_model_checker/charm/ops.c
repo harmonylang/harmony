@@ -2030,6 +2030,7 @@ void op_Go(
 }
 
 void op_Finally(const void *env, struct state *state, struct step *step){
+#ifdef OBSOLETE
     const struct env_Finally *ef = env;
 
     // Create a context for the predicate
@@ -2048,11 +2049,13 @@ void op_Finally(const void *env, struct state *state, struct step *step){
     global.finals = realloc(global.finals, (global.nfinals + 1) * sizeof(*global.finals));
     global.finals[global.nfinals++] = finctx;
     mutex_release(&global.inv_lock);
+#endif
 
     step->ctx->pc += 1;
 }
 
 void op_Invariant(const void *env, struct state *state, struct step *step){
+#ifdef OBSOLETE
     const struct env_Invariant *ei = env;
 
     // Create a context for the invariant
@@ -2077,6 +2080,7 @@ void op_Invariant(const void *env, struct state *state, struct step *step){
         global.inv_pre = true;
     }
     mutex_release(&global.inv_lock);
+#endif
 
     step->ctx->pc += 1;
 }
