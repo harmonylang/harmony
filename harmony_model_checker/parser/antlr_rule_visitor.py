@@ -670,6 +670,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         for o in ops:
             if o[0] in { '/', '//', '%', 'mod' }:
                 if found:
+                    token = ops[0]
                     raise HarmonyCompilerError(
                         message="Expression too complicated: use parentheses",
                         filename=self.file,
@@ -719,6 +720,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         if all(o[0] in { '+', '-', '*', '/', '//', '%', 'mod' } for o in ops):
             return self.simple_expr(ops, exprs)
 
+        token = ops[0]
         raise HarmonyCompilerError(
             message="Expression too complicated: use parentheses",
             filename=self.file,
