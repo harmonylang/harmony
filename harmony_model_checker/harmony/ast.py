@@ -2154,10 +2154,18 @@ class SequentialAST(AST):
 
     def compile(self, scope, code, stmt):
         for var in self.vars:
-            assert isinstance(var, NameAST)
+            if not isinstance(var, NameAST):
+                lexeme, file, line, column = self.token
+                raise HarmonyCompilerError(
+                    filename=file,
+                    lexeme=lexeme,
+                    line=line,
+                    column=column,
+                    message="sequential can only be applied to variable names"
+                )
             (t, v) = scope.lookup(var.name)
-            lexeme, file, line, column = var.name
             if t != "global":
+                lexeme, file, line, column = var.name
                 raise HarmonyCompilerError(
                     filename=file,
                     lexeme=lexeme,
