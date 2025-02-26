@@ -772,7 +772,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         bool_ops = [ o[0] for o in ops if o[0] in { 'or', 'and', '=>', '==', '=' } ]
         if 'or' in bool_ops:
             if len(set(bool_ops)) > 1:
-                assert False, bool_ops
+                token = ops[0]
                 raise HarmonyCompilerError(
                     message="Boolean expression too complicated: use parentheses",
                     filename=self.file,
@@ -783,6 +783,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
             return self.bool_expr_helper(ops, exprs, 'or')
         if 'and' in bool_ops:
             if len(set(bool_ops)) > 1:
+                token = ops[0]
                 raise HarmonyCompilerError(
                     message="Boolean expression too complicated: use parentheses",
                     filename=self.file,
@@ -793,6 +794,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
             return self.bool_expr_helper(ops, exprs, 'and')
         if '=>' in bool_ops:
             if len(bool_ops) > 1:
+                token = ops[0]
                 raise HarmonyCompilerError(
                     message="Boolean imply expression too complicated: use parentheses",
                     filename=self.file,
