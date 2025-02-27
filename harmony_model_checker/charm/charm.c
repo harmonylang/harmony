@@ -5695,6 +5695,7 @@ int exec_model_checker(int argc, char **argv){
         path_recompute();
         phase_finish();
 
+#ifdef OBSOLETE
         // If this was a safety failure, we remove any unneeded steps to further
         // reduce the length of the counter-example.
         if (bad->type == FAIL_SAFETY) {
@@ -5702,6 +5703,7 @@ int exec_model_checker(int argc, char **argv){
             path_trim(NULL);
             phase_finish();
         }
+#endif
 
         // Finally, we output the path.
         phase_start("Output path");
