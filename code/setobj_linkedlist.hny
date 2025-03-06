@@ -31,6 +31,8 @@ def remove(lst, v):
         if after->value == (0, v):
             before->next = after->next
             free(after)
+        else:
+            release(?after->lock)
         release(?before->lock)
 
 def contains(lst, v) returns present:
