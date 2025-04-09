@@ -3678,6 +3678,9 @@ hvalue_t f_add_arg(struct state *state, struct step *step, hvalue_t *args, unsig
     if (VALUE_TYPE(args[1]) != VALUE_ADDRESS_SHARED && VALUE_TYPE(args[1]) != VALUE_ADDRESS_PRIVATE) {
         return value_ctx_failure(step->ctx, step->allocator, "AddArg: not an address");
     }
+    if (args[1] == VALUE_ADDRESS_SHARED) {
+        return value_ctx_failure(step->ctx, step->allocator, "AddArg: can't dereference None");
+    }
 
     unsigned int size;
     hvalue_t *list = value_get(args[1], &size);
