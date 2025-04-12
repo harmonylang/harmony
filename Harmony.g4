@@ -119,7 +119,7 @@ basic_expr
     | NAME                   #name
     | STRING                 #str
     | NONE                   #none
-    | OPEN_BRACES set_rule? CLOSE_BRACES #set_rule_1
+    | OPEN_BRACES set_rule? COMMA? CLOSE_BRACES #set_rule_1
     | OPEN_BRACES COLON CLOSE_BRACES #empty_dict
     | OPEN_PAREN tuple_rule? CLOSE_PAREN  #paren_tuple
     | OPEN_BRACK tuple_rule? CLOSE_BRACK  #bracket_tuple

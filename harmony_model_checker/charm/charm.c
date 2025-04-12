@@ -504,23 +504,25 @@ static void direct_run(struct state *state, unsigned int id){
             if (instrs[ci[i].cc->pc].print) {
                 assert(ci[i].cc->sp > 0);
                 hvalue_t symbol = ctx_stack(ci[i].cc)[ci[i].cc->sp - 1];
-                int cnt = dfa_visited(global.dfa, state->dfa_state, symbol);
-                if (cnt == 0) {
-                    ci[i].trans = CI_NEW_TRANSITION;
-                    // new_trans++;
-                }
-                else if (cnt < 0) {
-                    char *v = value_string(symbol);
-                    printf("%u: about to print '%s'\n", id, v);
-                    panic("bad transition");
-                }
-                else if (dfa_potential(global.dfa, state->dfa_state, symbol) < 0) {
-                    ci[i].trans = CI_OLD_TRANSITION;
-                    // old_trans++;
-                }
-                else {
-                    ci[i].trans = CI_POT_TRANSITION;
-                    // pot_trans++;
+                if (global.dfa != NULL) {
+                    int cnt = dfa_visited(global.dfa, state->dfa_state, symbol);
+                    if (cnt == 0) {
+                        ci[i].trans = CI_NEW_TRANSITION;
+                        // new_trans++;
+                    }
+                    else if (cnt < 0) {
+                        char *v = value_string(symbol);
+                        printf("%u: about to print '%s'\n", id, v);
+                        panic("bad transition");
+                    }
+                    else if (dfa_potential(global.dfa, state->dfa_state, symbol) < 0) {
+                        ci[i].trans = CI_OLD_TRANSITION;
+                        // old_trans++;
+                    }
+                    else {
+                        ci[i].trans = CI_POT_TRANSITION;
+                        // pot_trans++;
+                    }
                 }
             }
             else {
@@ -1065,6 +1067,7 @@ static struct step_output *onestep(
                 // report it.
                 if (infloop_detect) {
                     value_ctx_failure(step->ctx, step->allocator, "infinite loop");
+                    printf("FOUND INFINITE LOOP %u\n", step->ctx->pc);
                     infinite_loop = true;
                     break;
                 }
