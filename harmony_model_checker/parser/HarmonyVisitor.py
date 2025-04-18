@@ -204,8 +204,23 @@ class HarmonyVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by HarmonyParser#return_stmt.
+    def visitReturn_stmt(self, ctx:HarmonyParser.Return_stmtContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by HarmonyParser#pass_stmt.
     def visitPass_stmt(self, ctx:HarmonyParser.Pass_stmtContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by HarmonyParser#break_stmt.
+    def visitBreak_stmt(self, ctx:HarmonyParser.Break_stmtContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by HarmonyParser#continue_stmt.
+    def visitContinue_stmt(self, ctx:HarmonyParser.Continue_stmtContext):
         return self.visitChildren(ctx)
 
 
