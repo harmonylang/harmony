@@ -1039,18 +1039,19 @@ static struct step_output *onestep(
                 check_for_infloop = true;
             }
 
-            // We need to save the global state *and *the state of the current
+            // We need to save the global state *and* the state of the current
             // thread (because the context bag in the global state is not
             // updated each time the thread changes its state, aka context).
             unsigned int ctxsize = ctx_size(step->ctx);
-            unsigned int combosize = ctxsize + state_size(sc);
+            unsigned int combosize = sizeof(step->vars) + ctxsize + state_size(sc);
             if (combosize > w->inf_size) {
                 w->inf_size = combosize;
                 free(w->inf_buf);
                 w->inf_buf = malloc(combosize);
             }
-            memcpy(w->inf_buf, step->ctx, ctxsize);
-            memcpy(w->inf_buf + ctxsize, sc, state_size(sc));
+            * (hvalue_t *) w->inf_buf = step->vars;
+            memcpy(w->inf_buf + sizeof(hvalue_t), step->ctx, ctxsize);
+            memcpy(w->inf_buf + sizeof(hvalue_t) + ctxsize, sc, state_size(sc));
             bool new;
             unsigned int *loc = dict_insert(w->inf_dict, &w->inf_allocator, w->inf_buf, combosize, &new);
 
@@ -1067,7 +1068,6 @@ static struct step_output *onestep(
                 // report it.
                 if (infloop_detect) {
                     value_ctx_failure(step->ctx, step->allocator, "infinite loop");
-                    printf("FOUND INFINITE LOOP %u\n", step->ctx->pc);
                     infinite_loop = true;
                     break;
                 }

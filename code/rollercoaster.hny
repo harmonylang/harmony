@@ -20,8 +20,25 @@ def enter(b):
 
 def exit(b):
     acquire(?b->mutex)
+    assert b->entered == b->nseats
     b->left += 1
     if b->left == b->nseats:    # car is empty
         b->entered = 0
-        notify_all(?b->empty)    # wake up riders wanting to go
+        # notify_all(?b->empty)    # wake up riders wanting to go
+        notify(?b->empty)
+        notify(?b->empty)
+        notify(?b->empty)
+        notify(?b->empty)
     release(?b->mutex)
+
+const NSEATS = 4
+const NTHREADS = 8
+
+therc = RollerCoaster(NSEATS)
+
+def student():
+    enter(?therc)
+    exit(?therc)
+
+for _ in { 1 .. NTHREADS }:
+    spawn student()

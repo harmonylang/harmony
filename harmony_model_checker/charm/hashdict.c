@@ -94,9 +94,12 @@ void dict_delete(struct dict *dict) {
 	free(dict);
 }
 
+// Note: this does not need to free anything because the allocator
+// is reset too.
 void dict_reset(struct dict *dict) {
     assert(!dict->concurrent);
     memset(dict->stable, 0, dict->length * sizeof(*dict->stable));
+    dict->count = 0;
 }
 
 static inline void dict_reinsert(struct dict *dict, struct dict_assoc *k) {
