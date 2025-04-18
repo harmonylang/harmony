@@ -1280,6 +1280,75 @@ class PassAST(AST):
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_pass(self, *args, **kwargs)
 
+class BreakAST(AST):
+    def __init__(self, endtoken, token, atomically):
+        AST.__init__(self, endtoken, token, atomically)
+
+    def __repr__(self):
+        return "Break"
+
+    def compile(self, scope, code, stmt):
+        (lexeme, file, line, column) = self.token
+        raise HarmonyCompilerError(
+            filename=file,
+            lexeme=lexeme,
+            line=line,
+            column=column,
+            message="break not supported in Harmony"
+        )
+
+    def getLabels(self):
+        return set()
+
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_pass(self, *args, **kwargs)
+
+class ContinueAST(AST):
+    def __init__(self, endtoken, token, atomically):
+        AST.__init__(self, endtoken, token, atomically)
+
+    def __repr__(self):
+        return "Continue"
+
+    def compile(self, scope, code, stmt):
+        (lexeme, file, line, column) = self.token
+        raise HarmonyCompilerError(
+            filename=file,
+            lexeme=lexeme,
+            line=line,
+            column=column,
+            message="continue not supported in Harmony"
+        )
+
+    def getLabels(self):
+        return set()
+
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_pass(self, *args, **kwargs)
+
+class ReturnAST(AST):
+    def __init__(self, endtoken, token, atomically, expr):
+        AST.__init__(self, endtoken, token, atomically)
+        self.expr = expr
+
+    def __repr__(self):
+        return "Return"
+
+    def compile(self, scope, code, stmt):
+        (lexeme, file, line, column) = self.token
+        raise HarmonyCompilerError(
+            filename=file,
+            lexeme=lexeme,
+            line=line,
+            column=column,
+            message="return not supported in Harmony; use returns in def statement"
+        )
+
+    def getLabels(self):
+        return set()
+
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_pass(self, *args, **kwargs)
 
 class BlockAST(AST):
     def __init__(self, endtoken, token, atomically, b, colon):

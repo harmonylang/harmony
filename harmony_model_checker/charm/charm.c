@@ -2330,6 +2330,8 @@ static void path_output(FILE *file){
     }
 }
 
+#ifdef OBSOLETE
+
 // Remove unneeded microsteps from error trace
 static void path_trim(struct allocator *allocator){
     // Find the last macrostep for each thread
@@ -2380,6 +2382,8 @@ static void path_trim(struct allocator *allocator){
         }
     }
 }
+
+#endif // OBSOLETE
 
 // Function to add escapes to a string so it can be used in JSON output.
 static char *json_string_encode(char *s, size_t len){

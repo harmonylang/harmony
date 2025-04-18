@@ -265,6 +265,9 @@ simple_stmt
     | go_stmt
     | print_stmt
     | pass_stmt
+    | break_stmt
+    | continue_stmt
+    | return_stmt
     | sequential_stmt
     | global_stmt
     | builtin_stmt

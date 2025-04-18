@@ -244,11 +244,28 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
         return TrapAST(endtoken, tkn, False, func)
 
+    # Visit a parse tree produced by HarmonyParser#return_stmt.
+    def visitReturn_stmt(self, ctx: HarmonyParser.Return_stmtContext):
+        expr = self.visit(ctx.expr())
+        tkn = self.get_token(ctx.start, ctx.start.text)
+        endtoken = self.get_token(ctx.stop, ctx.stop.text)
+        return ReturnAST(endtoken, tkn, False, expr)
+
     # Visit a parse tree produced by HarmonyParser#pass_stmt.
     def visitPass_stmt(self, ctx: HarmonyParser.Pass_stmtContext):
         tkn = self.get_token(ctx.start, ctx.start.text)
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
         return PassAST(endtoken, tkn, False)
+
+    def visitBreak_stmt(self, ctx: HarmonyParser.Break_stmtContext):
+        tkn = self.get_token(ctx.start, ctx.start.text)
+        endtoken = self.get_token(ctx.stop, ctx.stop.text)
+        return BreakAST(endtoken, tkn, False)
+
+    def visitContinue_stmt(self, ctx: HarmonyParser.Continue_stmtContext):
+        tkn = self.get_token(ctx.start, ctx.start.text)
+        endtoken = self.get_token(ctx.stop, ctx.stop.text)
+        return ContinueAST(endtoken, tkn, False)
 
     # Visit a parse tree produced by HarmonyParser#Finally_stmt.
     def visitFinally_stmt(self, ctx: HarmonyParser.Finally_stmtContext):
