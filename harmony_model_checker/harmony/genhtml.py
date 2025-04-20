@@ -56,8 +56,11 @@ class GenHTML:
                 print("         <tr><td><input type='radio' id='radio%d' onclick='goto_time(%d)'><a onclick='goto_time(%d)'>"%(idx, idx, idx), file=f);
                 exp = mis["explain2"]["args"]
                 if op == "Store":
-                    assert len(exp) == 2, mis["explain2"]
-                    print("Set <span id='var%d'>%s</span> to <span id='val%d'>%s</span>"%(idx, json_string(exp[1])[1:], idx, json_string(exp[0])), file=f)
+                    if len(exp) == 0:
+                        print("Store with bad address", file=f)
+                    else:
+                        assert len(exp) == 2, mis["explain2"]
+                        print("Set <span id='var%d'>%s</span> to <span id='val%d'>%s</span>"%(idx, json_string(exp[1])[1:], idx, json_string(exp[0])), file=f)
                 elif op == "Print":
                     print("Print <span id='val%d'>%s</span>"%(idx, json_string(exp[0])), file=f)
                 elif op == "Choose":

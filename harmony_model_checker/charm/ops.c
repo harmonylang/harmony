@@ -3007,6 +3007,14 @@ static bool store_match(struct state *state, struct step *step,
     hvalue_t *indices = value_get(av, &size);
     size /= sizeof(hvalue_t);
 
+    if (step->keep_callstack) {
+        char *x = indices_string(indices, size);
+        strbuf_printf(&step->explain, "pop value (#+) and address (#+) and store", x);
+        step->explain_args[step->explain_nargs++] = v;
+        step->explain_args[step->explain_nargs++] = av;
+        free(x);
+    }
+
     // You can store a constant only at its own address.
     if (VALUE_TYPE(indices[0]) == VALUE_BOOL ||
             VALUE_TYPE(indices[0]) == VALUE_INT ||
@@ -3023,6 +3031,8 @@ static bool store_match(struct state *state, struct step *step,
             free(val);
             return false;
         }
+        // TODO: need explain???
+        printf("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n");
         return true;
     }
 
@@ -3035,13 +3045,6 @@ static bool store_match(struct state *state, struct step *step,
     if (step->ctx->readonly > 0) {
         value_ctx_failure(step->ctx, step->allocator, "Can't update state in assert or invariant (including acquiring locks)");
         return false;
-    }
-    if (step->keep_callstack) {
-        char *x = indices_string(indices, size);
-        strbuf_printf(&step->explain, "pop value (#+) and address (#+) and store", x);
-        step->explain_args[step->explain_nargs++] = v;
-        step->explain_args[step->explain_nargs++] = av;
-        free(x);
     }
 
     if (size == 2 && !step->ctx->initial) {

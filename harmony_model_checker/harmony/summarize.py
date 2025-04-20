@@ -365,7 +365,7 @@ class Summarize:
                 args = step["explain2"]["args"]
                 # print("STORE(", self.shared, args, ")", file=f)
                 if args == []:
-                    print("Store: no args (pc=%d)???"%pc, file=f)
+                    print("Store: bad address", file=f)
                 else:
                     val = verbose_string(args[0])
                     assert args[1]["type"] == "address"
