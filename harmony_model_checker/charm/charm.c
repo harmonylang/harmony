@@ -52,7 +52,7 @@
 #include "spawn.h"
 
 // Heuristic check for possible infinite model: diameter of Kripke structure
-#define MAX_DIAMETER    250
+#define MAX_DIAMETER    500
 
 // The model checker leverages partial order reduction to reduce the
 // number of states and interleavings considered.  In particular, it
@@ -4217,7 +4217,7 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
         }
 
         // See if there are only final states
-        if (new[1] == NULL) {
+        if (n_new > 1 && new[1] == NULL) {
             n_new = 1;
         }
         else {
@@ -4260,6 +4260,9 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
                     // If there's only one in the group, just copy it over.
                     // TODO.  May not need this.
                     struct dfa_node *dn = old[i];
+                    if (dn == NULL) {       // group may be empty.  Delete it.
+                        continue;
+                    }
                     if (dn->next == NULL) {
                         assert(dn->rep == dn);
                         new[n_new++] = dn;
