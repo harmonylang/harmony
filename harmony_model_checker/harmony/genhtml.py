@@ -44,6 +44,11 @@ class GenHTML:
         print("      </canvas></td></tr>", file=f)
         print("      <tr><td><table class='table-transparent' id='thisstep%d'>"%(step-1), file=f)
         for (t, mis) in enumerate(microsteps):
+            if "failure" in mis:
+                print("         <tr><td><input type='radio' id='radio%d' onclick='goto_time(%d)'><a onclick='goto_time(%d)'>"%(idx, idx, idx), file=f);
+                print("Failure", file=f)
+                print("</a></td></tr>", file=f)
+                continue
             if "interrupt" in mis and mis["explain"]:
                 print("         <tr><td><input type='radio' id='radio%d' onclick='goto_time(%d)'><a onclick='goto_time(%d)'>"%(idx, idx, idx), file=f);
                 print("Interrupt", file=f)
