@@ -3,7 +3,7 @@
 import bags
 
 const F = 1
-const NACCEPTORS = (2 * F) + 1
+const NACCEPTORS = 2 * F + 1
 const NLEADERS = F + 1
 const NBALLOTS = 2
 

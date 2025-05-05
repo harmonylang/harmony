@@ -54,6 +54,8 @@ struct macrostep {
     hvalue_t *processes;            // array of contexts of processes
     struct callstack **callstacks;  // array of callstacks of processes
     unsigned int nprocesses;        // the number of processes in the list
+
+    bool last;                      // to find the last macrostep
 };
 
 struct node_set {

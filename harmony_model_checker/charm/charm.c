@@ -1819,9 +1819,12 @@ static void path_serialize(struct node *node, struct edge *e){
     struct macrostep *macro = calloc(sizeof(*macro), 1);
     macro->edge = e;
     unsigned int i = node->len;
+    bool last = true;
     global.macrosteps[i--] = macro;
     for (struct node *n = node; n->parent != NULL; n = n->parent) {
         macro = calloc(sizeof(*macro), 1);
+        macro->last = last;
+        last = false;
         macro->edge = node_to_parent(n);
         global.macrosteps[i--] = macro;
     }
@@ -2275,6 +2278,17 @@ again:
             }
             if (conflict) {
                 // printf("%u and %u conflict\n", i, j);
+                break;
+            }
+        }
+    }
+
+    // See where the last macrostep is now.
+    if (false) {
+        for (unsigned int i = 0; i < global.nmacrosteps; i++) {
+            struct macrostep *macro = global.macrosteps[i];
+            if (macro->last) {
+                global.nmacrosteps = i + 1;
                 break;
             }
         }
@@ -5630,7 +5644,8 @@ int exec_model_checker(int argc, char **argv){
         phase_start("Find a path");
         struct failure *bad = NULL;
         for (struct failure *f = global.failures; f != NULL; f = f->next) {
-            if (bad == NULL || edge_dst(bad->edge)->len < edge_dst(f->edge)->len) {
+            // if (bad == NULL || edge_dst(f->edge)->len < edge_dst(bad->edge)->len) {
+            if (bad == NULL || f->node->len < bad->node->len) {
                 bad = f;
             }
         }

@@ -98,10 +98,13 @@ static bool graph_edge_conflict(
                         }
                         struct failure *f = new_alloc(struct failure);
                         f->type = FAIL_RACE;
-                        f->node = node;
-                        f->edge = edge;
+                        // f->node = node;
+                        // f->edge = edge;
+                        f->node = node->parent;
+                        f->edge = node_to_parent(node);
                         f->address = value_put_address(allocator, ai->indices, min * sizeof(hvalue_t));
                         add_failure(failures, f);
+                        node->race = true;
                         return true;
                     }
                 }
@@ -202,6 +205,7 @@ void graph_check_for_data_race(
                     f->edge = node_to_parent(node);
                     f->address = value_put_address(allocator, ai->indices, ai->n * sizeof(hvalue_t));
                     add_failure(failures, f);
+                    node->race = true;
                 }
             }
         }
@@ -230,5 +234,6 @@ void graph_check_for_data_race(
         f->edge = node_to_parent(node);
         f->address = VALUE_ADDRESS_SHARED;
         add_failure(failures, f);
+        node->race = true;
     }
 }
