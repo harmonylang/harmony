@@ -1819,12 +1819,12 @@ static void path_serialize(struct node *node, struct edge *e){
     struct macrostep *macro = calloc(sizeof(*macro), 1);
     macro->edge = e;
     unsigned int i = node->len;
-    bool last = true;
+    // bool last = true;
     global.macrosteps[i--] = macro;
     for (struct node *n = node; n->parent != NULL; n = n->parent) {
         macro = calloc(sizeof(*macro), 1);
-        macro->last = last;
-        last = false;
+        // macro->last = last;
+        // last = false;
         macro->edge = node_to_parent(n);
         global.macrosteps[i--] = macro;
     }
@@ -2283,16 +2283,16 @@ again:
         }
     }
 
+#ifdef notdef
     // See where the last macrostep is now.
-    if (false) {
-        for (unsigned int i = 0; i < global.nmacrosteps; i++) {
-            struct macrostep *macro = global.macrosteps[i];
-            if (macro->last) {
-                global.nmacrosteps = i + 1;
-                break;
-            }
+    for (unsigned int i = 0; i < global.nmacrosteps; i++) {
+        struct macrostep *macro = global.macrosteps[i];
+        if (macro->last) {
+            global.nmacrosteps = i + 1;
+            break;
         }
     }
+#endif
 
 #ifdef notdef
     // Now fix the edges.

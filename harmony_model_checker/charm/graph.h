@@ -145,7 +145,7 @@ struct node {
     bool failed : 1;        // state resulted from failed transition
     bool final : 1;         // final state
     bool visited : 1;       // for busy wait detection
-    bool race : 1;          // race condition
+    // bool race : 1;       // race condition
     // struct edge edges[nedges]
 };
 
