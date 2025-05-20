@@ -214,7 +214,7 @@ invariant_stmt: INVARIANT expr;  // Asserts an invariant that must hold
 del_stmt: DEL expr;
 spawn_stmt: SPAWN ETERNAL? expr;
 go_stmt: GO expr expr;
-print_stmt: PRINT expr;
+print_stmt: PRINT expr (COMMA expr)?;
 sequential_stmt: SEQUENTIAL sequential_names_seq;
 global_stmt: GLOBAL expr (COMMA expr)*;
 builtin_stmt: BUILTIN NAME STRING;

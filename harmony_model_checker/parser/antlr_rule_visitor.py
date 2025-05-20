@@ -154,10 +154,11 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         return ConstantAST(endtoken, tkn)
 
     def visitPrint_stmt(self, ctx: HarmonyParser.Print_stmtContext):
-        cond = self.visit(ctx.expr())
+        expr = self.visit(ctx.expr(0))
+        msg = self.visit(ctx.expr(1)) if ctx.expr(1) is not None else None
         tkn = self.get_token(ctx.start, ctx.start.text)
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
-        return PrintAST(endtoken, tkn, False, cond)
+        return PrintAST(endtoken, tkn, False, expr, msg)
 
     # Visit a parse tree produced by HarmonyParser#none.
     def visitNone(self, ctx: HarmonyParser.NoneContext):

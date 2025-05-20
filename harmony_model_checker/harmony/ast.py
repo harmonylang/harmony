@@ -1817,9 +1817,10 @@ class AssertAST(AST):
 
 
 class PrintAST(AST):
-    def __init__(self, endtoken, token, atomically, expr):
+    def __init__(self, endtoken, token, atomically, expr, attrs):
         AST.__init__(self, endtoken, token, atomically)
         self.expr = expr
+        self.attrs = attrs
 
     def __repr__(self):
         return "Print(" + str(self.token) + ", " + str(self.expr) + ")"
