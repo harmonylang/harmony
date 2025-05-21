@@ -5,6 +5,20 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 from threading import Thread
 from harmony_model_checker.harmony.jsonstring import json_string
 
+def python_obj(js):
+    type = js["type"]
+    assert type in { "bool", "int", "atom", "list", "set", "dict" }, js
+    v = js["value"]
+    if type in { "bool", "int", "atom" }:
+        return v
+    if type == "list":
+        return [ python_obj(val) for val in v ]
+    if type == "set":
+        return { python_obj(val) for val in v }
+    if type == "dict":
+        return { python_obj(js["key"]):python_obj(js["value"]) for js in v }
+    assert False
+
 try:
     import pydot  # type: ignore
     got_pydot = True
@@ -78,11 +92,23 @@ def behavior_show_diagram(dfa, path=None):
     for from_state, lookup in transitions.items():
         for to_label, (to_sym, to_state) in lookup.items():
             if to_state not in error_states and to_label != "":
-                graph.add_edge(pydot.Edge(
-                    nodes[from_state],
-                    nodes[to_state],
-                    label=to_label
-                ))
+                assert to_sym["type"] == "list"
+                label = json_string(to_sym["value"][0])
+                attrs = python_obj(to_sym["value"][1])
+                if "color" in attrs:
+                    graph.add_edge(pydot.Edge(
+                        nodes[from_state],
+                        nodes[to_state],
+                        label=label,
+                        color=attrs["color"],
+                        fontcolor=attrs["color"],
+                    ))
+                else:
+                    graph.add_edge(pydot.Edge(
+                        nodes[from_state],
+                        nodes[to_state],
+                        label=label
+                    ))
     if path:
         try:
             graph.write_png(path)
@@ -139,7 +165,10 @@ def behavior_parse(js, minify, outputfiles, behavior):
             for (src, edges) in dfa_transitions.items():
                 for (input, (sym, dst)) in edges.items():
                     if dst not in dfa_error_states:
-                        print("  s%s -> s%s [label=%s]"%(names[src], names[dst], json.dumps(input, ensure_ascii=False)), file=fd)
+                        assert sym["type"] == "list"
+                        label = json_string(sym["value"][0])
+                        attrs = python_obj(sym["value"][1])
+                        print("  s%s -> s%s [label=%s]"%(names[src], names[dst], json.dumps(label, ensure_ascii=False)), file=fd)
             print("}", file=fd)
 
     if outputfiles["png"] is not None:
