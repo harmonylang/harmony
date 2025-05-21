@@ -31,7 +31,8 @@ def read_hfa_file(file):
                 transitions[idx] = {}
             for e in js["edges"]:
                 symbol = e["sym"]
-                transitions[e["src"]][json_string(js["symbols"][symbol])] = e["dst"]
+                x = js["symbols"][symbol]
+                transitions[e["src"]][json_string(x)] = (x, e["dst"])
         return (states, symbols, transitions, initial, final)
     except IOError:
         return False
@@ -75,7 +76,7 @@ def behavior_show_diagram(dfa, path=None):
             graph.add_node(state_node)
     # adding edges
     for from_state, lookup in transitions.items():
-        for to_label, to_state in lookup.items():
+        for to_label, (to_sym, to_state) in lookup.items():
             if to_state not in error_states and to_label != "":
                 graph.add_edge(pydot.Edge(
                     nodes[from_state],
@@ -136,7 +137,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
                         print("  s%s [label=\"\"]"%names[s], file=fd)
 
             for (src, edges) in dfa_transitions.items():
-                for (input, dst) in edges.items():
+                for (input, (sym, dst)) in edges.items():
                     if dst not in dfa_error_states:
                         print("  s%s -> s%s [label=%s]"%(names[src], names[dst], json.dumps(input, ensure_ascii=False)), file=fd)
             print("}", file=fd)

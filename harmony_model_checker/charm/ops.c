@@ -667,9 +667,11 @@ void op_Print(const void *env, struct state *state, struct step *step){
             value_ctx_failure(step->ctx, step->allocator, "Print: too many prints");
             return;
         }
+        hvalue_t v[2];
+        v[0] = symbol;
+        v[1] = attrs == 0 ? VALUE_DICT : attrs;
         assert(step->nlog == 0);
-        step->log[step->nlog++] = symbol;
-        step->attrs = attrs;
+        step->log[step->nlog++] = value_put_list(step->allocator, v, sizeof(v));
     }
     if (step->keep_callstack) {
         strbuf_printf(&step->explain, "pop value (#+) and add to print log");
