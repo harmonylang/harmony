@@ -168,7 +168,10 @@ def behavior_parse(js, minify, outputfiles, behavior):
                         assert sym["type"] == "list"
                         label = json_string(sym["value"][0])
                         attrs = python_obj(sym["value"][1])
-                        print("  s%s -> s%s [label=%s]"%(names[src], names[dst], json.dumps(label, ensure_ascii=False)), file=fd)
+                        if "color" in attrs:
+                            print("  s%s -> s%s [label=%s,color=%s,fontcolor=%s]"%(names[src], names[dst], json.dumps(label, ensure_ascii=False), attrs["color"], attrs["color"]), file=fd)
+                        else:
+                            print("  s%s -> s%s [label=%s]"%(names[src], names[dst], json.dumps(label, ensure_ascii=False)), file=fd)
             print("}", file=fd)
 
     if outputfiles["png"] is not None:
