@@ -634,6 +634,7 @@ void op_Print(const void *env, struct state *state, struct step *step){
         return;
     }
     hvalue_t symbol = ctx_pop(step->ctx);
+    hvalue_t attrs = env == NULL ? 0 : ctx_pop(step->ctx);
     if (global.run_direct) {
         if (global.dfa != NULL) {
             int t = dfa_step(global.dfa, state->dfa_state, symbol);
@@ -668,6 +669,7 @@ void op_Print(const void *env, struct state *state, struct step *step){
         }
         assert(step->nlog == 0);
         step->log[step->nlog++] = symbol;
+        step->attrs = attrs;
     }
     if (step->keep_callstack) {
         strbuf_printf(&step->explain, "pop value (#+) and add to print log");
@@ -3257,7 +3259,6 @@ void *init_Choose(struct dict *map, struct allocator *allocator){ return NULL; }
 void *init_Continue(struct dict *map, struct allocator *allocator){ return NULL; }
 void *init_Dup(struct dict *map, struct allocator *allocator){ return NULL; }
 void *init_Go(struct dict *map, struct allocator *allocator){ return NULL; }
-void *init_Print(struct dict *map, struct allocator *allocator){ return NULL; }
 void *init_Pop(struct dict *map, struct allocator *allocator){ return NULL; }
 void *init_ReadonlyDec(struct dict *map, struct allocator *allocator){ return NULL; }
 void *init_ReadonlyInc(struct dict *map, struct allocator *allocator){ return NULL; }
@@ -3494,6 +3495,13 @@ void *init_JumpCond(struct dict *map, struct allocator *allocator){
     env->cond = value_from_json(allocator, cond->u.map);
 
     return env;
+}
+
+void *init_Print(struct dict *map, struct allocator *allocator){
+    struct json_value *jv = dict_lookup(map, "attrs", 5);
+    assert(jv->type == JV_ATOM);
+    assert(jv->u.atom.len == 1);
+    return jv->u.atom.base[0] == '0' ? NULL : &underscore;
 }
 
 void *init_Push(struct dict *map, struct allocator *allocator) {

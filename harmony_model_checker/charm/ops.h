@@ -31,6 +31,7 @@ struct step {
     unsigned int nlog;                  // output values that are printed
     unsigned int nspawned;              // #threads spawned or resumed
     unsigned int nunstopped;            // #threads removed from stopbag
+    hvalue_t attrs;                     // print attributes
     hvalue_t log[MAX_PRINT];            // #output values
     hvalue_t spawned[MAX_SPAWN];        // threads to add to context bag
     hvalue_t unstopped[MAX_SPAWN];      // threads to remove from stopbag

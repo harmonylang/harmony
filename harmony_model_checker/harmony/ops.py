@@ -852,14 +852,15 @@ class AssertOp(Op):
         context.pc += 1
 
 class PrintOp(Op):
-    def __init__(self, token):
+    def __init__(self, token, attrsthere):
         self.token = token
+        self.attrsthere = attrsthere
 
     def __repr__(self):
         return "Print"
 
     def jdump(self):
-        return '{ "op": "Print" }'
+        return '{ "op": "Print", "attrs": %d }'%(1 if self.attrsthere else 0)
 
     def tladump(self):
         return 'OpPrint(self)'
