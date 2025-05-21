@@ -93,22 +93,11 @@ def behavior_show_diagram(dfa, path=None):
         for to_label, (to_sym, to_state) in lookup.items():
             if to_state not in error_states and to_label != "":
                 assert to_sym["type"] == "list"
-                label = json_string(to_sym["value"][0])
                 attrs = python_obj(to_sym["value"][1])
-                if "color" in attrs:
-                    graph.add_edge(pydot.Edge(
-                        nodes[from_state],
-                        nodes[to_state],
-                        label=label,
-                        color=attrs["color"],
-                        fontcolor=attrs["color"],
-                    ))
-                else:
-                    graph.add_edge(pydot.Edge(
-                        nodes[from_state],
-                        nodes[to_state],
-                        label=label
-                    ))
+                attrs["src"] = nodes[from_state];
+                attrs["dst"] = nodes[to_state];
+                attrs["label"] = json_string(to_sym["value"][0])
+                graph.add_edge(pydot.Edge(**attrs))
     if path:
         try:
             graph.write_png(path)
@@ -168,8 +157,9 @@ def behavior_parse(js, minify, outputfiles, behavior):
                         assert sym["type"] == "list"
                         label = json_string(sym["value"][0])
                         attrs = python_obj(sym["value"][1])
+                        flat = ",".join(["%s=%s"%(k,v) for k,v in attrs.items()])
                         if "color" in attrs:
-                            print("  s%s -> s%s [label=%s,color=%s,fontcolor=%s]"%(names[src], names[dst], json.dumps(label, ensure_ascii=False), attrs["color"], attrs["color"]), file=fd)
+                            print("  s%s -> s%s [label=%s,%s]"%(names[src], names[dst], json.dumps(label, ensure_ascii=False), flat), file=fd)
                         else:
                             print("  s%s -> s%s [label=%s]"%(names[src], names[dst], json.dumps(label, ensure_ascii=False)), file=fd)
             print("}", file=fd)
