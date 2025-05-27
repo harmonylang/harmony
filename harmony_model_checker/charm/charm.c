@@ -4234,96 +4234,95 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
         if (n_new > 1 && new[1] == NULL) {
             n_new = 1;
         }
-        else {
-            struct dfa_node **old = malloc(de.next_id * sizeof(struct dfa_node *));
-            unsigned int n_old;
 
-            report_reset("    * Partitioning the DFA");
+        struct dfa_node **old = malloc(de.next_id * sizeof(struct dfa_node *));
+        unsigned int n_old;
 
-            // Now keep partitioning until no new partitions are formed
-            bool new_partition = true;
-            unsigned int work_ctr = 0;
-            for (unsigned int round = 0; new_partition; round++) {
+        report_reset("    * Partitioning the DFA");
+
+        // Now keep partitioning until no new partitions are formed
+        bool new_partition = true;
+        unsigned int work_ctr = 0;
+        for (unsigned int round = 0; new_partition; round++) {
 #ifdef notdef
-                printf("DFA_MINIFY PARTITION %u\n", n_new);
-                printf("Partitions:\n");
-                for (unsigned int i = 0; i < n_new; i++) {
-                    printf("  %u:", i);
-                    for (struct dfa_node *dn = new[i]; dn != NULL; dn = dn->next) {
-                        printf(" %u(%u)", dn->id, dn->rep->id);
-                    }
-                    printf("\n");
+            printf("DFA_MINIFY PARTITION %u\n", n_new);
+            printf("Partitions:\n");
+            for (unsigned int i = 0; i < n_new; i++) {
+                printf("  %u:", i);
+                for (struct dfa_node *dn = new[i]; dn != NULL; dn = dn->next) {
+                    printf(" %u(%u)", dn->id, dn->rep->id);
                 }
                 printf("\n");
+            }
+            printf("\n");
 #endif
 
-                // Swap old and new
-                struct dfa_node **tmp = old;
-                old = new;
-                new = tmp;
-                n_old = n_new;
-                n_new = 0;
+            // Swap old and new
+            struct dfa_node **tmp = old;
+            old = new;
+            new = tmp;
+            n_old = n_new;
+            n_new = 0;
 
-                // Go through each of the old partitions
-                new_partition = false;
-                for (unsigned i = 0; i < n_old; i++) {
-                    // printf("Partition %u\n", i);
+            // Go through each of the old partitions
+            new_partition = false;
+            for (unsigned i = 0; i < n_old; i++) {
+                // printf("Partition %u\n", i);
 
-                    // Repartition the group based on distinguishability
+                // Repartition the group based on distinguishability
 
-                    // If there's only one in the group, just copy it over.
-                    // TODO.  May not need this.
-                    struct dfa_node *dn = old[i];
-                    if (dn == NULL) {       // group may be empty.  Delete it.
-                        continue;
-                    }
-                    if (dn->next == NULL) {
-                        assert(dn->rep == dn);
-                        new[n_new++] = dn;
-                        continue;
-                    }
-
-                    // Initialize the first partition.
-                    unsigned int k = n_new;
-                    old[i] = dn->next;
+                // If there's only one in the group, just copy it over.
+                // TODO.  May not need this.
+                struct dfa_node *dn = old[i];
+                if (dn == NULL) {       // group may be empty.  Delete it.
+                    continue;
+                }
+                if (dn->next == NULL) {
+                    assert(dn->rep == dn);
                     new[n_new++] = dn;
-                    dn->rep = dn;
-                    dn->next = NULL;
+                    continue;
+                }
 
-                    while ((dn = old[i]) != NULL) {
-                        old[i] = dn->next;
+                // Initialize the first partition.
+                unsigned int k = n_new;
+                old[i] = dn->next;
+                new[n_new++] = dn;
+                dn->rep = dn;
+                dn->next = NULL;
 
-                        // See if the node fits into one of the existing partitions
-                        unsigned int j = k;
-                        for (; j < n_new; j++) {
+                while ((dn = old[i]) != NULL) {
+                    old[i] = dn->next;
 
-                            // Pacifier
-                            work_ctr++;
-                            if (work_ctr % 10000 == 0 && report_time()) {
-                                printf("        Round %u, partition %u\n", round, n_new);
-                            }
+                    // See if the node fits into one of the existing partitions
+                    unsigned int j = k;
+                    for (; j < n_new; j++) {
 
-                            if (indistinguishable(&de, dn, new[j])) {
-                                // printf("ind %u %u %u\n", j, dn->id, new[j]->id);
-                                dn->rep = new[j]->rep;
-                                dn->next = new[j];
-                                new[j] = dn;
-                                break;
-                            }
+                        // Pacifier
+                        work_ctr++;
+                        if (work_ctr % 10000 == 0 && report_time()) {
+                            printf("        Round %u, partition %u\n", round, n_new);
                         }
 
-                        // Otherwise, create a new partition
-                        if (j == n_new) {
-                            dn->rep = dn;
-                            dn->next = NULL;
-                            new[n_new++] = dn;
-                            new_partition = true;
+                        if (indistinguishable(&de, dn, new[j])) {
+                            // printf("ind %u %u %u\n", j, dn->id, new[j]->id);
+                            dn->rep = new[j]->rep;
+                            dn->next = new[j];
+                            new[j] = dn;
+                            break;
                         }
+                    }
+
+                    // Otherwise, create a new partition
+                    if (j == n_new) {
+                        dn->rep = dn;
+                        dn->next = NULL;
+                        new[n_new++] = dn;
+                        new_partition = true;
                     }
                 }
-            } while (new_partition);
-            free(old);
-        }
+            }
+        } while (new_partition);
+        free(old);
     }
 
     phase_finish();
