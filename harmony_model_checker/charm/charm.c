@@ -4207,7 +4207,6 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
         n_new = 1;
         struct dict_assoc *da = de.todo[0];
         struct dfa_node *dn = (struct dfa_node *) &da[1];
-        assert(dn->final);
         dn->rep = dn;
         dn->next = NULL;
         new[0] = dn;
