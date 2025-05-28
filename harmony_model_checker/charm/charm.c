@@ -2769,7 +2769,7 @@ static inline void do_work2_single_state(struct worker *w, struct shard *shard, 
     // case cycles in the graph are possible
     else {
         w->miss++;
-        if (next != sh->node && next->len <= sh->node->len) {
+        if (/* next != sh->node && */ next->len <= sh->node->len) {
             w->cycles_possible = true;
         }
     }
