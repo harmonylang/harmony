@@ -634,7 +634,17 @@ void op_Print(const void *env, struct state *state, struct step *step){
         return;
     }
     hvalue_t symbol = ctx_pop(step->ctx);
-    hvalue_t attrs = env == NULL ? 0 : ctx_pop(step->ctx);
+    hvalue_t attrs;
+    if (env == NULL) {
+        attrs = VALUE_DICT;
+        if (VALUE_TYPE(symbol) != VALUE_DICT) {
+            value_ctx_failure(step->ctx, step->allocator, "print attributes must be a dict");
+            return;
+        }
+    }
+    else {
+        attrs = ctx_pop(step->ctx);
+    }
     if (global.run_direct) {
         if (global.dfa != NULL) {
             int t = dfa_step(global.dfa, state->dfa_state, symbol);
@@ -669,7 +679,7 @@ void op_Print(const void *env, struct state *state, struct step *step){
         }
         hvalue_t v[2];
         v[0] = symbol;
-        v[1] = attrs == 0 ? VALUE_DICT : attrs;
+        v[1] = attrs;
         assert(step->nlog == 0);
         step->log[step->nlog++] = value_put_list(step->allocator, v, sizeof(v));
     }
