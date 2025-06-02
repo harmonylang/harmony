@@ -1829,10 +1829,12 @@ class PrintAST(AST):
         stmt = self.stmt()
         if self.atomically:
             code.append(AtomicIncOp(False), self.token, self.endtoken, stmt=stmt)
-        if self.attrs is not None:
+        if self.attrs is None:
+            code.append(PushOp((emptydict, None, None, None)), self.token, self.endtoken, stmt=stmt)
+        else:
             self.attrs.compile(scope, code, stmt)
         self.expr.compile(scope, code, stmt)
-        code.append(PrintOp(self.token, self.attrs is not None), self.token, self.token, stmt=stmt)
+        code.append(PrintOp(self.token), self.token, self.token, stmt=stmt)
         if self.atomically:
             code.append(AtomicDecOp(), self.token, self.endtoken, stmt=stmt)
 

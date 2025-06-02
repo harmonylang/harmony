@@ -609,10 +609,14 @@ void op_Assert2(const void *env, struct state *state, struct step *step){
 }
 
 void next_Print(const void *env, struct context *ctx, FILE *fp){
-    hvalue_t symbol = ctx_peep(ctx);
+    assert(ctx->sp > 1);
+    hvalue_t symbol = ctx_stack(ctx)[ctx->sp - 1];
+    hvalue_t attrs = ctx_stack(ctx)[ctx->sp - 2];
     char *s = value_json(symbol);
-    fprintf(fp, "{ \"type\": \"Print\", \"value\": %s }", s);
+    char *t = value_json(attrs);
+    fprintf(fp, "{ \"type\": \"Print\", \"value\": %s, \"attrs\": %s }", s, t);
     free(s);
+    free(t);
 }
 
 static void do_print(hvalue_t symbol){
@@ -629,45 +633,27 @@ static void do_print(hvalue_t symbol){
 }
 
 void op_Print(const void *env, struct state *state, struct step *step){
+    assert(step->nlog == 0);
     if (step->ctx->readonly > 0) {
         value_ctx_failure(step->ctx, step->allocator, "Can't print in read-only mode");
         return;
     }
     hvalue_t symbol = ctx_pop(step->ctx);
-    hvalue_t attrs;
-    if (env == NULL) {
-        attrs = VALUE_DICT;
-        if (VALUE_TYPE(symbol) != VALUE_DICT) {
-            value_ctx_failure(step->ctx, step->allocator, "print attributes must be a dict");
-            return;
-        }
-    }
-    else {
-        attrs = ctx_pop(step->ctx);
-    }
+    hvalue_t attrs = ctx_pop(step->ctx);
+    hvalue_t v[2];
+    v[0] = symbol;
+    v[1] = attrs;
+    hvalue_t combo = value_put_list(step->allocator, v, sizeof(v));
     if (global.run_direct) {
         if (global.dfa != NULL) {
-            int t = dfa_step(global.dfa, state->dfa_state, symbol);
+            int t = dfa_step(global.dfa, state->dfa_state, combo);
             if (t < 0) {
                 panic("bad behavior");
             }
             state->dfa_state = dfa_dest(global.dfa, t);
         }
         else {
-            if (VALUE_TYPE(symbol) == VALUE_LIST) {
-                unsigned int size;
-                hvalue_t *vals = value_get(symbol, &size);
-                size /= sizeof(hvalue_t);
-                for (unsigned int i = 0; i < size; i++) {
-                    if (i != 0) {
-                        printf(" ");
-                    }
-                    do_print(vals[i]);
-                }
-            }
-            else {
-                do_print(symbol);
-            }
+            do_print(combo);
             printf("\n");
         }
     }
@@ -677,21 +663,18 @@ void op_Print(const void *env, struct state *state, struct step *step){
             value_ctx_failure(step->ctx, step->allocator, "Print: too many prints");
             return;
         }
-        hvalue_t v[2];
-        v[0] = symbol;
-        v[1] = attrs;
-        assert(step->nlog == 0);
-        step->log[step->nlog++] = value_put_list(step->allocator, v, sizeof(v));
+        step->log[step->nlog++] = combo;
     }
     if (step->keep_callstack) {
-        strbuf_printf(&step->explain, "pop value (#+) and add to print log");
+        strbuf_printf(&step->explain, "pop value (#+) and attributes (#+) and add to print log");
         step->explain_args[step->explain_nargs++] = symbol;
+        step->explain_args[step->explain_nargs++] = attrs;
 
         // TODO.  This is currently duplicated in onestep/twostep
         if (global.dfa != NULL) {
-            int t = dfa_step(global.dfa, state->dfa_state, symbol);
+            int t = dfa_step(global.dfa, state->dfa_state, combo);
             if (t < 0) {
-                char *p = value_string(symbol);
+                char *p = value_string(combo);
                 value_ctx_failure(step->ctx, step->allocator, "Behavior failure on %s", p);
                 free(p);
                 return;
@@ -3272,6 +3255,7 @@ void *init_Continue(struct dict *map, struct allocator *allocator){ return NULL;
 void *init_Dup(struct dict *map, struct allocator *allocator){ return NULL; }
 void *init_Go(struct dict *map, struct allocator *allocator){ return NULL; }
 void *init_Pop(struct dict *map, struct allocator *allocator){ return NULL; }
+void *init_Print(struct dict *map, struct allocator *allocator){ return NULL; }
 void *init_ReadonlyDec(struct dict *map, struct allocator *allocator){ return NULL; }
 void *init_ReadonlyInc(struct dict *map, struct allocator *allocator){ return NULL; }
 void *init_Save(struct dict *map, struct allocator *allocator){ return NULL; }
@@ -3507,13 +3491,6 @@ void *init_JumpCond(struct dict *map, struct allocator *allocator){
     env->cond = value_from_json(allocator, cond->u.map);
 
     return env;
-}
-
-void *init_Print(struct dict *map, struct allocator *allocator){
-    struct json_value *jv = dict_lookup(map, "attrs", 5);
-    assert(jv->type == JV_ATOM);
-    assert(jv->u.atom.len == 1);
-    return jv->u.atom.base[0] == '0' ? NULL : &underscore;
 }
 
 void *init_Push(struct dict *map, struct allocator *allocator) {
