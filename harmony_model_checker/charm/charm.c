@@ -48,6 +48,7 @@
 #include "hashdict.h"
 #include "sdict.h"
 #include "dfa.h"
+#include "gnfa.h"
 #include "thread.h"
 #include "spawn.h"
 
@@ -5589,6 +5590,10 @@ int exec_model_checker(int argc, char **argv){
             }
             fprintf(hfa, "}\n");
             fclose(hfa);
+
+            struct dfa *dfa = dfa_read(&workers[0].allocator, hfaout);
+            struct gnfa *gnfa = gnfa_from_dfa(dfa);
+            gnfa_rip(gnfa);
         }
     }
 

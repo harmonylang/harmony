@@ -86,12 +86,15 @@ struct dfa *dfa_read(struct allocator *allocator, char *fname){
     dfa->states = calloc(sizeof(dfa->states[0]), dfa->nstates);
     for (unsigned int i = 0; i < dfa->nstates; i++) {
         dfa->states[i].idx = -1;            // some may not be used
+                                            // TODO.  Why??
     }
     struct dfa_state *ds;
     while ((ds = states) != NULL) {
         states = ds->next;
         dfa->states[ds->idx] = *ds;
     }
+
+    // TODO. Should those states be freed?
 
     // read the list of symbols
     struct json_value *symbols = dict_lookup(jv->u.map, "symbols", 7);
