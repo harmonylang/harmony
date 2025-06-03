@@ -26,7 +26,7 @@ struct microstep {
     bool interrupt;             // the instruction was interrupted
     bool choose;                // the instruction is a "choose"
     hvalue_t choice;            // the value that was chosen
-    hvalue_t print;             // the value that was printed (0 if none)
+    hvalue_t print, attrs;      // the value that was printed (0 if none)
     struct callstack *cs;       // the callstack of the execution
     char *explain;              // a string explaining the execution
     hvalue_t *args;             // arguments to explanation

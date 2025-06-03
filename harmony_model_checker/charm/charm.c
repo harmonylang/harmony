@@ -1620,7 +1620,7 @@ static void make_microstep(
     bool interrupt,
     bool choose,
     hvalue_t choice,
-    hvalue_t print,
+    hvalue_t print, hvalue_t attrs,
     struct step *step,
     struct macrostep *macro
 ) {
@@ -1640,6 +1640,7 @@ static void make_microstep(
     micro->choose = choose;
     micro->choice = choice;
     micro->print = print;
+    micro->attrs = attrs;
     micro->cs = newcs;
     micro->explain = json_escape(step->explain.buf, step->explain.len);
     unsigned int sz = step->explain_nargs * sizeof(hvalue_t);
@@ -1698,7 +1699,7 @@ static void twostep(
         assert(step.ctx->extended);
         assert(ctx_trap_pc(step.ctx) != 0);
         interrupt_invoke(&step);
-        make_microstep(sc, step.ctx, step.callstack, true, false, 0, 0, &step, macro);
+        make_microstep(sc, step.ctx, step.callstack, true, false, 0, 0, 0, &step, macro);
     }
 
     unsigned int instrcnt = 0;
@@ -1708,7 +1709,7 @@ static void twostep(
         }
 
         int pc = step.ctx->pc;
-        hvalue_t print = 0;
+        hvalue_t print = 0, attrs = 0;
         struct instr *instrs = global.code.instrs;
         struct op_info *oi = instrs[pc].oi;
         if (instrs[pc].choose) {
@@ -1721,6 +1722,7 @@ static void twostep(
         }
         else if (instrs[pc].print) {
             print = ctx_stack(step.ctx)[step.ctx->sp - 1];
+            attrs = ctx_stack(step.ctx)[step.ctx->sp - 2];
             step.vars = sc->vars;        // NEW
             (*oi->op)(instrs[pc].env, sc, &step);
             sc->vars = step.vars;        // NEW
@@ -1732,7 +1734,7 @@ static void twostep(
         }
 
         assert(!instrs[pc].choose || choice != 0);
-        make_microstep(sc, step.ctx, step.callstack, false, instrs[pc].choose, choice, print, &step, macro);
+        make_microstep(sc, step.ctx, step.callstack, false, instrs[pc].choose, choice, print, attrs, &step, macro);
 
         if (step.ctx->terminated || step.ctx->failed || step.ctx->stopped) {
             break;
@@ -1754,14 +1756,14 @@ static void twostep(
 #ifdef TODO
             if (0 && step.ctx->readonly > 0) {    // TODO
                 value_ctx_failure(step.ctx, step.allocator, "can't choose in assertion or invariant");
-                make_microstep(sc, step.ctx, step.callstack, false, global.code.instrs[pc].choose, choice, 0, &step, macro);
+                make_microstep(sc, step.ctx, step.callstack, false, global.code.instrs[pc].choose, choice, 0, 0, &step, macro);
                 break;
             }
 #endif
             hvalue_t s = ctx_stack(step.ctx)[step.ctx->sp - 1];
             if (VALUE_TYPE(s) != VALUE_SET) {
                 value_ctx_failure(step.ctx, step.allocator, "choose operation requires a set");
-                make_microstep(sc, step.ctx, step.callstack, false, global.code.instrs[pc].choose, choice, 0, &step, macro);
+                make_microstep(sc, step.ctx, step.callstack, false, global.code.instrs[pc].choose, choice, 0, 0, &step, macro);
                 break;
             }
             unsigned int size;
@@ -1769,7 +1771,7 @@ static void twostep(
             size /= sizeof(hvalue_t);
             if (size == 0) {
                 value_ctx_failure(step.ctx, step.allocator, "choose operation requires a non-empty set");
-                make_microstep(sc, step.ctx, step.callstack, false, global.code.instrs[pc].choose, choice, 0, &step, macro);
+                make_microstep(sc, step.ctx, step.callstack, false, global.code.instrs[pc].choose, choice, 0, 0, &step, macro);
                 break;
             }
             if (size == 1) {
@@ -2001,6 +2003,11 @@ static void path_output_microstep(
         char *val = value_json(micro->print);
         fprintf(file, "          \"print\": %s,\n", val);
         free(val);
+        if (micro->attrs != VALUE_DICT) {
+            char *attrs = value_json(micro->attrs);
+            fprintf(file, "          \"attrs\": %s,\n", attrs);
+            free(attrs);
+        }
     }
 
     struct context *newctx = micro->ctx;
