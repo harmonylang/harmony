@@ -21,6 +21,7 @@ struct regexp {
 
 struct gnfa {
     unsigned int nstates;          // number of states
+    unsigned int size;             // original size of matrix
     struct regexp **transitions;
 };
 

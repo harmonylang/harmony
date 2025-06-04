@@ -10,38 +10,54 @@
 #include "dfa.h"
 #include "gnfa.h"
 
-#define gnfa_matrix(g, x, y)   ((g)->transitions[((x) * (g)->nstates) + (y)])
+#define gnfa_matrix(g, x, y)   ((g)->transitions[((x) * (g)->size) + (y)])
 
-void regexp_dump(struct regexp *re){
-    printf("%u\n", re->type);
-    if (1) return;
+void regexp_indent(unsigned int indent){
+    for (unsigned int i = 0; i < indent; i++) {
+        printf("  ");
+    }
+}
+
+void regexp_dump(struct regexp *re, unsigned int indent){
+	if (re == NULL) {
+		printf("NULL");
+		return;
+	}
     switch (re->type) {
     case RE_EPSILON:
-        printf("e");
+        regexp_indent(indent);
+        printf("e\n");
         break;
     case RE_SYMBOL:
+        regexp_indent(indent);
         printf("[%s]\n", value_string(re->u.symbol));
         break;
     case RE_DISJUNCTION:
-        printf("(");
+        regexp_indent(indent);
+        printf("(\n");
         for (unsigned int i = 0; i < re->u.disjunction.ndisj; i++) {
             if (i != 0) {
-                printf("|");
+                regexp_indent(indent);
+                printf("|\n");
             }
-            regexp_dump(re->u.disjunction.disj[i]);
+            regexp_dump(re->u.disjunction.disj[i], indent + 1);
         }
-        printf(")");
+        regexp_indent(indent);
+        printf(")\n");
         break;
     case RE_SEQUENCE:
-        printf("(");
+        regexp_indent(indent);
+        printf("(\n");
         for (unsigned int i = 0; i < re->u.sequence.nseq; i++) {
-            regexp_dump(re->u.sequence.seq[i]);
+            regexp_dump(re->u.sequence.seq[i], indent + 1);
         }
-        printf(")");
+        regexp_indent(indent);
+        printf(")\n");
         break;
     case RE_KLEENE:
-        regexp_dump(re->u.kleene);
-        printf("*");
+        regexp_dump(re->u.kleene, indent);
+        regexp_indent(indent);
+        printf("*\n");
         break;
     default:
         assert(false);
@@ -86,7 +102,7 @@ struct regexp *regexp_sequence(struct regexp *seq[], unsigned int nseq){
     }
 
     // If there is only one non-epsilon transition, return that one.
-    if (noneps == 0) {
+    if (noneps == 1) {
         for (unsigned int i = 0; i < nseq; i++) {
             if (seq[i]->type != RE_EPSILON) {
                 return seq[i];
@@ -121,21 +137,33 @@ struct regexp *regexp_kleene(struct regexp *kleene){
 // and final state.  The initial state is 0, the final state is 1.
 struct gnfa *gnfa_from_dfa(struct dfa *dfa){
     struct gnfa *gnfa = malloc(sizeof(*gnfa));
-    gnfa->nstates = dfa->nstates + 2;
-    gnfa->transitions = calloc(gnfa->nstates * gnfa->nstates, sizeof(struct regexp));
+    gnfa->nstates = gnfa->size = dfa->nstates + 2;
+    gnfa->transitions = calloc(gnfa->size * gnfa->size, sizeof(struct regexp));
 
     // Go through the original transitions.
     for (unsigned int i = 0; i < dfa->nstates; i++) {
         struct dfa_state *ds = &dfa->states[i];
         for (struct dfa_transition *dt = ds->transitions; dt != NULL;
                                                             dt = dt->next) {
-            gnfa_matrix(gnfa, i + 2, dt->dst + 2) = regexp_symbol(dt->symbol);
+            struct regexp *re = regexp_symbol(dt->symbol);
+            struct regexp *re2 = gnfa_matrix(gnfa, i + 2, dt->dst + 2);
+            if (re2 == NULL) {
+                gnfa_matrix(gnfa, i + 2, dt->dst + 2) = re;
+            }
+            else {
+                struct regexp *disj[2];
+                disj[0] = re2;
+                disj[1] = re;
+                gnfa_matrix(gnfa, i + 2, dt->dst + 2) = regexp_disjunction(disj, 2);
+            }
         }
 
         if (i == dfa->initial) {
+			printf("INIT %u\n", i);
             gnfa_matrix(gnfa, 0, i + 2) = regexp_epsilon();
         }
         if (ds->final) {
+			printf("FINAL %u\n", i);
             gnfa_matrix(gnfa, i + 2, 1) = regexp_epsilon();
         }
     }
@@ -153,11 +181,8 @@ void gnfa_rip1(struct gnfa *gnfa){
     else {
         self_loop = regexp_kleene(gnfa_matrix(gnfa, last, last));
     }
-    for (unsigned int x = 0; x < gnfa->nstates; x++) {
-        for (unsigned int y = 0; y < gnfa->nstates; y++) {
-            if (x == y) {
-                continue;
-            }
+    for (unsigned int x = 0; x < last; x++) {
+        for (unsigned int y = 1; y < last; y++) {
             struct regexp *r1 = gnfa_matrix(gnfa, x, last);
             if (r1 == NULL) {
                 continue;
@@ -166,6 +191,7 @@ void gnfa_rip1(struct gnfa *gnfa){
             if (r2 == NULL) {
                 continue;
             }
+			printf("FOUND %u -> %u -> %u\n", x, last, y);
             struct regexp *re;
             if (self_loop) {
                 struct regexp *seq[3];
@@ -192,6 +218,8 @@ void gnfa_rip1(struct gnfa *gnfa){
             }
         }
     }
+
+	// Reduce size of graph by 1
     gnfa->nstates = last;
 }
 
@@ -201,6 +229,5 @@ void gnfa_rip(struct gnfa *gnfa){
     while (gnfa->nstates > 2) {
         gnfa_rip1(gnfa);
     }
-    regexp_dump(gnfa_matrix(gnfa, 0, 1));
-    printf("\n");
+    regexp_dump(gnfa_matrix(gnfa, 0, 1), 0);
 }
