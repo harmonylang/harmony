@@ -8,13 +8,9 @@ struct regexp {
     union {
         hvalue_t symbol;
         struct {
-            unsigned int ndisj;
-            struct regexp **disj;
-        } disjunction;
-        struct {
-            unsigned int nseq;
-            struct regexp **seq;
-        } sequence;
+            unsigned int n;
+            struct regexp **entries;
+        } list; // disjunction or sequence
         struct regexp *kleene;
     } u;
 };

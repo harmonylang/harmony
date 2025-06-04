@@ -35,12 +35,12 @@ void regexp_dump(struct regexp *re, unsigned int indent){
     case RE_DISJUNCTION:
         regexp_indent(indent);
         printf("(\n");
-        for (unsigned int i = 0; i < re->u.disjunction.ndisj; i++) {
+        for (unsigned int i = 0; i < re->u.list.n; i++) {
             if (i != 0) {
                 regexp_indent(indent);
                 printf("|\n");
             }
-            regexp_dump(re->u.disjunction.disj[i], indent + 1);
+            regexp_dump(re->u.list.entries[i], indent + 1);
         }
         regexp_indent(indent);
         printf(")\n");
@@ -48,8 +48,8 @@ void regexp_dump(struct regexp *re, unsigned int indent){
     case RE_SEQUENCE:
         regexp_indent(indent);
         printf("(\n");
-        for (unsigned int i = 0; i < re->u.sequence.nseq; i++) {
-            regexp_dump(re->u.sequence.seq[i], indent + 1);
+        for (unsigned int i = 0; i < re->u.list.n; i++) {
+            regexp_dump(re->u.list.entries[i], indent + 1);
         }
         regexp_indent(indent);
         printf(")\n");
@@ -81,29 +81,34 @@ struct regexp *regexp_disjunction(struct regexp *disj[], unsigned int ndisj){
     struct regexp *re = malloc(sizeof(*re));
     re->type = RE_DISJUNCTION;
     unsigned int size = sizeof(re) * ndisj;
-    re->u.disjunction.ndisj = ndisj;
-    re->u.disjunction.disj = malloc(size);
-    memcpy(re->u.disjunction.disj, disj, size);
+    re->u.list.n = ndisj;
+    re->u.list.entries = malloc(size);
+    memcpy(re->u.list.entries, disj, size);
     return re;
 }
 
 struct regexp *regexp_sequence(struct regexp *seq[], unsigned int nseq){
-    // See how many non-epsilon transitions there are
-    unsigned int noneps = 0;
+    // See how many "real" transitions there are
+    unsigned int n = 0;
     for (unsigned int i = 0; i < nseq; i++) {
-        if (seq[i]->type != RE_EPSILON) {
-            noneps++;
+        if (seq[i]->type == RE_SEQUENCE) {
+            assert(seq[i]->u.list.n > 1);
+            n += seq[i]->u.list.n;
+        }
+        else if (seq[i]->type != RE_EPSILON) {
+            n++;
         }
     }
 
-    // If they are all epsilon transitions, just return one of them.
-    if (noneps == 0) {
-        return seq[0];
+    // Only epsilon transitions
+    if (n == 0) {
+        return regexp_epsilon();
     }
 
-    // If there is only one non-epsilon transition, return that one.
-    if (noneps == 1) {
+    // One non-epsilon transition
+    if (n == 1) {
         for (unsigned int i = 0; i < nseq; i++) {
+            assert(seq[i]->type != RE_SEQUENCE);
             if (seq[i]->type != RE_EPSILON) {
                 return seq[i];
             }
@@ -112,13 +117,18 @@ struct regexp *regexp_sequence(struct regexp *seq[], unsigned int nseq){
 
     struct regexp *re = malloc(sizeof(*re));
     re->type = RE_SEQUENCE;
-    unsigned int size = sizeof(re) * noneps;
-    re->u.sequence.nseq = noneps;
-    re->u.sequence.seq = malloc(size);
+    unsigned int size = sizeof(re) * n;
+    re->u.list.n = n;
+    re->u.list.entries = malloc(size);
     unsigned int j = 0;
     for (unsigned int i = 0; i < nseq; i++) {
-        if (seq[i]->type != RE_EPSILON) {
-            re->u.sequence.seq[j++] = seq[i];
+        if (seq[i]->type == RE_SEQUENCE) {
+            memcpy(&re->u.list.entries[j], seq[i]->u.list.entries,
+                    seq[i]->u.list.n * sizeof(re));
+            j += seq[i]->u.list.n;
+        }
+        else if (seq[i]->type != RE_EPSILON) {
+            re->u.list.entries[j++] = seq[i];
         }
     }
     return re;
