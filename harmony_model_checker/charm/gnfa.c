@@ -10,17 +10,19 @@
 #include "dfa.h"
 #include "gnfa.h"
 
-#define gnfa_matrix(g, x, y)   ((g)->transitions[((x) * (g)->nstates) + (y)])
+#define gnfa_matrix(g, x, y)   ((g)->transitions[((x) * (g)->size) + (y)])
 
 void regexp_dump(struct regexp *re){
-    printf("%u\n", re->type);
-    if (1) return;
+	if (re == NULL) {
+		printf("NULL");
+		return;
+	}
     switch (re->type) {
     case RE_EPSILON:
         printf("e");
         break;
     case RE_SYMBOL:
-        printf("[%s]\n", value_string(re->u.symbol));
+        printf("[%s]", value_string(re->u.symbol));
         break;
     case RE_DISJUNCTION:
         printf("(");
@@ -121,8 +123,8 @@ struct regexp *regexp_kleene(struct regexp *kleene){
 // and final state.  The initial state is 0, the final state is 1.
 struct gnfa *gnfa_from_dfa(struct dfa *dfa){
     struct gnfa *gnfa = malloc(sizeof(*gnfa));
-    gnfa->nstates = dfa->nstates + 2;
-    gnfa->transitions = calloc(gnfa->nstates * gnfa->nstates, sizeof(struct regexp));
+    gnfa->nstates = gnfa->size = dfa->nstates + 2;
+    gnfa->transitions = calloc(gnfa->size * gnfa->size, sizeof(struct regexp));
 
     // Go through the original transitions.
     for (unsigned int i = 0; i < dfa->nstates; i++) {
@@ -130,12 +132,15 @@ struct gnfa *gnfa_from_dfa(struct dfa *dfa){
         for (struct dfa_transition *dt = ds->transitions; dt != NULL;
                                                             dt = dt->next) {
             gnfa_matrix(gnfa, i + 2, dt->dst + 2) = regexp_symbol(dt->symbol);
+			printf("%u ==> %u\n", i+2, dt->dst+2);
         }
 
         if (i == dfa->initial) {
+			printf("INIT %u\n", i);
             gnfa_matrix(gnfa, 0, i + 2) = regexp_epsilon();
         }
         if (ds->final) {
+			printf("FINAL %u\n", i);
             gnfa_matrix(gnfa, i + 2, 1) = regexp_epsilon();
         }
     }
@@ -166,6 +171,7 @@ void gnfa_rip1(struct gnfa *gnfa){
             if (r2 == NULL) {
                 continue;
             }
+			printf("FOUND %u -> %u -> %u\n", x, last, y);
             struct regexp *re;
             if (self_loop) {
                 struct regexp *seq[3];
@@ -192,6 +198,9 @@ void gnfa_rip1(struct gnfa *gnfa){
             }
         }
     }
+
+	// Reduce size of graph by 1
+	// TODO.  Remove last row and last column
     gnfa->nstates = last;
 }
 
