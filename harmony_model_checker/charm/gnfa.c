@@ -65,9 +65,13 @@ void regexp_dump(struct regexp *re, unsigned int indent){
 }
 
 struct regexp *regexp_epsilon(){
-    struct regexp *re = malloc(sizeof(*re));
-    re->type = RE_EPSILON;
-    return re;
+    static struct regexp *eps;
+
+    if (eps == NULL) {
+        eps = malloc(sizeof(*eps));
+        eps->type = RE_EPSILON;
+    }
+    return eps;
 }
 
 struct regexp *regexp_symbol(hvalue_t symbol){
@@ -78,12 +82,34 @@ struct regexp *regexp_symbol(hvalue_t symbol){
 }
 
 struct regexp *regexp_disjunction(struct regexp *disj[], unsigned int ndisj){
+    // See how many transitions there are
+    unsigned int n = 0;
+    for (unsigned int i = 0; i < ndisj; i++) {
+        if (disj[i]->type == RE_DISJUNCTION) {
+            assert(disj[i]->u.list.n > 1);
+            n += disj[i]->u.list.n;
+        }
+        else {
+            n++;
+        }
+    }
+
     struct regexp *re = malloc(sizeof(*re));
     re->type = RE_DISJUNCTION;
-    unsigned int size = sizeof(re) * ndisj;
-    re->u.list.n = ndisj;
+    unsigned int size = sizeof(re) * n;
+    re->u.list.n = n;
     re->u.list.entries = malloc(size);
-    memcpy(re->u.list.entries, disj, size);
+    unsigned int j = 0;
+    for (unsigned int i = 0; i < ndisj; i++) {
+        if (disj[i]->type == RE_DISJUNCTION) {
+            memcpy(&re->u.list.entries[j], disj[i]->u.list.entries,
+                    disj[i]->u.list.n * sizeof(re));
+            j += disj[i]->u.list.n;
+        }
+        else {
+            re->u.list.entries[j++] = disj[i];
+        }
+    }
     return re;
 }
 

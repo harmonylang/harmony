@@ -1,7 +1,7 @@
 import rwlock
 
 const N_READERS = 2
-const N_WRITERS = 0
+const N_WRITERS = 1
 
 rw = rwlock.RWlock()
 

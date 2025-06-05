@@ -4086,7 +4086,9 @@ static bool distin_helper(void *env, const void *key, unsigned int key_size, voi
     struct dict_assoc *da1 = distin_env->de->todo[dst1];
     struct dfa_node *dn1 = (struct dfa_node *) &da1[1];
 
-    // printf("CMP %p(%p) %p(%p)\n", dn1, dn1->rep, dn2, dn2->rep);
+    // if (dn1->rep != dn2->rep) {
+    //     printf("CMP %s %u(%u) %u(%u)\n", value_string(* (hvalue_t *) key), dn1->id, dn1->rep->id, dn2->id, dn2->rep->id);
+    // }
 
     return dn1->rep == dn2->rep;
 }
@@ -4249,10 +4251,17 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
 
         // Now keep partitioning until no new partitions are formed
         bool new_partition = true;
-        unsigned int work_ctr = 0;
+        unsigned int work_ctr = 0;      // for pacifier
         for (unsigned int round = 0; new_partition; round++) {
+            // Mark all nodes in each partition with a unique id.
+            for (unsigned int i = 0; i < n_new; i++) {
+                for (struct dfa_node *dn = new[i]; dn != NULL; dn = dn->next) {
+                    dn->rep = new[i];
+                }
+            }
+
 #ifdef notdef
-            printf("DFA_MINIFY PARTITION %u\n", n_new);
+            printf("DFA_MINIFY PARTITION round=%u, #partitions=%u\n", round, n_new);
             printf("Partitions:\n");
             for (unsigned int i = 0; i < n_new; i++) {
                 printf("  %u:", i);
@@ -4274,7 +4283,7 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
             // Go through each of the old partitions
             new_partition = false;
             for (unsigned i = 0; i < n_old; i++) {
-                // printf("Partition %u\n", i);
+                // printf("Partition %u #new=%u\n", i, n_new);
 
                 // Repartition the group based on distinguishability
 
@@ -4290,18 +4299,20 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
                     continue;
                 }
 
-                // Initialize the first partition.
+                // Initialize the first partition by moving over one node.
                 unsigned int k = n_new;
                 old[i] = dn->next;
                 new[n_new++] = dn;
-                dn->rep = dn;
                 dn->next = NULL;
 
+                // Now look at all the other nodes in the partition
                 while ((dn = old[i]) != NULL) {
                     old[i] = dn->next;
 
+
                     // See if the node fits into one of the existing partitions
                     unsigned int j = k;
+                    // printf("check j=%u dn=%u rep=%u\n", j, dn->id, dn->rep->id);
                     for (; j < n_new; j++) {
 
                         // Pacifier
@@ -4311,8 +4322,7 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
                         }
 
                         if (indistinguishable(&de, dn, new[j])) {
-                            // printf("ind %u %u %u\n", j, dn->id, new[j]->id);
-                            dn->rep = new[j]->rep;
+                            // printf("ind j=%u dn=%u rep=%u\n", j, dn->id, new[j]->id);
                             dn->next = new[j];
                             new[j] = dn;
                             break;
@@ -4321,7 +4331,6 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
 
                     // Otherwise, create a new partition
                     if (j == n_new) {
-                        dn->rep = dn;
                         dn->next = NULL;
                         new[n_new++] = dn;
                         new_partition = true;
@@ -5591,9 +5600,9 @@ int exec_model_checker(int argc, char **argv){
             fprintf(hfa, "}\n");
             fclose(hfa);
 
-            struct dfa *dfa = dfa_read(&workers[0].allocator, hfaout);
-            struct gnfa *gnfa = gnfa_from_dfa(dfa);
-            gnfa_rip(gnfa);
+            // struct dfa *dfa = dfa_read(&workers[0].allocator, hfaout);
+            // struct gnfa *gnfa = gnfa_from_dfa(dfa);
+            // gnfa_rip(gnfa);
         }
     }
 
