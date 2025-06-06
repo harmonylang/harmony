@@ -674,8 +674,14 @@ void op_Print(const void *env, struct state *state, struct step *step){
         if (global.dfa != NULL) {
             int t = dfa_step(global.dfa, state->dfa_state, combo);
             if (t < 0) {
-                char *p = value_string(combo);
-                value_ctx_failure(step->ctx, step->allocator, "Behavior failure on %s", p);
+                char *p;
+                if (attrs == VALUE_DICT) {
+                    p = value_string(symbol);
+                }
+                else {
+                    p = value_string(combo);
+                }
+                value_ctx_failure(step->ctx, step->allocator, "Behavior failure on printing %s", p);
                 free(p);
                 return;
             }

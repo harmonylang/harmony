@@ -119,10 +119,10 @@ def handle_hny(ns, output_files, parse_code_only, filenames):
     
     return code, scope
 
-def handle_hvm(ns, output_files, parse_code_only, code, scope):
+def handle_hvm(ns, output_files, parse_code_only, code, scope, behavior):
     charm_options = ns.cf or []
-    if ns.B:
-        charm_options.append("-B" + ns.B)
+    if behavior != None:
+        charm_options.append("-B" + behavior)
     if ns.b:
         charm_options.append("-b")
     if ns.T:
@@ -175,16 +175,11 @@ def handle_hvm(ns, output_files, parse_code_only, code, scope):
             print("charm model checker failed")
             exit(r)
 
-def handle_hco(ns, output_files):
+def handle_hco(ns, output_files, behavior):
     if ns.quick:
         return
 
     suppress_output = ns.suppress
-
-    behavior = None
-    if ns.B:
-        behavior = ns.B
-
     disable_browser = settings.values.disable_web or ns.noweb
     
     b = Brief()
@@ -270,14 +265,29 @@ def main():
             return 1
         output_files[suffix] = str(p)
 
-    if len(ns.args) != 1:
-        print(f"harmony: error: invalid number of arguments ({len(ns.args)}). Provide 1 argument.")
-        args.print_help()
-        return 1
+    filename = None
+    behavior_file = ns.B if ns.B else None
+    for f in ns.args:
+        name = pathlib.Path(f)
+        if not name.exists():
+            print(f"harmony: error: file named '{name}' does not exist.")
+            return 1
+        file_type = name.suffix
+        if file_type == '.hfa':
+            if behavior_file != None:
+                print(f"harmony: error: duplicate behavior file.")
+                return 1
+            behavior_file = f
+        elif filename == None:
+            filename = name
+        else:
+            print(f"harmony: error: multiple input files.")
+            args.print_help()
+            return 1
 
-    filename = pathlib.Path(ns.args[0])
-    if not filename.exists():
-        print(f"harmony: error: file named '{filename}' does not exist.")
+    if filename == None:
+        print(f"harmony: no input file")
+        args.print_help()
         return 1
 
     stem = str(filename.parent / filename.stem)
@@ -314,17 +324,17 @@ def main():
     if input_file_type == ".hny":
         code, scope = handle_hny(ns, output_files, parse_code_only, str(filename))
         if charm_flag:
-            handle_hvm(ns, output_files, parse_code_only, code, scope)
-            handle_hco(ns, output_files)
+            handle_hvm(ns, output_files, parse_code_only, code, scope, behavior_file)
+            handle_hco(ns, output_files, behavior_file)
         else:
             print("Skipping Phases 2-5...", flush=True)
             legacy_harmony.dumpCode(print_code, code, scope)
 
     if input_file_type == ".hvm":
         print("Skipping Phase 1...", flush=True)
-        handle_hvm(ns, output_files, parse_code_only, None, None)
-        handle_hco(ns, output_files)
+        handle_hvm(ns, output_files, parse_code_only, None, None, behavior_file)
+        handle_hco(ns, output_files, behavior_file)
         
     if input_file_type == ".hco":
         print("Skipping Phases 1-4...", flush=True)
-        handle_hco(ns, output_files)
+        handle_hco(ns, output_files, behavior_file)

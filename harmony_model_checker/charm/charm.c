@@ -835,8 +835,7 @@ static inline void process_step(
         f->edge = edge;
         add_failure(&w->failures, f);
     }
-
-    if (w->dfa != NULL) {
+    else if (w->dfa != NULL) {
         assert(so->nlog == 0 || so->nlog == 1);
         for (unsigned int i = 0; i < so->nlog; i++) {
             int t = dfa_step(w->dfa, sc->dfa_state, step_log(so)[i]);
@@ -1845,7 +1844,7 @@ static void path_recompute(){
         hvalue_t ctx = edge_input(e)->ctx;
 
         // printf("MACRO tid=%u ctx=%p choice=%p\n", macro->tid, (void *) ctx,
-        //    (void *) edge_input(e)->choice);
+        //                                   (void *) edge_input(e)->choice);
 
         if (e->invariant_chk) {
             global.processes = realloc(global.processes, (global.nprocesses + 1) * sizeof(hvalue_t));
@@ -1879,9 +1878,9 @@ static void path_recompute(){
             }
             global.oldpid = pid;
         }
-        // printf("Macrostep %u: T%u -> %p\n", i, pid, (void *) ctx);
+        // printf("Macrostep %u: T%u/%u -> %p\n", i, pid, global.nprocesses, (void *) ctx);
         if (pid >= global.nprocesses) {
-            printf("PID %p %u %u\n", HV_TO_P(ctx), pid, global.nprocesses);
+            // printf("PID %p %u %u\n", HV_TO_P(ctx), pid, global.nprocesses);
             // panic("bad pid");
             global.nmacrosteps = i;
             break;
@@ -2185,6 +2184,11 @@ static bool path_edge_conflict(
     struct edge *edge,
     struct edge *edge2
 ) {
+    // Consider it a conflict if either edge spawns new threads
+    if (edge_output(edge)->nspawned > 0 || edge_output(edge2)->nspawned > 0) {
+        return true;
+    }
+
     for (struct access_info *ai = edge_output(edge)->ai; ai != NULL; ai = ai->next) {
         if (ai->indices != NULL) {
             for (struct access_info *ai2 = edge_output(edge2)->ai; ai2 != NULL; ai2 = ai2->next) {

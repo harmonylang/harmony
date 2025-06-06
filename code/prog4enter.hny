@@ -1,13 +1,13 @@
-shared = 0
+x = 0
 entered = [ False, False ]
 
 def f(self):
     entered[self] = True
     await not entered[1 - self]
-    shared += 1
+    x += 1
     entered[self] = False
 
 spawn f(0)
 spawn f(1)
 
-finally shared == 2
+finally x == 2
