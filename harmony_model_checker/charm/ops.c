@@ -653,7 +653,12 @@ void op_Print(const void *env, struct state *state, struct step *step){
             state->dfa_state = dfa_dest(global.dfa, t);
         }
         else {
-            do_print(combo);
+            if (attrs == VALUE_DICT) {
+                do_print(symbol);
+            }
+            else {
+                do_print(combo);
+            }
             printf("\n");
         }
     }

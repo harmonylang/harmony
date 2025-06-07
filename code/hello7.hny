@@ -1,6 +1,4 @@
-def hello(name):
-    print "hello"
-    print name
-
-spawn hello("Lesley")
-spawn hello("Robbert")
+if choose { False, True }:
+    print "hello"; print "world"
+else:
+    print "world"; print "hello"
