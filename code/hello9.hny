@@ -1,7 +1,12 @@
-x = False
-def f():
-    print "hello"
-    atomically: x = True
-def g():
-    atomically when x: print "world"
-spawn f(); spawn g()
+def f(name):
+    atomically:
+        print "hello"
+        print "world"
+
+def g(name):
+    atomically:
+        print "goodnight"
+        print "moon"
+
+spawn f()
+spawn g()

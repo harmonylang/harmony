@@ -1,7 +1,10 @@
-def hello(name):
-    atomically:
-        print "hello"
-        print name
+def f(name):
+    print "hello"
+    print "world"
 
-spawn hello("Lesley")
-spawn hello("Robbert")
+def g(name):
+    print "goodnight"
+    print "moon"
+
+spawn f()
+spawn g()
