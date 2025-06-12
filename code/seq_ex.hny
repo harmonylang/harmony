@@ -1,0 +1,14 @@
+sequential x, y, z
+
+x = y = z = 0
+
+def f():
+    x = y
+    z = y + 1
+    print(x, z)
+
+def g():
+    y = 1
+
+spawn f()
+spawn g()

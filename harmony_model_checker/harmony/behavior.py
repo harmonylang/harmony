@@ -68,6 +68,9 @@ def behavior_show_diagram(dfa, path=None):
             next_idx += 1
         if state in error_states:
             continue
+        init_state_label = "initial" # or str(state)
+        final_state_label = "final" # or str(state)
+        state_label = "" # or str(state)
         if state == initial_state:
             # color start state with green
             if state in final_states:
@@ -75,17 +78,17 @@ def behavior_show_diagram(dfa, path=None):
                     str(idx),
                     style='filled',
                     peripheries=2,
-                    fillcolor='#66cc33', label="initial")
+                    fillcolor='#66cc33', label=final_state_label)
             else:
                 initial_state_node = pydot.Node(
-                    str(idx), style='filled', fillcolor='#66cc33', label="initial")
+                    str(idx), style='filled', fillcolor='#66cc33', label=init_state_label)
             nodes[state] = initial_state_node
             graph.add_node(initial_state_node)
         else:
             if state in final_states:
-                state_node = pydot.Node(str(idx), peripheries=2, label="final")
+                state_node = pydot.Node(str(idx), peripheries=2, label=final_state_label)
             else:
-                state_node = pydot.Node(str(idx), label="")
+                state_node = pydot.Node(str(idx), label=state_label)
             nodes[state] = state_node
             graph.add_node(state_node)
     # adding edges

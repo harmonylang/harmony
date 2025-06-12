@@ -1,0 +1,27 @@
+sequential q
+
+q = []
+
+def put(v):
+    q += [v,]
+
+def get() returns v:
+    if q == []:
+        v = None
+    else:
+        v = q[0]
+        del q[0]
+
+def sender():
+    print("invoke put(0)")
+    put(0)
+    print("completed put(0)")
+
+def receiver():
+    print("invoke get()")
+    let v = get():
+        print("get() returns " + str(v))
+
+spawn sender()
+spawn receiver()
+spawn receiver()

@@ -917,20 +917,11 @@ static struct step_output *onestep(
     bool in_assertion = false;
     bool check_for_infloop = false;
 
-    // See if we should first try an interrupt or make a choice.
+    // See if we should first try an interrupt.
     if (choice == (hvalue_t) -1) {
         assert(step->ctx->extended);
         assert(ctx_trap_pc(step->ctx) != 0);
         interrupt_invoke(step);
-    }
-    else if (choice != 0) {     // If it's a choice, execute it now
-        assert(instrs[step->ctx->pc].choose);
-        assert(sc->type == STATE_CHOOSE);
-        assert(step->ctx->sp > 0);
-        ctx_stack(step->ctx)[step->ctx->sp - 1] = choice;
-        w->profile[step->ctx->pc]++;
-        instrcnt++;
-        step->ctx->pc++;
     }
 
     // Consecutive assertions can be combined.  Also, can be combined
@@ -954,10 +945,11 @@ static struct step_output *onestep(
             value_ctx_failure(step->ctx, step->allocator, "too deep --- likely infinite model");
         }
 
-        // If it's a Choose instruction, we should break no matter what, even if
-        // in atomic mode.
+        // See if it's a choose instruction.
         if (instrs[pc].choose) {
             assert(step->ctx->sp > 0);
+            assert(choice != 0);
+            assert(sc->type == STATE_CHOOSE);
 
             // Can't choose in an assertion.
             if (in_assertion) {
@@ -966,33 +958,20 @@ static struct step_output *onestep(
                 break;
             }
 
-            // Check that the top of the stack contains a set.
-            hvalue_t s = ctx_stack(step->ctx)[step->ctx->sp - 1];
-            if (s == VALUE_SET) {
-                value_ctx_failure(step->ctx, step->allocator, "choose operation requires a non-empty set");
-                instrcnt++;
-                break;
-            }
-            if (VALUE_TYPE(s) != VALUE_SET) {
-                value_ctx_failure(step->ctx, step->allocator, "choose operation requires a set");
-                instrcnt++;
-                break;
-            }
-
-            // Figure out how many choices there are.
-            unsigned int size;
-            (void) value_get(s, &size);
-            choose_count = size / sizeof(hvalue_t);
-            assert(choose_count > 0);
-            break;
+            ctx_stack(step->ctx)[step->ctx->sp - 1] = choice;
+            w->profile[step->ctx->pc]++;
+            step->ctx->pc++;
         }
 
-        // Execute the instruction
-        w->profile[pc]++;
-        (*oi->op)(instrs[pc].env, sc, step);
-        if (step->nlog > 0) {
-            w->printed_something = true;
+        else {
+            // Execute the instruction
+            w->profile[pc]++;
+            (*oi->op)(instrs[pc].env, sc, step);
+            if (step->nlog > 0) {
+                w->printed_something = true;
+            }
         }
+
         instrcnt++;
         // printf("<-- %u %s %u %u %u\n", pc, oi->name, step->ctx->atomic, as_instrcnt, must_break);
 
@@ -1093,6 +1072,29 @@ static struct step_output *onestep(
         pc = step->ctx->pc;
         oi = instrs[pc].oi;
 
+        // If it's a choose instruction, we are done.
+        if (instrs[pc].choose) {
+            // Check that the top of the stack contains a set.
+            hvalue_t s = ctx_stack(step->ctx)[step->ctx->sp - 1];
+            if (s == VALUE_SET) {
+                value_ctx_failure(step->ctx, step->allocator, "choose operation requires a non-empty set");
+                instrcnt++;
+                break;
+            }
+            if (VALUE_TYPE(s) != VALUE_SET) {
+                value_ctx_failure(step->ctx, step->allocator, "choose operation requires a set");
+                instrcnt++;
+                break;
+            }
+
+            // Figure out how many choices there are.
+            unsigned int size;
+            (void) value_get(s, &size);
+            choose_count = size / sizeof(hvalue_t);
+            assert(choose_count > 0);
+            break;
+        }
+
         // See if it's a print instruction.  We have to break unless we're
         // in atomic mode and haven't printed anything yet.
         if (instrs[pc].print) {
@@ -1108,7 +1110,6 @@ static struct step_output *onestep(
             }
             // If we already printed something, we should break, but we
             // should make sure only the current thread can print.
-            assert(step->ctx->atomic > 0);
             if (step->nlog != 0) {
                 printing = true;
                 break;
@@ -1162,7 +1163,7 @@ static struct step_output *onestep(
                 break;
             }
         }
-        else if (instrs[pc].load || instrs[pc].store || instrs[pc].del) {
+        else if (instrs[pc].load || instrs[pc].store || instrs[pc].del || instrs[pc].print) {
             if (as_instrcnt != 0) {
                 rollback = true;
             }
@@ -1197,6 +1198,7 @@ static struct step_output *onestep(
     }
 
     // See if we need to roll back to the start of an assertion.
+    // TODO.  Update ai?
     if (rollback) {
         memcpy(step->ctx, &w->as_ctx, ctx_size(&w->as_ctx));
         instrcnt = as_instrcnt;
@@ -5495,31 +5497,30 @@ int exec_model_checker(int argc, char **argv){
             phase_start("Create charm.gv");
             fprintf(df, "digraph Harmony {\n");
             for (unsigned int i = 0; i < global.graph.size; i++) {
-                fprintf(df, " s%u [label=\"%u\"]\n", i, i);
+                struct node *node = global.graph.nodes[i];
+                assert(node->id == i);
+                struct state *state = node_state(node);
+                fprintf(df, " s%u [label=\"%u\"]\n", i, state->dfa_state);
             }
             for (unsigned int i = 0; i < global.graph.size; i++) {
                 struct node *node = global.graph.nodes[i];
                 struct edge *edge = node_edges(node);
                 for (unsigned int k = 0; k < node->nedges; k++, edge++) {
-                    struct state *state = node_state(node);
-                    unsigned int j;
-                    for (j = 0; j < state->bagsize; j++) {
-                        if (state_ctx(state, j) == edge_input(edge)->ctx) {
-                            break;
-                        }
-                    }
-                    assert(j < state->bagsize);
-                    if (edge->failed) {
-                        fprintf(df, " s%u -> s%u [style=%s label=\"F %u\"]\n",
-                            node->id, edge_dst(edge)->id,
-                            node_to_parent(edge_dst(edge)) == edge ? "solid" : "dashed",
-                            state_multiplicity(state, j));
+                    char *v = NULL;
+                    if (edge_output(edge)->nlog > 0) {
+                        hvalue_t v = step_log(edge_output(edge))[0];
+                        assert(VALUE_TYPE(v) == VALUE_DICT);
+                        unsigned int size;
+                        hvalue_t *values = value_get(v, &size);
+                        assert(size == 2 * sizeof(hvalue_t));
+                        char *p = json_escape_value(values[0]);
+                        fprintf(df, " s%u -> s%u [style=solid label=\"%s\"]\n",
+                            node->id, edge_dst(edge)->id, p);
+                        free(p);
                     }
                     else {
-                        fprintf(df, " s%u -> s%u [style=%s label=\"%u\"]\n",
-                            node->id, edge_dst(edge)->id,
-                            node_to_parent(edge_dst(edge)) == edge ? "solid" : "dashed",
-                            state_multiplicity(state, j));
+                        fprintf(df, " s%u -> s%u [style=dashed]\n",
+                            node->id, edge_dst(edge)->id);
                     }
                 }
             }
