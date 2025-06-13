@@ -78,7 +78,7 @@ def behavior_show_diagram(dfa, path=None):
                     str(idx),
                     style='filled',
                     peripheries=2,
-                    fillcolor='#66cc33', label=final_state_label)
+                    fillcolor='#66cc33', label=init_state_label)
             else:
                 initial_state_node = pydot.Node(
                     str(idx), style='filled', fillcolor='#66cc33', label=init_state_label)

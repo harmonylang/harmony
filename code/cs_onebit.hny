@@ -1,0 +1,23 @@
+sequential flags
+
+flags = [ False, False ]
+
+def cs_enter(self):
+    flags[self] = True
+    while flags[1 - self]:
+        flags[self] = False
+        flags[self] = True
+
+def cs_exit(self):
+    flags[self] = False
+
+def thread(self):
+    while choose { False, True }:
+        cs_enter(self)
+        print(self, "enters")
+        # Critical section is here
+        print(self, "exits")
+        cs_exit(self)
+    
+spawn thread(0)
+spawn thread(1)

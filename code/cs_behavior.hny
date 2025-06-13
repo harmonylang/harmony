@@ -1,0 +1,19 @@
+lock = False
+
+def cs_enter(self):
+    atomically when not lock:
+        lock = True
+
+def cs_exit(self):
+    atomically lock = False
+
+def thread(self):
+    while choose { False, True }:
+        cs_enter(self)
+        print(self, "enters")
+        # Critical section is here
+        print(self, "exits")
+        cs_exit(self)
+    
+spawn thread(0)
+spawn thread(1)

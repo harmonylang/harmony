@@ -1,0 +1,25 @@
+const NTHREADS = 2
+
+lock = False
+want = [ True, ] * NTHREADS
+
+def swap(p, q):
+    atomically !p, !q = !q, !p
+
+def cs_enter(self):
+    while want[self]:
+        swap(?want[self], ?lock)
+
+def cs_exit(self):
+    swap(?want[self], ?lock)
+
+def thread(self):
+    while choose { False, True }:
+        cs_enter(self)
+        print(self, "enters")
+        # Critical section is here
+        print(self, "exits")
+        cs_exit(self)
+    
+for i in { 0 .. NTHREADS - 1 }:
+    spawn thread(i)
