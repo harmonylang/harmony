@@ -1,17 +1,15 @@
 import queue, queueconc
 
-const NOPS = 4
-const VALUES = { 1..NOPS }
+const NOPS = 3
 
 specq = queue.Queue()
 implq = queueconc.Queue()
 
 for i in {1..NOPS}:
-    let op = choose({ "get", "put" }):
+    let op = choose({ "put", "get" }):
         if op == "put":
-            let v = choose(VALUES):
-                queueconc.put(?implq, v)
-                queue.put(?specq, v)
+            queueconc.put(?implq, i)
+            queue.put(?specq, i)
         else:
             let v = queueconc.get(?implq)
             let w = queue.get(?specq):

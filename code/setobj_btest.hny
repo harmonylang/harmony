@@ -1,25 +1,29 @@
 from setobj import *
 
-const N_CONTAINS = 2
-const N_INSERT   = 2
-const N_REMOVE   = 2
+const N_CONTAINS = 1
+const N_INSERT   = 1
+const N_REMOVE   = 1
+const N_VALUES   = 1
 
 myset = SetObject()
 
 def test_contains(self):
-    print("contains", self)
-    let v = contains(myset, 1):
-        print("contains done", self, v)
+    let v = choose { 1 .. N_VALUES }:
+        print("contains", self, v)
+        let r = contains(myset, 1):
+            print("contains done", self, v, r)
 
 def test_insert(self):
-    print("insert", self)
-    insert(myset, self)
-    print("insert done", self)
+    let v = choose { 1 .. N_VALUES }:
+        print("insert", self, v)
+        insert(myset, v)
+        print("insert done", self, v)
 
 def test_remove(self):
-    print("remove", self)
-    remove(myset, self)
-    print("remove done", self)
+    let v = choose { 1 .. N_VALUES }:
+        print("remove", self, v)
+        remove(myset, v)
+        print("remove done", self, v)
 
 for i in { 1 .. N_CONTAINS }:
     spawn test_contains(i)

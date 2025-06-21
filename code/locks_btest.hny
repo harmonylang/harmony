@@ -1,0 +1,18 @@
+from locks import Lock, acquire, release
+
+const NTHREADS = 5
+const NLOCKS = 2
+
+the_locks = [ Lock() for _ in { 0 .. NLOCKS - 1 } ]
+
+def thread():
+    while choose { False, True }:
+        let i = choose { 0 .. NLOCKS - 1 }:
+            acquire(?the_locks[i])
+            print("enter", i)
+            # Critical section i is here
+            print("exit", i)
+            release(?the_locks[i])
+
+for _ in { 1 .. NTHREADS }:
+    spawn thread()

@@ -1,0 +1,14 @@
+from queue import Queue, put, get
+
+const NOPS = 4
+
+q = Queue()
+
+for i in { 1 .. NOPS }:
+    let op = choose { "put", "get" }:
+        if op == "put":
+            put(?q, i)
+            print("put", i)
+        else:
+            let v = get(?q):
+                print("get", v)
