@@ -24,11 +24,7 @@ def exit(b):
     b->left += 1
     if b->left == b->nseats:    # car is empty
         b->entered = 0
-        # notify_all(?b->empty)    # wake up riders wanting to go
-        notify(?b->empty)
-        notify(?b->empty)
-        notify(?b->empty)
-        notify(?b->empty)
+        notify_all(?b->empty)    # wake up riders wanting to go
     release(?b->mutex)
 
 const NSEATS = 4
