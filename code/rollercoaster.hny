@@ -1,9 +1,7 @@
 from synch import *
 
-def RollerCoaster(nseats): result = {
-    .mutex: Lock(), .nseats: nseats, .entered: 0, .left: nseats,
-    .empty: Condition(), .full: Condition()
-}
+def RollerCoaster(nseats): result = { .mutex: Lock(), .nseats: nseats,
+    .entered: 0, .left: nseats, .empty: Condition(), .full: Condition() }
 
 def enter(b):
     acquire(?b->mutex)
@@ -27,13 +25,14 @@ def exit(b):
         notify_all(?b->empty)    # wake up riders wanting to go
     release(?b->mutex)
 
-const NSEATS = 4
-const NTHREADS = 8
-
+const NSEATS = 3
+const NTHREADS = 6
 therc = RollerCoaster(NSEATS)
 
 def student():
     enter(?therc)
+    print("enter")
+    print("exit")
     exit(?therc)
 
 for _ in { 1 .. NTHREADS }:

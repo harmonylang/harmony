@@ -1,7 +1,7 @@
 from barrier import Barrier, bwait
 
 const NTHREADS = 3
-const NROUNDS = 3
+const NROUNDS = 2
 const COLORS = [ "red", "blue" ]
 
 barr = barrier.Barrier(NTHREADS)
@@ -13,10 +13,11 @@ def color(r) returns attrs:
     }
 
 def thread():
-    for r in {0..NROUNDS-1}:
+    for r in {1 .. NROUNDS}:
         barrier.bwait(?barr)
         print("enter", r), color(r)
+        # Processing happens here
         print("exit", r),  color(r)
 
-for i in {0..NTHREADS-1}:
+for i in {1 .. NTHREADS}:
     spawn thread()
