@@ -8,7 +8,7 @@ const MAX_BALANCE = 1
 accounts = [ { .lock: Lock(), .balance: choose({0..MAX_BALANCE})}
                             for i in {1..N_ACCOUNTS} ]
 
-invariant all(accounts[acct].balance >= 0 for acct in {0..N_ACCOUNTS-1})
+invariant all(acct.balance >= 0 for acct in accounts)
 
 def atm_check_balance(acct) returns balance:  # return the balance on acct
     acquire(?accounts[acct].lock)

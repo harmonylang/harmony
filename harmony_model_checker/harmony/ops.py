@@ -637,7 +637,7 @@ class SequentialOp(Op):
         self.var = var
 
     def __repr__(self):
-        return "Sequential"
+        return "Sequential " + self.var[0]
 
     def jdump(self):
         lexeme, file, line, column = self.var
