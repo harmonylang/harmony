@@ -1,18 +1,12 @@
 from synch import Lock, acquire, release
 
-const N = 5
+def Diners(n) returns forks:
+    forks = [Lock(),] * n
 
-forks = [Lock(),] * N
+def enter(f, i):
+    acquire(?(!f)[i])
+    acquire(?(!f)[(i + 1) % len !f])
 
-def diner(which):
-    let left, right = (which, (which + 1) % N):
-        while choose({ False, True }):
-            acquire(?forks[left])
-            acquire(?forks[right])
-            # dine
-            release(?forks[left])
-            release(?forks[right])
-            # think
-
-for i in {0..N-1}:
-    spawn diner(i)
+def exit(f, i):
+    release(?(!f)[i])
+    release(?(!f)[(i + 1) % len !f])
