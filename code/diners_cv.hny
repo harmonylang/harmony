@@ -1,0 +1,18 @@
+from synch import *
+
+def Diners(n) returns diners_state:
+    diners_state = { .mutex: Lock(), .forks: [ False, ] * n, .conds: [ Condition(), ] * n }
+
+def enter(f, i):
+    acquire(?f->mutex)
+    while f->forks[i] or f->forks[(i + 1) % len f->forks]:
+        wait(?f->conds[i], ?f->mutex)
+    f->forks[i] = f->forks[(i + 1) % len f->forks] = True
+    release(?f->mutex)
+
+def exit(f, i):
+    acquire(?f->mutex)
+    f->forks[i] = f->forks[(i + 1) % len f->forks] = False
+    notify(?f->conds[(i - 1) % len f->conds])
+    notify(?f->conds[(i + 1) % len f->conds])
+    release(?f->mutex)
