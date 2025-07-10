@@ -1,9 +1,10 @@
+sequential x
+
 x = 0
 
 def f():
     x += 1
+    print x
 
 spawn f()
 spawn f()
-
-finally x == 2

@@ -1,0 +1,13 @@
+def Diners(n) returns forks:
+    forks = [ False, ] * n
+
+def enter(f, i):
+    atomically when (not (!f)[i]) and (not (!f)[(i + 1) % len !f]):
+        (!f)[i] = True
+        (!f)[(i + 1) % len !f] = True
+
+def exit(f, i):
+    atomically:
+        assert (!f)[i]
+        assert (!f)[(i + 1) % len !f]
+        (!f)[i] = (!f)[(i + 1) % len!f] = False
