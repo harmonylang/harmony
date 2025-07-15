@@ -1,13 +1,13 @@
-def Diners(n) returns forks:
-    forks = [ False, ] * n
+def Diners(n) returns diners_state:
+    diners_state = { .forks: [ False, ] * n, .n: n }
 
 def enter(f, i):
-    atomically when (not (!f)[i]) and (not (!f)[(i + 1) % len !f]):
-        (!f)[i] = True
-        (!f)[(i + 1) % len !f] = True
+    atomically when (not f->forks[i]) and (not f->forks[(i + 1) % f->n]):
+        f->forks[i] = True
+        f->forks[(i + 1) % f->n] = True
 
 def exit(f, i):
     atomically:
-        assert (!f)[i]
-        assert (!f)[(i + 1) % len !f]
-        (!f)[i] = (!f)[(i + 1) % len!f] = False
+        assert f->forks[i]
+        assert f->forks[(i + 1) % f->n]
+        f->forks[i] = f->forks[(i + 1) % f->n] = False

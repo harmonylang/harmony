@@ -1,11 +1,11 @@
 from synch import Lock, acquire, release
 
 def Diners(n) returns diners_state:
-    diners_state = { .forks: [ Lock(), ] * n, .n: n }
+    diners_state = { .forks: [Lock(),] * n, .n: n }
 
 def enter(f, i):
-    acquire(?f->forks[i])
-    acquire(?f->forks[(i + 1) % f->n])
+    acquire(?f->forks[min(i, (i + 1) % f->n)])
+    acquire(?f->forks[max(i, (i + 1) % f->n)])
 
 def exit(f, i):
     release(?f->forks[i])

@@ -1,0 +1,14 @@
+from synch import *
+
+def Diners(n) returns diners_state:
+    diners_state = { .sema: Semaphore(n - 1), .forks: [ Lock(), ] * n }
+
+def enter(f, i):
+    P(?f->sema)                # procure counting semaphore
+    acquire(?f->forks[i])
+    acquire(?f->forks[(i + 1) % len f->forks])
+
+def exit(f, i):
+    release(?f->forks[i])
+    release(?f->forks[(i + 1) % len f->forks])
+    V(?f->sema)                # vacate counting semaphore
