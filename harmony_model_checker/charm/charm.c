@@ -5506,7 +5506,6 @@ int exec_model_checker(int argc, char **argv){
                 struct node *node = global.graph.nodes[i];
                 struct edge *edge = node_edges(node);
                 for (unsigned int k = 0; k < node->nedges; k++, edge++) {
-                    char *v = NULL;
                     if (edge_output(edge)->nlog > 0) {
                         hvalue_t v = step_log(edge_output(edge))[0];
                         assert(VALUE_TYPE(v) == VALUE_DICT);
@@ -5552,62 +5551,79 @@ int exec_model_checker(int argc, char **argv){
 
         // Output an HFA file
         if (/* dfafile == NULL && */ hfaout != NULL) {
-            // Collect the symbols
-            // TODO.  This can probably be done more efficiently
-            //        (and in parallel if needed)
-            printf("* Phase 4a: convert to DFA\n");
-            fflush(stdout);
-
-            phase_start("Collect symbols");
-            struct dict *symbols = collect_symbols(&global.graph);
-
             FILE *hfa = fopen(hfaout, "w");
             if (hfa == NULL) {
                 fprintf(stderr, "%s: can't create %s\n", argv[0], hfaout);
                 exit(1);
             }
-            fprintf(hfa, "{\n");
-            fprintf(hfa, "  \"symbols\": [\n");
-            for (unsigned int i = 0; i < global.nsymbols; i++) {
-                char *p = value_json(global.symbols[i]);
-                fprintf(hfa, "    %s", p);
-                if (i + 1 < global.nsymbols) {
-                    fprintf(hfa, ",\n");
-                }
-                else {
-                    fprintf(hfa, "\n");
-                }
-                free(p);
-            }
-            fprintf(hfa, "  ],\n");
-            phase_finish();
 
-            if (global.printed_something) {
-                printf("* Phase 4b: epsilon closure\n");
-                fflush(stdout);
-                phase_start("Epsilon closure prep");
-                epsilon_closure_prep();     // move epsilon edges to start of each node
-                phase_finish();
-                phase_start("Epsilon closure");
-                tarjan_epsclosure();
-                phase_finish();
-                printf("* Phase 4c: convert NFA to DFA\n");
-                fflush(stdout);
-                dfasize = nfa2dfa(hfa, symbols);
+            if (dfafile != NULL && !transition_missing) {
+                // Just copy the dfa file
+                FILE *fp = fopen(dfafile, "r");
+                if (fp == NULL) {
+                    panic("main: can't open dfa file???");
+                }
+                char buf[CHUNKSIZE];
+                size_t n;
+                while ((n = fread(buf, 1, CHUNKSIZE, fp)) > 0) {
+                    if (fwrite(buf, 1, n, hfa) != n) {
+                        panic("main: can't write dfa file???");
+                    }
+                }
+                fclose(fp);
             }
             else {
-                fprintf(hfa, "  \"initial\": \"0\",\n");
-                fprintf(hfa, "  \"nodes\": [\n");
-                fprintf(hfa, "    { \"idx\": \"0\", \"type\": \"final\" }\n");
-                fprintf(hfa, "  ],\n");
-                fprintf(hfa, "  \"edges\": []\n");
-            }
-            fprintf(hfa, "}\n");
-            fclose(hfa);
+                // Collect the symbols
+                // TODO.  This can probably be done more efficiently
+                //        (and in parallel if needed)
+                printf("* Phase 4a: convert to DFA\n");
+                fflush(stdout);
 
-            // struct dfa *dfa = dfa_read(&workers[0].allocator, hfaout);
-            // struct gnfa *gnfa = gnfa_from_dfa(dfa);
-            // gnfa_rip(gnfa);
+                phase_start("Collect symbols");
+                struct dict *symbols = collect_symbols(&global.graph);
+                fprintf(hfa, "{\n");
+                fprintf(hfa, "  \"symbols\": [\n");
+                for (unsigned int i = 0; i < global.nsymbols; i++) {
+                    char *p = value_json(global.symbols[i]);
+                    fprintf(hfa, "    %s", p);
+                    if (i + 1 < global.nsymbols) {
+                        fprintf(hfa, ",\n");
+                    }
+                    else {
+                        fprintf(hfa, "\n");
+                    }
+                    free(p);
+                }
+                fprintf(hfa, "  ],\n");
+                phase_finish();
+
+                if (global.printed_something) {
+                    printf("* Phase 4b: epsilon closure\n");
+                    fflush(stdout);
+                    phase_start("Epsilon closure prep");
+                    epsilon_closure_prep();     // move epsilon edges to start of each node
+                    phase_finish();
+                    phase_start("Epsilon closure");
+                    tarjan_epsclosure();
+                    phase_finish();
+                    printf("* Phase 4c: convert NFA to DFA\n");
+                    fflush(stdout);
+                    dfasize = nfa2dfa(hfa, symbols);
+                }
+                else {
+                    fprintf(hfa, "  \"initial\": \"0\",\n");
+                    fprintf(hfa, "  \"nodes\": [\n");
+                    fprintf(hfa, "    { \"idx\": \"0\", \"type\": \"final\" }\n");
+                    fprintf(hfa, "  ],\n");
+                    fprintf(hfa, "  \"edges\": []\n");
+                }
+                fprintf(hfa, "}\n");
+
+                // struct dfa *dfa = dfa_read(&workers[0].allocator, hfaout);
+                // struct gnfa *gnfa = gnfa_from_dfa(dfa);
+                // gnfa_rip(gnfa);
+            }
+            fclose(hfa);
         }
     }
 
