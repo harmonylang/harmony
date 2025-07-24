@@ -107,17 +107,13 @@ $HARMONY --noweb -mboundedbuffer=boundedbuffer_hoare -msynch=synchS code/bounded
 
 $HARMONY --noweb code/qsorttest.hny
 
-$HARMONY --noweb code/Diners.hny
+$HARMONY --noweb code/diners_btest.hny
 
-$HARMONY --noweb -msynch=synchS code/Diners.hny
+$HARMONY --noweb -mdiners=diners_lock code/diners_btest.hny
 
-$HARMONY --noweb code/DinersCV.hny
+$HARMONY --noweb -mdiners=diners_cv code/diners_btest.hny
 
-$HARMONY --noweb -msynch=synchS code/DinersCV.hny
-
-$HARMONY --noweb code/DinersAvoid.hny
-
-$HARMONY --noweb -msynch=synchS code/DinersAvoid.hny
+$HARMONY --noweb -mdiners=diners_avoid code/diners_btest.hny
 
 $HARMONY --noweb code/bank.hny
 
