@@ -5551,7 +5551,7 @@ int exec_model_checker(int argc, char **argv){
         }
 
         // Output an HFA file
-        if (dfafile == NULL && hfaout != NULL) {
+        if (/* dfafile == NULL && */ hfaout != NULL) {
             // Collect the symbols
             // TODO.  This can probably be done more efficiently
             //        (and in parallel if needed)

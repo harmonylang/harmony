@@ -5,6 +5,7 @@ import webbrowser
 import sys
 import os
 import argparse
+import hashlib
 
 from antlr4 import * # type: ignore
 
@@ -293,6 +294,16 @@ def main():
     stem = str(filename.parent / filename.stem)
     input_file_type = filename.suffix
 
+    # generate a "run id"
+    f1 = [str(filename)]
+    f2 = ["" if behavior_file == None else behavior_file]
+    f3 = [] if ns.const == None else sorted(ns.const)
+    f4 = [] if ns.module == None else sorted(ns.module)
+    ff = ",".join(f1 + f2 + f3 + f4)
+    sha3 = hashlib.sha3_256()
+    sha3.update(ff.encode('utf-8'))
+    runid = sha3.hexdigest()[:8]
+
     if output_files["hvm"] is None:
         output_files["hvm"] = stem + ".hvm"
     if output_files["hco"] is None:
@@ -302,11 +313,13 @@ def main():
     if output_files["hvb"] is None:
         output_files["hvb"] = stem + ".hvb"
     if output_files["hfa"] is None:
-        output_files["hfa"] = stem + ".hfa"
-    if output_files["png"] is None:
-        output_files["png"] = stem + ".png"
+        output_files["hfa"] = stem + "-" + runid + ".hfa"
     if output_files["png"] is not None and output_files["gv"] is None:
-        output_files["gv"] = stem + ".gv"
+        output_files["gv"] = stem + "-" + runid + ".gv"
+    if output_files["png"] is None:
+        output_files["png"] = stem + "-" + runid + ".png"
+
+    print(output_files)
 
     charm_flag = True
     print_code: Optional[str] = None
