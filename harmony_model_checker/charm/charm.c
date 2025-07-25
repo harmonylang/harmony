@@ -5557,7 +5557,7 @@ int exec_model_checker(int argc, char **argv){
                 exit(1);
             }
 
-            if (dfafile != NULL && !transition_missing) {
+            if (global.dfa != NULL /* && !transition_missing */) {
 #ifdef notdef
                 // Just copy the dfa file
                 FILE *fp = fopen(dfafile, "r");
@@ -5573,7 +5573,7 @@ int exec_model_checker(int argc, char **argv){
                 }
                 fclose(fp);
 #else
-                dfa_write(global.dfa, hfa);
+                dfa_write(global.dfa, hfa, transitions);
 #endif
             }
             else {

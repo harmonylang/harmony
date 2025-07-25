@@ -22,6 +22,7 @@ struct dfa_state {
     struct dfa_state *parent;    // for BFS
     unsigned int child_id;       // for BFS
     bool explored;               // for BFS
+    bool reachable;              // for dfa_write
 
     // TODO.  Maybe should make transitions a dict
 };
@@ -41,7 +42,7 @@ struct dfa {
 };
 
 struct dfa *dfa_read(struct allocator *allocator, char *fname);
-void dfa_write(struct dfa *dfa, FILE *fp);
+void dfa_write(struct dfa *dfa, FILE *fp, bool *transitions);
 int dfa_initial(struct dfa *dfa);
 bool dfa_is_final(struct dfa *dfa, int state);
 int dfa_step(struct dfa *dfa, int current, hvalue_t symbol);

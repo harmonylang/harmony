@@ -54,7 +54,7 @@ struct dfa *dfa_read(struct allocator *allocator, char *fname){
     dfa->initial = int_parse(initial->u.atom.base, initial->u.atom.len);
     // printf("INITIAL %d\n", dfa->initial);
 
-    // read the list of states
+    // read the list of states (which may not be in order and may have "holes")
     struct json_value *nodes = dict_lookup(jv->u.map, "nodes", 5);
     assert(nodes->type == JV_LIST);
     unsigned int max_idx = 0;
@@ -285,10 +285,18 @@ static unsigned int dfa_index(struct dfa *dfa, hvalue_t symbol){
     return 0;
 }
 
-void dfa_write(struct dfa *dfa, FILE *fp){
+void dfa_write(struct dfa *dfa, FILE *fp, bool *transitions){
+    // First see what nodes are reachable:
+    dfa->states[dfa->initial].reachable = true;
+    for (unsigned int i = 0; i < dfa->nedges; i++) {
+        if (true || transitions[i]) {
+            dfa->states[dfa->edges[i]->dst].reachable = true;
+        }
+    }
+
     fprintf(fp, "{\n");
     fprintf(fp, "  \"symbols\": [\n");
-    for (unsigned i = 0; i < dfa->nsymbols; i++) {
+    for (unsigned int i = 0; i < dfa->nsymbols; i++) {
         char *json = value_json(dfa->symbols[i]);
         fprintf(fp, "    %s", json);
         free(json);
@@ -297,29 +305,40 @@ void dfa_write(struct dfa *dfa, FILE *fp){
     fprintf(fp, "  ],\n");
     fprintf(fp, "  \"initial\": \"%d\",\n", dfa->initial);
     fprintf(fp, "  \"nodes\": [\n");
-    for (unsigned i = 0; i < dfa->nstates; i++) {
-        struct dfa_state *ds = &dfa->states[i];
-        fprintf(fp, "    { \"idx\": \"%d\", \"type\": \"%s\" }", ds->idx,
-                        ds->final ? "final" : "normal");
-        fprintf(fp, i < dfa->nstates - 1 ? ",\n" : "\n");
-    }
-    fprintf(fp, "  ],\n");
-    fprintf(fp, "  \"edges\": [\n");
     bool first = true;
-    for (unsigned i = 0; i < dfa->nstates; i++) {
+    for (unsigned int i = 0; i < dfa->nstates; i++) {
         struct dfa_state *ds = &dfa->states[i];
-        for (struct dfa_transition *dt = ds->transitions; dt != NULL; dt = dt->next) {
+        if (ds->reachable) {
             if (first) {
                 first = false;
             }
             else {
                 fprintf(fp, ",\n");
             }
-            fprintf(fp, "    { \"src\": \"%d\", \"dst\": \"%d\", \"sym\": %u }",
-                    ds->idx, dt->dst, dfa_index(dfa, dt->symbol));
+            fprintf(fp, "    { \"idx\": \"%d\", \"type\": \"%s\" }", ds->idx,
+                            ds->final ? "final" : "normal");
         }
-        fprintf(fp, "\n");
     }
+    fprintf(fp, "\n");
+    fprintf(fp, "  ],\n");
+    first = true;
+    fprintf(fp, "  \"edges\": [\n");
+    for (unsigned int i = 0; i < dfa->nstates; i++) {
+        struct dfa_state *ds = &dfa->states[i];
+        for (struct dfa_transition *dt = ds->transitions; dt != NULL; dt = dt->next) {
+            if (transitions[dt->index]) {
+                if (first) {
+                    first = false;
+                }
+                else {
+                    fprintf(fp, ",\n");
+                }
+                fprintf(fp, "    { \"src\": \"%d\", \"dst\": \"%d\", \"sym\": %u }",
+                        ds->idx, dt->dst, dfa_index(dfa, dt->symbol));
+            }
+        }
+    }
+    fprintf(fp, "\n");
     fprintf(fp, "  ]\n");
     fprintf(fp, "}\n");
 }
