@@ -27,7 +27,7 @@ struct dfa *dfa_read(struct allocator *allocator, char *fname){
     // open the HFA file
     FILE *fp = fopen(fname, "r");
     if (fp == NULL) {
-        fprintf(stderr, "charm: can't open %s\n", fname);
+        fprintf(stderr, "charm: can't open %s for reading\n", fname);
         return NULL;
     }
 
@@ -279,6 +279,49 @@ void dfa_counter_example(struct dfa *dfa, bool *transitions){
         printf("            * %s\n", value_string(dt2->symbol));
     }
     printf("            * %s\n", value_string(dt->symbol));
+}
+
+static unsigned int dfa_index(struct dfa *dfa, hvalue_t symbol){
+    return 0;
+}
+
+void dfa_write(struct dfa *dfa, FILE *fp){
+    fprintf(fp, "{\n");
+    fprintf(fp, "  \"symbols\": [\n");
+    for (unsigned i = 0; i < dfa->nsymbols; i++) {
+        char *json = value_json(dfa->symbols[i]);
+        fprintf(fp, "    %s", json);
+        free(json);
+        fprintf(fp, i < dfa->nsymbols - 1 ? ",\n" : "\n");
+    }
+    fprintf(fp, "  ],\n");
+    fprintf(fp, "  \"initial\": \"%d\",\n", dfa->initial);
+    fprintf(fp, "  \"nodes\": [\n");
+    for (unsigned i = 0; i < dfa->nstates; i++) {
+        struct dfa_state *ds = &dfa->states[i];
+        fprintf(fp, "    { \"idx\": \"%d\", \"type\": \"%s\" }", ds->idx,
+                        ds->final ? "final" : "normal");
+        fprintf(fp, i < dfa->nstates - 1 ? ",\n" : "\n");
+    }
+    fprintf(fp, "  ],\n");
+    fprintf(fp, "  \"edges\": [\n");
+    bool first = true;
+    for (unsigned i = 0; i < dfa->nstates; i++) {
+        struct dfa_state *ds = &dfa->states[i];
+        for (struct dfa_transition *dt = ds->transitions; dt != NULL; dt = dt->next) {
+            if (first) {
+                first = false;
+            }
+            else {
+                fprintf(fp, ",\n");
+            }
+            fprintf(fp, "    { \"src\": \"%d\", \"dst\": \"%d\", \"sym\": %u }",
+                    ds->idx, dt->dst, dfa_index(dfa, dt->symbol));
+        }
+        fprintf(fp, "\n");
+    }
+    fprintf(fp, "  ]\n");
+    fprintf(fp, "}\n");
 }
 
 void dfa_dump(struct dfa *dfa){

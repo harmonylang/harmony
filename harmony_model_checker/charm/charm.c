@@ -5558,6 +5558,7 @@ int exec_model_checker(int argc, char **argv){
             }
 
             if (dfafile != NULL && !transition_missing) {
+#ifdef notdef
                 // Just copy the dfa file
                 FILE *fp = fopen(dfafile, "r");
                 if (fp == NULL) {
@@ -5571,6 +5572,9 @@ int exec_model_checker(int argc, char **argv){
                     }
                 }
                 fclose(fp);
+#else
+                dfa_write(global.dfa, hfa);
+#endif
             }
             else {
                 // Collect the symbols
