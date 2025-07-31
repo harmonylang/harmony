@@ -4344,10 +4344,6 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
     printf("* Phase 4e: output the DFA (%u states)\n", n_new);
     fflush(stdout);
 
-    if (global.dfa != NULL) {
-        dfa_counter_example(global.dfa, de.todo);   // *****************
-    }
-
     phase_start("Output to .hfa file");
 
     // Now dump the whole thing
@@ -4385,6 +4381,13 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
     fprintf(hfa, "\n");
     fprintf(hfa, "  ]\n");
     phase_finish();
+
+    if (global.dfa != NULL) {
+        printf("* Phase 4f: check for missing behaviors\n");
+        phase_start("Check for missing behaviors");
+        dfa_counter_example(global.dfa, de.todo);
+        phase_finish();
+    }
 
     return count;
 }

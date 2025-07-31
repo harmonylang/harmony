@@ -287,6 +287,7 @@ struct dfa_product {
     struct dict_assoc *next;
     struct dfa_state *node1;
     struct dfa_node *node2;
+    unsigned int child_id;
     struct dfa_product *parent;
 };
 
@@ -326,8 +327,7 @@ void dfa_counter_example(struct dfa *dfa, struct dict_assoc **dfa2){
             struct dfa_state *child1 = &dfa->states[dt->dst];
             uint32_t *pid = dict_search(dp->node2->transitions, &dt->symbol, sizeof(dt->symbol));
             if (pid == NULL) {
-                fprintf(stderr, "MISSING 1\n");
-                return;
+                break;
             }
             struct dfa_node *child2 = (struct dfa_node *) &dfa2[*pid][1];
             id[0] = child1->idx;
@@ -337,6 +337,7 @@ void dfa_counter_example(struct dfa *dfa, struct dict_assoc **dfa2){
             if (new) {
                 child->node1 = child1;
                 child->node2 = child2;
+                child->child_id = dt->index;
                 child->parent = dp;
 
                 // Push
@@ -349,27 +350,29 @@ void dfa_counter_example(struct dfa *dfa, struct dict_assoc **dfa2){
             break;
         }
     }
-
-#ifdef notdef
-    assert(ds != NULL);
+    if (da == NULL) {
+        return;
+    }
     assert(dt != NULL);
 
     // Reverse the parent linked list
-    ds->next = NULL;
-    while (ds->parent != NULL) {
-        ds->parent->next = ds;
-        ds = ds->parent;
+    dp = (struct dfa_product *) &da[1];
+    dp->next = NULL;
+    while (dp->parent != NULL) {
+        dp->parent->next = da;
+        da = (struct dict_assoc *) dp->parent - 1;
+        dp = (struct dfa_product *) &da[1];
     }
 
     // Print the path
     printf("        * Example of missing behavior:\n");
-    while (ds->next != NULL) {
-        ds = ds->next;
-        struct dfa_transition *dt2 = dfa->edges[ds->child_id];
+    while (dp->next != NULL) {
+        struct dfa_transition *dt2 = dfa->edges[dp->child_id];
         printf("            * %s\n", value_string(dt2->symbol));
+        da = dp->next;
+        dp = (struct dfa_product *) &da[1];
     }
     printf("            * %s\n", value_string(dt->symbol));
-#endif
 }
 #endif
 
