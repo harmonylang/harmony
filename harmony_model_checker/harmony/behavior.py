@@ -29,6 +29,8 @@ def read_hfa_file(file):
     try:
         with open(file, encoding='utf-8') as fd:
             js = json.load(fd, strict=False)
+            if "initial" not in js:
+                return False
             initial = js["initial"]
             states = set()
             final = set()

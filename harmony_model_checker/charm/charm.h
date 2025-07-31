@@ -108,7 +108,8 @@ struct global {
     bool do_not_pin;                // don't pin workers
     double last_report;             // used for periodic reporting
     double report_timeout;          // to abort very long reports
-    double timeout;                 // -T flag
+    double timeout;                 // -X flag
+    bool abort_analysis;            // set after timeout
     char *lazy_header;              // report header
     double start_model_checking;    // time when model checking started
 

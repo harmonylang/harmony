@@ -2684,7 +2684,7 @@ static inline bool report_time(){
         printf("Timeout exceeded during final analysis, disabling some features\n");
         printf("(DFA generation, checking for missing behaviors, ...)\n");
         printf("The timeout can be set with the -X flag\n");
-        exit(0);
+        global.abort_analysis = true;
     }
     if (now - global.last_report > 3) {
         if (global.lazy_header != NULL) {
@@ -3732,6 +3732,9 @@ static void tarjan(){
                     printf("        Node %u\n", n->id);
                     report = 0;
                 }
+                if (global.abort_analysis) {
+                    return;
+                }
                 if (pi == 0) {
                     scc[n->id].index = i;
                     scc[n->id].lowlink = i;
@@ -3770,6 +3773,9 @@ static void tarjan(){
                             printf("        completed %u/%u states (%.2f%%)\n", ndone, global.graph.size, percent(ndone, global.graph.size));
                             fflush(stdout);
                             lastdone = ndone;
+                        }
+                        if (global.abort_analysis) {
+                            return;
                         }
                         struct node *n2 = stack_pop(&stack, NULL);
                         n2->on_stack = false;
@@ -3907,6 +3913,9 @@ static void tarjan_epsclosure(){
                 if (++report > 1000 && report_time()) {
                     printf("        Node %u\n", n->id);
                     report = 0;
+                }
+                if (global.abort_analysis) {
+                    return;
                 }
                 if (pi == 0) {
                     scc[n->id].index = i;
@@ -4323,6 +4332,9 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
                         // Pacifier
                         work_ctr++;
                         if (work_ctr % 10000 == 0 && report_time()) {
+                            if (global.abort_analysis) {
+                                return 0;
+                            }
                             printf("        Round %u, partition %u\n", round, n_new);
                         }
 
@@ -5623,12 +5635,19 @@ int exec_model_checker(int argc, char **argv){
                     phase_start("Epsilon closure prep");
                     epsilon_closure_prep();     // move epsilon edges to start of each node
                     phase_finish();
-                    phase_start("Epsilon closure");
-                    tarjan_epsclosure();
-                    phase_finish();
-                    printf("* Phase 4c: convert NFA to DFA\n");
-                    fflush(stdout);
-                    dfasize = nfa2dfa(hfa, symbols);
+                    if (!global.abort_analysis) {
+                        phase_start("Epsilon closure");
+                        tarjan_epsclosure();
+                        phase_finish();
+                    }
+                    if (!global.abort_analysis) {
+                        printf("* Phase 4c: convert NFA to DFA\n");
+                        fflush(stdout);
+                        dfasize = nfa2dfa(hfa, symbols);
+                    }
+                    else {
+                        fprintf(hfa, "  \"status\": \"aborted\"\n");
+                    }
                 }
                 else {
                     fprintf(hfa, "  \"initial\": \"0\",\n");
