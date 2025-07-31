@@ -283,11 +283,25 @@ void dfa_counter_example(struct dfa *dfa, bool *transitions){
     printf("            * %s\n", value_string(dt->symbol));
 }
 #else
+
+static void dfa_value_print(hvalue_t symbol){
+    assert(VALUE_TYPE(symbol) == VALUE_LIST);
+    unsigned int size;
+    hvalue_t *values = value_get(symbol, &size);
+    assert(size == 2 * sizeof(hvalue_t));
+    if (values[1] == VALUE_DICT) {
+        printf("            * %s\n", value_string(values[0]));
+    }
+    else {
+        printf("            * %s\n", value_string(symbol));
+    }
+}
+
 struct dfa_product {
     struct dict_assoc *next;
     struct dfa_state *node1;
     struct dfa_node *node2;
-    unsigned int child_id;
+    hvalue_t symbol;
     struct dfa_product *parent;
 };
 
@@ -311,6 +325,7 @@ void dfa_counter_example(struct dfa *dfa, struct dict_assoc **dfa2){
     dp->parent = NULL;
     dp->node1 = node1;
     dp->node2 = node2;
+    dp->symbol = VALUE_TO_INT(666);
     dp->next = NULL;
 
     // Initialize the queue
@@ -332,21 +347,21 @@ void dfa_counter_example(struct dfa *dfa, struct dict_assoc **dfa2){
             struct dfa_node *child2 = (struct dfa_node *) &dfa2[*pid][1];
             id[0] = child1->idx;
             id[1] = child2->id;
-            da = dict_find(dfa3, NULL, id, sizeof(id), &new);
-            struct dfa_product *child = (struct dfa_product *) &da[1];
+            struct dict_assoc *da2 = dict_find(dfa3, NULL, id, sizeof(id), &new);
+            struct dfa_product *child = (struct dfa_product *) &da2[1];
             if (new) {
                 child->node1 = child1;
                 child->node2 = child2;
-                child->child_id = dt->index;
+                child->symbol = dt->symbol;
                 child->parent = dp;
 
-                // Push
+                // Push child onto the queue
                 child->next = NULL;
-                *last = da;
+                *last = da2;
                 last = &child->next;
             }
         }
-        if (dt != NULL) {
+        if (dt != NULL) {       // found a missing transition
             break;
         }
     }
@@ -355,24 +370,13 @@ void dfa_counter_example(struct dfa *dfa, struct dict_assoc **dfa2){
     }
     assert(dt != NULL);
 
-    // Reverse the parent linked list
-    dp = (struct dfa_product *) &da[1];
-    dp->next = NULL;
-    while (dp->parent != NULL) {
-        dp->parent->next = da;
-        da = (struct dict_assoc *) dp->parent - 1;
-        dp = (struct dfa_product *) &da[1];
-    }
-
     // Print the path
     printf("        * Example of missing behavior:\n");
-    while (dp->next != NULL) {
-        struct dfa_transition *dt2 = dfa->edges[dp->child_id];
-        printf("            * %s\n", value_string(dt2->symbol));
-        da = dp->next;
-        dp = (struct dfa_product *) &da[1];
+    while (dp->parent != NULL) {
+        dfa_value_print(dp->symbol);
+        dp = dp->parent;
     }
-    printf("            * %s\n", value_string(dt->symbol));
+    dfa_value_print(dt->symbol);
 }
 #endif
 
