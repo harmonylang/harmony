@@ -1,4 +1,6 @@
 set -e
+set -x
+
 HARMONY=./harmony
 
 $HARMONY --noweb code/triangle.hny
@@ -69,11 +71,11 @@ $HARMONY --noweb -mqueueconc=queue_MS code/queue_test_seq.hny
 
 $HARMONY --noweb -o queue4.hfa code/queue_btest1.hny
 
-$HARMONY --noweb -B queue4.hfa -m queue=queue_lock code/queue_btest1.hny
+$HARMONY --noweb -X15 -B queue4.hfa -m queue=queue_lock code/queue_btest1.hny
 
 $HARMONY --noweb -o queue4.hfa code/queue_btest1.hny
 
-$HARMONY --noweb -B queue4.hfa -m queue=queue_MS code/queue_btest1.hny
+$HARMONY --noweb -X15 -B queue4.hfa -m queue=queue_MS code/queue_btest1.hny
 
 $HARMONY --noweb -mqueue=queue_broken2 code/queue_btest1.hny
 
@@ -91,15 +93,15 @@ $HARMONY --noweb -mrwlock=rwlock_cv_fair -msynch=synchS code/rwlock_test1.hny
 
 $HARMONY --noweb -o rw.hfa -cNOPS=2 code/rwlock_btest.hny
 
-$HARMONY --noweb -B rw.hfa -cNOPS=2 -m rwlock=rwlock_sbs code/rwlock_btest.hny
+$HARMONY --noweb -X15 -B rw.hfa -cNOPS=2 -m rwlock=rwlock_sbs code/rwlock_btest.hny
 
 $HARMONY --noweb -o rw.hfa -cNOPS=2 code/rwlock_btest.hny
 
-$HARMONY --noweb -B rw.hfa -cNOPS=2 -m rwlock=rwlock_cv code/rwlock_btest.hny
+$HARMONY --noweb -X15 -B rw.hfa -cNOPS=2 -m rwlock=rwlock_cv code/rwlock_btest.hny
 
-$HARMONY --noweb -B rw.hfa -cNOPS=2 -m rwlock=rwlock_cv_fair code/rwlock_btest.hny
+$HARMONY --noweb -X15 -B rw.hfa -cNOPS=2 -m rwlock=rwlock_cv_fair code/rwlock_btest.hny
 
-$HARMONY --noweb -B rw.hfa -cNOPS=2 -m rwlock=rwlock_cheat code/rwlock_btest.hny
+$HARMONY --noweb -X15 -B rw.hfa -cNOPS=2 -m rwlock=rwlock_cheat code/rwlock_btest.hny
 
 $HARMONY --noweb -mboundedbuffer=boundedbuffer_hoare code/boundedbuffer_test1.hny
 
@@ -129,7 +131,7 @@ $HARMONY --noweb code/barrier_test2.hny
 
 $HARMONY --noweb -o file.hfa code/file_btest.hny
 
-$HARMONY --noweb -B file.hfa -m file=file_inode code/file_btest.hny
+$HARMONY --noweb -X15 -B file.hfa -m file=file_inode code/file_btest.hny
 
 $HARMONY --noweb code/trap.hny
 
@@ -155,19 +157,19 @@ $HARMONY --noweb code/2pc.hny
 
 $HARMONY --noweb -o reg.hfa code/abdtest.hny
 
-$HARMONY --noweb -B reg.hfa -mregister=abd code/abdtest.hny
+$HARMONY --noweb -X15 -B reg.hfa -mregister=abd code/abdtest.hny
 
 $HARMONY --noweb -o consensus.hfa code/consensus.hny
 
-$HARMONY --noweb -B consensus.hfa code/bosco.hny
+$HARMONY --noweb -X15 -B consensus.hfa code/bosco.hny
 
 $HARMONY --noweb -o consensus.hfa -cN=2 code/consensus.hny
 
-$HARMONY --noweb -B consensus.hfa code/paxos.hny
+$HARMONY --noweb -X15 -B consensus.hfa code/paxos.hny
 
 $HARMONY --noweb -o rsm.hfa code/rsm.hny
 
-$HARMONY --noweb -B rsm.hfa code/chain.hny
+$HARMONY --noweb -X15 -B rsm.hfa code/chain.hny
 
 $HARMONY --noweb code/needhamschroeder.hny
 

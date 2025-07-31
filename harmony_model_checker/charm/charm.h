@@ -107,6 +107,8 @@ struct global {
     bool no_race_detect;            // do not detect data races
     bool do_not_pin;                // don't pin workers
     double last_report;             // used for periodic reporting
+    double report_timeout;          // to abort very long reports
+    double timeout;                 // -T flag
     char *lazy_header;              // report header
     double start_model_checking;    // time when model checking started
 

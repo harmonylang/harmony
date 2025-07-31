@@ -2673,12 +2673,19 @@ static void phase_finish(){
 
 static inline void report_reset(char *header){
     global.last_report = gettime();
+    global.report_timeout = global.timeout == 0 ? 0 : (global.last_report + global.timeout);
     global.lazy_header = header;
 }
 
 // See if we should report, which we do periodically during long computations.
 static inline bool report_time(){
     double now = gettime();
+    if (global.report_timeout != 0 && now > global.report_timeout) {
+        printf("Timeout exceeded during final analysis, disabling some features\n");
+        printf("(DFA generation, checking for missing behaviors, ...)\n");
+        printf("The timeout can be set with the -X flag\n");
+        exit(0);
+    }
     if (now - global.last_report > 3) {
         if (global.lazy_header != NULL) {
             printf("%s\n", global.lazy_header);
@@ -4627,6 +4634,7 @@ static bool endsWith(char *s, char *suffix){
 //    -D: dump files "charm.gv" and "charm.dump" for debugging
 //    -R: suppress looking for data races
 //    -t<time>: maximum time to model check
+//    -X<time>: maximum time to analyse (per phase)
 //    -B<file.hfa>: input "hfa" file for output behavior checking
 //    -o<file.hco>: specify the output file (no checking if none given)
 //    -w<workers>: specifies what and how many workers to use (see below)
@@ -4664,6 +4672,13 @@ int exec_model_checker(int argc, char **argv){
             maxtime = atoi(&argv[i][2]);
             if (maxtime <= 0) {
                 fprintf(stderr, "%s: negative timeout\n", argv[0]);
+                exit(1);
+            }
+            break;
+        case 'X':
+            global.timeout = atoi(&argv[i][2]);
+            if (global.timeout <= 0) {
+                fprintf(stderr, "%s: negative report timeout\n", argv[0]);
                 exit(1);
             }
             break;

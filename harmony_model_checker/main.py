@@ -60,6 +60,8 @@ args.add_argument("-o", action='append', type=pathlib.Path,
 args.add_argument("-j", action="store_true",
                   help="list machine code in JSON format")
 args.add_argument("-w", type=str, help="set number of workers")
+args.add_argument("-t", type=str, help="set maximum model check timeout")
+args.add_argument("-X", type=str, help="set maximum analysis timeout per phase")
 args.add_argument("--noweb", action="store_true", default=False,
                   help="do not automatically open web browser")
 args.add_argument("--suppress", action="store_true",
@@ -130,6 +132,10 @@ def handle_hvm(ns, output_files, parse_code_only, code, scope, behavior):
         charm_options.append("-T")
     if ns.w:
         charm_options.append("-w" + ns.w)
+    if ns.t:
+        charm_options.append("-t" + ns.t)
+    if ns.X:
+        charm_options.append("-X" + ns.X)
     if ns.D:
         charm_options.append("-D")
     if ns.R:
