@@ -2,6 +2,7 @@
 #define SRC_DFA_H
 
 #include "global.h"
+#include "dfa2.h"
 
 #define dfa_ntransitions(dfa)   ((dfa)->nedges)
 #define dfa_dest(dfa, t)        ((dfa)->edges[t]->dst)
@@ -49,7 +50,11 @@ int dfa_step(struct dfa *dfa, int current, hvalue_t symbol);
 void dfa_check_trie(struct global *global);
 int dfa_visited(struct dfa *dfa, int current, hvalue_t symbol);
 int dfa_potential(struct dfa *dfa, int current, hvalue_t symbol);
+#ifdef notdef
 void dfa_counter_example(struct dfa *dfa, bool *transitions);
+#else
+void dfa_counter_example(struct dfa *dfa, struct dict_assoc **dfa2);
+#endif
 void dfa_dump(struct dfa *dfa);
 
 #endif // SRC_DFA_H

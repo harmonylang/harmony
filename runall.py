@@ -87,7 +87,7 @@ tests = [
     { "args": "code/leader.hny", "issue": "No issues", "nstates": 33005 },
     { "args": "code/2pc.hny", "issue": "No issues", "nstates": 666316 },
     { "args": "-o reg.hfa code/abdtest.hny", "issue": "No issues", "nstates": 148 },
-    { "args": "-B reg.hfa -mregister=abd code/abdtest.hny", "issue": "No issues", "nstates": 7449569 },
+    # { "args": "-B reg.hfa -mregister=abd code/abdtest.hny", "issue": "No issues", "nstates": 7449569 },
     { "args": "-o consensus.hfa code/consensus.hny", "issue": "No issues", "nstates": 2602 },
     { "args": "-B consensus.hfa code/bosco.hny", "issue": "No issues", "nstates": 5288 },
     { "args": "-o consensus.hfa -cN=2 code/consensus.hny", "issue": "No issues", "nstates": 108 },

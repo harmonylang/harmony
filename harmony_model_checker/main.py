@@ -319,7 +319,7 @@ def main():
     if output_files["png"] is None:
         output_files["png"] = stem + "-" + runid + ".png"
 
-    print(output_files)
+    # print(output_files)
 
     charm_flag = True
     print_code: Optional[str] = None

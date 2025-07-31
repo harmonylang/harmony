@@ -12,6 +12,7 @@
 #include "hashdict.h"
 #include "json.h"
 #include "dfa.h"
+#include "dfa2.h"
 
 static int int_parse(char *p, int len){
     char *copy = malloc(len + 1);
@@ -226,6 +227,7 @@ int dfa_potential(struct dfa *dfa, int current, hvalue_t symbol){
     return -1;
 }
 
+#ifdef notdef
 // Do a BFS to find a missing transition
 void dfa_counter_example(struct dfa *dfa, bool *transitions){
     // Initialize
@@ -280,6 +282,96 @@ void dfa_counter_example(struct dfa *dfa, bool *transitions){
     }
     printf("            * %s\n", value_string(dt->symbol));
 }
+#else
+struct dfa_product {
+    struct dict_assoc *next;
+    struct dfa_state *node1;
+    struct dfa_node *node2;
+    struct dfa_product *parent;
+};
+
+// Do a BFS on the product of dfa and dfa2 to find a transition
+// in dfa that is not in dfa2.  We already know that every transition
+// in dfa2 is also in dfa.
+void dfa_counter_example(struct dfa *dfa, struct dict_assoc **dfa2){
+    struct dfa_state *node1 = &dfa->states[dfa->initial];
+    struct dfa_node *node2 = (struct dfa_node *) &dfa2[0][1];
+    struct dict *dfa3 = dict_new("counter-example", sizeof(struct dfa_product),
+                                        0, 0, false, false);
+
+    // Create the initial state in the product DFA
+    unsigned int id[2];
+    id[0] = node1->idx;
+    id[1] = node2->id;
+    bool new;
+    struct dict_assoc *da = dict_find(dfa3, NULL, id, sizeof(id), &new);
+    assert(new);
+    struct dfa_product *dp = (struct dfa_product *) &da[1];
+    dp->parent = NULL;
+    dp->node1 = node1;
+    dp->node2 = node2;
+    dp->next = NULL;
+
+    // Initialize the queue
+    struct dict_assoc *first = da, **last = &dp->next;
+    struct dfa_transition *dt = NULL;
+
+    // BFS for missing transition
+    while ((da = first) != NULL) {
+        dp = (struct dfa_product *) &da[1];
+        if ((first = dp->next) == NULL) {
+            last = &first;
+        }
+        for (dt = dp->node1->transitions; dt != NULL; dt = dt->next) {
+            struct dfa_state *child1 = &dfa->states[dt->dst];
+            uint32_t *pid = dict_search(dp->node2->transitions, &dt->symbol, sizeof(dt->symbol));
+            if (pid == NULL) {
+                fprintf(stderr, "MISSING 1\n");
+                return;
+            }
+            struct dfa_node *child2 = (struct dfa_node *) &dfa2[*pid][1];
+            id[0] = child1->idx;
+            id[1] = child2->id;
+            da = dict_find(dfa3, NULL, id, sizeof(id), &new);
+            struct dfa_product *child = (struct dfa_product *) &da[1];
+            if (new) {
+                child->node1 = child1;
+                child->node2 = child2;
+                child->parent = dp;
+
+                // Push
+                child->next = NULL;
+                *last = da;
+                last = &child->next;
+            }
+        }
+        if (dt != NULL) {
+            break;
+        }
+    }
+
+#ifdef notdef
+    assert(ds != NULL);
+    assert(dt != NULL);
+
+    // Reverse the parent linked list
+    ds->next = NULL;
+    while (ds->parent != NULL) {
+        ds->parent->next = ds;
+        ds = ds->parent;
+    }
+
+    // Print the path
+    printf("        * Example of missing behavior:\n");
+    while (ds->next != NULL) {
+        ds = ds->next;
+        struct dfa_transition *dt2 = dfa->edges[ds->child_id];
+        printf("            * %s\n", value_string(dt2->symbol));
+    }
+    printf("            * %s\n", value_string(dt->symbol));
+#endif
+}
+#endif
 
 static unsigned int dfa_index(struct dfa *dfa, hvalue_t symbol){
     return 0;

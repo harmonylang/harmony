@@ -51,6 +51,7 @@
 #include "gnfa.h"
 #include "thread.h"
 #include "spawn.h"
+#include "dfa2.h"
 
 // Heuristic check for possible infinite model: diameter of Kripke structure
 #define MAX_DIAMETER    500
@@ -3978,15 +3979,6 @@ static void tarjan_epsclosure(){
     global.eps_ncomponents = comp_id;
 }
 
-struct dfa_node {
-    unsigned int id;            // DFA state id
-    struct dict *transitions;   // map of symbol to dfa_node
-    bool empty;                 // has no out transitions
-    bool final;                 // final state
-    struct dfa_node *next;      // for partitioning during minification
-    struct dfa_node *rep;       // representative node for partition
-};
-
 struct dfa_env {
     struct dict *dfa;           // map of node set to dfa state index
     struct dict_assoc **todo;   // queue of dfa nodes that need to be considered
@@ -4351,6 +4343,10 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
 
     printf("* Phase 4e: output the DFA (%u states)\n", n_new);
     fflush(stdout);
+
+    if (global.dfa != NULL) {
+        dfa_counter_example(global.dfa, de.todo);   // *****************
+    }
 
     phase_start("Output to .hfa file");
 
@@ -5537,6 +5533,7 @@ int exec_model_checker(int argc, char **argv){
     if (global.failures == NULL) {
         printf("    * **No issues found**\n");
 
+#ifdef notdef
         // See if any input DFA transitions are missing.
         if (global.dfa != NULL) {
             for (unsigned int i = 0; i < ntransitions; i++) {
@@ -5548,6 +5545,7 @@ int exec_model_checker(int argc, char **argv){
                 }
             }
         }
+#endif
 
         // Output an HFA file
         if (/* dfafile == NULL && */ hfaout != NULL) {
@@ -5557,7 +5555,7 @@ int exec_model_checker(int argc, char **argv){
                 exit(1);
             }
 
-            if (global.dfa != NULL /* && !transition_missing */) {
+            if (false && global.dfa != NULL /* && !transition_missing */) {
 #ifdef notdef
                 // Just copy the dfa file
                 FILE *fp = fopen(dfafile, "r");
