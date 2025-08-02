@@ -53,7 +53,7 @@ int dfa_potential(struct dfa *dfa, int current, hvalue_t symbol);
 #ifdef notdef
 void dfa_counter_example(struct dfa *dfa, bool *transitions);
 #else
-void dfa_counter_example(struct dfa *dfa, struct dict_assoc **dfa2);
+bool dfa_counter_example(struct dfa *dfa, struct dict_assoc **dfa2);
 #endif
 void dfa_dump(struct dfa *dfa);
 

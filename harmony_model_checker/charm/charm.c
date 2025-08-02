@@ -4404,7 +4404,7 @@ static unsigned int nfa2dfa(FILE *hfa, struct dict *symbols){
     if (global.dfa != NULL) {
         printf("* Phase 4f: check for missing behaviors\n");
         phase_start("Check for missing behaviors");
-        dfa_counter_example(global.dfa, de.todo);
+        global.transitions_missing = dfa_counter_example(global.dfa, de.todo);
         phase_finish();
     }
 
@@ -5332,7 +5332,7 @@ int exec_model_checker(int argc, char **argv){
     // cycles in the Kripke structure
     bool cycles_possible = false;
     unsigned int ntransitions;
-    bool *transitions;
+    bool *transitions;                  // TODO.  Get rid of this
     bool transition_missing = false;
     if (global.dfa == NULL) {
         ntransitions = 0;
@@ -5578,7 +5578,7 @@ int exec_model_checker(int argc, char **argv){
 #endif
 
         // Output an HFA file
-        if (/* dfafile == NULL && */ hfaout != NULL) {
+        if (hfaout != NULL) {
             FILE *hfa = fopen(hfaout, "w");
             if (hfa == NULL) {
                 fprintf(stderr, "%s: can't create %s\n", argv[0], hfaout);
@@ -5586,23 +5586,7 @@ int exec_model_checker(int argc, char **argv){
             }
 
             if (false && global.dfa != NULL /* && !transition_missing */) {
-#ifdef notdef
-                // Just copy the dfa file
-                FILE *fp = fopen(dfafile, "r");
-                if (fp == NULL) {
-                    panic("main: can't open dfa file???");
-                }
-                char buf[CHUNKSIZE];
-                size_t n;
-                while ((n = fread(buf, 1, CHUNKSIZE, fp)) > 0) {
-                    if (fwrite(buf, 1, n, hfa) != n) {
-                        panic("main: can't write dfa file???");
-                    }
-                }
-                fclose(fp);
-#else
                 dfa_write(global.dfa, hfa, transitions);
-#endif
             }
             else {
                 // Collect the symbols
@@ -5645,7 +5629,7 @@ int exec_model_checker(int argc, char **argv){
                         fflush(stdout);
                         dfasize = nfa2dfa(hfa, symbols);
                     }
-                    else {
+                    if (global.abort_analysis) {
                         fprintf(hfa, "  \"status\": \"aborted\"\n");
                     }
                 }
@@ -5689,7 +5673,7 @@ int exec_model_checker(int argc, char **argv){
     // with the 'print' outputs.
     if (global.failures == NULL) {
         fprintf(out, "  \"issue\": \"No issues\",\n");
-        if (transition_missing) {
+        if (global.transitions_missing) {
             fprintf(out, "  \"warning\": \"generated a strict subset of behaviors\",\n");
         }
         if (hfaout != 0) {

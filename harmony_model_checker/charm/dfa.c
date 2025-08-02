@@ -308,7 +308,7 @@ struct dfa_product {
 // Do a BFS on the product of dfa and dfa2 to find a transition
 // in dfa that is not in dfa2.  We already know that every transition
 // in dfa2 is also in dfa.
-void dfa_counter_example(struct dfa *dfa, struct dict_assoc **dfa2){
+bool dfa_counter_example(struct dfa *dfa, struct dict_assoc **dfa2){
     struct dfa_state *node1 = &dfa->states[dfa->initial];
     struct dfa_node *node2 = (struct dfa_node *) &dfa2[0][1];
     struct dict *dfa3 = dict_new("counter-example", sizeof(struct dfa_product),
@@ -366,7 +366,7 @@ void dfa_counter_example(struct dfa *dfa, struct dict_assoc **dfa2){
         }
     }
     if (da == NULL) {
-        return;
+        return false;
     }
     assert(dt != NULL);
 
@@ -377,6 +377,8 @@ void dfa_counter_example(struct dfa *dfa, struct dict_assoc **dfa2){
         dp = dp->parent;
     }
     dfa_value_print(dt->symbol);
+
+    return true;
 }
 #endif
 

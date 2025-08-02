@@ -145,7 +145,8 @@ struct global {
     struct scc *scc;                // strongly connected components
     unsigned int ncomponents;       // number of components
     struct eps_scc *eps_scc;        // same as above two for epsilon
-    unsigned int eps_ncomponents;   //    closure computation
+    unsigned int eps_ncomponents;   //        closure computation
+    bool transitions_missing;
 
     hvalue_t *symbols;              // list of symbols
     unsigned int nsymbols;
