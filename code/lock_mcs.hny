@@ -1,0 +1,54 @@
+from alloc import *
+
+def atomic_load(p) returns v:
+    atomically v = !p
+
+def atomic_store(p, new):
+    atomically !p = new
+
+# Like atomic_store but returns the old value
+def atomic_exchange(p, new) returns old:
+    atomically:
+        old = !p
+        !p = new
+
+# Compare-and-swap
+def atomic_cas(p, old, new) returns success:
+    atomically:
+        success = !p == old
+        if success:
+            !p = new
+
+def Lock() returns init:
+    init = { .head: None, .tail: None }
+
+def acquire(ml):
+    # atomically: prev := tail; tail := me
+    let me = malloc({ .locked: True, .next: None })
+    let prev = atomic_exchange(?ml->tail, me):
+        # was somebody else tail?
+        if prev != None:
+            # tell my predecessor about me
+            atomic_store(?prev->next, me)
+            # wait until predecessor unlocks me
+            while atomic_load(?me->locked):
+                pass
+        ml->head = me
+
+def release(ml):
+    let me = ml->head:
+        ml->head = None
+        var next = atomic_load(?me->next)
+        # If next is None, not sure what's going on...
+        if next == None:
+            # See if current tail is me.  If so, set tail to None and be done.
+            if not atomic_cas(?ml->tail, me, None):
+                # If not, wait for my successor to set my next pointer
+                while next == None:
+                    next = atomic_load(?me->next)
+                # unlock my successor
+                atomic_store(?next->locked, False)
+        else:
+            # unlock my successor
+            atomic_store(?next->locked, False)
+        free(me)
