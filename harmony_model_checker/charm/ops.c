@@ -2207,7 +2207,7 @@ void do_Load(struct state *state, struct step *step,
             unsigned total = vip->size;
             vip++;
             for (unsigned int i = k; i < size; i++, vip++) {
-                if (VALUE_TYPE(indices[k]) != VALUE_ATOM) {
+                if (VALUE_TYPE(indices[i]) != VALUE_ATOM) {
                     char *p = value_string(av);
                     value_ctx_failure(step->ctx, step->allocator, "Load %s: bad string index", p);
                     free(p);
@@ -2253,7 +2253,7 @@ void do_Load(struct state *state, struct step *step,
             unsigned total = vip->size;
             vip++;
             for (unsigned int i = k; i < size; i++, vip++) {
-                if (VALUE_TYPE(indices[k]) != VALUE_LIST) {
+                if (VALUE_TYPE(indices[i]) != VALUE_LIST) {
                     char *p = value_string(av);
                     value_ctx_failure(step->ctx, step->allocator, "Load %s: bad list index", p);
                     free(p);
