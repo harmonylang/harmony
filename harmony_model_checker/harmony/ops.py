@@ -1260,8 +1260,13 @@ class JumpCondOp(Op):
             self.pc = map[self.pc].pc
 
 class NaryOp(Op):
+    # See MAX_ARITY in `ops.c`
+    MAX_ARITY = 16
+    
     def __init__(self, op, n):
+        """Caller should check that n <= MAX_ARITY"""
         self.op = op
+        assert n <= self.MAX_ARITY
         self.n = n
 
     def __repr__(self):

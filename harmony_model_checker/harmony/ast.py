@@ -666,6 +666,16 @@ class NaryAST(AST):
         else:
             for i in range(n):
                 self.args[i].compile(scope, code, stmt)
+            # TODO: in the future maybe split into chunks of smaller arity
+            if n > NaryOp.MAX_ARITY:
+                lexeme, file, line, column = self.endtoken # end token looks better imo
+                raise HarmonyCompilerError(
+                    message="Arity %d exceeds max arity %d" % (n, NaryOp.MAX_ARITY),
+                    filename=file,
+                    line=line,
+                    column=column,
+                    lexeme=lexeme
+                )
             code.append(NaryOp(self.op, n), self.token, self.endtoken, stmt=stmt)
 
     def getLabels(self):
