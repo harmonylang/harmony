@@ -157,22 +157,22 @@ def fs_worker(fs_state_init, id):
                 while fs_state->crashed and fs_state->next != None:
                     fs_state = fs_state->next
                 crashed = fs_state->crashed
-            if crashed
+            if crashed:
                 put(req.q, "crash")
             elif req.type in { "write", "delete" }:
                 write_acquire(?fs_state->ib_locks[ib])
                 fs_update_request(fs_state, id, req, ib)
                 write_release(?fs_state->ib_locks[ib])
-                put(req.q, "crash" if atomic_load(?fs_state->crashed) else "ok"
+                put(req.q, "crash" if atomic_load(?fs_state->crashed) else "ok")
             else:
-                assert req.type == "read":
+                assert req.type == "read"
                 read_acquire(?fs_state->ib_locks[ib])
                 let response = fs_read_request(fs_state, req, ib):
                     read_release(?fs_state->ib_locks[ib])
                     put(req.q, "crash" if atomic_load(?fs_state->crashed) else ("ok", response))
 
 def crash_worker(fs_state_init):
-    var fs_state == fs_state_init
+    var fs_state = fs_state_init
     # while True:
     for _ in { 1, 2 }:
         atomically:
@@ -216,11 +216,11 @@ def read(req_q, ino, offset) returns result:
 def write(req_q, ino, offset, data) returns result:
     let res_q = malloc(Queue()):
         put(req_q, { .type: "write", .ino: ino, .offset: offset, .data: data, .q: res_q })
-        result = get(res_q):
+        result = get(res_q)
         free(res_q)
 
 def delete(req_q, ino) returns result:
     let res_q = malloc(Queue()):
         put(req_q, { .type: "delete", .ino: ino, .q: res_q })
-        result = get(res_q):
+        result = get(res_q)
         free(res_q)

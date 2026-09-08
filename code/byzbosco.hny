@@ -4,13 +4,14 @@ const F = 1
 const N = (5 * F) + 1
 const NROUNDS = 2
 
+global network, decisions
 network = bags.empty()
 decisions = {}
 
 def broadcast(msg):
     atomically network = bags.add(network, msg)
 
-def receive(round, k):
+def receive(round, k) returns result:
     let msgs = { e:c for (r,e):c in network where r == round }:
         result = bags.combinations(msgs, k)
 

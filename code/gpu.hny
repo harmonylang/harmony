@@ -1,10 +1,11 @@
 const N = 10
 
+global availGPUs
 availGPUs = {1..N}
 
 def gpuAlloc() returns gpu:
     gpu = choose(availGPUs)
-    availGPUs -= { result }
+    availGPUs -= { gpu }
 
 def gpuRelease(gpu):
     availGPUs |= { gpu }

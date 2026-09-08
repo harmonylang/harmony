@@ -20,6 +20,188 @@ from harmony_model_checker.harmony.verbose import Verbose
 from harmony_model_checker.compile import do_compile
 
 
+# ---------------------------------------------------------------------------
+# Optional preprocessing pass (Phase 0): a hand-written, still-evolving
+# identifier checker (checker.py, built on its own recursive-descent
+# parser.py) living inside this package. It re-parses the program and
+# checks that every name used is declared somewhere reachable, before
+# its use - catching undeclared/misused names, illegal shadowing, and
+# '?'/assignment misuse earlier, and with more specific messages, than
+# the ANTLR-based pipeline below currently gives (see checker.py's own
+# module docstring for the full rules). It never replaces that pipeline
+# - the ANTLR-based compile below is still the real compiler and always
+# gets the final say; if this pass can't even be imported, it's
+# silently skipped rather than blocking anything - see handle_precheck.
+# ---------------------------------------------------------------------------
+try:
+    from harmony_model_checker import checker as _precheck  # type: ignore
+except Exception:
+    _precheck = None
+
+
+def _precheck_resolve_module_file(modname, source_dir):
+    """Mirrors harmony_model_checker.compile._do_import's own search
+    order for one module name: the importing file's own directory, this
+    package's bundled modules directory (checker.py's own
+    DEFAULT_MODULE_DIR - it lives right alongside 'modules/' in this
+    package, so that default is already correct here), then the current
+    working directory."""
+    for directory in (source_dir, _precheck.DEFAULT_MODULE_DIR, "."):
+        if directory is None:
+            continue
+        candidate = os.path.join(directory, modname + ".hny")
+        if os.path.isfile(candidate):
+            return candidate
+    return None
+
+
+def _precheck_module_map(mods, source_dir):
+    """Builds checker.py's module_map (module name -> file path) from
+    the CLI's own '-m orig=replacement' entries. do_compile treats each
+    one as "when the program imports orig, actually load replacement's
+    file instead" (see harmony_model_checker.compile.do_compile and
+    _do_import, which resolves 'replacement' the same way an ordinary
+    import is resolved) - so this looks up replacement's own file (same
+    search order) and maps it under orig's name. An entry whose
+    replacement file can't be found here is simply left out - checker.py
+    then falls back to its own default (looking for orig.hny itself),
+    which is no worse than not knowing about '-m' at all, just less
+    precise for that one name."""
+    module_map = {}
+    for m in (mods or []):
+        if "=" not in m:
+            continue   # malformed - do_compile reports this properly itself
+        orig, _, replacement = m.partition("=")
+        path = _precheck_resolve_module_file(replacement, source_dir)
+        if path is not None:
+            module_map[orig] = path
+    return module_map
+
+
+def _precheck_extra_consts(consts):
+    """Names bound by the CLI's own '-c NAME=VALUE' entries - these are
+    constants as far as identifier checking is concerned, whether or
+    not the program's own source also writes 'const NAME = ...' (see
+    checker.check_identifiers's own extra_consts parameter, and
+    do_compile's matching '-c' handling below in handle_hny)."""
+    names = []
+    for c in (consts or []):
+        if "=" not in c:
+            continue   # malformed - do_compile reports this properly itself
+        name, _, _value = c.partition("=")
+        names.append(name)
+    return names
+
+
+def _precheck_cleanup_output_files(output_files):
+    # Mirrors handle_hny's own cleanup of stale output files from a
+    # previous run - needed here too since a blocking Phase 0 finding
+    # exits before handle_hny ever gets to do it itself.
+    for suffix, file in output_files.items():
+        if file is not None:
+            try:
+                os.remove(file)
+            except:
+                pass
+
+
+def handle_precheck(ns, output_files, parse_code_only, filename):
+    """Phase 0: run the standalone identifier checker over the program
+    before the real (ANTLR-based) compiler ever sees it. This is an
+    early, additional pass, never a replacement for the pipeline below:
+      - if checker.py/parser.py can't be found, or this pass hits
+        anything unexpected, it's silently skipped (see the try/except
+        around the whole pass) - a bug in a still-evolving checker
+        should never block a program the real compiler would otherwise
+        accept;
+      - if the program doesn't even parse under checker.py's own
+        (still-evolving, hand-written) parser, that's printed as a
+        note, not a hard error - its grammar coverage isn't guaranteed
+        to fully match the ANTLR grammar yet;
+      - a 'cannot resolve' import/module error is also only a note,
+        since this pass's own module resolution (_precheck_module_map)
+        doesn't perfectly replicate the real compiler's per-file-
+        relative one;
+      - every other identifier problem - an undeclared name, illegal
+        shadowing, illegal '?'/assignment-target use, and so on - is
+        specific and self-contained enough (it doesn't depend on
+        cross-file module resolution) to report as a hard error, in
+        the same format the ANTLR pipeline's own errors use below, and
+        stops the run right here: a program with a real undeclared
+        name or illegal shadow is going to fail one way or another, and
+        this pass explains why more precisely than Phase 1 currently
+        does.
+    """
+    if _precheck is None:
+        return
+
+    try:
+        with open(filename, 'r', encoding='utf-8') as f:
+            document = f.read()
+
+        source_dir = os.path.dirname(os.path.abspath(filename))
+        module_map = _precheck_module_map(ns.module, source_dir)
+        extra_consts = _precheck_extra_consts(ns.const)
+
+        program = _precheck.check_identifiers(
+            document,
+            module_map=module_map,
+            source_label=filename,
+            source_dir=source_dir,
+            extra_consts=extra_consts,
+            # default_module_dir is deliberately omitted - checker.py's
+            # own default is already correct (see
+            # _precheck_resolve_module_file's docstring above).
+        )
+    except Exception as e:
+        print(f"* Phase 0: identifier pre-check skipped ({e})", flush=True)
+        return
+
+    if not program.errors:
+        return
+
+    parse_failed = (
+        len(program.errors) == 1
+        and program.errors[0].message.startswith("program does not parse:")
+    )
+
+    blocking = []
+    advisory = []
+    for err in program.errors:
+        if parse_failed or err.message.startswith("cannot resolve '"):
+            advisory.append(err)
+        else:
+            blocking.append(err)
+
+    for err in advisory:
+        line, column = _precheck.offset_to_line_col(document, err.start)
+        print(f"note: Line {line}:{column} at {filename}, {err.message}", flush=True)
+
+    if not blocking:
+        return
+
+    def _to_error_dict(err):
+        line, column = _precheck.offset_to_line_col(document, err.start)
+        # Matches ErrorToken's own field names (exception.py) so this
+        # slots into the same JSON shape the ANTLR pipeline's own
+        # parse-code-only error output already uses.
+        return dict(line=line, column=column, message=err.message,
+                    lexeme="", filename=filename, is_eof_error=False)
+
+    print("* Phase 0: identifier pre-check found problems", flush=True)
+    _precheck_cleanup_output_files(output_files)
+    if parse_code_only:
+        data = dict(errors=[_to_error_dict(e) for e in blocking], status="error")
+        with open(output_files["hvm"], "w", encoding='utf-8') as fp:
+            json.dump(data, fp)
+    else:
+        for err in blocking:
+            line, column = _precheck.offset_to_line_col(document, err.start)
+            print(f"Line {line}:{column} at {filename}, {err.message}")
+            print()
+    exit(1)
+
+
 args = argparse.ArgumentParser(
     "harmony", description="Harmony programming language compiler and model checker")
 args.add_argument("-a", action="store_true",
@@ -119,7 +301,7 @@ def handle_hny(ns, output_files, parse_code_only, filenames):
     if output_files["tex"] is not None:
         with open(output_files["tex"], "w", encoding='utf-8') as f:
             legacy_harmony.tex_output(f, code, scope)
-    
+
     return code, scope
 
 def handle_hvm(ns, output_files, parse_code_only, code, scope, behavior):
@@ -188,7 +370,7 @@ def handle_hco(ns, output_files, behavior):
 
     suppress_output = ns.suppress
     disable_browser = settings.values.disable_web or ns.noweb
-    
+
     b = Brief()
     b.run(output_files, behavior)
     vb = Verbose()
@@ -206,7 +388,7 @@ def handle_hco(ns, output_files, behavior):
     print(flush=True, end="")
     print(file=sys.stderr, flush=True, end="")
     os._exit(0)
-    
+
 def handle_version(_: argparse.Namespace):
     print("Version:", harmony_model_checker.__package__,
           harmony_model_checker.__version__)
@@ -248,7 +430,7 @@ def main():
 
     parse_code_only: bool = ns.parse
     legacy_harmony.silent = ns.s
-    
+
     output_files: Dict[str, Optional[str]] = {
         "hfa": None,
         "htm": None,
@@ -341,6 +523,7 @@ def main():
 
     # Handle different Harmony compilation stages
     if input_file_type == ".hny":
+        handle_precheck(ns, output_files, parse_code_only, str(filename))
         code, scope = handle_hny(ns, output_files, parse_code_only, str(filename))
         if charm_flag:
             handle_hvm(ns, output_files, parse_code_only, code, scope, behavior_file)
@@ -353,7 +536,7 @@ def main():
         print("Skipping Phase 1...", flush=True)
         handle_hvm(ns, output_files, parse_code_only, None, None, behavior_file)
         handle_hco(ns, output_files, behavior_file)
-        
+
     if input_file_type == ".hco":
         print("Skipping Phases 1-4...", flush=True)
         handle_hco(ns, output_files, behavior_file)

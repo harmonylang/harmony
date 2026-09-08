@@ -1,5 +1,6 @@
-in_cs = 0
+global in_cs
 invariant in_cs in { 0, 1 }
+in_cs = 0
 
 const N = 5
 

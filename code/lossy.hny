@@ -1,3 +1,4 @@
+global to_server, to_client
 to_server = to_client = {}
 
 def send(chan, msg):

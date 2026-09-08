@@ -1,3 +1,4 @@
+global pool, next
 pool = {:}
 next = 0
 

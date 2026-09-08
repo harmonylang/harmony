@@ -1,5 +1,6 @@
 # Knuth-Yao fair dice algorithm
 
+global x, coin
 x = 0
 while x < 11:
     coin = choose { False, True }

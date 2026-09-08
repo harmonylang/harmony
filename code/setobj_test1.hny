@@ -1,5 +1,6 @@
 from setobj import *
 
+global myset
 myset = SetObject()
 
 def thread1():

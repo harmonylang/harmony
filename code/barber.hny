@@ -4,6 +4,8 @@ const NSEATS = 2
 const NCUSTOMERS = 3
 const NBARBERS = 2
 
+global mutex, customer_cond, barber_cond
+global customers_waiting, customers_ready
 mutex = Lock()
 customer_cond = Condition()
 barber_cond = Condition()

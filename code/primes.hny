@@ -1,5 +1,6 @@
 from synch import *
 
+global ranges, queues, mainq
 ranges = { (2,10), (11,20), (21,30) }
 queues = { r:Queue() for r in ranges }
 mainq = Queue()

@@ -3,6 +3,7 @@ import bags
 const F = 1
 const N = (2 * F) + 1
 
+global network
 network = bags.empty()
 
 def send(m): atomically network = bags.add(network, m)

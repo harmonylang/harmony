@@ -1,3 +1,4 @@
+global reg
 reg = None
 
 def init():

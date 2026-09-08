@@ -3,9 +3,10 @@ import queue
 const N = 3
 
 sequential putcount
-
-testq = queue.Queue()
 putcount = 0
+
+global testq
+testq = queue.Queue()
 
 def putter(v):
     queue.put(?testq, v)

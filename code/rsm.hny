@@ -1,6 +1,7 @@
 const NREPLICAS = 3     # number of replicas
 const NOPS = 2          # number of operations
 
+global network
 network = []            # the network is a queue of messages
 
 def crash():

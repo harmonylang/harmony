@@ -3,6 +3,7 @@ from synch import Queue, put, get
 const NROUNDS = 3
 const NTHREADS = 3
 
+global queues
 queues = [ Queue(), ] * NTHREADS
 
 def barrier_enter(self):
@@ -20,7 +21,7 @@ round = [None,] * NTHREADS
 done = [False,] * NTHREADS
 
 # check that all non-None values in round are the same
-def check():
+def check() returns result:
     result = True
     var x = None
     for i in {0..NTHREADS-1}:

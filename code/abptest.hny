@@ -2,6 +2,8 @@ import abp
 
 const NMSGS = 10
 
+global s_seq, r_seq, network
+
 invariant s_seq in { 0, 1 }
 invariant r_seq in { 0, 1 }
 

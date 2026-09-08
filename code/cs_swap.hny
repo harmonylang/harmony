@@ -1,5 +1,6 @@
 const NTHREADS = 2
 
+global lock, want
 lock = False
 want = [ True, ] * NTHREADS
 

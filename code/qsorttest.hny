@@ -2,6 +2,7 @@ import qsort, bags
 
 const NITEMS = 4
 
+global a, testqs, sa
 a = [ choose({1..NITEMS}) for i in {1..choose({1..NITEMS})} ]
 testqs = qsort.Qsort(a)
 sa = qsort.sort(?testqs)

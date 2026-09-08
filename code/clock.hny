@@ -14,6 +14,7 @@ def ref(clock, x):
     if not FIFO:
         clock->recent |= {x}
 
+global clock3, clock4, refs
 clock3, clock4, refs = CLOCK(3), CLOCK(4), []
 
 const VALUES = { 1..5 }

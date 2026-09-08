@@ -1,3 +1,4 @@
+global x, y
 x, y = 0, 100
 
 def setX(a):

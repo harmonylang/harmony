@@ -1,11 +1,13 @@
 const N = 5
 
-in_cs = 0
+global in_cs
 invariant in_cs in { 0, 1 }
+in_cs = 0
 
+global shared, private
+invariant [x for x in [shared,] + private where not x] == [False,]
 shared = False
 private = [ True, ] * N
-invariant [x for x in [shared,] + private where not x] == [False,]
 
 def swap(s, p):
     atomically !p, !s = !s, !p

@@ -1,5 +1,6 @@
 from synch import Lock, acquire, release
 
+global countlock, count, done
 countlock = Lock()
 count = 0
 done = False

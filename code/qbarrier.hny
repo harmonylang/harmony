@@ -3,9 +3,11 @@ from synch import Queue, put, get
 const NTHREADS = 3
 const NROUNDS = 4
 
-round = [0,] * NTHREADS
+global round
 invariant (max(round) - min(round)) <= 1
+round = [0,] * NTHREADS
 
+global q
 q = [Queue(),] * NTHREADS
 
 def thread(self):

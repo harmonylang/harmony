@@ -10,6 +10,7 @@ def isPrime(v) returns prime:
             prime = False
         d += 1
 
+global q1, q2, q3
 q1 = q2 = q3 = Queue()
 
 def actor0():

@@ -1,5 +1,7 @@
 from stack import Stack, push, pop
 
+global teststack, v
+
 teststack = Stack()
 push(?teststack, 1)
 push(?teststack, 2)

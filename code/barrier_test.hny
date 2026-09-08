@@ -3,6 +3,7 @@ import barrier
 const NTHREADS = 3
 const NROUNDS = 4
 
+global barr, before, after
 barr = barrier.Barrier(NTHREADS)
 before = after = [0,] * NTHREADS
 

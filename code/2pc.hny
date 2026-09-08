@@ -3,6 +3,7 @@ const NBANKS = 3
 const NCOORDS = 2
 const MAX_BALANCE = 1
 
+global network
 network = {}
 
 def send(msg):

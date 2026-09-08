@@ -2,11 +2,13 @@ from barrier import *
 
 const N = 5     # size of list to be sorted
 
+global thelist
 thelist = [ choose { 1 .. N } for i in { 1 .. N } ]
 
 finally all(thelist[i-1] <= thelist[i] for i in { 1 .. N - 1 })
 
 const NTHREADS = N / 2
+global bar, count
 bar = Barrier(NTHREADS)
 count = [0,] * NTHREADS     # to detect termination
 

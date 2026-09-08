@@ -1,10 +1,11 @@
 from synch import Lock, acquire, release
 
 sequential done
+done = [ False, False ]
 
+global count, countlock
 count = 0
 countlock = Lock()
-done = [ False, False ]
 
 def thread(self):
     acquire(?countlock)

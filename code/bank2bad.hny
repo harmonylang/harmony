@@ -3,6 +3,7 @@ from synch import Lock, acquire, release
 def Account(balance) returns account:
     account = { .lock: Lock(), .balance: balance }
 
+global accounts
 accounts = [ Account(3), Account(7) ]
 
 invariant all(a.balance >= 0 for a in accounts)

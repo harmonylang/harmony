@@ -11,8 +11,9 @@ def Peterson_mutex() returns result:
 
 #### The code above can go into its own Harmony module ####
 
-in_cs = 0
+global in_cs
 invariant in_cs in { 0, 1 }
+in_cs = 0
 
 sequential mutex
 mutex = Peterson_mutex()

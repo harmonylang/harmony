@@ -5,6 +5,7 @@ const N_INSERT   = 1
 const N_REMOVE   = 1
 const N_VALUES   = 1
 
+global myset
 myset = SetObject()
 
 def test_contains(self):

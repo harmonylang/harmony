@@ -1,9 +1,11 @@
 import synch
 
+global lock
 lock = synch.Lock()
 
-count = 0
+global count
 invariant 0 <= count <= 1
+count = 0
 
 def thread():
     synch.acquire(?lock)

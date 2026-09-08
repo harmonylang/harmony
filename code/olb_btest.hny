@@ -2,6 +2,7 @@ import olb
 
 const NOPS = 3
 
+global bridge
 bridge = olb.OLB()
 
 def thread(self):

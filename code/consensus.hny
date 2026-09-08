@@ -1,5 +1,6 @@
 const N = 4
 
+global proposals, decision
 proposals = [ choose({0, 1}) for i in {0..N-1} ]
 decision = choose { x for x in proposals }
 

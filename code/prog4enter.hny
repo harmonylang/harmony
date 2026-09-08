@@ -1,3 +1,4 @@
+global x, entered
 x = 0
 entered = [ False, False ]
 

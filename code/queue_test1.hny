@@ -7,6 +7,7 @@ def receiver(q):
     let v = queue.get(q):
         assert v in { None, 1, 2 }
 
+global demoq
 demoq = queue.Queue()
 spawn sender(?demoq, 1)
 spawn sender(?demoq, 2)

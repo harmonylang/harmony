@@ -2,6 +2,7 @@ import queue
 
 const NTHREADS = 4
 
+global myq
 myq = queue.Queue()
 
 def thread(v):

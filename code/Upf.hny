@@ -1,5 +1,5 @@
+global count
 count = 0
-
 finally count == 2
 
 def incrementer():

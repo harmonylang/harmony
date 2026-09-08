@@ -5,5 +5,6 @@ def triangle(n) returns result:   # computes the n'th triangle number
     for i in {1..n}:     # for each integer from 1 to n inclusive
         result += i      # add i to result
 
+global x
 x = choose {0..N}        # select an x between 0 and N inclusive
 assert triangle(x) == x * (x + 1) / 2

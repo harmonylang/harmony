@@ -1,5 +1,5 @@
+global count, entered, done
 count = 0
-
 entered = done = [ False, False ]
 
 def incrementer(self):

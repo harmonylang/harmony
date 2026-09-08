@@ -4,6 +4,7 @@ const F = 1
 const N = (3 * F) + 1
 const NROUNDS = 3
 
+global proposals, network
 proposals = [ choose({0, 1}) for i in {0..N-1} ]
 network = bags.empty()
 

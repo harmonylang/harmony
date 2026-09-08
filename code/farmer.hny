@@ -1,3 +1,4 @@
+global sides, farmer
 sides = [ { "goat", "cabbage", "wolf" }, {} ]
 farmer = 0
 

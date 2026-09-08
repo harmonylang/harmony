@@ -1,3 +1,4 @@
+global q
 q = []
 
 def put(v):

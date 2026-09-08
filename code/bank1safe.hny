@@ -3,6 +3,7 @@ from synch import Lock, acquire, release
 def Account(balance) returns account:
     account = { .lock: Lock(), .balance: balance }
 
+global active, accounts
 active = {}
 accounts = [ Account(3), Account(7) ]
 

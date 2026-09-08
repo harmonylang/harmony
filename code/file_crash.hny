@@ -19,7 +19,7 @@ def write(fs, ino, offset, data) returns result:
             result = "crash"
             
 
-def delete(fs, ino) returns result::
+def delete(fs, ino) returns result:
     atomically:
         if choose { False, True }:
             (!fs)[ino] = []

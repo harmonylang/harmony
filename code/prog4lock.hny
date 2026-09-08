@@ -1,5 +1,6 @@
 from synch import Lock, acquire, release
 
+global shared, thelock
 shared = 0
 thelock = Lock()
 

@@ -3,6 +3,7 @@
 const NREPLICAS = 3     # number of replicas
 const NOPS = 2          # number of operations (or clients)
 
+global network
 network = {}            # the network is a set of messages
 
 def send(self, dst, msg):           # send msg to replica dst
