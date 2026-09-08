@@ -588,22 +588,31 @@ def check_global_namespace(document, module_map=None, source_label="<program>", 
 
     `extra_consts` (optional) is an iterable of names a CALLER has
     already bound as constants before this document was ever read - the
-    harmony CLI's own `-c NAME=VALUE` flag is exactly this: it seeds
-    NAME as a constant from the command line, whether or not the
-    program's own source also writes `const NAME = ...`. Each such name
-    is declared here, in the global namespace, before the document's
-    own statements are ever walked - so a genuinely conflicting
-    in-source declaration of the same name is still flagged as a real
-    duplicate (now reported as colliding with the command-line one,
-    "first as a constant"), exactly as if the command-line binding were
-    the first, textually-earliest declaration in the program.
+    harmony CLI's own `-c NAME=VALUE` flag is exactly this. Real
+    Harmony's `-c` does NOT create a new global binding: it only
+    *overrides the value* of a `const NAME = ...` statement the program
+    already writes (see ConstAST.set in harmony/ast.py - the
+    command-line value is substituted in only when compiling a `const`
+    statement whose own lexeme matches; a `-c` name with no matching
+    `const` in the source is simply never consulted, and the real
+    compiler rejects it as unused). So a `-c` name that matches an
+    existing `const NAME = ...` in the program is not a collision at
+    all - it's the ordinary, single, in-source declaration, just with
+    its value overridden - and must NOT be pre-declared here (doing so
+    would make the program's own real `const` statement look like a
+    second, duplicate declaration of the same name, which is exactly
+    wrong). Each name is instead only added, as a fallback, once the
+    document has been fully walked and turns out to have no `const` of
+    that name anywhere at the top level - permissive rather than
+    flagging a "not declared" error checker.py can't fully verify
+    (module resolution may simply have missed it), matching the rest of
+    this checker's stance of never blocking on something it isn't sure
+    the real compiler would also reject.
 
     Always returns a GlobalNamespace; check `.errors` for problems
     rather than expecting an exception - a parse failure is reported as
     the (only) error, with nothing further to check."""
     ns = GlobalNamespace(source_label)
-    for name in (extra_consts or ()):
-        ns.declare(name, "const", -1, -1)
     program = harmony_parser.parse_program(document)
     if not program.success:
         ns.errors.append(CheckError(
@@ -615,6 +624,9 @@ def check_global_namespace(document, module_map=None, source_label="<program>", 
     resolver = ModuleResolver(module_map, source_dir=source_dir, default_module_dir=default_module_dir)
     for stmt in program.value:
         _walk_stmt(stmt, ns, resolver)
+    for name in (extra_consts or ()):
+        if name not in ns.declared:
+            ns.declare(name, "const", -1, -1)
     return ns
 
 
@@ -2313,11 +2325,15 @@ def check_identifiers(document, module_map=None, source_label="<program>", sourc
     `source_dir` and `default_module_dir` are passed straight through
     to check_global_namespace - see there for the module-lookup
     fallback order they control. `extra_consts` (see
-    check_global_namespace) is also promoted here (with no declaration
-    point of its own to order against - a command-line constant is
-    bound before the program is even read, so it's available to every
-    function immediately, the same as a promoted top-level `const`
-    whose own use-before-declaration check can never fire).
+    check_global_namespace - a `-c NAME=VALUE` only overrides the value
+    of a matching in-source `const`, it never creates a new binding) is
+    also promoted here: when the name really is declared `const`
+    in-source, this just makes sure it's promoted (matching Phase 2's
+    own promotion of that same statement - declare_promoted is a no-op
+    the second time); when check_global_namespace had to fall back to
+    declaring it itself (no matching in-source `const` found), this is
+    what actually makes the name usable from every function immediately,
+    with no declared-before-use ordering to satisfy.
     """
     global_ns = check_global_namespace(document, module_map, source_label, source_dir,
                                         default_module_dir, extra_consts)
