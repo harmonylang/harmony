@@ -1,5 +1,6 @@
 from typing import Any, Union
 from antlr4.Token import CommonToken  # type: ignore
+from antlr4.tree.Tree import TerminalNode  # type: ignore
 
 from harmony_model_checker.parser.HarmonyVisitor import HarmonyVisitor
 from harmony_model_checker.parser.HarmonyParser import HarmonyParser
@@ -190,21 +191,60 @@ class HarmonyVisitorImpl(HarmonyVisitor):
 
     # Visit a parse tree produced by HarmonyParser#assign_stmt.
     def visitAssign_stmt(self, ctx: HarmonyParser.Assign_stmtContext):
+        # (assign_target_list assign_op)+ tuple_rule - assign_target_list and
+        # assign_op each appear inside the repeated group (so "a = b = expr"
+        # parses as two of each), but tuple_rule (the final rhs) appears
+        # exactly once - NOT as one more entry alongside the targets.
         ops = [self.visit(e) for e in ctx.assign_op()]
-        expr = [self.visit(e) for e in ctx.tuple_rule()]
+        targets = [self.visit(e) for e in ctx.assign_target_list()]
+        rhs = self.visit(ctx.tuple_rule())
         tkn = self.get_token(ctx.start, ctx.start.text)
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
-        return AssignmentAST(endtoken, tkn, expr[:-1], expr[-1], ops, False)
+        return AssignmentAST(endtoken, tkn, targets, rhs, ops, False)
 
     # Visit a parse tree produced by HarmonyParser#aug_assign_stmt.
     def visitAug_assign_stmt(self, ctx: HarmonyParser.Aug_assign_stmtContext):
+        lhs = self.visit(ctx.assign_target_list())
+        rhs = self.visit(ctx.tuple_rule())
         op = self.visit(ctx.aug_assign_op())
-        expressions = [self.visit(e) for e in ctx.tuple_rule()]
-        lhs = expressions[0]
-        rhs = expressions[1]
         tkn = self.get_token(ctx.start, ctx.start.text)
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
         return AuxAssignmentAST(endtoken, tkn, lhs, rhs, op, False)
+
+    # Visit a parse tree produced by HarmonyParser#assign_target_list.
+    # Mirrors visitTuple_rule's own single-vs-tuple handling: a lone target
+    # with no trailing comma is passed through as-is; anything else (2+
+    # targets, or a single target with a trailing comma) is wrapped in a
+    # TupleAST, the same destructuring-target wrapper tuple_rule itself uses
+    # for its rhs values - TupleAST.ph1/ph2 already know how to recurse into
+    # each element, which is exactly what a destructuring assign needs.
+    def visitAssign_target_list(self, ctx: HarmonyParser.Assign_target_listContext):
+        tkn = self.get_token(ctx.start, ctx.start.text)
+        endtoken = self.get_token(ctx.stop, ctx.stop.text)
+        targets = [self.visit(t) for t in ctx.assign_target()]
+        comma_count = len(ctx.COMMA())
+        if len(targets) == 1 and comma_count != 1:
+            return targets[0]
+        return TupleAST(endtoken, targets, tkn)
+
+    # Visit a parse tree produced by HarmonyParser#assign_target.
+    # A parenthesized/bracketed group just delegates to its inner
+    # assign_target_list (parens/brackets are pure grouping here - see the
+    # assign_target comment in Harmony.g4); 'application' likewise delegates
+    # to the ordinary application visitor. The one case that needs explicit
+    # handling is '!' expr_rule: unlike expr_rule's own unary '!' handling
+    # (which only fires when '!' is parsed *through* application/expr_rule),
+    # assign_target's '!' alternative is its own separate grammar path, so
+    # nothing else builds the PointerAST wrapper for it.
+    def visitAssign_target(self, ctx: HarmonyParser.Assign_targetContext):
+        if ctx.assign_target_list():
+            return self.visit(ctx.assign_target_list())
+        if ctx.application():
+            return self.visit(ctx.application())
+        tkn = self.get_token(ctx.start, ctx.start.text)
+        endtoken = self.get_token(ctx.stop, ctx.stop.text)
+        expr = self.visit(ctx.expr_rule())
+        return PointerAST(endtoken, expr, tkn)
 
     # Visit a parse tree produced by HarmonyParser#const_assign_stmt.
     def visitConst_assign_stmt(self, ctx: HarmonyParser.Const_assign_stmtContext):
@@ -328,10 +368,17 @@ class HarmonyVisitorImpl(HarmonyVisitor):
 
     # Visit a parse tree produced by HarmonyParser#go_stmt.
     def visitGo_stmt(self, ctx: HarmonyParser.Go_stmtContext):
+        # go_stmt: GO expr (COMMA expr)?  - the second expr (the value STOP
+        # returns to this go) is optional and defaults to None; GoAST.result
+        # is compiled unconditionally, so a bare 'go ctx' needs a real
+        # ConstantAST for None here, not Python's None.
         target = self.visit(ctx.expr(0))
-        args = self.visit(ctx.expr(1))
         tkn = self.get_token(ctx.start, ctx.start.text)
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
+        if ctx.expr(1) is not None:
+            args = self.visit(ctx.expr(1))
+        else:
+            args = ConstantAST(endtoken, self.get_token(ctx.start, AddressValue(None, [])))
         return GoAST(endtoken, tkn, False, target, args)
 
     # Visit a parse tree produced by HarmonyParser#sequential_stmt.
@@ -357,16 +404,19 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
         return BuiltinAST(endtoken, tkn, NameAST(nametkn, nametkn), value)
 
-    # Visit a parse tree produced by HarmonyParser#atomic_block.
-    def visitAtomic_block(self, ctx: HarmonyParser.Atomic_blockContext):
-        stmts = self.visit(ctx.block())
-        tkn = self.get_token(ctx.start, ctx.start.text)
-        endtoken = self.get_token(ctx.stop, ctx.stop.text)
-        atom = ctx.ATOMICALLY()
-        atoken = self.get_token(atom.getSymbol(), atom.getText())
-        colon = ctx.COLON()
-        ctoken = self.get_token(colon.getSymbol(), colon.getText())
-        return AtomicAST(endtoken, tkn, atoken, stmts, ctoken)
+    # NOTE: there used to be a visitAtomic_block here for a standalone
+    # "atomic_block" grammar rule (HarmonyParser#atomic_block). That rule
+    # no longer exists - the grammar now folds the ATOMICALLY prefix
+    # directly into compound_stmt/simple_stmt themselves (see
+    # visitCompound_stmt/visitSimple_stmt above, which already handle
+    # ctx.ATOMICALLY() generically for every compound/simple statement
+    # kind). This method was dead code that referenced a nonexistent
+    # HarmonyParser.Atomic_blockContext - harmless while an older,
+    # already-generated parser happened to still define that class, but
+    # a hard failure (AttributeError at class-definition time, since the
+    # type annotation is evaluated eagerly) the moment the parser is
+    # regenerated from the current Harmony.g4. Removed rather than fixed
+    # up, since visitCompound_stmt/visitSimple_stmt already cover its job.
 
     # Visit a parse tree produced by HarmonyParser#for_block.
     def visitFor_block(self, ctx: HarmonyParser.For_blockContext):
@@ -682,30 +732,54 @@ class HarmonyVisitorImpl(HarmonyVisitor):
             return values[0]
         return TupleAST(endtoken, values, tkn)
 
+    # --- Expression construction helpers -----------------------------
+    #
+    # The grammar's nary_expr/logic_expr/compare_expr/arith_expr chain is
+    # deliberately flat CFG-wise at each tier (see the comments above
+    # those rules in Harmony.g4), so each tier's own operator-chain
+    # restriction (which combinations are legal, and how a legal chain
+    # regroups into a binary-ish AST) is enforced here in Python rather
+    # than in the grammar itself. Each visitXxx_expr method below pulls
+    # its rule's already-flat list of operands/operators straight from
+    # its own ANTLR context (no more cross-tier operator classification
+    # needed - that used to be necessary back when a single flat rule
+    # carried logic/compare/arith operators all together) and hands them
+    # to the matching helper.
+
     def factor_expr(self, ops, exprs):
+        # ops/exprs cover one maximal run of multiplicative-tier
+        # operators (*, /, //, mod, %). At most one operator in the run
+        # may be something other than '*', and it must be the LAST one
+        # ("a * b * ... * c @ d") - see the arith_expr comment in
+        # Harmony.g4. This also keeps the construction below honest: once
+        # every op but the last is guaranteed to be '*' (associative), the
+        # exprs[:-1] group can be combined under a single flat '*' NaryAST
+        # with no ambiguity about how it was actually grouped.
         if len(ops) == 0:
             return exprs[0]
         if len(ops) == 1:
             return NaryAST(exprs[1].endtoken, exprs[0].token, ops[0], exprs)
-        found = False
-        for o in ops:
-            if o[0] in { '/', '//', '%', 'mod' }:
-                if found:
-                    token = ops[0]
-                    raise HarmonyCompilerError(
-                        message="Expression too complicated: use parentheses",
-                        filename=self.file,
-                        line=token[2],
-                        column=token[3],
-                        lexeme=token[0]
-                    )
-                found = True
-            else:
-                assert o[0] == '*'
+        for o in ops[:-1]:
+            if o[0] != '*':
+                raise HarmonyCompilerError(
+                    message="Expression too complicated: use parentheses",
+                    filename=self.file,
+                    line=o[2],
+                    column=o[3],
+                    lexeme=o[0]
+                )
+        if ops[-1][0] == '*':
+            return NaryAST(exprs[-1].endtoken, exprs[0].token, ops[-1], exprs)
         return NaryAST(exprs[-1].endtoken, exprs[0].token, ops[-1],
             [ NaryAST(exprs[-2].endtoken, exprs[0].token, ops[0], exprs[:-1]), exprs[-1] ])
 
     def simple_expr(self, ops, exprs):
+        # Splits an arith_expr chain that's already known to be a legal
+        # mix of {+, -, *, /, //, mod, %} on its '+'/'-' (additive-tier)
+        # operators, recursing into factor_expr for each maximal
+        # multiplicative-tier run in between - this is the "regrouped by
+        # standard arithmetic precedence" step from the Harmony.g4
+        # comment.
         simple_ops = [ o for o in ops if o[0] in { '+', '-' } ]
         if len(simple_ops) == 0:
             return self.factor_expr(ops, exprs)
@@ -737,10 +811,13 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         if ops[0][0] in self.associative_operators and all(o[0] == ops[0][0] for o in ops):
             return NaryAST(exprs[-1].endtoken, exprs[0].token, ops[0], exprs)
 
-        # See if it's a simple arithmetic expression
+        # See if it's a legal mix of standard arithmetic operators
         if all(o[0] in { '+', '-', '*', '/', '//', '%', 'mod' } for o in ops):
             return self.simple_expr(ops, exprs)
 
+        # Anything else (repeated non-associative operators like '<<',
+        # '>>', '**', or a mix involving a non-arithmetic operator) has no
+        # defined relative precedence.
         token = ops[0]
         raise HarmonyCompilerError(
             message="Expression too complicated: use parentheses",
@@ -751,105 +828,92 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         )
 
     def cmp_expr(self, ops, exprs):
+        # compare_expr's own operators are always genuine comparison
+        # operators (compare_op is its own grammar rule/token type now),
+        # and exprs are already-resolved arith_expr subexpressions, so
+        # there's no cross-tier classification left to do here.
         assert len(ops) + 1 == len(exprs)
-        if len(ops) == 0:
-            return exprs[0]
-        cmp_ops = [ o for o in ops if o[0] in { '==', '!=', '<', '<=', '>', '>=' } ]
-        if len(cmp_ops) == 0:
-            return self.arith_expr(ops, exprs)
-        sub_ops = []
-        sub_exprs = [ exprs[0] ]
-        sub_asts = []
-        for i in range(len(ops)):
-            if ops[i] in cmp_ops:
-                sub_asts.append(self.arith_expr(sub_ops, sub_exprs))
-                sub_ops = []
-                sub_exprs = [ exprs[i+1] ]
-            else:
-                sub_ops.append(ops[i])
-                sub_exprs.append(exprs[i+1])
-        sub_asts.append(self.arith_expr(sub_ops, sub_exprs))
-        return CmpAST(sub_asts[-1].endtoken, sub_asts[0].token, cmp_ops, sub_asts)
-
-    def bool_expr_helper(self, ops, exprs, operator):
-        op = None
-        sub_ops = []
-        sub_exprs = [ exprs[0] ]
-        sub_asts = []
-        for i in range(len(ops)):
-            if ops[i][0] == operator:
-                if op == None:
-                    op = ops[i]
-                sub_asts.append(self.cmp_expr(sub_ops, sub_exprs))
-                sub_ops = []
-                sub_exprs = [ exprs[i+1] ]
-            else:
-                sub_ops.append(ops[i])
-                sub_exprs.append(exprs[i+1])
-        sub_asts.append(self.cmp_expr(sub_ops, sub_exprs))
-        return NaryAST(sub_asts[-1].endtoken, sub_asts[0].token, op, sub_asts)
+        return CmpAST(exprs[-1].endtoken, exprs[0].token, ops, exprs)
 
     def bool_expr(self, ops, exprs):
+        # logic_expr's own operators are always genuine logic operators
+        # (logic_op is its own grammar rule/token type now). A chain of
+        # 2+ is only legal if every operator is identical, and that
+        # operator is 'and' or 'or' - never '=>' (see the logic_expr
+        # comment in Harmony.g4).
         assert len(ops) > 0
         assert len(ops) + 1 == len(exprs)
-        bool_ops = [ o[0] for o in ops if o[0] in { 'or', 'and', '=>', '==', '=' } ]
-        if 'or' in bool_ops:
-            if len(set(bool_ops)) > 1:
-                token = ops[0]
-                raise HarmonyCompilerError(
-                    message="Boolean expression too complicated: use parentheses",
-                    filename=self.file,
-                    line=token[2],
-                    column=token[3],
-                    lexeme=token[0]
-                )
-            return self.bool_expr_helper(ops, exprs, 'or')
-        if 'and' in bool_ops:
-            if len(set(bool_ops)) > 1:
-                token = ops[0]
-                raise HarmonyCompilerError(
-                    message="Boolean expression too complicated: use parentheses",
-                    filename=self.file,
-                    line=token[2],
-                    column=token[3],
-                    lexeme=token[0]
-                )
-            return self.bool_expr_helper(ops, exprs, 'and')
-        if '=>' in bool_ops:
-            if len(bool_ops) > 1:
-                token = ops[0]
-                raise HarmonyCompilerError(
-                    message="Boolean imply expression too complicated: use parentheses",
-                    filename=self.file,
-                    line=token[2],
-                    column=token[3],
-                    lexeme=token[0]
-                )
-            return self.bool_expr_helper(ops, exprs, '=>')
+        if any(o[0] != ops[0][0] for o in ops):
+            token = ops[0]
+            raise HarmonyCompilerError(
+                message="Boolean expression too complicated: use parentheses",
+                filename=self.file,
+                line=token[2],
+                column=token[3],
+                lexeme=token[0]
+            )
+        if ops[0][0] == '=>' and len(ops) > 1:
+            token = ops[0]
+            raise HarmonyCompilerError(
+                message="Boolean imply expression too complicated: use parentheses",
+                filename=self.file,
+                line=token[2],
+                column=token[3],
+                lexeme=token[0]
+            )
+        return NaryAST(exprs[-1].endtoken, exprs[0].token, ops[0], exprs)
+
+    # Visit a parse tree produced by HarmonyParser#logic_op.
+    def visitLogic_op(self, ctx: HarmonyParser.Logic_opContext):
+        return self.get_token(ctx.start, ctx.getText())
+
+    # Visit a parse tree produced by HarmonyParser#compare_op.
+    def visitCompare_op(self, ctx: HarmonyParser.Compare_opContext):
+        return self.get_token(ctx.start, ctx.getText())
+
+    # Visit a parse tree produced by HarmonyParser#logic_expr.
+    def visitLogic_expr(self, ctx: HarmonyParser.Logic_exprContext):
+        exprs = [self.visit(e) for e in ctx.compare_expr()]
+        if not ctx.logic_op():
+            return exprs[0]
+        ops = [self.visit(o) for o in ctx.logic_op()]
+        return self.bool_expr(ops, exprs)
+
+    # Visit a parse tree produced by HarmonyParser#compare_expr.
+    def visitCompare_expr(self, ctx: HarmonyParser.Compare_exprContext):
+        exprs = [self.visit(e) for e in ctx.arith_expr()]
+        if not ctx.compare_op():
+            return exprs[0]
+        ops = [self.visit(o) for o in ctx.compare_op()]
         return self.cmp_expr(ops, exprs)
+
+    # Visit a parse tree produced by HarmonyParser#arith_expr.
+    def visitArith_expr(self, ctx: HarmonyParser.Arith_exprContext):
+        exprs = [self.visit(e) for e in ctx.expr_rule()]
+        if not ctx.arith_op():
+            return exprs[0]
+        ops = [self.visit(o) for o in ctx.arith_op()]
+        return self.arith_expr(ops, exprs)
 
     # Visit a parse tree produced by HarmonyParser#nary_expr.
     def visitNary_expr(self, ctx: HarmonyParser.Nary_exprContext):
-        expressions = [self.visit(e) for e in ctx.expr_rule()]
         tkn = self.get_token(ctx.start, ctx.start.text)
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
-        if ctx.arith_op():
-            ops = [self.visit(o) for o in ctx.arith_op()]
-            return self.bool_expr(ops, expressions)
         if ctx.IF():
+            expressions = [self.visit(e) for e in ctx.expr_rule()]
             condition = self.visit(ctx.nary_expr())
             expressions.insert(1, condition)
             op_token = self.get_token(ctx.IF().symbol, str(ctx.IF()))
             return NaryAST(endtoken, tkn, op_token, expressions)
         if ctx.IN():
+            expressions = [self.visit(e) for e in ctx.expr_rule()]
             in_token = self.get_token(ctx.IN().symbol, str(ctx.IN()))
             ast = NaryAST(endtoken, tkn, in_token, expressions)
             if ctx.NOT():
                 not_token = self.get_token(ctx.NOT().symbol, str(ctx.NOT()))
                 return NaryAST(endtoken, tkn, not_token, [ast])
             return ast
-        assert len(expressions) == 1
-        return expressions[0]
+        return self.visit(ctx.logic_expr())
 
     # Visit a parse tree produced by HarmonyParser#expr_rule.
     def visitExpr_rule(self, ctx:HarmonyParser.Expr_ruleContext):
@@ -864,14 +928,20 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         if ctx.STOP():
             expr = self.visit(ctx.expr_rule())
             return StopAST(endtoken, tkn, expr)
+        if ctx.question_operand():
+            # '?' (address-of) - deliberately not part of unary_op (see the
+            # comment above unary_op in Harmony.g4); it has its own operand
+            # rule (question_operand) with its own restricted grammar/shape,
+            # validated ahead of time by harmony_parser.py's Phase 0
+            # pre-check, so all that's needed here is to build the AST the
+            # operand describes and wrap it.
+            expr = self.visit(ctx.question_operand())
+            return AddressAST(endtoken, expr, tkn)
         if ctx.unary_op():
             op = self.visit(ctx.unary_op())
             if op[0] == '!':
                 expr = self.visit(ctx.expr_rule())
                 return PointerAST(endtoken, expr, tkn)
-            elif op[0] == '?':
-                expr = self.visit(ctx.expr_rule())
-                return AddressAST(endtoken, expr, tkn)
             else:
                 expr = self.visit(ctx.expr_rule())
                 return NaryAST(endtoken, tkn, op, [expr])
@@ -884,6 +954,57 @@ class HarmonyVisitorImpl(HarmonyVisitor):
             column=tkn[3],
             lexeme=tkn[0]
         )
+
+    # Visit a parse tree produced by HarmonyParser#question_operand.
+    #
+    # question_operand ::= NAME (ARROWID | basic_expr)*
+    #                     | '(' question_operand ')'
+    #                     | '!' expr_rule (ARROWID | basic_expr)+
+    #
+    # harmony_parser.py (Phase 0) has already validated that this operand is
+    # legal for '?' to be applied to - this visitor's only job is to build
+    # the same AST an equivalent application/'->' chain would build, which
+    # visitExpr_rule's '?' handling then wraps in an AddressAST. The
+    # construction below mirrors visitApplication's own ARROWID/basic_expr
+    # folding, just walking a flat repetition (ctx.children) instead of
+    # ANTLR's left-recursive application chain - ARROWID and basic_expr
+    # occurrences have to stay in their original left-to-right order, and
+    # the generated context's own ARROWID()/basic_expr() accessors return
+    # each kind separately, losing that interleaving.
+    def visitQuestion_operand(self, ctx: HarmonyParser.Question_operandContext):
+        tkn = self.get_token(ctx.start, ctx.start.text)
+        endtoken = self.get_token(ctx.stop, ctx.stop.text)
+        if ctx.OPEN_PAREN():
+            # '(' question_operand ')' (ARROWID | basic_expr)* - the parens
+            # recurse rather than just being seen through, since (unlike a
+            # bare NAME) the parenthesized alternative may itself be
+            # followed by more chain material: "?(!p)[x]" needs somewhere
+            # for the trailing "[x]" to attach once '!p' is wrapped in
+            # parens (see the question_operand comment in Harmony.g4).
+            result = self.visit(ctx.question_operand())
+            rest = ctx.children[3:]
+        elif ctx.NAME():
+            name_tok = self.get_token(ctx.NAME().symbol, str(ctx.NAME()))
+            result = NameAST(name_tok, name_tok)
+            rest = ctx.children[1:]
+        else:
+            expr = self.visit(ctx.expr_rule())
+            result = PointerAST(endtoken, expr, tkn)
+            rest = ctx.children[2:]
+        for child in rest:
+            if isinstance(child, TerminalNode) and child.getSymbol().type == HarmonyParser.ARROWID:
+                name = self.get_token(child.getSymbol(), child.getText())
+                (lexeme, file, line, col) = name
+                lexeme = lexeme[2:]
+                col += 2
+                while lexeme[0] == ' ':
+                    lexeme = lexeme[1:]
+                    col += 1
+                result = ApplyAST(endtoken, PointerAST(endtoken, result, tkn), ConstantAST(endtoken, (lexeme, file, line, col)), tkn)
+            else:
+                arg = self.visit(child)
+                result = ApplyAST(endtoken, result, arg, tkn)
+        return result
 
     # Visit a parse tree produced by HarmonyParser#application.
     def visitApplication(self, ctx:HarmonyParser.ApplicationContext):

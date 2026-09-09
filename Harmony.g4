@@ -233,10 +233,13 @@ application
     | application basic_expr
 ;
 
-// question_operand ::= (NAME | '!' expr_rule) (ARROWID | basic_expr)*,
-// with any purely-grouping parentheses around it seen through first,
-// and the '!' alternative only legal when at least one
-// (ARROWID | basic_expr) actually follows it.
+// question_operand ::= (NAME | '(' question_operand ')' | '!' expr_rule)
+// (ARROWID | basic_expr)*. The parenthesized alternative recurses (so
+// nested/redundant parens are fine) and, like the other two, may
+// itself be followed by more (ARROWID | basic_expr) chain material -
+// that's what lets "?(!p)[x]" below actually parse: the '!p' part is
+// wrapped in parens with nothing following it *inside* them, and the
+// qualifying "[x]" is only supplied once the parens close.
 //
 // '?e' (address-of) requires e to name something addressable in the
 // first place - a shared/global variable, or a function, or (extending
@@ -247,33 +250,39 @@ application
 // "?(!p)[x]" are all legal. That last one needs justifying: "!(?e)
 // == e" is the defining round-trip identity behind "a = b" meaning
 // "!(?a) = b" in the first place, so "?!p" *alone* just hands back p
-// with no addressing accomplished - a no-op, correctly excluded below
-// - but "?(!p)[x]" address-computes through p's own thunk extended by
-// x (e.g. matching "?a[x]" when p holds "?a"), which is genuinely
+// with no addressing accomplished - a meaningless no-op - but
+// "?(!p)[x]" address-computes through p's own thunk extended by x
+// (e.g. matching "?a[x]" when p holds "?a"), which is genuinely
 // useful, exactly the way "a[x] = 1" is. This deliberately does NOT
 // extend to a '?'-prefixed base ("?(?a)[x]" stays illegal) - '!' and
 // '?' cancel as a *pair*, but there's no matching identity for '?'
 // composed with itself.
 //
-// "?5", "?[1, 2][0]", "?(1, 2)", "?(a, b)", "??x" and "?!p" are all
-// illegal: none of them start (after seeing through any grouping
-// parens) with a name or a '!'-with-something-further - a number, a
-// bracketed collection, and a genuine multi-element parenthesized
-// tuple are all real values, not names, and brackets are never "just
-// parsing" the way parens are; a bare "??x"/"?!p" is the no-op case
-// just described.
+// "?5", "?[1, 2][0]", "?(1, 2)", "?(a, b)" and "??x" are all illegal:
+// none of them start (after seeing through any grouping parens) with
+// a name or a '!' - a number, a bracketed collection, and a genuine
+// multi-element parenthesized tuple are all real values, not names,
+// and brackets are never "just parsing" the way parens are.
 //
-// This can't be written as plain, unparameterized BNF the way most of
-// this grammar is (the "see through grouping parens, but not a real
-// tuple/list literal", and "'!' only counts with something further
-// after it", steps both need a semantic check, not just alternation)
-// - the parser implements it as a permissive parse followed by a
-// structural validity check, the same pattern assign_target uses for
-// its own restrictions below.
+// A bare "?!p" (no parens, nothing following the '!p') is *not*
+// rejected by this grammar production - notice the '!' alternative
+// ends in a plain '*', not '+'. It has to stay permissive here: the
+// "something has to follow, in total" restriction is about the whole
+// '?'-operand once any wrapping parens are accounted for, not about
+// whatever happens to sit immediately after this one '!' fragment
+// syntactically - "?(!p)[x]" is exactly a case where nothing follows
+// the '!p' fragment itself (that's inside the parens) even though the
+// operand as a whole is genuinely useful. A CFG production can't see
+// past its own recursive call to make that whole-operand judgment, so
+// (matching how harmony_parser.py, the hand-written recursive-descent
+// parser, already handles this same family of restriction - see its
+// own comment above parse_question_operand) the no-op case is caught
+// as a semantic check in Phase 0 instead of being carved out of the
+// grammar itself.
 question_operand
     : NAME (ARROWID | basic_expr)*
-    | OPEN_PAREN question_operand CLOSE_PAREN
-    | '!' expr_rule (ARROWID | basic_expr)+
+    | OPEN_PAREN question_operand CLOSE_PAREN (ARROWID | basic_expr)*
+    | '!' expr_rule (ARROWID | basic_expr)*
 ;
 
 expr: nary_expr;

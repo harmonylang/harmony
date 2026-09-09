@@ -15,5 +15,5 @@ def release(lk):
         if lk->suspended == []:
             lk->acquired = False
         else:
-            go (lk->suspended[0]) ()
+            go lk->suspended[0], ()
             del lk->suspended[0]

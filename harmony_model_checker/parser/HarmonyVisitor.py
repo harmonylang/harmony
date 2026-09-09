@@ -44,6 +44,16 @@ class HarmonyVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by HarmonyParser#logic_op.
+    def visitLogic_op(self, ctx:HarmonyParser.Logic_opContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by HarmonyParser#compare_op.
+    def visitCompare_op(self, ctx:HarmonyParser.Compare_opContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by HarmonyParser#arith_op.
     def visitArith_op(self, ctx:HarmonyParser.Arith_opContext):
         return self.visitChildren(ctx)
@@ -139,6 +149,21 @@ class HarmonyVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by HarmonyParser#logic_expr.
+    def visitLogic_expr(self, ctx:HarmonyParser.Logic_exprContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by HarmonyParser#compare_expr.
+    def visitCompare_expr(self, ctx:HarmonyParser.Compare_exprContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by HarmonyParser#arith_expr.
+    def visitArith_expr(self, ctx:HarmonyParser.Arith_exprContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by HarmonyParser#expr_rule.
     def visitExpr_rule(self, ctx:HarmonyParser.Expr_ruleContext):
         return self.visitChildren(ctx)
@@ -146,6 +171,11 @@ class HarmonyVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by HarmonyParser#application.
     def visitApplication(self, ctx:HarmonyParser.ApplicationContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by HarmonyParser#question_operand.
+    def visitQuestion_operand(self, ctx:HarmonyParser.Question_operandContext):
         return self.visitChildren(ctx)
 
 
@@ -161,6 +191,16 @@ class HarmonyVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by HarmonyParser#aug_assign_op.
     def visitAug_assign_op(self, ctx:HarmonyParser.Aug_assign_opContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by HarmonyParser#assign_target.
+    def visitAssign_target(self, ctx:HarmonyParser.Assign_targetContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by HarmonyParser#assign_target_list.
+    def visitAssign_target_list(self, ctx:HarmonyParser.Assign_target_listContext):
         return self.visitChildren(ctx)
 
 
@@ -271,11 +311,6 @@ class HarmonyVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by HarmonyParser#sequential_names_seq.
     def visitSequential_names_seq(self, ctx:HarmonyParser.Sequential_names_seqContext):
-        return self.visitChildren(ctx)
-
-
-    # Visit a parse tree produced by HarmonyParser#atomic_block.
-    def visitAtomic_block(self, ctx:HarmonyParser.Atomic_blockContext):
         return self.visitChildren(ctx)
 
 
