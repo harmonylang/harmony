@@ -55,10 +55,30 @@ tuple_bound
     ;
 bound: (tuple_bound COMMA)* tuple_bound;
 
-arith_op
+// Three precedence levels, loosest to tightest: logic_op binds
+// loosest, then compare_op, then arith_op (everything else), which are
+// all still flat/left-to-right *among themselves* - Harmony doesn't
+// distinguish + from *, say - only the three levels are ordered
+// relative to each other. See nary_expr/logic_expr/compare_expr/
+// arith_expr below for how these combine into the actual precedence
+// climb.
+logic_op
     : 'and'
     | 'or'
-    | '&'
+    | '=>'
+    ;
+
+compare_op
+    : '=='
+    | '!='
+    | '<'
+    | '<='
+    | '>'
+    | '>='
+    ;
+
+arith_op
+    : '&'
     | '|'
     | '^'
     | '-'
@@ -71,19 +91,14 @@ arith_op
     | '**'
     | '<<'
     | '>>'
-    | '=='
-    | '!='
-    | '<'
-    | '<='
-    | '>'
-    | '>='
-    | '=>'
 ;
 
+// '?' (address-of) is deliberately NOT here - unlike every other
+// unary_op, its operand isn't an unrestricted expr_rule. See
+// question_operand and expr_rule below.
 unary_op
     : '-'
     | '~'
-    | '?'
     | '!'
     | 'abs'
     | 'all'
@@ -151,17 +166,63 @@ tuple_rule
 ;
 
 nary_expr
-    : expr_rule (
-          NOT? IN expr_rule
-        | IF nary_expr ELSE expr_rule
-        | (arith_op expr_rule)*
-    )
+    : expr_rule NOT? IN expr_rule
+    | expr_rule IF nary_expr ELSE expr_rule
+    | logic_expr
 ;
+
+// logic_expr, like arith_expr below, is flat CFG-wise but carries an
+// extra semantic restriction plain BNF can't express: a chain of 2+
+// logic_op's is only legal if they're all the *same* operator, and that
+// operator is 'and' or 'or' - never '=>'. So "x and y and z" and
+// "x or y or z" are legal (evaluated left to right, same as before),
+// but "x and y or z" and "x => y => z" are both rejected as ambiguous;
+// a single logic_op of any kind (including a lone '=>') is always fine,
+// since there's nothing to disambiguate.
+logic_expr: compare_expr (logic_op compare_expr)*;
+compare_expr: arith_expr (compare_op arith_expr)*;
+
+// arith_expr is flat CFG-wise, but a chain of 2+ arith_op's carries its
+// own extra semantic restriction:
+//   - all identical, and NOT one of '<<' '>>' '**', AND NOT one of the
+//     multiplicative-tier ops other than '*' (see below): legal,
+//     unchanged, evaluated left to right (e.g. "a & b & c", "a + b + c")
+//     - &, |, ^, +, - are all associative (&, |, ^ are commutative too),
+//     so no grouping needs disambiguating;
+//   - all identical, and IS one of '<<' '>>' '**': ambiguous even
+//     though it's the same operator repeated, because none of these
+//     are associative - (a<<b)<<c != a<<(b<<c), (a**b)**c != a**(b**c)
+//     - so "a << b << c" is a parse error just like a mix would be;
+//   - not all identical, but every operator is one of
+//     { +, -, *, /, //, mod, % }: legal, but *regrouped* by standard
+//     arithmetic precedence - the multiplicative subset
+//     { *, /, //, mod, % } binds tighter than the additive subset
+//     { +, - }, left to right within each tier - so "a + b * c" means
+//     "a + (b * c)" - SUBJECT TO the multiplicative-run restriction
+//     just below applying within each such multiplicative tier-group;
+//   - a MULTIPLICATIVE-TIER run (the whole chain, if there's no '+'/'-'
+//     at all, or one segment between two additive-tier operators once
+//     regrouped) may have at most one operator that isn't '*', and it
+//     must be the LAST one in that run: "a * b * ... * c @ d" (@ being
+//     any one of *, /, //, mod, %, including '*' itself) is legal, but
+//     "a * b / c * d" and even "a / b / c" (the SAME operator, repeated)
+//     are not - deliberately stricter than genuine mathematical
+//     ambiguity (division/mod chains are perfectly well-defined left to
+//     right); a long run of non-'*' operators is simply too easy for a
+//     human reader to misread, so parentheses have to make the grouping
+//     explicit instead;
+//   - otherwise (different operators, at least one outside the
+//     standard-arithmetic set, e.g. "a + b >> c" or "a | b + c"):
+//     ambiguous - a parse error, since arith_op has no defined relative
+//     precedence beyond that standard-arithmetic subset.
+// A single arith_op is always fine regardless of which one it is.
+arith_expr: expr_rule (arith_op expr_rule)*;
 
 expr_rule
     : SETINTLEVEL expr_rule
     | SAVE expr_rule
     | STOP expr_rule
+    | '?' question_operand
     | unary_op expr_rule
     | application
 ;
@@ -170,6 +231,49 @@ application
     : basic_expr
     | application ARROWID
     | application basic_expr
+;
+
+// question_operand ::= (NAME | '!' expr_rule) (ARROWID | basic_expr)*,
+// with any purely-grouping parentheses around it seen through first,
+// and the '!' alternative only legal when at least one
+// (ARROWID | basic_expr) actually follows it.
+//
+// '?e' (address-of) requires e to name something addressable in the
+// first place - a shared/global variable, or a function, or (extending
+// something already addressable) an application/indexing/attribute
+// chain rooted at one of those: "?a", "?a.foo", "?a[1]", "?a->b",
+// "?f(1)", "?f(1)(2)", "?(f())" (parens are just grouping, so
+// "(f())" and "f()" mean the same application either way), and
+// "?(!p)[x]" are all legal. That last one needs justifying: "!(?e)
+// == e" is the defining round-trip identity behind "a = b" meaning
+// "!(?a) = b" in the first place, so "?!p" *alone* just hands back p
+// with no addressing accomplished - a no-op, correctly excluded below
+// - but "?(!p)[x]" address-computes through p's own thunk extended by
+// x (e.g. matching "?a[x]" when p holds "?a"), which is genuinely
+// useful, exactly the way "a[x] = 1" is. This deliberately does NOT
+// extend to a '?'-prefixed base ("?(?a)[x]" stays illegal) - '!' and
+// '?' cancel as a *pair*, but there's no matching identity for '?'
+// composed with itself.
+//
+// "?5", "?[1, 2][0]", "?(1, 2)", "?(a, b)", "??x" and "?!p" are all
+// illegal: none of them start (after seeing through any grouping
+// parens) with a name or a '!'-with-something-further - a number, a
+// bracketed collection, and a genuine multi-element parenthesized
+// tuple are all real values, not names, and brackets are never "just
+// parsing" the way parens are; a bare "??x"/"?!p" is the no-op case
+// just described.
+//
+// This can't be written as plain, unparameterized BNF the way most of
+// this grammar is (the "see through grouping parens, but not a real
+// tuple/list literal", and "'!' only counts with something further
+// after it", steps both need a semantic check, not just alternation)
+// - the parser implements it as a permissive parse followed by a
+// structural validity check, the same pattern assign_target uses for
+// its own restrictions below.
+question_operand
+    : NAME (ARROWID | basic_expr)*
+    | OPEN_PAREN question_operand CLOSE_PAREN
+    | '!' expr_rule (ARROWID | basic_expr)+
 ;
 
 expr: nary_expr;
@@ -197,15 +301,81 @@ aug_assign_op
     | '<<='
     ;
 
+// A restricted form of tuple_rule for the left-hand side(s) of '=' and
+// augmented-assign - and, since "a = b" is shorthand for "!(?a) = b",
+// an assign_target and a '?'-operand are the exact same kind of thing
+// (an lvalue) and get the exact same restriction: 'application' is
+// legal only when it's identifier-headed in question_operand's sense
+// above (a bare NAME, an application/indexing/attribute chain rooted
+// in one, or one rooted in a dereference with something further after
+// it - "(!p)[x]" - all with any purely-grouping parentheses seen
+// through). A bare literal or collection is NOT a legal target any
+// more ("5 = 5", "[1,2] = x" are both now rejected) - "a value is its
+// own address" stopped being the operative reasoning the moment '?'
+// itself stopped accepting one.
+//
+// '!expr_rule' dereferences a thunk and doesn't restrict its operand's
+// *shape*: whether "!e" is actually valid depends on what e evaluates
+// to, not on syntax.
+//
+// There's deliberately no '?expr_rule' alternative: "a = b" is
+// shorthand for "!(?a) = b" - any target not already of the primitive
+// '!...' form gets wrapped in one more '?' before being assigned into
+// - so "?e = val" would itself expand to "!(?(?e)) = val", requiring
+// "??e". But '?' now requires *its own* operand to start with an
+// identifier (see question_operand above), and "?e" never does (it
+// starts with '?') - so "??e" can never be legal, for any e, which
+// makes "?e = val" always illegal too. Nothing is lost: assigning
+// through a thunk you already hold is exactly what the surviving '!'
+// alternative is for ("!p = 3").
+//
+// A parenthesized/bracketed group is a destructuring target-list
+// (Python-compatible: "(a, b) = 1, 2" means exactly "a, b = 1, 2" -
+// parens are just grouping), never "the address of the tuple
+// value" - UNLESS the ')'/']' is immediately followed by more
+// application-chain material (another basic_expr, or an ARROWID, with
+// no separator), meaning the parenthesized group was only ever the
+// *head* of a longer application/indexing chain: "(!p)[x] = 1" indexes
+// (!p) by x, it doesn't destructure (!p). A real ANTLR parser resolves
+// this ambiguity for free via ordinary lookahead (it only accepts the
+// destructuring reading when that lets the whole assign_target_list
+// actually parse); a hand-written recursive-descent parser has to
+// check for that trailing application material explicitly instead, and
+// then validate the re-parsed whole as identifier-headed like any
+// other application. A literal *empty* '()'/'[]' also falls through to
+// 'application', where it's rejected too - there's nothing to
+// destructure, and (unlike before) it no longer gets a pass as "just
+// the empty-tuple/list value" either.
+assign_target
+    : OPEN_PAREN assign_target_list CLOSE_PAREN
+    | OPEN_BRACK assign_target_list CLOSE_BRACK
+    | '!' expr_rule
+    | application
+    ;
+assign_target_list: assign_target (COMMA assign_target)* COMMA?;
+
 expr_stmt: expr_rule;
-assign_stmt: (tuple_rule assign_op)+ tuple_rule;
-aug_assign_stmt: tuple_rule aug_assign_op tuple_rule;
+assign_stmt: (assign_target_list assign_op)+ tuple_rule;
+aug_assign_stmt: assign_target_list aug_assign_op tuple_rule;
 const_assign_stmt: CONST bound EQ expr;
 assert_stmt: ASSERT expr (COMMA expr)?;
 await_stmt: AWAIT expr;
-var_stmt: VAR bound EQ tuple_rule;
+var_stmt: VAR bound EQ tuple_rule
+        | VAR NAME (COMMA NAME)*;   // a bare 'var x' (or 'var x, y, ...')
+                        // declares each name with no initial value, like
+                        // 'global x, y'/'sequential x, y' - only a flat,
+                        // parenthesis-free list of plain names may omit
+                        // '= tuple_rule' this way; an actual destructuring
+                        // bound ('var (x, y)', 'var [x, y]', or one nested
+                        // inside an otherwise-flat list) still requires one
 trap_stmt: TRAP expr;
-return_stmt: RETURN expr;
+return_stmt: RETURN expr;  // not a real Harmony statement - kept as its
+                            // own production purely so a Python habit
+                            // like "return 3" gets its own recognizable
+                            // node and a specific error from the
+                            // checker, instead of misparsing or being
+                            // silently accepted as a meaningless
+                            // expression statement.
 pass_stmt: PASS;
 break_stmt: BREAK;
 continue_stmt: CONTINUE;
@@ -213,7 +383,7 @@ finally_stmt: FINALLY expr;
 invariant_stmt: INVARIANT expr;  // Asserts an invariant that must hold
 del_stmt: DEL expr;
 spawn_stmt: SPAWN ETERNAL? expr;
-go_stmt: GO expr expr;
+go_stmt: GO expr (COMMA expr)?;  // second expr is the value STOP returns to this go; defaults to None
 print_stmt: PRINT expr (COMMA expr)?;
 sequential_stmt: SEQUENTIAL sequential_names_seq;
 global_stmt: GLOBAL expr (COMMA expr)*;
@@ -222,7 +392,6 @@ builtin_stmt: BUILTIN NAME STRING;
 sequential_names_seq: NAME (COMMA NAME)*;
 
 // Block-able statements
-atomic_block: ATOMICALLY COLON block;
 for_block: iter_parse COLON block;
 
 let_decl: LET bound assign_op tuple_rule NL?;
@@ -278,13 +447,19 @@ simple_stmt
 
 // Statements that may introduce a new indentation block
 compound_stmt
-    : ATOMICALLY? (if_block
+    : ATOMICALLY (COLON block
+    | if_block
     | while_block
     | for_block
     | let_when_block
-    | atomic_block
     | method_decl
-    );
+    )
+    | if_block
+    | while_block
+    | for_block
+    | let_when_block
+    | method_decl
+    ;
 
 one_line_stmt
     : simple_stmt (SEMI_COLON? NL | SEMI_COLON one_line_stmt);

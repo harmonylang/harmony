@@ -109,19 +109,27 @@ def handle_precheck(ns, output_files, parse_code_only, filename):
     """Phase 0: run the standalone identifier checker over the program
     before the real (ANTLR-based) compiler ever sees it. This is an
     early, additional pass, never a replacement for the pipeline below:
-      - if checker.py/parser.py can't be found, or this pass hits
-        anything unexpected, it's silently skipped (see the try/except
-        around the whole pass) - a bug in a still-evolving checker
-        should never block a program the real compiler would otherwise
-        accept;
+      - if checker.py/harmony_parser.py can't be found, or this pass
+        hits anything unexpected, it's silently skipped (see the
+        try/except around the whole pass) - a bug in a still-evolving
+        checker should never block a program the real compiler would
+        otherwise accept;
       - if the program doesn't even parse under checker.py's own
-        (still-evolving, hand-written) parser, that's printed as a
-        note, not a hard error - its grammar coverage isn't guaranteed
-        to fully match the ANTLR grammar yet;
-      - a 'cannot resolve' import/module error is also only a note,
+        (still-evolving, hand-written) parser, that's now a hard error
+        too, stopping the run right here, same as any other Phase 0
+        finding - harmony_parser.py has been exercised heavily enough
+        (243 checker tests, 166 parser cases) that a genuine syntax
+        rejection is far more likely to be real than a coverage gap,
+        and a parse failure's own message is usually far more precise
+        than whatever confusing, lower-level error Phase 1 would
+        eventually produce for the same program (see e.g. '?'-operand
+        shape errors);
+      - a 'cannot resolve' import/module error is still only a note,
         since this pass's own module resolution (_precheck_module_map)
         doesn't perfectly replicate the real compiler's per-file-
-        relative one;
+        relative one - that mismatch is specifically about FINDING a
+        file, not about the program's own syntax or identifiers, so it
+        stays advisory-only;
       - every other identifier problem - an undeclared name, illegal
         shadowing, illegal '?'/assignment-target use, and so on - is
         specific and self-contained enough (it doesn't depend on
@@ -160,15 +168,10 @@ def handle_precheck(ns, output_files, parse_code_only, filename):
     if not program.errors:
         return
 
-    parse_failed = (
-        len(program.errors) == 1
-        and program.errors[0].message.startswith("program does not parse:")
-    )
-
     blocking = []
     advisory = []
     for err in program.errors:
-        if parse_failed or err.message.startswith("cannot resolve '"):
+        if err.message.startswith("cannot resolve '"):
             advisory.append(err)
         else:
             blocking.append(err)

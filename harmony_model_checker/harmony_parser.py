@@ -153,6 +153,41 @@ STANDARD_ARITH_OPS = _ADD_TIER_OPS | _MULT_TIER_OPS
 # just mixing it with something else. A single occurrence is still fine.
 _NON_CHAINABLE_OPS = {'<<', '>>', '**'}
 
+# Within one run of consecutive multiplicative-tier operators (the
+# whole chain, if there's no '+'/'-' at all, or one segment between two
+# additive-tier ones - see _group_standard_arith), every operator
+# except possibly the LAST one must be '*': "a * b * ... * c @ d" (@
+# being any one of *, /, //, mod, % - including '*' itself, so a run of
+# nothing but '*'s is always fine) is legal; two or more non-'*'
+# operators anywhere in the same run - even the SAME one repeated, e.g.
+# "a / b / c" - is not, regardless of how many '*'s surround them. This
+# is deliberately stricter than genuine mathematical ambiguity
+# (division/mod chains are perfectly well-defined left-to-right) - it's
+# a human-readability rule: a run of more than one non-'*' operator is
+# too easy to misread, so parentheses have to make the grouping
+# explicit instead. See _first_bad_mult_run_op.
+_MULT_RUN_ERROR = (
+    "ambiguous expression: a run of multiplicative operators "
+    "('*'/'/'/'//'/'mod'/'%') may have at most one operator that isn't "
+    "'*', and it must be the last one (\"a * b * ... * c @ d\") - "
+    "chaining more than one non-'*' multiplicative operator together is "
+    "too easy to misread; use parentheses to make the grouping explicit"
+)
+
+
+def _first_bad_mult_run_op(ops):
+    """The first operator (a ParseResult) in `ops` - a run of
+    consecutive multiplicative-tier operators - that comes after
+    another non-'*' operator already in the same run, or None if the
+    run is fine as-is (every operator but possibly the last is '*')."""
+    seen_non_star = False
+    for op in ops:
+        if seen_non_star:
+            return op
+        if op.value != '*':
+            seen_non_star = True
+    return None
+
 aug_assign_ops = {
     '&=',
     '|=',
@@ -1014,11 +1049,16 @@ def _arith_chain_from(document, first):
 #   - legal & unchanged if every operator is identical, UNLESS it's
 #     repeated 2+ times and is one of '<<'/'>>'/'**' - those aren't
 #     associative, so even repeating one is ambiguous (see
-#     _NON_CHAINABLE_OPS above); every other repeated operator (e.g.
-#     "a & b & c") is fine, evaluated left to right;
+#     _NON_CHAINABLE_OPS above) - or one of the multiplicative-tier
+#     ops OTHER than '*' (see _MULT_RUN_ERROR - "a / b / c" is no
+#     longer legal, even though every operator is the same); every
+#     other repeated operator (e.g. "a & b & c", "a + b + c") is fine,
+#     evaluated left to right;
 #   - legal & *regrouped* by standard arithmetic precedence if the
 #     operators aren't all identical but every one of them is in
-#     {+, -, *, /, //, mod, %} - "a + b * c" becomes "a + (b * c)";
+#     {+, -, *, /, //, mod, %} - "a + b * c" becomes "a + (b * c)" -
+#     subject to the same multiplicative-run restriction within each
+#     '*'/'/'/'//' /'mod'/'%' run (_group_standard_arith);
 #   - ambiguous (a parse error) otherwise - two different operators
 #     appear and at least one of them isn't in that standard set, e.g.
 #     "a + b >> c" (& mixing '|'/'+' the same way).
@@ -1032,6 +1072,12 @@ def _resolve_arith_chain(flat):
                 "nary_rule", False,
                 "ambiguous expression: repeating '%s' has no defined grouping - use parentheses" % op,
                 operators[1].start, operators[1].end)
+        if op in _MULT_TIER_OPS:
+            bad = _first_bad_mult_run_op(operators)
+            if bad is not None:
+                return ParseResult(
+                    "nary_rule", False, _MULT_RUN_ERROR,
+                    bad.start, bad.end)
         return flat
     if op_values <= STANDARD_ARITH_OPS:
         return _group_standard_arith(components, operators, flat.start, flat.end)
@@ -1049,16 +1095,22 @@ def _resolve_arith_chain(flat):
 # Regroups a flat chain whose operators are all drawn from
 # {+, -, *, /, //, mod, %} (but aren't all identical) into real two-tier
 # precedence: consecutive multiplicative-tier operators (*, /, //, mod,
-# %) are grouped into their own sub-chain first, and those groups are
-# then combined left-to-right by the additive-tier operators (+, -)
-# between them - e.g. "a + b * c - d" becomes a flat top-level chain
-# [a, (b*c), d] with operators [+, -].
+# %) are grouped into their own sub-chain first (each such run itself
+# checked against _first_bad_mult_run_op - see _MULT_RUN_ERROR), and
+# those groups are then combined left-to-right by the additive-tier
+# operators (+, -) between them - e.g. "a + b * c - d" becomes a flat
+# top-level chain [a, (b*c), d] with operators [+, -].
 def _group_standard_arith(components, operators, start, end):
     if not any(op.value in _ADD_TIER_OPS for op in operators):
         # No '+'/'-' at all - every operator is some mix of the
         # multiplicative-tier ones, which don't have any further
-        # precedence relative to each other, so the flat shape already
-        # says everything there is to say.
+        # precedence relative to each other - just this run's own
+        # "at most one trailing non-'*'" restriction.
+        bad = _first_bad_mult_run_op(operators)
+        if bad is not None:
+            return ParseResult(
+                "nary_rule", False, _MULT_RUN_ERROR,
+                bad.start, bad.end)
         return ParseResult("nary_rule", True, (components, operators), start, end)
     top_components = []
     top_operators = []
@@ -1066,20 +1118,31 @@ def _group_standard_arith(components, operators, start, end):
     group_ops = []
     for op, comp in zip(operators, components[1:]):
         if op.value in _ADD_TIER_OPS:
-            top_components.append(_arith_group(group, group_ops))
+            grouped = _arith_group(group, group_ops)
+            if not grouped.success:
+                return grouped
+            top_components.append(grouped)
             top_operators.append(op)
             group = [comp]
             group_ops = []
         else:
             group.append(comp)
             group_ops.append(op)
-    top_components.append(_arith_group(group, group_ops))
+    grouped = _arith_group(group, group_ops)
+    if not grouped.success:
+        return grouped
+    top_components.append(grouped)
     return ParseResult("nary_rule", True, (top_components, top_operators), start, end)
 
 
 def _arith_group(components, operators):
     if not operators:
         return components[0]
+    bad = _first_bad_mult_run_op(operators)
+    if bad is not None:
+        return ParseResult(
+            "nary_rule", False, _MULT_RUN_ERROR,
+            bad.start, bad.end)
     return ParseResult("nary_rule", True, (components, operators), components[0].start, components[-1].end)
 
 
@@ -1224,18 +1287,103 @@ def _is_identifier_headed(r):
     return False
 
 
+# True if `r` is a literal CONSTANT: a bare number/string/atom/bool/
+# None, or a tuple/list/set/dict literal built entirely out of other
+# constants (recursively) - never anything that has to be COMPUTED to
+# get there. This is deliberately narrower than "isConstant" in the
+# usual constant-folding sense: '1 + 2' is not a constant here, even
+# though its value is fully determined at compile time - it's still an
+# arith_expr/nary_rule (an operator applied to operands), not a value
+# written directly as one. A range ('1 .. 5') and a comprehension
+# ('{x for x in y}') are excluded for the same reason - both COMPUTE a
+# collection rather than spell one out - and so is a lambda (Harmony
+# 2.0's '?' doesn't (yet, at least) treat an anonymous function literal
+# as a constant the way it does a def's own name - see
+# parse_question_operand). Grouping parentheses are seen through, same
+# as _is_identifier_headed - '(1)' is just '1', and '[1]'/'(1,)' are a
+# genuine one-element list/tuple either way, so the same "single
+# element with no trailing comma isn't wrapped in its own 'tuple' node"
+# parse shape works out to the same answer read either way.
+def _is_constant_literal(r):
+    if r.type in ("number", "string", "atom", "bool", "none"):
+        return True
+    if r.type == "empty_dict":
+        return True
+    if r.type in ("paren_tuple", "bracket_tuple"):
+        inner = r.value
+        if isinstance(inner, list):
+            return True  # empty '()' / '[]'
+        if inner.type == "tuple":
+            return all(_is_constant_literal(v) for v in inner.value)
+        return _is_constant_literal(inner)  # single element - grouping
+                                              # for '()', a one-element
+                                              # list for '[]', but the
+                                              # same check either way
+    if r.type == "set_rule":
+        inner = r.value
+        if isinstance(inner, list):
+            return True  # empty '{}'
+        if inner.type == "empty_dict":
+            return True
+        if inner.type == "set":
+            return all(_is_constant_literal(v) for v in inner.value)
+        if inner.type == "dict":
+            return all(_is_constant_literal(k) and _is_constant_literal(v)
+                       for (k, v) in inner.value)
+        return False  # range / set_comprehension / dict_comprehension
+    return False
+
+
+# True if `r` is itself a successfully-parsed '?'-expression ('?e', for
+# some e). parse_expr_rule only ever reaches the point of building this
+# shape - type "expr_rule" wrapping a ('?' unary_op, operand) pair - by
+# already having called parse_question_operand on the inner operand and
+# had it succeed; that success is exactly this same rule (identifier-
+# headed / constant-literal / itself-nested), applied one level down.
+# So a nested '?' needs no re-validation of its own inner shape here -
+# succeeding at parsing IS having already satisfied the rule - this
+# check only has to recognize "was it a '?', not some other unary_op
+# like '!' or '-'" - seeing through any purely-grouping parentheses
+# first ("?(?x)" is exactly "??x" with parens for grouping only, the
+# same treatment _is_identifier_headed/_is_constant_literal already
+# give theirs).
+def _is_nested_question(r):
+    if r.type == "paren_tuple":
+        inner = r.value
+        if isinstance(inner, list):
+            return False  # empty '()' - not a '?'-expression
+        if inner.type == "tuple":
+            return False  # a real multi-element tuple - not a '?'-expression
+        return _is_nested_question(inner)  # pure grouping - see through it
+    if r.type != "expr_rule":
+        return False
+    op, _inner = r.value
+    return op.type == "unary_op" and op.value == '?'
+
+
 # question_operand ::= (NAME | '!' expr_rule) (ARROWID | basic_expression)*
+#                     | constant_literal
+#                     | '?' question_operand
 #   -- with any purely-grouping parentheses seen through first, and the
 #      '!' alternative only when at least one (ARROWID | basic_expression)
 #      actually follows it - see _is_identifier_headed for why.
 #
-# '?e' (address-of) requires e to name something addressable in the
-# first place - a shared/global variable, or a function, or (extending
-# something already addressable) an application/indexing/attribute
-# chain rooted at one of those: "?a", "?a.foo", "?a[1]", "?a->b",
-# "?f(1)", "?f(1)(2)", "?(f())" (parens are just grouping), and
-# "?(!p)[x]" (see _is_identifier_headed) are all legal, but "?5",
-# "?[1, 2][0]", "?(1, 2)", "?(a, b)", "??x" and "?!p" are not.
+# '?e' ("thunk-of") is legal for four shapes of e: a literal CONSTANT
+# (see _is_constant_literal - "?{1}", "?(1, 2)", "?5" are all legal), a
+# shared/global variable or a function, (extending something already
+# addressable) an application/indexing/attribute chain rooted at one of
+# those: "?a", "?a.foo", "?a[1]", "?a->b", "?f(1)", "?f(1)(2)",
+# "?(f())" (parens are just grouping), and "?(!p)[x]" (see
+# _is_identifier_headed) are all legal - or ANOTHER '?'-expression:
+# "?x" is itself a constant (a thunk), so "??x" ("a thunk of a thunk")
+# is exactly as legal as "?x" was, recursively, however deep ("???x"
+# and so on) - see _is_nested_question. A LOCAL variable is legal here
+# too, SYNTACTICALLY - checker.py's own semantic phase is what tells a
+# local apart from a global/def and rejects a bare local (see
+# _check_question_target); this parse-level check only rules out actual
+# computed expressions: "?(1 + 2)", "?(a and b)", "?(1 .. 5)" and
+# "?!p" (alone, with nothing further - see _is_identifier_headed) are
+# not legal.
 # Parsed permissively first as an ordinary expr_rule, same as
 # everywhere else, purely to find its extent - then re-checked against
 # the restriction above, the same permissive-parse-then-validate
@@ -1244,10 +1392,12 @@ def parse_question_operand(document, offset):
     expr = parse_expr_rule(document, offset)
     if not expr.success:
         return expr
-    if not _is_identifier_headed(expr):
+    if not (_is_identifier_headed(expr) or _is_constant_literal(expr)
+            or _is_nested_question(expr)):
         return ParseResult(
             "question_operand", False,
-            "'?' requires an operand that starts with an identifier (a variable or function name), not a literal, a collection, or another unary operator",
+            "'?' requires an operand that's a constant, a variable or function name, "
+            "or an indexing/attribute chain rooted in one - not a computed expression",
             expr.start, expr.end)
     return expr
 

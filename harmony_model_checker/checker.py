@@ -819,7 +819,7 @@ class FunctionScope:
     while walking the body (see _resolve_identifier) - `locals` alone
     can't answer that, since it has no notion of textual extent."""
 
-    def __init__(self, label, start, body, parent=None):
+    def __init__(self, label, start, body, parent=None, enclosing_live=None):
         self.label = label
         self.start = start
         self.body = body
@@ -831,6 +831,18 @@ class FunctionScope:
                                  # nested def can be called from
         self.locals = {}       # every declared name -> a representative LocalDeclaration
         self.persistent = {}   # param/returns only -> LocalDeclaration
+        # name -> (LocalDeclaration, enclosing scope's own label): a
+        # SNAPSHOT, taken at the exact point this scope was found nested
+        # (see _collect_locals_compound's method_decl case), of every
+        # name genuinely still in scope there - the enclosing scope's
+        # own params/returns, whatever's in its CURRENTLY OPEN block
+        # frames at that point (not just anything textually earlier -
+        # something whose own enclosing if/for/let/etc. has already
+        # closed by then is correctly left out), and, transitively,
+        # that enclosing scope's own enclosing_live in turn (so a
+        # doubly-nested def still sees everything genuinely live all
+        # the way up). Used only by _check_shadowing - see there.
+        self.enclosing_live = enclosing_live if enclosing_live is not None else {}
 
     def _shadow_error(self, name, existing, kind, start, end, program):
         program.errors.append(CheckError(
@@ -1681,15 +1693,32 @@ def _collect_locals_compound(compound, scope, block_stack, program):
         # chain (set here) back up looking for this one.
         name, params, returns, body = compound.value
         program.def_scopes.setdefault(name.value, scope)
-        _process_function(name, params, returns, body, program, scope)
+        enclosing_live = _live_snapshot(scope, block_stack)
+        _process_function(name, params, returns, body, program, scope, enclosing_live)
         return
     if compound.type == "atomic_block":
         _collect_locals_block(compound.value, scope, block_stack, program)
         return
 
 
-def _process_function(name, params, returns, body, program, parent):
-    scope = FunctionScope("function '%s'" % name.value, name.start, ("block", body), parent)
+def _live_snapshot(scope, block_stack):
+    """See FunctionScope.enclosing_live - everything genuinely in scope
+    in `scope` at THIS exact point (a nested def being found), nearest
+    first: `scope`'s own enclosing_live (its own ancestor context, for
+    a doubly-nested def), then its persistent params/returns, then each
+    of `block_stack`'s currently-open frames outermost to innermost -
+    each layer overrides the previous on a name collision, so the
+    closest declaration wins, same as real lexical scoping would find
+    first."""
+    live = dict(scope.enclosing_live)
+    live.update((name, (decl, scope.label)) for name, decl in scope.persistent.items())
+    for frame in block_stack:
+        live.update((name, (decl, scope.label)) for name, decl in frame.items())
+    return live
+
+
+def _process_function(name, params, returns, body, program, parent, enclosing_live=None):
+    scope = FunctionScope("function '%s'" % name.value, name.start, ("block", body), parent, enclosing_live)
     program.scopes.append(scope)
     for p in _bound_names(params):
         scope.declare_persistent(p.value, "param", p.start, p.end, program)
@@ -1828,6 +1857,55 @@ def _process_top_level(stmts, program):
 # restatement is exempt (the same harmless no-op it's always been), and
 # a CONFLICTING one is caught earlier, more specifically, by
 # note_shared_kind rather than reported again here.
+#
+# A THIRD case, below, catches what the first two miss: a function's own
+# local reusing the name of a plain (non-promoted) var/let/param/for/
+# lambda/exists declared in a LEXICALLY ENCLOSING scope - the top-level
+# program's own top-level var, or (for a nested def) an outer function's
+# own local. checker.py's name-RESOLUTION rules already treat a nested
+# function as having no closures over any of this - deliberately, so
+# that using a shared name always requires an explicit
+# global/sequential declaration rather than an implicit, easy-to-miss
+# fallback. But real Harmony's own compiler (harmony/scope.py's Scope)
+# still compiles every nested construct - a def, a lambda, an
+# if/for/while body - as a genuine lexical child of whatever scope was
+# open at that point, and declaring a new var/const there calls
+# checkUnused, which walks the WHOLE parent chain and rejects any name
+# already visible anywhere up it ("variable X shadows previous use") -
+# so this really is still a compile error, confirmed against that
+# source, even though the checker's own resolution model would never
+# let the inner declaration actually READ the outer one it collides
+# with. scope.enclosing_live (a snapshot taken at the exact point this
+# scope was found nested - see _live_snapshot) is what makes this
+# available here: unlike a plain "textually before" position check
+# (which was tried and reverted - see the regression note below), it
+# already reflects genuine, still-open extent, so a name whose own
+# enclosing if/for/let/lambda/etc. had already closed by the time this
+# scope was found nested correctly does NOT appear in it, even though
+# it's textually earlier in the source; nor does a same-named var
+# declared LATER in the enclosing function/program, which was simply
+# never live yet when this scope was found nested. global/sequential
+# are excluded only on the shadowING side (decl.kind check just above):
+# they're never a fresh local to begin with (declaring one explicitly
+# reaches for the outer/program-level shared variable, the whole point
+# of writing one) and a mismatched restatement of one is already
+# reported, more specifically, by note_shared_kind - but an ANCESTOR's
+# own live global/sequential is still a legitimate shadow target, same
+# as any other kind.
+#
+# Regression note: an earlier version of this check compared
+# scope.parent's flat FunctionScope.locals pool (position-only, "is the
+# ancestor declaration's own start earlier than this scope's start")
+# instead of a real extent-aware snapshot - which wrongly flagged code
+# like:
+#   invariant all(acct.balance >= 0 for acct in accounts)
+#   def atm_check_balance(acct): ...
+# ('acct' the comprehension's own for-bound name, whose extent closes at
+# the end of that one comprehension, long before the def - a flat,
+# position-only pool has no way to know that, since FunctionScope.locals
+# is deliberately extent-blind - see its own docstring). enclosing_live
+# is built from the live block_stack at the exact point of nesting
+# instead, so it doesn't have this problem.
 # ---------------------------------------------------------------------------
 
 def _check_shadowing(program):
@@ -1840,7 +1918,8 @@ def _check_shadowing(program):
                     "'%s' in %s shadows %s of the same name - "
                     "Harmony does not allow shadowing"
                     % (name, scope.label, _describe(gdecl)), decl.start, decl.end))
-            elif (scope is not top_level and name in program.promoted
+                continue
+            if (scope is not top_level and name in program.promoted
                     and program.promoted[name].kind in ("global", "sequential")
                     and decl.kind not in ("global", "sequential")):
                 sdecl = program.promoted[name]
@@ -1848,6 +1927,17 @@ def _check_shadowing(program):
                     "'%s' in %s shadows %s of the same name - "
                     "Harmony does not allow shadowing"
                     % (name, scope.label, _describe(sdecl)), decl.start, decl.end))
+                continue
+            if decl.kind in ("global", "sequential"):
+                continue
+            live = scope.enclosing_live.get(name)
+            if live is not None:
+                ldecl, ancestor_label = live
+                program.errors.append(CheckError(
+                    "'%s' in %s shadows %s of the same name in %s - "
+                    "Harmony does not allow shadowing"
+                    % (name, scope.label, _describe_local(ldecl), ancestor_label),
+                    decl.start, decl.end))
 
 
 # ---------------------------------------------------------------------------
