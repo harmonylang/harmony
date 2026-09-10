@@ -179,6 +179,11 @@ class HarmonyVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by HarmonyParser#literal_tuple_rule.
+    def visitLiteral_tuple_rule(self, ctx:HarmonyParser.Literal_tuple_ruleContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by HarmonyParser#expr.
     def visitExpr(self, ctx:HarmonyParser.ExprContext):
         return self.visitChildren(ctx)

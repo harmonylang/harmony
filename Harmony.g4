@@ -259,26 +259,49 @@ application
 // '?' cancel as a *pair*, but there's no matching identity for '?'
 // composed with itself.
 //
-// A bare literal CONSTANT - a number, bool, atom, string, or None - is
-// also a legal '?'-operand: "?5" and "?True" address that value
-// directly (a value is its own address - there's nothing to compute,
-// the value IS the constant written down). Unlike the NAME/'('/'!'
-// alternatives, none of the five literal alternatives take a trailing
-// (ARROWID | basic_expr)* chain: "?5[0]" isn't "index into the
-// constant 5's address" - that's not a shape '?' supports - so it
-// stays illegal. Collection literals ("?[1, 2]", "?(1, 2)", "?{1}")
-// remain illegal too, for now: see harmony_parser.py's
-// _is_constant_literal for what full parity would look like (a
-// tuple/list/set/dict literal is a constant only when every element
-// recursively is) - that needs its own recursive grammar production
-// to express correctly and is left as a follow-up rather than folded
-// in here.
+// A bare literal CONSTANT is also a legal '?'-operand: a number, bool,
+// atom, string, or None directly ("?5", "?True"), or a tuple/list/set/
+// dict literal built entirely out of other constants, recursively
+// ("?{1}", "?[1, 2]", "?(1, 2)", "?{1: 2}", "?{}", "?{:}", "?()",
+// "?[]", "?{1, {2, 3}}"). A value is its own address - there's
+// nothing to compute, the value IS the constant written down, however
+// deep the nesting. None of these take a trailing (ARROWID |
+// basic_expr)* chain the way NAME/'('/'!' do: "?5[0]" isn't "index
+// into the constant 5's address" - that's not a shape '?' supports -
+// so it stays illegal.
 //
-// "?(1, 2)", "?(a, b)" and "??x" are still illegal: neither a genuine
-// multi-element parenthesized tuple nor a bracketed collection is one
-// of the five literal alternatives above, and there's no '?'-headed
-// alternative here (nesting "??x" stays unsupported for the same
-// reason collection literals do).
+// Unlike the scalar case, "every element recursively is a constant"
+// isn't something this grammar production enforces by itself - a
+// tuple/list/set/dict literal's elements are ordinary nary_expr (the
+// same as basic_expr's own tuple_rule/set_rule use), so "?[1, x]" and
+// "?{1..5}" (a range) and "?[e for e in c]" (a comprehension) all
+// parse just fine here too. What actually rejects a non-constant
+// element - or a range/comprehension entirely, which are never
+// constant regardless of what's inside them - is a semantic check
+// (AddressAST.check in ast.py, via each AST class's own isLiteral)
+// once the AST is built, the same permissive-parse-then-validate
+// split the '!'-alternative's own no-op restriction above already
+// uses, and the same shape harmony_parser.py's _is_constant_literal
+// applies on its own parse tree.
+//
+// The parenthesized literal-tuple case needs its own dedicated
+// literal_tuple_rule below rather than reusing tuple_rule directly,
+// specifically so it can never be mistaken for this rule's OWN
+// parenthesized-grouping alternative above: literal_tuple_rule always
+// consumes at least one COMMA token (or is entirely empty, "()"), so
+// "(5)" - zero commas - can only ever match the grouping alternative,
+// exactly as it did before this alternative existed, while "(5,)" and
+// "(5, 6)" can only ever match this one. Brackets and braces have no
+// such ambiguity to begin with - nothing else in this rule starts
+// with '[' or '{' - so OPEN_BRACK/OPEN_BRACES below reuse the
+// existing tuple_rule/set_rule productions directly, the same way
+// basic_expr's own bracket_tuple/set_rule_1/empty_dict do.
+//
+// "?(a + b)" and "??x" both stay illegal, for unrelated reasons: the
+// former has no comma, so it can only reach the grouping alternative,
+// which requires a question_operand inside - "a + b" isn't one; the
+// latter has no '?'-headed alternative here at all (nesting stays
+// unsupported).
 //
 // A bare "?!p" (no parens, nothing following the '!p') is *not*
 // rejected by this grammar production - notice the '!' alternative
@@ -304,6 +327,24 @@ question_operand
     | ATOM
     | STRING
     | NONE
+    | OPEN_PAREN literal_tuple_rule? CLOSE_PAREN
+    | OPEN_BRACK tuple_rule? CLOSE_BRACK
+    | OPEN_BRACES set_rule? COMMA? CLOSE_BRACES
+    | OPEN_BRACES COLON CLOSE_BRACES
+;
+
+// A parenthesized literal-tuple operand of '?' ("?(5,)", "?(5, 6)",
+// "?()") - deliberately NOT the same as tuple_rule (which question_
+// operand's own OPEN_PAREN ... CLOSE_PAREN grouping alternative above
+// must stay clear of - see the comment above question_operand). Every
+// non-empty alternative here consumes at least one literal COMMA
+// token, which tuple_rule's own single-element-no-comma case does
+// not - that's what keeps this rule from ever overlapping with plain
+// grouping: "(5)" has no comma, so it can only be grouping, while
+// "(5,)"/"(5, 6)" have one, so they can only be this.
+literal_tuple_rule
+    : nary_expr COMMA
+    | nary_expr (COMMA nary_expr)+ COMMA?
 ;
 
 expr: nary_expr;

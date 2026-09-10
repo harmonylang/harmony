@@ -732,6 +732,18 @@ class HarmonyVisitorImpl(HarmonyVisitor):
             return values[0]
         return TupleAST(endtoken, values, tkn)
 
+    # Visit a parse tree produced by HarmonyParser#literal_tuple_rule.
+    # Unlike visitTuple_rule, every alternative here guarantees at least
+    # one COMMA is present (see literal_tuple_rule's own comment in
+    # Harmony.g4), so there's no single-element-with-no-comma case to
+    # treat as "just grouping" the way visitTuple_rule does - this is
+    # always a genuine (possibly one-element) tuple.
+    def visitLiteral_tuple_rule(self, ctx: HarmonyParser.Literal_tuple_ruleContext):
+        tkn = self.get_token(ctx.start, ctx.start.text)
+        endtoken = self.get_token(ctx.stop, ctx.stop.text)
+        values = [self.visit(e) for e in ctx.nary_expr()]
+        return TupleAST(endtoken, values, tkn)
+
     # --- Expression construction helpers -----------------------------
     #
     # The grammar's nary_expr/logic_expr/compare_expr/arith_expr chain is
@@ -961,6 +973,10 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     #                     | '(' question_operand ')' (ARROWID | basic_expr)*
     #                     | '!' expr_rule (ARROWID | basic_expr)*
     #                     | INT | BOOL | ATOM | STRING | NONE
+    #                     | '(' literal_tuple_rule? ')'
+    #                     | '[' tuple_rule? ']'
+    #                     | '{' set_rule? ','? '}'
+    #                     | '{' ':' '}'
     #
     # harmony_parser.py (Phase 0) has already validated that this operand is
     # legal for '?' to be applied to - this visitor's only job is to build
@@ -972,13 +988,23 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     # occurrences have to stay in their original left-to-right order, and
     # the generated context's own ARROWID()/basic_expr() accessors return
     # each kind separately, losing that interleaving.
-    # A bare literal CONSTANT - INT/BOOL/ATOM/STRING/NONE - is one of
-    # question_operand's alternatives in Harmony.g4 (e.g. "?5"), but
-    # (unlike NAME/'('/'!') takes no trailing (ARROWID | basic_expr)*
-    # chain, so it's parsed as a plain literal, not a chain base -
-    # this builds exactly the ConstantAST visitInt/visitBool/visitAtom/
-    # visitStr/visitNone (above) would build for the same token as a
-    # basic_expr, so "?5" and "5" agree on what the literal 5 means.
+    # A bare literal CONSTANT - INT/BOOL/ATOM/STRING/NONE, or a tuple/
+    # list/set/dict literal - is one of question_operand's alternatives
+    # in Harmony.g4 (e.g. "?5", "?{1}"), but (unlike NAME/'('/'!') takes
+    # no trailing (ARROWID | basic_expr)* chain, so it's parsed as a
+    # plain literal, not a chain base.
+    #
+    # The collection alternatives are built with the exact same visitor
+    # methods (visitTuple_rule/visitSet_rule/visitLiteral_tuple_rule)
+    # basic_expr's own paren_tuple/bracket_tuple/set_rule_1/empty_dict
+    # use, so "?[1, x]" produces the very same TupleAST([1, x]) that a
+    # plain "[1, x]" would - Harmony.g4's own comment above question_
+    # operand explains why: this grammar production deliberately does
+    # NOT restrict tuple/set/dict elements to constants (nary_expr, not
+    # some parallel constant-only rule) - AddressAST.check (ast.py),
+    # via each AST class's own isLiteral, is what actually rejects a
+    # non-constant element, once this visitor has already built the
+    # AST a non-'?' occurrence of the same literal would.
     def _question_operand_literal(self, terminal):
         symbol = terminal.symbol
         text = terminal.getText()
@@ -1019,13 +1045,17 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     def visitQuestion_operand(self, ctx: HarmonyParser.Question_operandContext):
         tkn = self.get_token(ctx.start, ctx.start.text)
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
-        if ctx.OPEN_PAREN():
+        if ctx.OPEN_PAREN() and ctx.question_operand():
             # '(' question_operand ')' (ARROWID | basic_expr)* - the parens
             # recurse rather than just being seen through, since (unlike a
             # bare NAME) the parenthesized alternative may itself be
             # followed by more chain material: "?(!p)[x]" needs somewhere
             # for the trailing "[x]" to attach once '!p' is wrapped in
             # parens (see the question_operand comment in Harmony.g4).
+            # Checking ctx.question_operand() (not just ctx.OPEN_PAREN())
+            # is what tells this apart from the literal-tuple '(' below -
+            # OPEN_PAREN is now shared by both alternatives, but only this
+            # one ever has a nested question_operand.
             result = self.visit(ctx.question_operand())
             rest = ctx.children[3:]
         elif ctx.NAME():
@@ -1042,6 +1072,27 @@ class HarmonyVisitorImpl(HarmonyVisitor):
             return self._question_operand_literal(ctx.STRING())
         elif ctx.NONE():
             return self._question_operand_literal(ctx.NONE())
+        elif ctx.OPEN_PAREN():
+            # '(' literal_tuple_rule? ')' - a genuine tuple literal
+            # ("?(5,)", "?(5, 6)") or the empty tuple ("?()"), never
+            # plain grouping (see literal_tuple_rule's own comment in
+            # Harmony.g4 for why the two can't collide).
+            if ctx.literal_tuple_rule():
+                return self.visit(ctx.literal_tuple_rule())
+            return ConstantAST(endtoken, (emptytuple, self.file, tkn[2], tkn[3]))
+        elif ctx.OPEN_BRACK():
+            # '[' tuple_rule? ']' - mirrors basic_expr's own bracket_tuple.
+            if ctx.tuple_rule():
+                return self.visit(ctx.tuple_rule())
+            return ConstantAST(endtoken, (emptytuple, self.file, tkn[2], tkn[3]))
+        elif ctx.OPEN_BRACES():
+            # '{' set_rule? ','? '}' or '{' ':' '}' - mirrors basic_expr's
+            # own set_rule_1/empty_dict.
+            if ctx.COLON():
+                return DictAST(endtoken, tkn, [])
+            if ctx.set_rule():
+                return self.visit(ctx.set_rule())
+            return SetAST(endtoken, tkn, [])
         else:
             expr = self.visit(ctx.expr_rule())
             result = PointerAST(endtoken, expr, tkn)

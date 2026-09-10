@@ -79,6 +79,19 @@ class AST:
     def isConstant(self, scope):
         return False
 
+    # True if this AST is a literal CONSTANT in the narrower sense '?'
+    # requires (see the question_operand comment in Harmony.g4): a
+    # value written directly as one - ConstantAST always, TupleAST/
+    # SetAST/DictAST when every element recursively is - never merely
+    # a computed value that happens to be constant-foldable the way
+    # isConstant above allows (e.g. "1 + 2" is isConstant but not
+    # isLiteral). Only those four classes override this; everything
+    # else - including a NAME, even one bound to a const - is False by
+    # default, since a name is a reference to a value, not the value
+    # written down.
+    def isLiteral(self, scope):
+        return False
+
     def eval(self, scope: Scope, code: Code):
         state = State(code, scope.labels)
         ctx = ContextValue(("__eval__", None, None, None), 0, emptytuple, emptydict)
@@ -285,6 +298,9 @@ class ConstantAST(AST):
     def isConstant(self, scope):
         return True
 
+    def isLiteral(self, scope):
+        return True
+
     def getLabels(self):
         return set()
 
@@ -418,11 +434,23 @@ class SetAST(AST):
     def isConstant(self, scope):
         return all(x.isConstant(scope) for x in self.collection)
 
+    def isLiteral(self, scope):
+        return all(x.isLiteral(scope) for x in self.collection)
+
     def gencode(self, scope, code, stmt):
         code.append(PushOp((SetValue(set()), None, None, None)), self.token, self.endtoken, stmt=stmt)
         for e in self.collection:
             e.compile(scope, code, stmt)
             code.append(NaryOp(("SetAdd", None, None, None), 2), self.token, self.endtoken, stmt=stmt)
+
+    # '?{1, 2}' etc - matches TupleAST/DictAST's own address(): build the
+    # value (gencode) same as a non-'?' occurrence would, then wrap it as
+    # a thunk. Only reachable when AddressAST.check has already confirmed
+    # isLiteral, same as for TupleAST/DictAST.
+    def address(self, scope, code, stmt):
+        self.gencode(scope, code, stmt)
+        (lexeme, file, line, column) = self.token
+        code.append(NaryOp(("Closure", file, line, column), 1), self.token, self.endtoken, stmt=stmt)
 
     def getLabels(self):
         if self.collection == []:
@@ -469,6 +497,9 @@ class TupleAST(AST):
 
     def isConstant(self, scope):
         return all(v.isConstant(scope) for v in self.list)
+
+    def isLiteral(self, scope):
+        return all(v.isLiteral(scope) for v in self.list)
 
     def gencode(self, scope, code, stmt):
         (lexeme, file, line, column) = self.token
@@ -526,6 +557,10 @@ class DictAST(AST):
 
     def isConstant(self, scope):
         return all(k.isConstant(scope) and v.isConstant(scope)
+                   for (k, v) in self.record)
+
+    def isLiteral(self, scope):
+        return all(k.isLiteral(scope) and v.isLiteral(scope)
                    for (k, v) in self.record)
 
     def gencode(self, scope, code, stmt):
@@ -1237,8 +1272,25 @@ class AddressAST(AST):
             self.check(lv.method, scope)
         elif isinstance(lv, PointerAST):
             pass
-        elif isinstance(lv, TupleAST):
-            pass
+        elif isinstance(lv, (TupleAST, SetAST, DictAST)):
+            # A tuple/list/set/dict literal is only a legal '?'-operand
+            # when every element, recursively, is itself a literal
+            # constant (see the question_operand comment in Harmony.g4
+            # for why "?[1, x]" and "?{1..5}" don't qualify even though
+            # Harmony.g4's own grammar lets them parse this far) -
+            # isLiteral is the narrower-than-isConstant check for that
+            # (see its own comment on the AST base class above).
+            if not lv.isLiteral(scope):
+                lexeme, file, line, column = lv.token
+                raise HarmonyCompilerError(
+                    filename=file,
+                    lexeme=lexeme,
+                    line=line,
+                    column=column,
+                    message="'?' requires a literal constant here - "
+                            "every element must itself be one, not a "
+                            "computed value: %s" % str(lv),
+                )
         elif isinstance(lv, ConstantAST):
             pass
         elif isinstance(lv, LambdaAST):
