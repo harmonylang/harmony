@@ -958,8 +958,9 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     # Visit a parse tree produced by HarmonyParser#question_operand.
     #
     # question_operand ::= NAME (ARROWID | basic_expr)*
-    #                     | '(' question_operand ')'
-    #                     | '!' expr_rule (ARROWID | basic_expr)+
+    #                     | '(' question_operand ')' (ARROWID | basic_expr)*
+    #                     | '!' expr_rule (ARROWID | basic_expr)*
+    #                     | INT | BOOL | ATOM | STRING | NONE
     #
     # harmony_parser.py (Phase 0) has already validated that this operand is
     # legal for '?' to be applied to - this visitor's only job is to build
@@ -971,6 +972,50 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     # occurrences have to stay in their original left-to-right order, and
     # the generated context's own ARROWID()/basic_expr() accessors return
     # each kind separately, losing that interleaving.
+    # A bare literal CONSTANT - INT/BOOL/ATOM/STRING/NONE - is one of
+    # question_operand's alternatives in Harmony.g4 (e.g. "?5"), but
+    # (unlike NAME/'('/'!') takes no trailing (ARROWID | basic_expr)*
+    # chain, so it's parsed as a plain literal, not a chain base -
+    # this builds exactly the ConstantAST visitInt/visitBool/visitAtom/
+    # visitStr/visitNone (above) would build for the same token as a
+    # basic_expr, so "?5" and "5" agree on what the literal 5 means.
+    def _question_operand_literal(self, terminal):
+        symbol = terminal.symbol
+        text = terminal.getText()
+        endtoken = self.get_token(symbol, text)
+        ttype = symbol.type
+        if ttype == HarmonyParser.INT:
+            tkn = self.get_token(symbol, int(text, 0))
+        elif ttype == HarmonyParser.BOOL:
+            tkn = self.get_token(symbol, text == 'True')
+        elif ttype == HarmonyParser.ATOM:
+            if text.startswith("0x"):
+                tkn = self.get_token(symbol, chr(int(text, 16)))
+            else:
+                tkn = self.get_token(symbol, text[1:])
+        elif ttype == HarmonyParser.STRING:
+            if text.startswith("'''") and text.endswith("'''"):
+                s = text[3:-3]
+            elif text.startswith('\"\"\"') and text.endswith('\"\"\"'):
+                s = text[3:-3]
+            elif text.startswith("'") and text.endswith("'"):
+                s = text[1:-1]
+            elif text.startswith('\"') and text.endswith('\"'):
+                s = text[1:-1]
+            else:
+                raise HarmonyCompilerError(
+                    message="Unable to parse string",
+                    filename=self.file,
+                    line=symbol.line,
+                    column=symbol.column + 1,
+                    lexeme=text,
+                )
+            tkn = self.get_token(symbol, s)
+        else:
+            assert ttype == HarmonyParser.NONE
+            tkn = self.get_token(symbol, AddressValue(None, []))
+        return ConstantAST(endtoken, tkn)
+
     def visitQuestion_operand(self, ctx: HarmonyParser.Question_operandContext):
         tkn = self.get_token(ctx.start, ctx.start.text)
         endtoken = self.get_token(ctx.stop, ctx.stop.text)
@@ -987,6 +1032,16 @@ class HarmonyVisitorImpl(HarmonyVisitor):
             name_tok = self.get_token(ctx.NAME().symbol, str(ctx.NAME()))
             result = NameAST(name_tok, name_tok)
             rest = ctx.children[1:]
+        elif ctx.INT():
+            return self._question_operand_literal(ctx.INT())
+        elif ctx.BOOL():
+            return self._question_operand_literal(ctx.BOOL())
+        elif ctx.ATOM():
+            return self._question_operand_literal(ctx.ATOM())
+        elif ctx.STRING():
+            return self._question_operand_literal(ctx.STRING())
+        elif ctx.NONE():
+            return self._question_operand_literal(ctx.NONE())
         else:
             expr = self.visit(ctx.expr_rule())
             result = PointerAST(endtoken, expr, tkn)

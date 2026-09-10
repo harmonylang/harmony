@@ -234,7 +234,8 @@ application
 ;
 
 // question_operand ::= (NAME | '(' question_operand ')' | '!' expr_rule)
-// (ARROWID | basic_expr)*. The parenthesized alternative recurses (so
+// (ARROWID | basic_expr)* | (INT | BOOL | ATOM | STRING | NONE). The
+// parenthesized alternative recurses (so
 // nested/redundant parens are fine) and, like the other two, may
 // itself be followed by more (ARROWID | basic_expr) chain material -
 // that's what lets "?(!p)[x]" below actually parse: the '!p' part is
@@ -258,11 +259,26 @@ application
 // '?' cancel as a *pair*, but there's no matching identity for '?'
 // composed with itself.
 //
-// "?5", "?[1, 2][0]", "?(1, 2)", "?(a, b)" and "??x" are all illegal:
-// none of them start (after seeing through any grouping parens) with
-// a name or a '!' - a number, a bracketed collection, and a genuine
-// multi-element parenthesized tuple are all real values, not names,
-// and brackets are never "just parsing" the way parens are.
+// A bare literal CONSTANT - a number, bool, atom, string, or None - is
+// also a legal '?'-operand: "?5" and "?True" address that value
+// directly (a value is its own address - there's nothing to compute,
+// the value IS the constant written down). Unlike the NAME/'('/'!'
+// alternatives, none of the five literal alternatives take a trailing
+// (ARROWID | basic_expr)* chain: "?5[0]" isn't "index into the
+// constant 5's address" - that's not a shape '?' supports - so it
+// stays illegal. Collection literals ("?[1, 2]", "?(1, 2)", "?{1}")
+// remain illegal too, for now: see harmony_parser.py's
+// _is_constant_literal for what full parity would look like (a
+// tuple/list/set/dict literal is a constant only when every element
+// recursively is) - that needs its own recursive grammar production
+// to express correctly and is left as a follow-up rather than folded
+// in here.
+//
+// "?(1, 2)", "?(a, b)" and "??x" are still illegal: neither a genuine
+// multi-element parenthesized tuple nor a bracketed collection is one
+// of the five literal alternatives above, and there's no '?'-headed
+// alternative here (nesting "??x" stays unsupported for the same
+// reason collection literals do).
 //
 // A bare "?!p" (no parens, nothing following the '!p') is *not*
 // rejected by this grammar production - notice the '!' alternative
@@ -283,6 +299,11 @@ question_operand
     : NAME (ARROWID | basic_expr)*
     | OPEN_PAREN question_operand CLOSE_PAREN (ARROWID | basic_expr)*
     | '!' expr_rule (ARROWID | basic_expr)*
+    | INT
+    | BOOL
+    | ATOM
+    | STRING
+    | NONE
 ;
 
 expr: nary_expr;
