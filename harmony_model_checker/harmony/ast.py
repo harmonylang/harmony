@@ -1256,6 +1256,19 @@ class AddressAST(AST):
     def isConstant(self, scope):
         return self.lv.isConstant(scope)
 
+    # '??x' etc - "?x" is itself a value (a thunk), so it's always a
+    # legal operand for another '?', however deep the nesting; the
+    # inner AddressAST was already fully validated (this same check,
+    # one level down) when IT was built, so there's nothing further to
+    # check here. Compare TupleAST/SetAST/DictAST just above, which
+    # (unlike this) need their own isLiteral check every time, since
+    # unlike an already-validated nested '?', their elements are
+    # ordinary unchecked nary_expr.
+    def address(self, scope, code, stmt):
+        self.gencode(scope, code, stmt)
+        (lexeme, file, line, column) = self.token
+        code.append(NaryOp(("Closure", file, line, column), 1), self.token, self.endtoken, stmt=stmt)
+
     def check(self, lv, scope):
         if isinstance(lv, NameAST):
             (t, v) = scope.lookup(lv.name)
@@ -1294,6 +1307,8 @@ class AddressAST(AST):
         elif isinstance(lv, ConstantAST):
             pass
         elif isinstance(lv, LambdaAST):
+            pass
+        elif isinstance(lv, AddressAST):
             pass
         else:
             lexeme, file, line, column = lv.token if isinstance(lv, AST) else (None, None, None, None)

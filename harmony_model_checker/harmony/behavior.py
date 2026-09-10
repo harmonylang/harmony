@@ -19,6 +19,37 @@ def python_obj(js):
         return { python_obj(js["key"]):python_obj(js["value"]) for js in v }
     assert False
 
+# print's own second argument (attrs) is meant to be a dict of GraphViz
+# edge attributes for the behavior DFA this module renders (e.g.
+# `print value, {.color: "red"}`) - but Harmony itself places no such
+# restriction on it at compile time (it's an ordinary, possibly
+# runtime-computed expression, like print's own first argument), so a
+# program is always free to write something else there, by mistake or
+# otherwise ("print 1, 2" - a plain int, not a dict). Both consumers
+# below (behavior_show_diagram's pydot.Edge(**attrs) and behavior_
+# parse's own attrs.items()/"color" in attrs) need an actual dict with
+# string keys to do anything meaningful with it, so this is the one
+# place that turns whatever python_obj hands back into that shape -
+# reporting anything else once (not once per DFA edge, which could
+# otherwise repeat the same message many times over for one bad print
+# statement) and falling back to "no attributes" rather than letting a
+# malformed one crash the whole diagram/report with a raw Python
+# exception.
+_warned_bad_print_attrs: Set[str] = set()
+
+def _print_attrs(js_attrs):
+    attrs = python_obj(js_attrs)
+    if isinstance(attrs, dict) and all(isinstance(k, str) for k in attrs):
+        return attrs
+    key = repr(attrs)
+    if key not in _warned_bad_print_attrs:
+        _warned_bad_print_attrs.add(key)
+        print("    * print's second argument should be a dict (with atom "
+              "keys) of GraphViz edge attributes, e.g. "
+              'print value, {.color: "red"}; got %r - ignoring for the '
+              "behavior diagram/report" % (attrs,), file=sys.stderr)
+    return {}
+
 try:
     import pydot  # type: ignore
     got_pydot = True
@@ -98,7 +129,7 @@ def behavior_show_diagram(dfa, path=None):
         for to_label, (to_sym, to_state) in lookup.items():
             if to_state not in error_states and to_label != "":
                 assert to_sym["type"] == "list"
-                attrs = python_obj(to_sym["value"][1])
+                attrs = _print_attrs(to_sym["value"][1])
                 attrs["src"] = nodes[from_state];
                 attrs["dst"] = nodes[to_state];
                 attrs["label"] = json_string(to_sym["value"][0])
@@ -161,7 +192,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
                     if dst not in dfa_error_states:
                         assert sym["type"] == "list"
                         label = json_string(sym["value"][0])
-                        attrs = python_obj(sym["value"][1])
+                        attrs = _print_attrs(sym["value"][1])
                         flat = ",".join(["%s=%s"%(k,v) for k,v in attrs.items()])
                         if "color" in attrs:
                             print("  s%s -> s%s [label=%s,%s]"%(names[src], names[dst], json.dumps(label, ensure_ascii=False), flat), file=fd)

@@ -977,6 +977,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     #                     | '[' tuple_rule? ']'
     #                     | '{' set_rule? ','? '}'
     #                     | '{' ':' '}'
+    #                     | '?' question_operand
     #
     # harmony_parser.py (Phase 0) has already validated that this operand is
     # legal for '?' to be applied to - this visitor's only job is to build
@@ -1058,6 +1059,16 @@ class HarmonyVisitorImpl(HarmonyVisitor):
             # one ever has a nested question_operand.
             result = self.visit(ctx.question_operand())
             rest = ctx.children[3:]
+        elif ctx.question_operand():
+            # '?' question_operand ("??x") - by elimination, since the
+            # OPEN_PAREN-and-question_operand combination above already
+            # claimed the grouping case; this is the only other
+            # alternative that has a nested question_operand at all.
+            # AddressAST.check/.address (ast.py) are what actually make
+            # nesting work - this is just one more level of the exact
+            # same wrapping visitExpr_rule's own '?' handling does.
+            inner = self.visit(ctx.question_operand())
+            return AddressAST(endtoken, inner, tkn)
         elif ctx.NAME():
             name_tok = self.get_token(ctx.NAME().symbol, str(ctx.NAME()))
             result = NameAST(name_tok, name_tok)

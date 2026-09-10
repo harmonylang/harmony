@@ -1217,12 +1217,12 @@ def parse_application(document, offset):
 
 
 # True if `r` is a (possibly parenthesized) bare '!'-prefixed
-# expr_rule - the "(!p)" in "(!p)[x]". Its own operand is unrestricted,
-# exactly like every other use of '!' - whether "!e" is actually valid
-# depends on what e evaluates to, not on syntax. Used only to recognize
-# a '!'-headed base for _is_identifier_headed below; a bare "!p" (or
-# "(!p)") with nothing following it is a different matter entirely (see
-# that function's docstring).
+# expr_rule - the "(!p)" in "(!p)[x]", or "!p"/"(!p)" entirely on its
+# own. Its own operand is unrestricted, exactly like every other use of
+# '!' - whether "!e" is actually valid depends on what e evaluates to,
+# not on syntax. Used both to recognize a '!'-headed base for
+# _is_identifier_headed below (where something follows it) and,
+# directly, by parse_question_operand (where nothing does).
 def _is_dereference(r):
     if r.type == "expr_rule":
         op, _operand = r.value
@@ -1237,30 +1237,32 @@ def _is_dereference(r):
 
 # True if `r` - a parsed application/basic_expression result - is, once
 # any purely-grouping parentheses are seen through, a legal base for
-# '?' (and, identically, for an assign_target - see parse_assign_target):
-# either a plain identifier, or a '!'-prefixed expression that has at
-# least one more step (an index, an attribute, an application) after it.
+# '?': either a plain identifier, a '!'-prefixed expression that has at
+# least one more step (an index, an attribute, an application) after
+# it, or - only when `allow_question` is set - a '?'-prefixed
+# expression with at least one more step after it, the exact same way.
+# `allow_question` defaults to False because this function is ALSO
+# used, unchanged, for assign_target (see parse_assign_target), and a
+# '?'-headed base is legal only for '?' itself, not there: only
+# parse_question_operand below passes allow_question=True.
 #
-# The second case needs some justification: "!e" dereferences a thunk
-# to reach whatever it points at, and going on to index/attribute-
-# access *that* is exactly as legitimate as doing so on a name - e.g.
-# "(!p)[x] = 1" writes into slot x of whatever p points at, the same
-# way "a[x] = 1" writes into slot x of a. What's NOT legal is a bare
-# "?!p" (or "??x") with nothing further: "!(?e) == e" is the defining
-# round-trip identity ("a = b" being shorthand for "!(?a) = b" only
-# makes sense because of it), so "?!p" alone just hands back p itself
-# with no further addressing accomplished - a no-op, not a mistake to
-# special-case around. The extra step is what makes it more than that:
-# "?(!p)[x]" address-computes through p's *own* thunk extended by x
-# (matching "?a[x]" when p happens to hold "?a"), not by snapshotting
-# whatever "!p" evaluates to - which is exactly why it has to be
-# recognized here structurally rather than by first evaluating "!p" to
-# a plain value and falling back on "a value is its own address".
+# The dereference case needs some justification: "!e" dereferences a
+# thunk to reach whatever it points at, and going on to index/
+# attribute-access *that* is exactly as legitimate as doing so on a
+# name - e.g. "(!p)[x] = 1" writes into slot x of whatever p points at,
+# the same way "a[x] = 1" writes into slot x of a. (A bare "?!p", with
+# nothing further, is legal too - see parse_question_operand's own use
+# of _is_dereference directly - but that's a different, simpler case
+# than this one: this function is specifically about recognizing a
+# '!'-headed *base of a longer chain*, which bare "!p" alone isn't.)
 #
-# This deliberately does NOT extend to a '?'-prefixed base ("?(?a)[x]"
-# stays illegal) - '!' and '?' cancel as a *pair* ("!(?e) == e"), but
-# there's no matching identity for '?' composed with itself, so there's
-# no equivalent justification for exempting it here.
+# The question case (allow_question only) is the exact same shape for
+# the exact same reason, one level up: "?a" is itself a value (a
+# thunk), so "?(?a)[x]" address-computes through a's *own* thunk
+# extended by x - not a no-op the way a bare "??a" (nothing following)
+# would be, which is why _is_nested_question - not this function's own
+# recursion - is what already lets a bare "??a" through, separately, at
+# parse_question_operand's own top level.
 #
 # Parentheses don't count as a "real" head themselves - "parentheses
 # are only for parsing purposes" - so "(f())" sees through to "f()",
@@ -1269,21 +1271,22 @@ def _is_dereference(r):
 # empty "()"/"[]") is a real value, not a name, and neither is anything
 # else basic_expression allows (a number, string, bool, None, lambda)
 # or any other expr_rule shape (setintlevel/save/stop, or a unary_op
-# other than '!' - including another '?', which is exactly why "??x"
-# stays excluded).
-def _is_identifier_headed(r):
+# other than '!' - and, unless allow_question, '?').
+def _is_identifier_headed(r, allow_question=False):
     if r.type == "identifier":
         return True
     if r.type == "application":
         head = r.value[0]
-        return _is_identifier_headed(head) or _is_dereference(head)
+        return (_is_identifier_headed(head, allow_question)
+                or _is_dereference(head)
+                or (allow_question and _is_nested_question(head)))
     if r.type == "paren_tuple":
         inner = r.value
         if isinstance(inner, list):
             return False  # empty '()' - the empty-tuple value, not a name
         if inner.type == "tuple":
             return False  # a real multi-element tuple literal, e.g. (a, b)
-        return _is_identifier_headed(inner)  # pure grouping - see through it
+        return _is_identifier_headed(inner, allow_question)  # pure grouping - see through it
     return False
 
 
@@ -1364,26 +1367,46 @@ def _is_nested_question(r):
 # question_operand ::= (NAME | '!' expr_rule) (ARROWID | basic_expression)*
 #                     | constant_literal
 #                     | '?' question_operand
-#   -- with any purely-grouping parentheses seen through first, and the
-#      '!' alternative only when at least one (ARROWID | basic_expression)
-#      actually follows it - see _is_identifier_headed for why.
+#   -- with any purely-grouping parentheses seen through first.
 #
-# '?e' ("thunk-of") is legal for four shapes of e: a literal CONSTANT
+# '?e' ("thunk-of") is legal for five shapes of e: a literal CONSTANT
 # (see _is_constant_literal - "?{1}", "?(1, 2)", "?5" are all legal), a
 # shared/global variable or a function, (extending something already
 # addressable) an application/indexing/attribute chain rooted at one of
 # those: "?a", "?a.foo", "?a[1]", "?a->b", "?f(1)", "?f(1)(2)",
-# "?(f())" (parens are just grouping), and "?(!p)[x]" (see
-# _is_identifier_headed) are all legal - or ANOTHER '?'-expression:
-# "?x" is itself a constant (a thunk), so "??x" ("a thunk of a thunk")
-# is exactly as legal as "?x" was, recursively, however deep ("???x"
-# and so on) - see _is_nested_question. A LOCAL variable is legal here
-# too, SYNTACTICALLY - checker.py's own semantic phase is what tells a
-# local apart from a global/def and rejects a bare local (see
-# _check_question_target); this parse-level check only rules out actual
-# computed expressions: "?(1 + 2)", "?(a and b)", "?(1 .. 5)" and
-# "?!p" (alone, with nothing further - see _is_identifier_headed) are
-# not legal.
+# "?(f())" (parens are just grouping), "?(!p)[x]", and - the same way -
+# "?(?a)[x]" (see _is_identifier_headed's allow_question, passed=True
+# only here, not at parse_assign_target) - a bare (possibly
+# parenthesized) dereference on its own, with nothing further: "?!p"
+# and "?(!p)" (see _is_dereference directly, below) - or ANOTHER
+# '?'-expression on its own, with nothing further: "?x" is itself a
+# constant (a thunk), so "??x" ("a thunk of a thunk") is exactly as
+# legal as "?x" was, recursively, however deep ("???x" and so on) -
+# see _is_nested_question.
+#
+# "?!p" is worth dwelling on, since it LOOKS like it should be excluded
+# the same way a bare "?(a and b)" is: "!(?e) == e" is the defining
+# round-trip identity ("a = b" being shorthand for "!(?a) = b" only
+# makes sense because of it), so "?!p" alone - when p itself came from
+# "?something" - just hands back p again, accomplishing no NEW
+# addressing; a no-op. But the language already embraces that same
+# no-op in the other direction, unconditionally: "!e" places no
+# restriction on e at all, so "!(?a)" (equally a no-op, by the same
+# identity) has always been legal, with no special-casing to exclude
+# it. Singling out "?!p" for being "merely" a no-op, when "!(?a)" isn't
+# held to the same standard, was an asymmetry without a principled
+# reason behind it - nothing downstream actually depends on "?!p"
+# being rejected (unlike, say, "?(a and b)", which is excluded because
+# a computed value in general has no address to report, not because
+# it's uninteresting) - so it's treated the same as any other no-op
+# expression a Harmony program is free to write: legal, for consistency
+# with "!(?e)", even where it happens not to do anything new.
+#
+# A LOCAL variable is legal here too, SYNTACTICALLY - checker.py's own
+# semantic phase is what tells a local apart from a global/def and
+# rejects a bare local (see _check_question_target); this parse-level
+# check only rules out actual computed expressions: "?(1 + 2)",
+# "?(a and b)", "?(1 .. 5)" are not legal.
 # Parsed permissively first as an ordinary expr_rule, same as
 # everywhere else, purely to find its extent - then re-checked against
 # the restriction above, the same permissive-parse-then-validate
@@ -1392,8 +1415,8 @@ def parse_question_operand(document, offset):
     expr = parse_expr_rule(document, offset)
     if not expr.success:
         return expr
-    if not (_is_identifier_headed(expr) or _is_constant_literal(expr)
-            or _is_nested_question(expr)):
+    if not (_is_identifier_headed(expr, allow_question=True) or _is_constant_literal(expr)
+            or _is_nested_question(expr) or _is_dereference(expr)):
         return ParseResult(
             "question_operand", False,
             "'?' requires an operand that's a constant, a variable or function name, "
@@ -1473,9 +1496,9 @@ def parse_tuple(document, offset):
 #
 # A restricted form of tuple_rule for the left-hand side(s) of '=' and
 # augmented-assign - and, since "a = b" is shorthand for "!(?a) = b",
-# an assign_target and a '?'-operand are the exact same kind of thing
-# (an lvalue) and get the exact same restriction: 'application' is
-# legal only when it's identifier-headed, in the sense
+# an assign_target and a '?'-operand are almost the exact same kind of
+# thing (an lvalue) and get almost the exact same restriction:
+# 'application' is legal only when it's identifier-headed, in the sense
 # _is_identifier_headed defines (a bare NAME, an application/indexing/
 # attribute chain rooted in one, or one rooted in a dereference with
 # something further after it - "(!p)[x]" - all with any purely-
@@ -1483,6 +1506,18 @@ def parse_tuple(document, offset):
 # NOT a legal target any more ("5 = 5", "[1,2] = x" are both now
 # rejected) - "a value is its own address" stopped being the operative
 # reasoning the moment '?' itself stopped accepting one.
+#
+# "Almost", because this is the one place the two diverge:
+# _is_identifier_headed is called here with allow_question left at its
+# default False, unlike parse_question_operand's own call - so "(?a)[x]"
+# is a legal '?'-operand (see parse_question_operand) but NOT a legal
+# assign_target, even though the underlying justification (extending an
+# already-addressable base by one more step before addressing/assigning
+# through it) is the same argument in both directions. This isn't an
+# oversight: it's scoped to what '?' itself needs for now, since
+# assigning through a chain rooted in a thunk-of-a-thunk isn't
+# something this language has a defined meaning for yet, unlike "a = b"
+# already meaning "!(?a) = b" for the dereference case below.
 #
 # '!expr_rule' dereferences a thunk and doesn't restrict its operand's
 # *shape*: whether "!e" is actually valid depends on what e evaluates

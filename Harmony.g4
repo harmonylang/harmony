@@ -247,17 +247,25 @@ application
 // something already addressable) an application/indexing/attribute
 // chain rooted at one of those: "?a", "?a.foo", "?a[1]", "?a->b",
 // "?f(1)", "?f(1)(2)", "?(f())" (parens are just grouping, so
-// "(f())" and "f()" mean the same application either way), and
-// "?(!p)[x]" are all legal. That last one needs justifying: "!(?e)
-// == e" is the defining round-trip identity behind "a = b" meaning
-// "!(?a) = b" in the first place, so "?!p" *alone* just hands back p
-// with no addressing accomplished - a meaningless no-op - but
-// "?(!p)[x]" address-computes through p's own thunk extended by x
-// (e.g. matching "?a[x]" when p holds "?a"), which is genuinely
-// useful, exactly the way "a[x] = 1" is. This deliberately does NOT
-// extend to a '?'-prefixed base ("?(?a)[x]" stays illegal) - '!' and
-// '?' cancel as a *pair*, but there's no matching identity for '?'
-// composed with itself.
+// "(f())" and "f()" mean the same application either way), "?!p", and
+// "?(!p)[x]" are all legal. "!(?e) == e" is the defining round-trip
+// identity behind "a = b" meaning "!(?a) = b" in the first place, so
+// "?!p" *alone* (when p itself came from "?something") just hands back
+// p again, accomplishing no NEW addressing - a no-op - but it's legal
+// anyway, for consistency with "!(?e)" (equally a no-op, by the same
+// identity) already being unconditionally legal with no special-casing
+// to exclude it: singling out one direction of a cancelling pair as
+// "merely" a no-op while leaving the other alone was an asymmetry, not
+// a principled restriction - nothing downstream depends on "?!p" being
+// rejected. "?(!p)[x]" remains the more USEFUL case, needing no such
+// justification: it address-computes through p's own thunk extended by
+// x (e.g. matching "?a[x]" when p holds "?a"), the way "a[x] = 1" does.
+// "?(?a)[x]" is legal too, and for a related but distinct reason: not a
+// '!'/'?' cancellation (there isn't one - '?' doesn't cancel with
+// itself the way '!' does), but simply because "?a" is itself now a
+// legal question_operand (see the
+// nested-'?' alternative and its own comment below), so it can be
+// grouped and chained exactly like "!p" can.
 //
 // A bare literal CONSTANT is also a legal '?'-operand: a number, bool,
 // atom, string, or None directly ("?5", "?True"), or a tuple/list/set/
@@ -297,27 +305,35 @@ application
 // existing tuple_rule/set_rule productions directly, the same way
 // basic_expr's own bracket_tuple/set_rule_1/empty_dict do.
 //
-// "?(a + b)" and "??x" both stay illegal, for unrelated reasons: the
-// former has no comma, so it can only reach the grouping alternative,
-// which requires a question_operand inside - "a + b" isn't one; the
-// latter has no '?'-headed alternative here at all (nesting stays
-// unsupported).
+// "?(a + b)" stays illegal: it has no comma, so it can only reach the
+// grouping alternative, which requires a question_operand inside -
+// "a + b" isn't one.
 //
-// A bare "?!p" (no parens, nothing following the '!p') is *not*
-// rejected by this grammar production - notice the '!' alternative
-// ends in a plain '*', not '+'. It has to stay permissive here: the
-// "something has to follow, in total" restriction is about the whole
-// '?'-operand once any wrapping parens are accounted for, not about
-// whatever happens to sit immediately after this one '!' fragment
-// syntactically - "?(!p)[x]" is exactly a case where nothing follows
-// the '!p' fragment itself (that's inside the parens) even though the
-// operand as a whole is genuinely useful. A CFG production can't see
-// past its own recursive call to make that whole-operand judgment, so
-// (matching how harmony_parser.py, the hand-written recursive-descent
-// parser, already handles this same family of restriction - see its
-// own comment above parse_question_operand) the no-op case is caught
-// as a semantic check in Phase 0 instead of being carved out of the
-// grammar itself.
+// "??x" (and "???x", and so on) IS legal, via the '?' question_operand
+// alternative below - "?x" is itself a constant (a thunk), so
+// addressing it again is exactly as legal as addressing x was,
+// recursively however deep, the same reasoning harmony_parser.py's
+// own _is_nested_question already applies on its own parse tree. See
+// that alternative's own comment for what building its AST needs
+// (AddressAST wrapping another AddressAST) that none of the other
+// alternatives above do.
+//
+// A bare "?!p" (no parens, nothing following the '!p') is legal -
+// notice the '!' alternative ends in a plain '*', not '+' - and stays
+// that way even once "?(!p)[x]" is accounted for: that needs the '*'
+// regardless, since "the something has to follow, in total" case is
+// about the whole '?'-operand once any wrapping parens are accounted
+// for ("?(!p)[x]" has nothing following the '!p' fragment itself,
+// that's inside the parens, even though the operand as a whole is
+// genuinely useful) - a CFG production can't see past its own
+// recursive call to make that whole-operand judgment. What used to
+// additionally be true - that a BARE "?!p", with nothing following it
+// anywhere, was rejected as a no-op by a semantic check in Phase 0 -
+// no longer is: harmony_parser.py accepts it now too (see its own
+// comment above parse_question_operand for why), so this grammar
+// production's permissiveness here matches the final accepted
+// behavior directly, not just as a staging point for a later semantic
+// check to narrow.
 question_operand
     : NAME (ARROWID | basic_expr)*
     | OPEN_PAREN question_operand CLOSE_PAREN (ARROWID | basic_expr)*
@@ -331,7 +347,23 @@ question_operand
     | OPEN_BRACK tuple_rule? CLOSE_BRACK
     | OPEN_BRACES set_rule? COMMA? CLOSE_BRACES
     | OPEN_BRACES COLON CLOSE_BRACES
+    | '?' question_operand
 ;
+
+// '?' question_operand ("??x") - nesting is unrestricted: whatever the
+// inner question_operand is (a name, a literal, another nested '?',
+// ...), it was already validated as a legal '?'-operand in its own
+// right by simply having matched this same production one level down,
+// so there's nothing further to check here at the grammar level. The
+// AST side needs two small additions of its own precisely because
+// this is the first time an AddressAST can appear as another
+// AddressAST's own operand: AddressAST.check (ast.py) has to accept
+// one (it wasn't in the isinstance whitelist at all before, since
+// nothing could construct this shape), and AddressAST needs an
+// address() method of its own (nothing did before, either) - built
+// the same gencode-then-Closure-wrap way TupleAST/SetAST/DictAST's
+// address() methods already are, since "?x"'s own gencode already
+// computes exactly the value "??x" needs to wrap again.
 
 // A parenthesized literal-tuple operand of '?' ("?(5,)", "?(5, 6)",
 // "?()") - deliberately NOT the same as tuple_rule (which question_
