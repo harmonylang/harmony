@@ -1,5 +1,4 @@
 sequential q
-
 q = []
 
 def put(v):

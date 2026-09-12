@@ -1,5 +1,4 @@
 sequential x, y, z
-
 x = y = z = 0
 
 def f():
