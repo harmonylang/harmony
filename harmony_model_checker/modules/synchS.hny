@@ -35,7 +35,7 @@ def release(binsema):
         if binsema->suspended == []:
             binsema->acquired = False
         else:
-            go binsema->suspended[0], ()
+            go binsema->suspended[0]
             del binsema->suspended[0]
 
 def held(binsema) returns current:
@@ -52,13 +52,13 @@ def wait(c, lk):
 
 def notify(c):
     atomically if !c != []:
-        go (!c)[0], ()
+        go (!c)[0]
         del (!c)[0]
  
 def notify_all(c):
     atomically:
         for ctx in !c:
-            go ctx, ()
+            go ctx
         !c = []
 
 # Deprecated
@@ -79,7 +79,7 @@ def V(sema):
     atomically:
         if sema->waiters != []:
             assert sema->count == 0
-            go sema->waiters[0], ()
+            go sema->waiters[0]
             del sema->waiters[0]
         else:
             sema->count += 1
