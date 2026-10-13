@@ -1,0 +1,12 @@
+global x, y
+x = y = 0
+
+def f():
+    atomically x = y + y
+    atomically print(x, y)
+
+def g():
+    atomically y = 1
+
+spawn f()
+spawn g()
