@@ -1,11 +1,13 @@
 import rwlock
 
-nreaders = nwriters = 0
+global nreaders, nwriters
 invariant ((nreaders >= 0) and (nwriters == 0)) or
             ((nreaders == 0) and (nwriters == 1))
+nreaders = nwriters = 0
 
 const NOPS = 4
 
+global rw
 rw = rwlock.RWlock()
 
 def thread():

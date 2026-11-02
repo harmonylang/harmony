@@ -1,8 +1,8 @@
 from synch import Lock, acquire, release
 from alloc import malloc, free
 
-def Queue():
-    result = { .head: None, .tail: None, .lock: Lock(), .time: 0 }
+def Queue() returns init_value:
+    init_value = { .head: None, .tail: None, .lock: Lock(), .time: 0 }
 
 def _linpoint(q):
     atomically:
@@ -20,7 +20,7 @@ def put(q, v):
         _linpoint(q)
         release(?q->lock)
     
-def get(q):
+def get(q) returns result:
     acquire(?q->lock)
     let node = q->head:
         if node == None:

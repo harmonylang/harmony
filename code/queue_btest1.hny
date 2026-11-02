@@ -1,6 +1,8 @@
 import queue
 
 const NOPS = 4
+
+global q
 q = queue.Queue()
 
 def put_test(self):
@@ -13,6 +15,7 @@ def get_test(self):
     let v = queue.get(?q):
         print("done get", self, v)
 
+global nputs
 nputs = choose {1..NOPS-1}
 for i in {1..nputs}:
     spawn put_test(i)

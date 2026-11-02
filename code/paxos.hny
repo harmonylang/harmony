@@ -7,8 +7,8 @@ const NACCEPTORS = 2 * F + 1
 const NLEADERS = F + 1
 const NBALLOTS = 2
 
+global network, proposals
 network = bags.empty()
-
 proposals = [ choose({0, 1}) for i in {0..NLEADERS-1} ]
 
 def send(msg):

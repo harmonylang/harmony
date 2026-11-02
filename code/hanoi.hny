@@ -1,3 +1,4 @@
+global current
 current = [ [1, 2, 3], [], [] ]
 
 while current[2] != [1, 2, 3]:

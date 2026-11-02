@@ -1,10 +1,12 @@
 import olb
 
-n_eb = n_wb = 0
+global n_eb, n_wb
 invariant ((n_eb >= 0) and (n_wb == 0)) or ((n_wb >= 0) and (n_eb == 0))
+n_eb = n_wb = 0
 
 const NOPS = 3
 
+global bridge
 bridge = olb.OLB()
 
 def thread():

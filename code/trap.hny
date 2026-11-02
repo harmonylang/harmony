@@ -1,3 +1,4 @@
+global count, done
 count = 0
 done = False
 

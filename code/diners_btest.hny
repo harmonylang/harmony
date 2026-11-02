@@ -2,6 +2,7 @@ from diners import Diners, enter, exit
 
 const N = 4
 
+global forks
 forks = Diners(N)
 
 def diner(which):

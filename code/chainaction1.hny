@@ -4,6 +4,7 @@ const NREPLICAS = 3
 const NOPS = 2
 
 # Global state
+global replicas, clients
 let immortal = choose {1..NREPLICAS}:
     replicas = { p: { .immortal: immortal == p, .crashed: False,
                 .requests: {}, .hist: [], .config: {1..NREPLICAS},

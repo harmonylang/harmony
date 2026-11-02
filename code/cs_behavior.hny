@@ -1,3 +1,4 @@
+global lock
 lock = False
 
 def cs_enter(self):

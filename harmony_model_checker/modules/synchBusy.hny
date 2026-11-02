@@ -1,10 +1,10 @@
-def tas(lk):
+def tas(lk) returns oldvalue:
     atomically:
-        result = !lk
+        oldvalue = !lk
         !lk = True
 
-def Lock():
-    result = False
+def Lock() returns init_value:
+    init_value = False
 
 def lock(lk):
     while tas(lk):
@@ -13,8 +13,8 @@ def lock(lk):
 def unlock(lk):
     !lk = False
 
-def Condition(lk):
-    result = lk
+def Condition(lk) returns init_value:
+    init_value = lk
 
 def wait(c):
     unlock(!c)
@@ -30,8 +30,8 @@ def notify_all(c):
 def notifyAll(c):
     pass
 
-def Semaphore(cnt):
-    result = cnt
+def Semaphore(cnt) returns init_value:
+    init_value = cnt
 
 def P(sema):
     atomically when !sema > 0:

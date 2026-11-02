@@ -2,6 +2,7 @@ from locks import Lock, acquire, release
 
 const NTHREADS = 2
 
+global the_lock
 the_lock = Lock()
 
 def thread(self):

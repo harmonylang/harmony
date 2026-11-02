@@ -2,6 +2,7 @@ from lock import Lock, acquire, release
 
 const NTHREADS = 5
 
+global thelock, in_cs
 thelock = Lock()
 in_cs = 0
 

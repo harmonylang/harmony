@@ -1,25 +1,25 @@
-def atomic_load(p):
-    atomically result = !p
+def atomic_load(p) returns value:
+    atomically value = !p
 
 def atomic_store(p, v):
     atomically !p = v
 
-def tas(lk):
+def tas(lk) returns oldvalue:
     atomically:
-        result = !lk
+        oldvalue = !lk
         !lk = True
 
-def cas(p, old, new):
+def cas(p, old, new) returns success:
     atomically:
-        result = !p == old
-        if result:
+        success = !p == old
+        if success:
             !p = new
 
-def BinSema(initial):
-    result = { .acquired: initial, .suspended: [] }
+def BinSema(initial) returns init_value:
+    init_value = { .acquired: initial, .suspended: [] }
 
-def Lock():
-    result = BinSema(False)
+def Lock() returns init_value:
+    init_value = BinSema(False)
 
 def acquire(binsema):
     atomically:
@@ -35,14 +35,14 @@ def release(binsema):
         if binsema->suspended == []:
             binsema->acquired = False
         else:
-            go (binsema->suspended[0]) ()
+            go binsema->suspended[0]
             del binsema->suspended[0]
 
-def held(binsema):
-    result = binsema->acquired
+def held(binsema) returns current:
+    current = binsema->acquired
 
-def Condition():
-    result = []
+def Condition() returns init_value:
+    init_value = []
 
 def wait(c, lk):
     atomically:
@@ -52,21 +52,21 @@ def wait(c, lk):
 
 def notify(c):
     atomically if !c != []:
-        go ((!c)[0]) ()
+        go (!c)[0]
         del (!c)[0]
  
 def notify_all(c):
     atomically:
         for ctx in !c:
-            go ctx ()
+            go ctx
         !c = []
 
 # Deprecated
 def notifyAll(c):
     notify_all(c)
         
-def Semaphore(cnt):
-    result = { .count: cnt, .waiters: [] }
+def Semaphore(cnt) returns init_value:
+    init_value = { .count: cnt, .waiters: [] }
 
 def P(sema):
     atomically:
@@ -79,13 +79,13 @@ def V(sema):
     atomically:
         if sema->waiters != []:
             assert sema->count == 0
-            go (sema->waiters[0]) ()
+            go sema->waiters[0]
             del sema->waiters[0]
         else:
             sema->count += 1
 
-def Queue():
-    result = { .list: [], .waiters: [] }
+def Queue() returns init_value:
+    init_value = { .list: [], .waiters: [] }
 
 def get(q) returns next:
     atomically:
@@ -100,5 +100,5 @@ def put(q, item):
         if q->waiters == []:
             q->list += [item,]
         else:
-            go (q->waiters[0]) item
+            go q->waiters[0], item
             del q->waiters[0]

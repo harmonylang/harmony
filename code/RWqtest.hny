@@ -2,6 +2,8 @@ import RWqueue
 
 const NTHREADS = 3
 
+global semas
+
 def process(self):
     while choose({ False, True }):
         if choose({ .read, .write }) == .read:

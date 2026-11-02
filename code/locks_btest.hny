@@ -3,6 +3,7 @@ from locks import Lock, acquire, release
 const NTHREADS = 5
 const NLOCKS = 2
 
+global the_locks
 the_locks = [ Lock() for _ in { 0 .. NLOCKS - 1 } ]
 
 def thread():

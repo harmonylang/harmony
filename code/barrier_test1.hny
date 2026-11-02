@@ -3,6 +3,7 @@ import barrier
 const NTHREADS = 3
 const NROUNDS = 4
 
+global barr, round, in_b
 barr = barrier.Barrier(NTHREADS)
 round = [0,] * NTHREADS
 in_b = [False,] * NTHREADS

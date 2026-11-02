@@ -3,6 +3,7 @@ import barrier
 const NTHREADS = 3
 const NROUNDS = 4
 
+global barr, round, phase
 barr = barrier.Barrier(NTHREADS)
 round = [0,] * NTHREADS
 phase = 0

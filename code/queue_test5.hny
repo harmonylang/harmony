@@ -2,6 +2,7 @@ import queue
 
 const N = 2
 
+global testq, gotten
 testq = queue.Queue()
 gotten = {:}
 

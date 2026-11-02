@@ -2,6 +2,7 @@ import synch
 
 const NCLIENTS = 3
 
+global server_queue
 server_queue = synch.Queue()
 
 def server():
@@ -18,6 +19,7 @@ def client(client_queue):
 
 spawn eternal server()
 
+global alice_queue, bob_queue, charlie_queue
 alice_queue = synch.Queue()
 spawn client(?alice_queue)
 bob_queue = synch.Queue()

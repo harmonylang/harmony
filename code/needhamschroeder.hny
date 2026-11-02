@@ -1,5 +1,5 @@
+global network, dest
 network = {}
-
 dest = choose({ None, "Bob", "Corey" })
 
 def send(msg):

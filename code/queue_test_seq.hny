@@ -2,6 +2,7 @@ import queue, queueconc
 
 const NOPS = 3
 
+global specq, implq
 specq = queue.Queue()
 implq = queueconc.Queue()
 

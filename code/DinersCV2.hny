@@ -2,6 +2,7 @@ import synch
 
 const N = 5
 
+global mutex, forks, conds
 mutex = synch.Lock()
 forks = [False,] * N
 conds = [synch.Condition(),] * N

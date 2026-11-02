@@ -5,6 +5,7 @@ const N_CUSTOMERS = 2
 const N_ATMS = 2
 const MAX_BALANCE = 1
 
+global accounts
 accounts = [ { .lock: Lock(), .balance: choose({0..MAX_BALANCE})}
                             for i in {1..N_ACCOUNTS} ]
 

@@ -2,6 +2,7 @@ const MEM_SIZE  = 0x10
 const WORD_SIZE = 16
 
 const WORD_MASK = (1 << WORD_SIZE) - 1
+global memory
 memory = [0,] * MEM_SIZE
 
 def hw_load(address) returns value:

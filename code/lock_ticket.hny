@@ -8,8 +8,8 @@ def fetch_and_increment(p) returns oldvalue:
 def atomic_load(p) returns value:
     atomically value = !p
 
-def Lock():
-    result = { .counter: 0, .dispenser: 0 }
+def Lock() returns init_value:
+    init_value = { .counter: 0, .dispenser: 0 }
 
 def acquire(lk):
     let my_ticket = fetch_and_increment(?lk->dispenser):

@@ -3,13 +3,15 @@ import actor
 
 const NITEMS = 3
 
+global pc_queue, queues
+
 pc_queue = synch.Queue()
 queues = [synch.Queue(),] * NITEMS
 
 def produce(q, item):
     synch.put(?pc_queue, { .type: .produce, .item: item })
 
-def consume(q1, q2):
+def consume(q1, q2) returns result:
     synch.put(q1, { .type: .consume, .queue: q2 })
     result = synch.get(q2)
 

@@ -2,6 +2,7 @@ from synch import Lock, acquire, release
 
 const NTHREADS = 5
 
+global thelock
 thelock = Lock()
 
 def thread():

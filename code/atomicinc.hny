@@ -1,5 +1,6 @@
 def atomic_inc(ptr):
     atomically !ptr += 1
     
+global count
 count = 0
 atomic_inc(?count)

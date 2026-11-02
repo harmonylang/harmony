@@ -1,9 +1,9 @@
 from alloc import malloc, free
 from synch import cas
 
-def Queue():
+def Queue() returns init_value:
     let node = malloc({.next: {.ptr: None, .cnt: 0}}):
-        result = {
+        init_value = {
             .head: { .ptr: node, .cnt: 0 },
             .tail: { .ptr: node, .cnt: 0 }
         }
@@ -23,7 +23,7 @@ def put(q, v):
                             { .ptr: next.ptr, .cnt: tail.cnt + 1 })
         cas(?q->tail, tail, { .ptr: node, .cnt: tail.cnt + 1 })
 
-def get(q):
+def get(q) returns result:
     var done = False
     while not done:
         let head, tail = q->head, q->tail

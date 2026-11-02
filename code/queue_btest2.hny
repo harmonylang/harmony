@@ -2,6 +2,8 @@ import queue
 
 const N_PUT = 2
 const N_GET = 2
+
+global q
 q = queue.Queue()
 
 def put_test(self):

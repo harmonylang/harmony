@@ -4,6 +4,7 @@ const N = 2
 const VALUES = { "a", "b" }
 
 # Global state: initially each process is "fetal"
+global procs
 procs = [{ .mode: "fetal", .log: [], .detected: {}, .received: {} },] * N
 
 # Every live processor knows about every other live processor

@@ -2,6 +2,7 @@ import rwlock
 
 const NOPS = 3
 
+global rw
 rw = rwlock.RWlock()
 
 def thread(self):

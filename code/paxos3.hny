@@ -4,6 +4,7 @@ const F = 1
 const N = (2*F) + 1
 const MAX_BALLOT = N
 
+global channels
 channels = [[],] * N
 
 def send(p, m):

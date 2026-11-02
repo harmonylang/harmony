@@ -1,3 +1,4 @@
+global x
 x = True
 
 def f(): assert x
