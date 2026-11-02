@@ -1,9 +1,11 @@
 import pathlib
 import json
+import sys
 
 from harmony_model_checker.harmony.behavior import behavior_parse
 # from harmony_model_checker.harmony.summary import summaryMain
-from harmony_model_checker.harmony.summarize import Summarize
+from harmony_model_checker.harmony.summarize import Summarize, Tee
+from harmony_model_checker.harmony.runinfo import run_info
 
 def brief_kv(js):
     return (brief_string(js["key"]), brief_string(js["value"]))
@@ -148,15 +150,52 @@ class Brief:
             self.interrupted = "interrupt" in self.lastmis and self.lastmis["interrupt"] == "True"
 
     def run(self, outputfiles, behavior):
+        """Prints the summary (and writes it to the .md file, if any).
+        Returns the issue found and whether the program produces output."""
+        self.issue = None
+        self.has_output = False
+        md = None
+        if outputfiles.get("md") is not None:
+            md = open(outputfiles["md"], "w", encoding='utf-8')
+        try:
+            self.summarize(outputfiles, behavior, md)
+        finally:
+            if md is not None:
+                md.close()
+        return self.issue, self.has_output
+
+    def summarize(self, outputfiles, behavior, md):
         with open(outputfiles["hco"], encoding='utf-8') as f:
-            print("* Phase 6: loading", outputfiles["hco"])
+            print("* Phase 6: loading results")
             top = json.load(f, strict=False)
             assert isinstance(top, dict)
+            if md is not None:
+                print("# Harmony results", file=md)
+                print(file=md)
+                for label, value in run_info(top.get("hvm", {}), top):
+                    if isinstance(value, list):
+                        print("* %s:"%label, file=md)
+                        for v in value:
+                            print("    * %s"%v, file=md)
+                    else:
+                        print("* %s: %s"%(label, value), file=md)
+                print(file=md)
+            self.issue = top["issue"]
             if top["issue"] == "No issues":
                 behavior_parse(top, False, outputfiles, behavior)
+                self.has_output = bool(top.get("behavior", {}).get("symbols"))
+                output = sys.stdout if md is None else Tee(sys.stdout, md)
+                print(file=output)
+                print("----------------------------------------", file=output)
+                print(file=output)
+                print("No issues were detected with this program.", file=output)
+                if "behavior" in top and not self.has_output:
+                    print("The program produces no output.", file=output)
+                if "warning" in top:
+                    print("Warning: %s."%top["warning"], file=output)
             else:
                 se = Summarize()
-                se.run(outputfiles, top)
+                se.run(outputfiles, top, md)
 
             # print()
             # p = pathlib.Path(outputfiles["htm"]).resolve()

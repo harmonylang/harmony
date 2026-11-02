@@ -6,11 +6,15 @@ import sys
 import os
 import argparse
 import hashlib
+import shutil
+import tempfile
+import shlex
+import contextlib
+from datetime import datetime
 
 from antlr4 import * # type: ignore
 
 import harmony_model_checker
-from harmony_model_checker.config import settings
 from harmony_model_checker import charm # type: ignore
 from harmony_model_checker.exception import HarmonyCompilerError, HarmonyCompilerErrorCollection
 import harmony_model_checker.harmony.harmony as legacy_harmony
@@ -18,6 +22,7 @@ from harmony_model_checker.harmony.genhtml import GenHTML
 from harmony_model_checker.harmony.brief import Brief
 from harmony_model_checker.harmony.verbose import Verbose
 from harmony_model_checker.compile import do_compile
+from harmony_model_checker.harmony.runinfo import run_info_comment, source_name
 
 
 # ---------------------------------------------------------------------------
@@ -93,16 +98,16 @@ def _precheck_extra_consts(consts):
     return names
 
 
-def _precheck_cleanup_output_files(output_files):
-    # Mirrors handle_hny's own cleanup of stale output files from a
-    # previous run - needed here too since a blocking Phase 0 finding
-    # exits before handle_hny ever gets to do it itself.
-    for suffix, file in output_files.items():
-        if file is not None:
-            try:
-                os.remove(file)
-            except:
-                pass
+def write_parse_status(output_files, data):
+    """With -p, the parse result (a small JSON status object) goes to
+    the .hvm file named with -o, or to stdout if there is none."""
+    dest = output_files["hvm"]
+    if dest is None:
+        # stdout itself is redirected to stderr in -p mode (see run_stages)
+        print(json.dumps(data), file=sys.__stdout__, flush=True)
+    else:
+        with open(dest, "w", encoding='utf-8') as fp:
+            json.dump(data, fp)
 
 
 def handle_precheck(ns, output_files, parse_code_only, filename):
@@ -192,11 +197,9 @@ def handle_precheck(ns, output_files, parse_code_only, filename):
                     lexeme="", filename=filename, is_eof_error=False)
 
     print("* Phase 0: identifier pre-check found problems", flush=True)
-    _precheck_cleanup_output_files(output_files)
     if parse_code_only:
         data = dict(errors=[_to_error_dict(e) for e in blocking], status="error")
-        with open(output_files["hvm"], "w", encoding='utf-8') as fp:
-            json.dump(data, fp)
+        write_parse_status(output_files, data)
     else:
         for err in blocking:
             line, column = _precheck.offset_to_line_col(document, err.start)
@@ -215,15 +218,20 @@ args.add_argument("-T", action="store_true",
                   help="print timing info")
 args.add_argument("-A", action="store_true",
                   help="list machine code (without labels)")
-args.add_argument("-B", type=str, help="check against the given behavior")
+# Same as giving the behavior file (.hfa) as an extra argument; kept
+# for compatibility but no longer documented.
+args.add_argument("-B", type=str, help=argparse.SUPPRESS)
 args.add_argument("-d", "--direct", action="store_true",
                   help="run directly without model checking")
 args.add_argument("-p", "--parse", action="store_true",
-                  help="parse code without running")
+                  help="only check the program for compile errors; the result "
+                       "is a JSON status, written to the .hvm file given with -o "
+                       "or else to stdout")
 args.add_argument("-c", "--const", action='append', type=str,
                   metavar="name=value", help="define a constant")
-args.add_argument("-D", action="store_true",
-                  help="dump Kripke graph")
+# Replaced by -o <file>.kripke.gv and -o <file>.dump (undocumented,
+# for debugging Harmony itself); kept only to explain that.
+args.add_argument("-D", action="store_true", help=argparse.SUPPRESS)
 args.add_argument("-W", action="store_true",
                   help="suppress busy waiting check")
 args.add_argument("-R", action="store_true",
@@ -240,34 +248,30 @@ args.add_argument("-v", "--version", action="store_true",
                   help="print version number")
 args.add_argument("--quick", action="store_true",
                   help="no post-model-check analysis")
-args.add_argument("-o", action='append', type=pathlib.Path,
-                  help="specify output file (.hvm, .hco, .hfa, .htm. .tla, .tex, .png, .gv)")
+args.add_argument("-o", action='append', type=pathlib.Path, metavar="file",
+                  help="write an output file; the suffix selects the kind "
+                       "(.hvm, .hco, .hfa, .md, .htm, .hvb, .png, .gv, .tla, .tex). "
+                       "May be repeated. Without -o, no files are written")
 args.add_argument("-j", action="store_true",
                   help="list machine code in JSON format")
 args.add_argument("-w", type=str, help="set number of workers")
 args.add_argument("-t", type=str, help="set maximum model check timeout")
 args.add_argument("-X", type=str, help="set maximum analysis timeout per phase")
+args.add_argument("--browse", action="store_true", default=False,
+                  help="open the detailed HTML output in a web browser")
+# The browser is no longer opened by default, so --noweb has no effect.
+# It is still accepted because existing tools (e.g., the VS Code
+# extension) pass it.
 args.add_argument("--noweb", action="store_true", default=False,
-                  help="do not automatically open web browser")
+                  help=argparse.SUPPRESS)
 args.add_argument("--suppress", action="store_true",
                   help="generate less terminal output")
-args.add_argument("--config", action="store_true",
-                  help="get or set configuration value. "
-                       "Use --config <key> to get the value of a setting. "
-                       "Use --config <key> <value> to set the value of a setting")
 
 # Internal flags
 args.add_argument("--cf", action="append", type=str, help=argparse.SUPPRESS)
 args.add_argument("args", metavar="args", type=str, nargs='*', help="arguments")
 
-def handle_hny(ns, output_files, parse_code_only, filenames):
-    for suffix, file in output_files.items():
-        if file is not None:
-            try:
-                os.remove(file)
-            except:
-                pass
-
+def handle_hny(ns, output_files, parse_code_only, filenames, config=None):
     print("* Phase 1: compile Harmony program to bytecode", flush=True)
 
     consts: List[str] = ns.const or []
@@ -284,8 +288,7 @@ def handle_hny(ns, output_files, parse_code_only, filenames):
 
         if parse_code_only:
             data = dict(errors=[e._asdict() for e in errors], status="error")
-            with open(output_files["hvm"], "w", encoding='utf-8') as fp:
-                json.dump(data, fp)
+            write_parse_status(output_files, data)
         else:
             for e in errors:
                 print(f"Line {e.line}:{e.column} at {e.filename}, {e.message}")
@@ -293,21 +296,22 @@ def handle_hny(ns, output_files, parse_code_only, filenames):
         exit(1)
 
     if parse_code_only:
-        with open(output_files["hvm"], "w", encoding='utf-8') as f:
-            f.write(json.dumps({"status": "ok"}))
+        write_parse_status(output_files, {"status": "ok"})
         exit()
 
     if output_files["tla"] is not None:
         with open(output_files["tla"], "w", encoding='utf-8') as f:
+            print(run_info_comment(config, "\\*"), end="", file=f)
             legacy_harmony.tla_translate(f, code, scope)
 
     if output_files["tex"] is not None:
         with open(output_files["tex"], "w", encoding='utf-8') as f:
+            print(run_info_comment(config, "%"), end="", file=f)
             legacy_harmony.tex_output(f, code, scope)
 
     return code, scope
 
-def handle_hvm(ns, output_files, parse_code_only, code, scope, behavior):
+def handle_hvm(ns, output_files, parse_code_only, code, scope, behavior, config=None):
     charm_options = ns.cf or []
     if behavior != None:
         charm_options.append("-B" + behavior)
@@ -321,8 +325,9 @@ def handle_hvm(ns, output_files, parse_code_only, code, scope, behavior):
         charm_options.append("-t" + ns.t)
     if ns.X:
         charm_options.append("-X" + ns.X)
-    if ns.D:
-        charm_options.append("-D")
+    for debug_output in ("kripke.gv", "dump"):
+        if output_files.get(debug_output) is not None:
+            charm_options.append("-o" + output_files[debug_output])
     if ns.R:
         charm_options.append("-R")
     if ns.U:
@@ -330,10 +335,9 @@ def handle_hvm(ns, output_files, parse_code_only, code, scope, behavior):
     if ns.W:
         charm_options.append("-c")
 
-    # see if there is a configuration file
     if code is not None:
         with open(output_files["hvm"], "w", encoding='utf-8') as fd:
-            legacy_harmony.dumpCode("json", code, scope, f=fd)
+            legacy_harmony.dumpCode("json", code, scope, f=fd, config=config)
 
     if parse_code_only:
         exit()
@@ -368,57 +372,23 @@ def handle_hvm(ns, output_files, parse_code_only, code, scope, behavior):
             exit(r)
 
 def handle_hco(ns, output_files, behavior):
+    """Produces the outputs from the .hco file.  Returns the issue found
+    (None if unknown) and whether the program produces output."""
     if ns.quick:
-        return
-
-    suppress_output = ns.suppress
-    disable_browser = settings.values.disable_web or ns.noweb
-
+        return None, False
     b = Brief()
-    b.run(output_files, behavior)
-    vb = Verbose()
-    vb.run(output_files)
-    gh = GenHTML()
-    gh.run(output_files)
-    if not suppress_output:
-        print()
-        p = pathlib.Path(output_files["htm"]).resolve()
-        url = "file://" + str(p)
-        print("open " + url + " for detailed information", file=sys.stderr)
-        if not disable_browser:
-            webbrowser.open(url)
-    # exit as minify may still be running
-    print(flush=True, end="")
-    print(file=sys.stderr, flush=True, end="")
-    os._exit(0)
+    result = b.run(output_files, behavior)
+    if output_files["hvb"] is not None:
+        vb = Verbose()
+        vb.run(output_files)
+    if output_files["htm"] is not None:
+        gh = GenHTML()
+        gh.run(output_files)
+    return result
 
 def handle_version(_: argparse.Namespace):
     print("Version:", harmony_model_checker.__package__,
           harmony_model_checker.__version__)
-    return 0
-
-
-def handle_config(ns: argparse.Namespace):
-    if len(ns.args) == 0:
-        print("Configuration settings:")
-        for k, v in settings.values._asdict().items():
-            print(f"    {k}: {v}")
-        print("Use --config <key> to get the value of a setting.\nUse --config <key> <value> to set the value of a setting")
-        return 0
-    key = ns.args[0]
-    try:
-        if len(ns.args) > 1:
-            value = ns.args[1]
-            settings.update_settings_file(key, value)
-        else:
-            print(settings.get_settings_value(key))
-    except AttributeError:
-        print(f"'{key}' is not a valid configuration setting")
-        return 1
-    except ValueError as e:
-        print(
-            f"Value '{e.args[0]}' is not a valid value for configuration setting '{key}'")
-        return 1
     return 0
 
 
@@ -428,89 +398,171 @@ def main():
     if ns.version:
         return handle_version(ns)
 
-    if ns.config:
-        return handle_config(ns)
-
     parse_code_only: bool = ns.parse
     legacy_harmony.silent = ns.s
 
-    output_files: Dict[str, Optional[str]] = {
-        "hfa": None,
-        "htm": None,
-        "hvb": None,
-        "hco": None,
-        "hvm": None,
-        "png": None,
-        "tla": None,
-        "tex": None,
-        "gv":  None
-    }
+    # Output files explicitly requested with -o, by suffix.  Nothing
+    # else is written: intermediate files go in a private temporary
+    # directory that is removed when Harmony exits.
+    requested: Dict[str, pathlib.Path] = {}
     for p in (ns.o or []):
         # The suffix includes the dot if it exists.
         # Otherwise, it is an empty string.
-        suffix = p.suffix[1:]
-        if suffix not in output_files:
-            print(f"Unknown file suffix on {p}")
+        suffix = "kripke.gv" if p.name.endswith(".kripke.gv") else p.suffix[1:]
+        if suffix not in OUTPUT_SUFFIXES:
+            print(f"harmony: error: unknown file suffix on {p}")
             return 1
-        if output_files[suffix] is not None:
-            print(f"Duplicate suffix '.{suffix}'")
+        if suffix in requested:
+            print(f"harmony: error: duplicate suffix '.{suffix}'")
             return 1
-        output_files[suffix] = str(p)
+        requested[suffix] = p
 
-    filename = None
-    behavior_file = ns.B if ns.B else None
+    # The input is a program (.hny, .hvm, or .hco) and optionally a
+    # behavior to check it against: an .hfa file, or the .hco file of
+    # an earlier run.  With two files the roles follow from the kinds
+    # of file, so the order does not matter.
+    inputs = []
     for f in ns.args:
         name = pathlib.Path(f)
         if not name.exists():
             print(f"harmony: error: file named '{name}' does not exist.")
             return 1
-        file_type = name.suffix
-        if file_type == '.hfa':
-            if behavior_file != None:
-                print(f"harmony: error: duplicate behavior file.")
-                return 1
-            behavior_file = f
-        elif filename == None:
-            filename = name
-        else:
-            print(f"harmony: error: multiple input files.")
-            args.print_help()
-            return 1
+        inputs.append(name)
+    behaviors = [ x for x in inputs if x.suffix == ".hfa" ]
+    programs = [ x for x in inputs if x.suffix != ".hfa" ]
+    if len(programs) == 2:
+        compiled = [ x for x in programs if x.suffix == ".hco" ]
+        others = [ x for x in programs if x.suffix in (".hny", ".hvm") ]
+        if len(compiled) == 1 and len(others) == 1:
+            behaviors += compiled
+            programs = others
+    if len(programs) > 1:
+        print(f"harmony: error: multiple input files.")
+        args.print_help()
+        return 1
+    behavior_file = ns.B if ns.B else None
+    if len(behaviors) + (behavior_file is not None) > 1:
+        print(f"harmony: error: duplicate behavior file.")
+        return 1
+    if behaviors:
+        behavior_file = str(behaviors[0])
+    filename = programs[0] if programs else None
 
     if filename == None:
         print(f"harmony: no input file")
         args.print_help()
         return 1
 
-    stem = str(filename.parent / filename.stem)
-    input_file_type = filename.suffix
+    stage = filename.suffix[1:]
+    if stage not in ("hny", "hvm", "hco"):
+        print(f"harmony: error: don't know what to do with '{filename}' "
+              "(expected a .hny, .hvm, or .hco file)")
+        return 1
 
-    # generate a "run id"
-    f1 = [str(filename)]
-    f2 = ["" if behavior_file == None else behavior_file]
-    f3 = [] if ns.const == None else sorted(ns.const)
-    f4 = [] if ns.module == None else sorted(ns.module)
-    ff = ",".join(f1 + f2 + f3 + f4)
-    sha3 = hashlib.sha3_256()
-    sha3.update(ff.encode('utf-8'))
-    runid = sha3.hexdigest()[:8]
+    error = check_options(ns, stage, requested, filename, behavior_file)
+    if error is not None:
+        print(f"harmony: error: {error}")
+        return 1
 
-    if output_files["hvm"] is None:
-        output_files["hvm"] = stem + ".hvm"
-    if output_files["hco"] is None:
-        output_files["hco"] = stem + ".hco"
-    if output_files["htm"] is None:
-        output_files["htm"] = stem + ".htm"
-    if output_files["hvb"] is None:
-        output_files["hvb"] = stem + ".hvb"
-    if output_files["hfa"] is None:
-        output_files["hfa"] = stem + "-" + runid + ".hfa"
-    if output_files["png"] is not None and output_files["gv"] is None:
-        output_files["gv"] = stem + "-" + runid + ".gv"
-    if output_files["png"] is None:
-        output_files["png"] = stem + "-" + runid + ".png"
+    tmpdir = tempfile.mkdtemp(prefix="harmony-")
+    try:
+        status, analyzed = run_stages(ns, stage, filename, behavior_file,
+                                      requested, parse_code_only, tmpdir)
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
 
-    # print(output_files)
+    if analyzed:
+        # exit as minify may still be running
+        print(flush=True, end="")
+        print(file=sys.stderr, flush=True, end="")
+        os._exit(status)
+    return status
+
+
+# Kinds of output file that can be requested with -o.
+OUTPUT_SUFFIXES = ("hvm", "hco", "hfa", "md", "htm", "hvb", "png", "gv", "tla", "tex",
+                   "kripke.gv", "dump")    # the last two are for debugging
+
+# Options that only make sense when compiling a .hny file.
+COMPILER_OPTIONS = (("-c", "const"), ("-m", "module"), ("-i", "intf"),
+                    ("-p", "parse"), ("-a", "a"), ("-A", "A"), ("-j", "j"))
+
+# Options that only make sense when model checking.
+CHECKER_OPTIONS = (("-b", "b"), ("-B", "B"), ("-d", "direct"),
+                   ("-R", "R"), ("-T", "T"), ("-U", "U"), ("-W", "W"),
+                   ("-t", "t"), ("-w", "w"), ("-X", "X"))
+
+
+def check_options(ns, stage, requested, filename, behavior_file):
+    """Returns an error message if the options do not fit the input file,
+    or None if they do."""
+    if ns.D:
+        return "-D has been replaced by -o <file>.kripke.gv and -o <file>.dump"
+    if stage != "hny":
+        for flag, attr in COMPILER_OPTIONS:
+            if getattr(ns, attr):
+                return (f"{flag} only applies when compiling a .hny file, "
+                        f"but '{filename}' is already compiled")
+        for suffix in ("tla", "tex"):
+            if suffix in requested:
+                return f"a .{suffix} file can only be produced from a .hny file"
+    if stage == "hco":
+        for flag, attr in CHECKER_OPTIONS:
+            if getattr(ns, attr):
+                return (f"{flag} only applies when model checking, "
+                        f"but '{filename}' has already been model checked")
+        if behavior_file is not None:
+            return (f"a behavior file only applies when model checking, "
+                    f"but '{filename}' has already been model checked")
+        for suffix in ("kripke.gv", "dump"):
+            if suffix in requested:
+                return (f"a .{suffix} file is made while model checking, "
+                        f"but '{filename}' has already been model checked")
+    for dest in requested.values():
+        if not dest.parent.resolve().is_dir():
+            return f"cannot write '{dest}': directory '{dest.parent}' does not exist"
+    inputs = [filename] + ([pathlib.Path(behavior_file)] if behavior_file else [])
+    for dest in requested.values():
+        for inp in inputs:
+            if dest.resolve() == inp.resolve():
+                return f"output file '{dest}' would overwrite input file '{inp}'"
+    return None
+
+
+def run_stages(ns, stage, filename, behavior_file, requested, parse_code_only, tmpdir):
+    """Runs the pipeline .hny -> .hvm -> .hco -> (.md, .htm, ...) starting
+    at the stage of the input file.  Intermediate files are created in
+    tmpdir; requested outputs are copied to their destinations at the end.
+    Returns (exit status, whether the analysis phase ran)."""
+
+    # Working names for every kind of file, all inside the temporary
+    # directory, except that the input file is used where it is.
+    work = { s: os.path.join(tmpdir, filename.stem + "." + s) for s in OUTPUT_SUFFIXES }
+    work[stage] = str(filename)
+
+    # Only produce the files that are needed.  The HTML output embeds
+    # the picture of the behavior, so it needs the .png (and the .gv
+    # that it is made from).
+    want_htm = "htm" in requested or ns.browse
+    want_png = "png" in requested or want_htm
+    output_files: Dict[str, Optional[str]] = {
+        "hvm": work["hvm"],
+        "hco": work["hco"],
+        "hfa": work["hfa"],
+        "md":  work["md"]  if "md"  in requested else None,
+        "htm": work["htm"] if want_htm else None,
+        "hvb": work["hvb"] if "hvb" in requested else None,
+        "png": work["png"] if want_png else None,
+        "gv":  work["gv"]  if want_png or "gv" in requested else None,
+        "tla": work["tla"] if "tla" in requested else None,
+        "tex": work["tex"] if "tex" in requested else None,
+        "kripke.gv": work["kripke.gv"] if "kripke.gv" in requested else None,
+        "dump": work["dump"] if "dump" in requested else None,
+    }
+    if parse_code_only:
+        # With -p, the parse status goes to the .hvm output (or stdout).
+        output_files["hvm"] = str(requested["hvm"]) if "hvm" in requested else None
+        requested = { s: d for s, d in requested.items() if s != "hvm" }
 
     charm_flag = True
     print_code: Optional[str] = None
@@ -524,22 +576,258 @@ def main():
         print_code = "json"
         charm_flag = False
 
-    # Handle different Harmony compilation stages
-    if input_file_type == ".hny":
-        handle_precheck(ns, output_files, parse_code_only, str(filename))
-        code, scope = handle_hny(ns, output_files, parse_code_only, str(filename))
-        if charm_flag:
-            handle_hvm(ns, output_files, parse_code_only, code, scope, behavior_file)
-            handle_hco(ns, output_files, behavior_file)
+    # The checker reads a behavior as an .hfa file; one given as the
+    # .hco file of an earlier run is extracted from it first.
+    if behavior_file is not None and behavior_file.endswith(".hco"):
+        with open(behavior_file, encoding='utf-8') as f:
+            top = json.load(f, strict=False)
+        if "behavior" not in top:
+            print(f"harmony: error: '{behavior_file}' contains no behavior "
+                  "(the run found an issue, or it was made by an older version of Harmony)")
+            return 1, False
+        checker_behavior = os.path.join(tmpdir, "behavior.hfa")
+        with open(checker_behavior, "w", encoding='utf-8') as f:
+            json.dump(top["behavior"], f)
+    else:
+        checker_behavior = behavior_file
+
+    # Warn about a behavior file that looks like the wrong one.
+    if behavior_file is not None and stage in ("hny", "hvm"):
+        if stage == "hny":
+            constants = parse_pairs(ns.const)
         else:
+            with open(filename, encoding='utf-8') as f:
+                hvm_config = json.load(f, strict=False).get("config")
+            constants = hvm_config.get("constants") if isinstance(hvm_config, dict) else None
+        for warning in behavior_warnings(behavior_file, constants):
+            print(f"harmony: warning: {warning}", file=sys.stderr, flush=True)
+
+    analyzed = False
+    issue, has_output = None, False
+    if stage == "hny":
+        config = make_config(ns, filename, behavior_file)
+        # With -p, keep stdout for the JSON status alone.
+        with (contextlib.redirect_stdout(sys.stderr) if parse_code_only
+              else contextlib.nullcontext()):
+            handle_precheck(ns, output_files, parse_code_only, str(filename))
+            code, scope = handle_hny(ns, output_files, parse_code_only, str(filename), config)
+        if not charm_flag:
             print("Skipping Phases 2-5...", flush=True)
             legacy_harmony.dumpCode(print_code, code, scope)
-
-    if input_file_type == ".hvm":
+        else:
+            handle_hvm(ns, output_files, parse_code_only, code, scope, checker_behavior, config)
+            if not ns.direct:
+                issue, has_output = handle_hco(ns, output_files, behavior_file)
+                analyzed = True
+    elif stage == "hvm":
         print("Skipping Phase 1...", flush=True)
-        handle_hvm(ns, output_files, parse_code_only, None, None, behavior_file)
-        handle_hco(ns, output_files, behavior_file)
-
-    if input_file_type == ".hco":
+        handle_hvm(ns, output_files, parse_code_only, None, None, checker_behavior)
+        if not ns.direct:
+            issue, has_output = handle_hco(ns, output_files, behavior_file)
+            analyzed = True
+    else:
         print("Skipping Phases 1-4...", flush=True)
-        handle_hco(ns, output_files, behavior_file)
+        # The .hco file includes the behavior, which the outputs are made from.
+        with open(filename, encoding='utf-8') as f:
+            top = json.load(f, strict=False)
+        if "behavior" in top:
+            with open(work["hfa"], "w", encoding='utf-8') as f:
+                json.dump(top["behavior"], f)
+        del top
+        issue, has_output = handle_hco(ns, output_files, behavior_file)
+        analyzed = True
+
+    status = deliver(requested, work, stage, filename)
+
+    sys.stdout.flush()
+    if analyzed and not ns.suppress:
+        if "htm" in requested and os.path.exists(work["htm"]):
+            url = pathlib.Path(requested["htm"]).resolve().as_uri()
+            print("open " + url + " for detailed information", file=sys.stderr)
+        elif ns.browse:
+            pass
+        elif issue is not None and issue != "No issues":
+            print("use -o <file>.htm or --browse for details about the issue", file=sys.stderr)
+        elif has_output and "png" not in requested and "gv" not in requested:
+            print("use -o <file>.png, -o <file>.htm, or --browse to see "
+                  "the program's output behavior", file=sys.stderr)
+
+    if ns.browse and analyzed and os.path.exists(work["htm"]):
+        if "htm" in requested:
+            page = str(requested["htm"])
+        else:
+            # The temporary directory is about to be removed, so give the
+            # browser a copy that stays behind.
+            fd, page = tempfile.mkstemp(prefix="harmony-", suffix=".htm")
+            os.close(fd)
+            shutil.copyfile(work["htm"], page)
+        webbrowser.open(pathlib.Path(page).resolve().as_uri())
+
+    return status, analyzed
+
+
+def parse_pairs(items):
+    """Turns a list of "name=value" option arguments into a dict."""
+    d = {}
+    for item in items or []:
+        name, _, value = item.partition("=")
+        d[name] = value
+    return d
+
+
+def make_config(ns, filename, behavior_file):
+    """How this run was invoked, recorded in the .hvm file (and from
+    there in the .hco file and the outputs made from it)."""
+    pairs = parse_pairs
+    return {
+        "harmony_version": harmony_model_checker.__version__,
+        "command": shlex.join(["harmony"] + sys.argv[1:]),
+        "input": str(filename),
+        # File names are recorded as given; relative ones are relative to this.
+        "cwd": os.getcwd(),
+        "constants": pairs(ns.const),
+        "modules": pairs(ns.module),
+        "interface": ns.intf,
+        "behavior": behavior_file,
+        "behavior_origin": behavior_origin(behavior_file),
+        "created": datetime.now().astimezone().isoformat(timespec="seconds"),
+    }
+
+
+def behavior_origin(behavior_file):
+    """Where a behavior file came from, as recorded in it: the run that
+    produced it (for an .hfa or .hco file made by this version of Harmony),
+    or None if that is not known."""
+    if behavior_file is None:
+        return None
+    try:
+        with open(behavior_file, encoding='utf-8') as f:
+            top = json.load(f, strict=False)
+    except (OSError, ValueError):
+        return None
+    if behavior_file.endswith(".hco"):
+        config = top.get("hvm", {}).get("config")
+    else:
+        config = top.get("config")
+    if not isinstance(config, dict):
+        return None
+    return { k: config[k] for k in ("input", "command", "harmony_version", "created")
+                if k in config }
+
+
+def behavior_warnings(behavior_file, constants):
+    """Looks for likely mistakes in the choice of behavior file, using
+    what the file records about how it was made: source files that have
+    changed since, and constants that differ from this run's (None if
+    not known).  Returns a list of warnings."""
+    try:
+        with open(behavior_file, encoding='utf-8') as f:
+            top = json.load(f, strict=False)
+    except (OSError, ValueError):
+        return []
+    if behavior_file.endswith(".hco"):
+        hvm = top.get("hvm", {})
+        config = hvm.get("config")
+        sources = { name: mod for name, mod in hvm.get("modules", {}).items()
+                    if "sha256" in mod }
+    else:
+        config = top.get("config")
+        sources = config.get("sources", {}) if isinstance(config, dict) else {}
+    if not isinstance(config, dict):
+        return [ f"'{behavior_file}' does not record how it was made (it is from "
+                 "an older version of Harmony), so it cannot be checked for mistakes" ]
+
+    warnings = []
+    version = config.get("harmony_version")
+    if version and version != harmony_model_checker.__version__:
+        warnings.append(f"'{behavior_file}' was made with Harmony {version}; "
+                        f"this is Harmony {harmony_model_checker.__version__}")
+
+    # Relative file names are relative to the directory Harmony ran in when
+    # the behavior was made, if that still exists (it does not if the file
+    # came from another machine, say); otherwise to the current directory.
+    cwd = config.get("cwd")
+    base = cwd if isinstance(cwd, str) and os.path.isdir(cwd) else "."
+    for name, src in sorted(sources.items()):
+        path = src.get("file")
+        if not path or src.get("library"):
+            continue    # library modules change only with the version
+        found = os.path.join(base, path)
+        if not os.path.isfile(found):
+            continue
+        with open(found, "rb") as f:
+            digest = hashlib.sha256(f.read()).hexdigest()
+        if digest != src.get("sha256"):
+            warnings.append(f"'{path}' has changed since '{behavior_file}' was "
+                            "made from it, so the behavior may be out of date")
+    if constants is not None:
+        theirs = config.get("constants") or {}
+        def show(name, value):
+            return f"{name}={value}" if value is not None else f"no -c for {name}"
+        for name in sorted(set(theirs) | set(constants)):
+            if theirs.get(name) != constants.get(name):
+                warnings.append(f"'{behavior_file}' was made with {show(name, theirs.get(name))}, "
+                                f"but this run has {show(name, constants.get(name))}")
+    return warnings
+
+
+def deliver(requested, work, stage, filename):
+    """Copies each requested output from its working location to where
+    the user asked for it.  Returns an exit status."""
+    status = 0
+    for suffix, dest in requested.items():
+        src = work[suffix]
+        if suffix == "hvm" and stage == "hco" and not os.path.exists(src):
+            # A .hco file carries a copy of the bytecode it was made from.
+            with open(filename, encoding='utf-8') as f:
+                top = json.load(f, strict=False)
+            if "hvm" in top:
+                with open(src, "w", encoding='utf-8') as f:
+                    json.dump(top["hvm"], f)
+        if not os.path.exists(src):
+            print(f"harmony: warning: no .{suffix} output was produced, "
+                  f"so '{dest}' was not written", file=sys.stderr)
+            status = 1
+            continue
+        if suffix == "hfa" and os.path.exists(work["hco"]):
+            src = add_run_config(src, work["hco"])
+        install_file(src, dest)
+    return status
+
+
+def add_run_config(hfa_file, hco_file):
+    """The checker writes the behavior (.hfa) without saying where it came
+    from.  Returns the name of a copy that includes the configuration of
+    the run, the checker options, and the hashes of the source files, as
+    recorded in the .hco file.  (The checker ignores the extra field when
+    the file is used as a behavior.)"""
+    with open(hco_file, encoding='utf-8') as f:
+        top = json.load(f, strict=False)
+    hvm = top.get("hvm", {})
+    if "config" not in hvm:
+        return hfa_file
+    config = dict(hvm["config"])
+    config["checker_options"] = top.get("checker_options", [])
+    config["sources"] = { name: { "file": source_name(mod), "sha256": mod["sha256"],
+                                  "library": bool(mod.get("library")) }
+                          for name, mod in hvm.get("modules", {}).items()
+                          if "sha256" in mod }
+    with open(hfa_file, encoding='utf-8') as f:
+        behavior = json.load(f, strict=False)
+    result = hfa_file + ".config"
+    with open(result, "w", encoding='utf-8') as f:
+        json.dump({ "config": config, **behavior }, f, indent=2)
+    return result
+
+
+def install_file(src, dest):
+    """Copies src to dest such that dest is replaced in one step: another
+    Harmony run never sees a partially written file."""
+    dest = pathlib.Path(dest)
+    tmp = dest.with_name(f".{dest.name}.{os.getpid()}.tmp")
+    try:
+        shutil.copyfile(src, tmp)
+        os.replace(tmp, dest)
+    finally:
+        if tmp.exists():
+            tmp.unlink()

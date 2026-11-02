@@ -1,9 +1,12 @@
+import base64
+import html
 import json
 import os
 import queue
 from pathlib import Path
 from typing import Any, Tuple
 from harmony_model_checker.harmony.jsonstring import json_string
+from harmony_model_checker.harmony.runinfo import run_info
 
 class GenHTML:
     def __init__(self):
@@ -232,18 +235,14 @@ class GenHTML:
         print("</div>", file=f)
 
     # output a filename of f1 relative to f2
-    def pathdiff(self, f1, f2):
-        return os.path.relpath(f1, start=os.path.dirname(f2))
-
     def html_botright(self, f, outputfiles):
         if self.nthreads == 0:
             png = outputfiles["png"]
-            if png is not None:
-                if png[0] == "/":
-                    print("      <img src='%s' alt='DFA image'>"%png, file=f)
-                else:
-                    assert outputfiles["htm"] is not None
-                    print("      <img src='%s' alt='DFA image'>"%self.pathdiff(png, outputfiles["htm"]), file=f)
+            if png is not None and os.path.exists(png):
+                # Embed the image so the HTML file is self-contained.
+                with open(png, "rb") as img:
+                    data = base64.b64encode(img.read()).decode("ascii")
+                print("      <img src='data:image/png;base64,%s' alt='DFA image'>"%data, file=f)
             return
         print("<table border='1'", file=f)
         print("  <thead>", file=f)
@@ -338,8 +337,25 @@ class GenHTML:
         # file_include("charm.js", f)
         print("</script>", file=f)
 
+    def html_runinfo(self, f):
+        info = run_info(self.top.get("hvm", {}), self.top)
+        if not info:
+            return
+        print("<details style='margin-bottom:8px'>", file=f)
+        print("  <summary>About this run</summary>", file=f)
+        print("  <table>", file=f)
+        for label, value in info:
+            if isinstance(value, list):
+                value = "<br>".join(html.escape(v) for v in value)
+            else:
+                value = html.escape(str(value))
+            print("    <tr><td valign='top'><b>%s</b></td><td>%s</td></tr>"%(html.escape(label), value), file=f)
+        print("  </table>", file=f)
+        print("</details>", file=f)
+
     def html_body(self, f, outputfiles):
         print("<body>", file=f)
+        self.html_runinfo(f)
         self.html_outer(f, outputfiles)
         self.html_script(f, outputfiles)
         print("</body>", file=f)

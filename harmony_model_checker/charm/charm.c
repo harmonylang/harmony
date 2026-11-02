@@ -4482,10 +4482,10 @@ static unsigned int str_split(const char *s, char sep, char ***parts){
     return n;
 }
 
-static void charm_dump(bool computed_components){
-    FILE *df = fopen("charm.dump", "w");
+static void charm_dump(const char *dumpout, bool computed_components){
+    FILE *df = fopen(dumpout, "w");
     if (df == NULL) {
-        fprintf(stderr, "Can't create charm.dump\n");
+        fprintf(stderr, "Can't create %s\n", dumpout);
     }
     else {
         // setbuf(df, NULL);
@@ -4657,6 +4657,7 @@ int exec_model_checker(int argc, char **argv){
     bool cflag = false, dflag = false, Dflag = false, Tflag = false;
     int i, maxtime = 300000000 /* about 10 years */;
     char *outfile = NULL, *hfaout = NULL, *dfafile = NULL, *worker_flag = NULL;
+    char *kripkeout = NULL, *dumpout = NULL;    // debugging output (see -D)
     for (i = 1; i < argc; i++) {
         if (*argv[i] != '-') {
             break;
@@ -4700,7 +4701,13 @@ int exec_model_checker(int argc, char **argv){
         case 'o':
             {
                 char *name = &argv[i][2];
-                if (endsWith(name, ".hco")) {
+                if (endsWith(name, ".kripke.gv")) {
+                    kripkeout = name;
+                }
+                else if (endsWith(name, ".dump")) {
+                    dumpout = name;
+                }
+                else if (endsWith(name, ".hco")) {
                     outfile = name;
                 }
                 else if (endsWith(name, ".hfa")) {
@@ -4722,7 +4729,18 @@ int exec_model_checker(int argc, char **argv){
     if (argc - i != 1) {
         usage(argv[0]);
     }
+    int nopts = i;          // number of arguments that are options (plus 1)
     char *fname = argv[i];
+
+    // -D dumps the Kripke structure for debugging.  Asking for either file
+    // with -o implies -D; -D by itself uses the traditional file names.
+    if (kripkeout != NULL || dumpout != NULL) {
+        Dflag = true;
+    }
+    else if (Dflag) {
+        kripkeout = "charm.gv";
+        dumpout = "charm.dump";
+    }
     double timeout = gettime() + maxtime;
 
 #ifndef NDEBUG
@@ -5515,12 +5533,14 @@ int exec_model_checker(int argc, char **argv){
 
     // The -D flag is used to dump debug files
     if (Dflag) {
-        FILE *df = fopen("charm.gv", "w");
+        FILE *df = kripkeout == NULL ? NULL : fopen(kripkeout, "w");
         if (df == NULL) {
-            fprintf(stderr, "can't create charm.gv\n");
+            if (kripkeout != NULL) {
+                fprintf(stderr, "can't create %s\n", kripkeout);
+            }
         }
         else {
-            phase_start("Create charm.gv");
+            phase_start("Create Kripke graph");
             fprintf(df, "digraph Harmony {\n");
             for (unsigned int i = 0; i < global.graph.size; i++) {
                 struct node *node = global.graph.nodes[i];
@@ -5554,9 +5574,11 @@ int exec_model_checker(int argc, char **argv){
             phase_finish();
         }
 
-        phase_start("Create charm.dump");
-        charm_dump(computed_components);
-        phase_finish();
+        if (dumpout != NULL) {
+            phase_start("Create Kripke dump");
+            charm_dump(dumpout, computed_components);
+            phase_finish();
+        }
     }
 
     unsigned int dfasize = 0;
@@ -5663,6 +5685,21 @@ int exec_model_checker(int argc, char **argv){
     fprintf(out, "{\n");
     fprintf(out, "  \"nstates\": %d,\n", global.graph.size);
 
+    // Record the options the model checker was run with (output file
+    // names aside), so the .hco file describes how it was made.
+    fprintf(out, "  \"checker_options\": [");
+    bool first_option = true;
+    for (int k = 1; k < nopts; k++) {
+        if (argv[k][1] == 'o') {
+            continue;
+        }
+        char *esc = json_escape(argv[k], strlen(argv[k]));
+        fprintf(out, "%s\"%s\"", first_option ? "" : ", ", esc);
+        free(esc);
+        first_option = false;
+    }
+    fprintf(out, "],\n");
+
     phase_start("Output hvm");
     fprintf(out, "  \"hvm\": ");
     json_dump(jv, out, 2);
@@ -5678,6 +5715,21 @@ int exec_model_checker(int argc, char **argv){
         }
         if (hfaout != 0) {
             fprintf(out, "  \"dfasize\": %u,\n", dfasize);
+
+            // Include the behavior (the DFA also written to the .hfa file),
+            // so the .hco file alone has everything needed for the outputs
+            // and can serve as a behavior specification itself.
+            FILE *hfa = fopen(hfaout, "r");
+            if (hfa != NULL) {
+                char buf[8192];
+                size_t n;
+                fprintf(out, "  \"behavior\": ");
+                while ((n = fread(buf, 1, sizeof(buf), hfa)) > 0) {
+                    fwrite(buf, 1, n, out);
+                }
+                fprintf(out, ",\n");
+                fclose(hfa);
+            }
         }
 
         phase_start("Output profile");

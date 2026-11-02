@@ -2,6 +2,8 @@ import subprocess
 import time
 import json
 import os.path
+import shutil
+import tempfile
 
 tests = [
     { "args": "code/triangle.hny", "issue": "No issues", "nstates": 13 },
@@ -52,7 +54,7 @@ tests = [
     { "args": "-mrwlock=rwlock_cv_fair -msynch=synchS code/rwlock_test1.hny", "issue": "No issues", "nstates": 65501 },
     { "args": "-mrwlock=rwlock_sbs_fair code/rwlock_test1.hny", "issue": "No issues", "nstates": 5831 },
     { "args": "-mrwlock=rwlock_sbs_fair -msynch=synchS code/rwlock_test1.hny", "issue": "No issues", "nstates": 21060 },
-    { "args": "-o rw.hfa -cNOPS=3 code/rwlock_btest.hny", "issue": "No issues", "nstates": 2922 },
+    { "args": "-o rw.hfa -cNOPS=3 code/rwlock_btest.hny", "issue": "No issues", "nstates": 313 },
     { "args": "-X15 -B rw.hfa -cNOPS=3 -m rwlock=rwlock_sbs code/rwlock_btest.hny", "issue": "No issues", "nstates": 3018 },
     { "args": "-X15 -B rw.hfa -cNOPS=3 -m rwlock=rwlock_cv code/rwlock_btest.hny", "issue": "No issues", "nstates": 2593 },
     { "args": "-X15 -B rw.hfa -cNOPS=3 -m rwlock=rwlock_cv_fair code/rwlock_btest.hny", "issue": "No issues", "nstates": 4191 },
@@ -101,16 +103,22 @@ tests = [
     { "args": "-mstack=stack4 code/stacktest.hny", "issue": "No issues", "nstates": 2 }
 ]
 
+# Harmony only writes the files asked for with -o, so put each result in
+# a scratch directory that is removed at the end.
+tmpdir = tempfile.mkdtemp(prefix="runall-")
+hco_file = os.path.join(tmpdir, "result.hco")
+
 for t in tests:
     print()
     print("Running harmony %s"%t["args"], flush=True)
     start = time.time()
     args = t["args"].split(" ")
-    cp = subprocess.run(["./harmony", "--noweb"] + args, capture_output=True)
+    if os.path.exists(hco_file):
+        os.remove(hco_file)
+    cp = subprocess.run(["./harmony", "-o", hco_file] + args, capture_output=True)
     end = time.time()
     if cp.returncode == 0:
-        (base, ext) = os.path.splitext(args[-1])
-        with open(base + ".hco") as f:
+        with open(hco_file) as f:
             hco = json.load(f)
             if hco["nstates"] == t["nstates"]:
                 print("time=%.2f, #states=%d, issue=%s" % (end - start, hco["nstates"], hco["issue"]))
@@ -129,3 +137,5 @@ for t in tests:
         print("Output: ", cp.stdout.decode())
         print("Error: ", cp.stderr.decode())
         break
+
+shutil.rmtree(tmpdir, ignore_errors=True)

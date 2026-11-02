@@ -1,6 +1,19 @@
 import json
 import sys
 
+class Tee:
+    """A file-like object that writes to several files at once."""
+    def __init__(self, *files):
+        self.files = files
+
+    def write(self, s):
+        for f in self.files:
+            f.write(s)
+
+    def flush(self):
+        for f in self.files:
+            f.flush()
+
 contexts = []
 
 def verbose_kv(js):
@@ -412,9 +425,9 @@ class Summarize:
                     print("Operation failed: %s"%step["failure"], file=f)
             self.lastmis = step
 
-    def run(self, outputfiles, top):
+    def run(self, outputfiles, top, md=None):
         with open(outputfiles["hco"], encoding='utf-8') as input:
-            output = sys.stdout
+            output = sys.stdout if md is None else Tee(sys.stdout, md)
             # with open("summary.txt", "w", encoding='utf-8') as output:
             print(file=output)
             print("----------------------------------------", file=output)

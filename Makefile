@@ -7,7 +7,6 @@ type-check:
 	# uses named arguments while the base class uses kwargs.
 	mypy harmony \
 		harmony_model_checker/compile.py \
-		harmony_model_checker/config.py \
 		harmony_model_checker/dfacmp.py \
 		harmony_model_checker/exception.py \
 		harmony_model_checker/iface.py \

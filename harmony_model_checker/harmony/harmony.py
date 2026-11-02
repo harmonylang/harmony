@@ -32,6 +32,8 @@
     POSSIBILITY OF SUCH DAMAGE.
 """
 
+import hashlib
+import os
 import sys
 import json
 from typing import Any, Dict, List, Set, Tuple
@@ -134,12 +136,24 @@ def optimize(code):
 def explanation(lop):
     return lop.op.explain()
 
+# Where Harmony's own library modules (synch, list, ...) are installed.
+_library_dir = os.path.realpath(os.path.join(
+    os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "modules"))
+
+def isLibraryModule(path):
+    return os.path.dirname(os.path.realpath(path)) == _library_dir
+
 def dumpModule(name, scope, f, last):
     print('    "%s": {'%name, file=f)
+    with open(scope.file, "rb") as fdx:
+        contents = fdx.read()
     print('      "file": %s,'% json.dumps(scope.file), file=f)
+    print('      "sha256": "%s",'% hashlib.sha256(contents).hexdigest(), file=f)
+    if isLibraryModule(scope.file):
+        print('      "library": true,', file=f)
     print('      "lines": [', file=f)
-    with open(scope.file, encoding='utf-8') as fdx:
-        lines = fdx.read().splitlines()
+    if True:
+        lines = contents.decode('utf-8').splitlines()
         first = True
         for line in lines:
             if first:
@@ -159,10 +173,12 @@ def dumpModule(name, scope, f, last):
     else:
         print('    },', file=f)
 
-def dumpCode(printCode, code: Code, scope: Scope, f=sys.stdout):
+def dumpCode(printCode, code: Code, scope: Scope, f=sys.stdout, config=None):
     lastloc = None
     if printCode == "json":
         print("{", file=f)
+        if config is not None:
+            print('  "config": %s,'%json.dumps(config), file=f)
         print('  "labels": {', file=f)
         for (k, v) in scope.labels.items():
             print('    "%s": "%d",'%(k, v), file=f)
