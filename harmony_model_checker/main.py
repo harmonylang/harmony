@@ -209,7 +209,19 @@ def handle_precheck(ns, output_files, parse_code_only, filename):
 
 
 args = argparse.ArgumentParser(
-    "harmony", description="Harmony programming language compiler and model checker")
+    "harmony",
+    usage="%(prog)s [options] program [behavior]",
+    description="Harmony programming language compiler and model checker",
+    formatter_class=argparse.RawDescriptionHelpFormatter,
+    epilog="""\
+examples:
+  harmony prog.hny                    check prog.hny and print a summary
+  harmony -o prog.htm prog.hny        ... and also write a detailed report
+  harmony --browse prog.hny           ... and show the report in a browser
+  harmony -o spec.hfa spec.hny        check spec.hny and save its behavior
+  harmony impl.hny spec.hfa           check impl.hny against that behavior
+  harmony -c N=3 -m queue=queueImpl prog.hny
+                                      set a constant and replace a module""")
 args.add_argument("-a", action="store_true",
                   help="list machine code (with labels)")
 args.add_argument("-b", action="store_true",
@@ -269,7 +281,11 @@ args.add_argument("--suppress", action="store_true",
 
 # Internal flags
 args.add_argument("--cf", action="append", type=str, help=argparse.SUPPRESS)
-args.add_argument("args", metavar="args", type=str, nargs='*', help="arguments")
+args.add_argument("args", metavar="program [behavior]", type=str, nargs='*',
+                  help="the program: a Harmony program (.hny), or one compiled "
+                       "(.hvm) or model checked (.hco) earlier; and optionally "
+                       "a behavior to check it against: an .hfa file, or the "
+                       ".hco file of an earlier run")
 
 def handle_hny(ns, output_files, parse_code_only, filenames, config=None):
     print("* Phase 1: compile Harmony program to bytecode", flush=True)
