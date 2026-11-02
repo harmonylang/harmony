@@ -19,8 +19,7 @@ def transfer(a1, a2, amount):
         release(?accounts[a2].lock)
     release(?accounts[a1].lock)
 
-    atomically:
-        active -= { a1, a2 }
+    atomically active -= { a1, a2 }
 
 spawn transfer(0, 1, 1)
 spawn transfer(1, 0, 2)

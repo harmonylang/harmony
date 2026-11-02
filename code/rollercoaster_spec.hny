@@ -1,0 +1,32 @@
+def RollerCoaster(nseats) returns init_value:
+    init_value = { .nseats: nseats, .phase: "LOADING", .onboard: 0 }
+
+def enter(b):
+    # Wait while car is running or is already full, then board
+    atomically when (b->phase == "LOADING") and (b->onboard < b->nseats):
+        b->onboard += 1
+        if b->onboard == b->nseats:  # last thread to board
+            b->phase = "RUNNING"
+    # Wait for departure
+    atomically await b->phase == "RUNNING"
+
+def exit(b):
+    atomically:
+        b->onboard -= 1
+        if b->onboard == 0:         # last thread to exit
+            b->phase = "LOADING"
+
+const NSEATS = 3
+const NTHREADS = 6
+
+global therc
+therc = RollerCoaster(NSEATS)
+
+def student():
+    enter(?therc)
+    print("enter")
+    print("exit")
+    exit(?therc)
+
+for _ in { 1 .. NTHREADS }:
+    spawn student()
