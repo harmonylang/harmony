@@ -910,6 +910,8 @@ static struct step_output *onestep(
     unsigned int instrcnt = 0;          // keeps track of #instruction executed
     unsigned int choose_count = 0;      // number of choices
     unsigned int as_instrcnt = 0;       // for rollback
+    unsigned int as_nspawned = 0;
+    unsigned int as_nunstopped = 0;
     bool stopped = false;
     bool terminated = false;
     bool rollback = false;
@@ -1131,6 +1133,8 @@ static struct step_output *onestep(
         if (instrs[pc].atomicinc && step->ctx->atomic == 0) {
             memcpy(&w->as_ctx, step->ctx, ctx_size(step->ctx));
             as_instrcnt = instrcnt;
+            as_nspawned = step->nspawned;
+            as_nunstopped = step->nunstopped;
             if (instrs[pc].is_assert) {
                 in_assertion = true;
             }
@@ -1198,11 +1202,13 @@ static struct step_output *onestep(
         w->inf_max = 2 * instrcnt;
     }
 
-    // See if we need to roll back to the start of an assertion.
+    // Restore the context and pending thread changes to the start of the atomic section.
     // TODO.  Update ai?
     if (rollback) {
         memcpy(step->ctx, &w->as_ctx, ctx_size(&w->as_ctx));
         instrcnt = as_instrcnt;
+        step->nspawned = as_nspawned;
+        step->nunstopped = as_nunstopped;
     }
 
     // Capture the result of executing this step

@@ -1,0 +1,17 @@
+global ready, runs
+ready = False
+runs = [0, 0]
+
+def child(index):
+    atomically:
+        assert index == 0 or ready
+        runs[index] += 1
+
+def parent():
+    spawn child(0)
+    atomically:
+        spawn child(1)
+        ready = True
+
+spawn parent()
+finally runs == [1, 1]

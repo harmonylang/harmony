@@ -3,6 +3,15 @@ set -x
 
 HARMONY=./harmony
 
+$HARMONY --noweb test/atomic_spawn_rollback.hny
+python3 - <<'PY'
+import json
+with open("test/atomic_spawn_rollback.hco") as report:
+    issue = json.load(report)["issue"]
+if issue != "No issues":
+    raise SystemExit(f"Atomic spawn rollback regression: {issue}")
+PY
+
 $HARMONY --noweb code/triangle.hny
 
 $HARMONY --noweb code/prog1.hny
